@@ -32,6 +32,9 @@ data class TweakUiState(
     val ramPriorityMode: Boolean = false,
     val thermalThrottleOverride: Boolean = false,
     val gpuPerformanceMode: Boolean = false,
+    val ioSchedulerBoost: Boolean = false,
+    val killBackgroundApps: Boolean = false,
+    val vmHeapBoost: Boolean = false,
     val message: String? = null,
     val detectedGames: List<DetectedGame> = emptyList(),
     val userId: Int? = null,
@@ -73,6 +76,9 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     ramPriorityMode = saved.ramPriorityMode,
                     thermalThrottleOverride = saved.thermalThrottleOverride,
                     gpuPerformanceMode = saved.gpuPerformanceMode,
+                    ioSchedulerBoost = saved.ioSchedulerBoost,
+                    killBackgroundApps = saved.killBackgroundApps,
+                    vmHeapBoost = saved.vmHeapBoost,
                 )
             }
         }
@@ -186,6 +192,47 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         applyAndPersist { executor -> repository.applyGpuPerformanceMode(executor, checked) }
     }
 
+    /** Khusus root: ganti I/O scheduler storage ke mode latensi rendah untuk baca aset game. */
+    fun onIoSchedulerBoostChange(checked: Boolean) {
+        _state.update { it.copy(ioSchedulerBoost = checked) }
+        applyAndPersist { executor -> repository.applyIoSchedulerBoost(executor, checked) }
+    }
+
+    /**
+     * Khusus root: aksi sekali jalan (bukan kondisi permanen) — hentikan
+     * proses aplikasi pihak ketiga yang berjalan di background lalu switch
+     * otomatis kembali OFF sesaat kemudian supaya jelas ini bukan status
+     * yang "menyala terus", melainkan tombol pembersih RAM instan.
+     */
+    fun onKillBackgroundAppsChange(checked: Boolean) {
+        if (!checked) return
+        _state.update { it.copy(killBackgroundApps = true) }
+        viewModelScope.launch {
+            val executor = PrivilegeManager.getExecutor()
+            if (executor == null) {
+                _state.update { it.copy(message = appString(R.string.tweak_no_access_toast)) }
+            } else {
+                val result = repository.applyKillBackgroundApps(executor, true)
+                _state.update {
+                    it.copy(
+                        message = if (result.success) {
+                            appString(R.string.tweak_kill_background_toast)
+                        } else {
+                            appString(R.string.tweak_command_failed_toast)
+                        },
+                    )
+                }
+            }
+            _state.update { it.copy(killBackgroundApps = false) }
+        }
+    }
+
+    /** Khusus root: perbesar heap Dalvik/ART supaya GC lebih jarang jeda saat bermain. */
+    fun onVmHeapBoostChange(checked: Boolean) {
+        _state.update { it.copy(vmHeapBoost = checked) }
+        applyAndPersist { executor -> repository.applyVmHeapBoost(executor, checked) }
+    }
+
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
     }
@@ -202,6 +249,8 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 repository.applyRamPriority(executor, false)
                 repository.applyThermalThrottleOverride(executor, false)
                 repository.applyGpuPerformanceMode(executor, false)
+                repository.applyIoSchedulerBoost(executor, false)
+                repository.applyVmHeapBoost(executor, false)
             }
             preferences.clearTweakState()
             _state.update {
@@ -214,6 +263,9 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     ramPriorityMode = false,
                     thermalThrottleOverride = false,
                     gpuPerformanceMode = false,
+                    ioSchedulerBoost = false,
+                    killBackgroundApps = false,
+                    vmHeapBoost = false,
                     message = appString(R.string.tweak_reset_toast),
                 )
             }
@@ -247,6 +299,9 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 ramPriorityMode = s.ramPriorityMode,
                 thermalThrottleOverride = s.thermalThrottleOverride,
                 gpuPerformanceMode = s.gpuPerformanceMode,
+                ioSchedulerBoost = s.ioSchedulerBoost,
+                killBackgroundApps = s.killBackgroundApps,
+                vmHeapBoost = s.vmHeapBoost,
             )
         }
     }

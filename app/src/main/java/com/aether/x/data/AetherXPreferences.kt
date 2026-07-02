@@ -41,6 +41,9 @@ data class AppPreferences(
     val ramPriorityMode: Boolean = false,
     val thermalThrottleOverride: Boolean = false,
     val gpuPerformanceMode: Boolean = false,
+    val ioSchedulerBoost: Boolean = false,
+    val killBackgroundApps: Boolean = false,
+    val vmHeapBoost: Boolean = false,
     val crosshairEnabled: Boolean = false,
     val crosshairStyle: CrosshairStyle = CrosshairStyle.CROSS,
     val crosshairColor: Long = 0xFF00FF66,
@@ -83,6 +86,12 @@ class AetherXPreferences(private val context: Context) {
         // Khusus root: override batas thermal throttling & governor performa GPU.
         val THERMAL_THROTTLE_OVERRIDE = booleanPreferencesKey("thermal_throttle_override")
         val GPU_PERFORMANCE_MODE = booleanPreferencesKey("gpu_performance_mode")
+        // Khusus root: scheduler I/O storage, bersihkan proses background, dan
+        // heap Dalvik/ART — tiga tweak root tambahan, dikelompokkan bersama
+        // tweak root lain di section yang sama pada tab Tweak.
+        val IO_SCHEDULER_BOOST = booleanPreferencesKey("io_scheduler_boost")
+        val KILL_BACKGROUND_APPS = booleanPreferencesKey("kill_background_apps")
+        val VM_HEAP_BOOST = booleanPreferencesKey("vm_heap_boost")
         // Disimpan agar bisa dipulihkan walau aplikasi sempat ditutup,
         // meski nilainya berupa Float (refresh rate target dalam Hz).
         val REFRESH_TARGET = floatPreferencesKey("refresh_target_hz")
@@ -138,6 +147,9 @@ class AetherXPreferences(private val context: Context) {
             ramPriorityMode = prefs[Keys.RAM_PRIORITY_MODE] ?: false,
             thermalThrottleOverride = prefs[Keys.THERMAL_THROTTLE_OVERRIDE] ?: false,
             gpuPerformanceMode = prefs[Keys.GPU_PERFORMANCE_MODE] ?: false,
+            ioSchedulerBoost = prefs[Keys.IO_SCHEDULER_BOOST] ?: false,
+            killBackgroundApps = prefs[Keys.KILL_BACKGROUND_APPS] ?: false,
+            vmHeapBoost = prefs[Keys.VM_HEAP_BOOST] ?: false,
             crosshairEnabled = prefs[Keys.CROSSHAIR_ENABLED] ?: false,
             crosshairStyle = prefs[Keys.CROSSHAIR_STYLE]
                 ?.let { runCatching { CrosshairStyle.valueOf(it) }.getOrNull() }
@@ -180,6 +192,9 @@ class AetherXPreferences(private val context: Context) {
         ramPriorityMode: Boolean = false,
         thermalThrottleOverride: Boolean = false,
         gpuPerformanceMode: Boolean = false,
+        ioSchedulerBoost: Boolean = false,
+        killBackgroundApps: Boolean = false,
+        vmHeapBoost: Boolean = false,
     ) {
         context.dataStore.edit { prefs ->
             prefs[Keys.POINTER_SPEED] = pointerSpeed
@@ -190,6 +205,9 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.RAM_PRIORITY_MODE] = ramPriorityMode
             prefs[Keys.THERMAL_THROTTLE_OVERRIDE] = thermalThrottleOverride
             prefs[Keys.GPU_PERFORMANCE_MODE] = gpuPerformanceMode
+            prefs[Keys.IO_SCHEDULER_BOOST] = ioSchedulerBoost
+            prefs[Keys.KILL_BACKGROUND_APPS] = killBackgroundApps
+            prefs[Keys.VM_HEAP_BOOST] = vmHeapBoost
         }
     }
 
@@ -205,6 +223,9 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.RAM_PRIORITY_MODE] = false
             prefs[Keys.THERMAL_THROTTLE_OVERRIDE] = false
             prefs[Keys.GPU_PERFORMANCE_MODE] = false
+            prefs[Keys.IO_SCHEDULER_BOOST] = false
+            prefs[Keys.KILL_BACKGROUND_APPS] = false
+            prefs[Keys.VM_HEAP_BOOST] = false
         }
     }
 

@@ -140,10 +140,17 @@
     <string name="tweak_thermal_throttle_desc">Naikkan batas suhu trip point kernel sebelum sistem menurunkan clock CPU/GPU (throttling). Berguna untuk sesi main lama, tapi tingkatkan suhu perangkat — pakai dengan hati-hati. Butuh akses root.</string>
     <string name="tweak_gpu_performance">GPU Governor: Performance</string>
     <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Butuh akses root.</string>
+    <string name="tweak_io_scheduler_boost">I/O Scheduler: Latensi Rendah</string>
+    <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan internal ke mode latensi rendah (kyber/bfq) supaya aset game lebih cepat dibaca dari storage. Butuh akses root.</string>
+    <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
+    <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
+    <string name="tweak_vm_heap_boost">VM Heap Boost</string>
+    <string name="tweak_vm_heap_boost_desc">Perbesar batas heap Dalvik/ART supaya garbage collector lebih jarang menyebabkan jeda saat bermain. Berlaku untuk proses yang baru dimulai. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
     <string name="tweak_no_access_toast">Aktifkan Shizuku atau Root dulu di menu Pengaturan</string>
     <string name="tweak_command_failed_toast">Perintah gagal dijalankan di perangkat ini — coba lagi atau periksa akses Shizuku/Root</string>
+    <string name="tweak_kill_background_toast">Aplikasi background dibersihkan</string>
 
     <!-- Tweak screen — game launcher -->
     <string name="tweak_game_launch_failed">Gagal membuka game — coba buka manual lewat launcher.</string>

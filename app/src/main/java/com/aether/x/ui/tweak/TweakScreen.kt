@@ -13,8 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.TouchApp
@@ -165,6 +167,27 @@ fun TweakScreen(
                         checked = state.thermalThrottleOverride,
                         onCheckedChange = viewModel::onThermalThrottleOverrideChange,
                         icon = Icons.Outlined.Thermostat,
+                    )
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_io_scheduler_boost),
+                        description = stringResource(R.string.tweak_io_scheduler_boost_desc),
+                        checked = state.ioSchedulerBoost,
+                        onCheckedChange = viewModel::onIoSchedulerBoostChange,
+                        icon = Icons.Outlined.SdStorage,
+                    )
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_vm_heap_boost),
+                        description = stringResource(R.string.tweak_vm_heap_boost_desc),
+                        checked = state.vmHeapBoost,
+                        onCheckedChange = viewModel::onVmHeapBoostChange,
+                        icon = Icons.Outlined.Memory,
+                    )
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_kill_background_apps),
+                        description = stringResource(R.string.tweak_kill_background_apps_desc),
+                        checked = state.killBackgroundApps,
+                        onCheckedChange = viewModel::onKillBackgroundAppsChange,
+                        icon = Icons.Outlined.CleaningServices,
                     )
                 }
             }

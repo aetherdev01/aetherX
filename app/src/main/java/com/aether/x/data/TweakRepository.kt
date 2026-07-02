@@ -138,6 +138,71 @@ class TweakRepository {
         )
     }
 
+    /**
+     * Khusus root: ganti I/O scheduler storage internal ke "kyber" (kalau
+     * tersedia di kernel) yang dioptimalkan untuk latensi baca rendah —
+     * cocok untuk baca aset game besar. Kalau kyber tidak didukung kernel,
+     * dicoba fallback ke "bfq" yang juga lebih baik dari "noop"/"none"
+     * untuk beban baca-tulis campuran. Dikembalikan ke governor default
+     * kernel modern ("mq-deadline") saat dimatikan. Butuh akses tulis ke
+     * /sys/block/*/queue/scheduler, hanya bisa lewat root.
+     */
+    suspend fun applyIoSchedulerBoost(executor: ShellExecutor, enabled: Boolean): ShellResult {
+        return if (enabled) {
+            executor.exec(
+                "for q in /sys/block/*/queue/scheduler; do " +
+                    "(echo kyber > \$q 2>/dev/null || echo bfq > \$q 2>/dev/null); done",
+            )
+        } else {
+            executor.exec(
+                "for q in /sys/block/*/queue/scheduler; do " +
+                    "echo mq-deadline > \$q 2>/dev/null; done",
+            )
+        }
+    }
+
+    /**
+     * Khusus root: hentikan proses aplikasi pihak ketiga yang sedang berjalan
+     * di background (bukan aplikasi sistem) lewat `am kill` per paket,
+     * membebaskan RAM/CPU sebelum sesi bermain. Ini aksi SEKALI JALAN
+     * (one-shot), bukan toggle yang mengubah kondisi permanen — makanya
+     * tidak ada "kondisi mati" untuk dikembalikan, dan [enabled] dipakai
+     * murni sebagai sinyal switch dinyalakan (bukan disimpan sebagai status
+     * berkelanjutan seperti tweak root lain). Daftar paket berjalan diambil
+     * lewat `pm list packages -3` (paket pihak ketiga) lalu satu per satu
+     * dihentikan lewat `am kill`, yang sama seperti tombol "Force stop"
+     * tapi tanpa dialog konfirmasi.
+     */
+    suspend fun applyKillBackgroundApps(executor: ShellExecutor, enabled: Boolean): ShellResult {
+        if (!enabled) return ShellResult(success = true)
+        return executor.exec(
+            "for p in \$(pm list packages -3 | sed 's/package://'); do am kill \$p; done",
+        )
+    }
+
+    /**
+     * Khusus root: paksa heap Dalvik/ART jadi lebih besar & tunda GC lewat
+     * properti sistem `dalvik.vm.heapgrowthlimit`/`dalvik.vm.heapsize`,
+     * mengurangi jeda micro-stutter akibat garbage collection saat bermain.
+     * Properti ini dibaca ulang oleh Zygote/ART, jadi perubahan baru terasa
+     * penuh untuk proses yang baru dimulai setelah tweak diaktifkan (proses
+     * yang sudah berjalan tidak terpengaruh retroaktif). Dikembalikan ke
+     * nilai default umum AOSP saat dimatikan. Butuh akses tulis ke
+     * properti sistem lewat `setprop`, hanya bisa lewat root (Shizuku/adb
+     * shell biasa tidak diizinkan menulis properti `dalvik.vm.*`).
+     */
+    suspend fun applyVmHeapBoost(executor: ShellExecutor, enabled: Boolean): ShellResult {
+        return if (enabled) {
+            executor.exec(
+                "setprop dalvik.vm.heapgrowthlimit 512m; setprop dalvik.vm.heapsize 1024m",
+            )
+        } else {
+            executor.exec(
+                "setprop dalvik.vm.heapgrowthlimit 256m; setprop dalvik.vm.heapsize 512m",
+            )
+        }
+    }
+
     suspend fun resetAll(executor: ShellExecutor): List<ShellResult> = listOf(
         resetDensity(executor),
         resetSize(executor),
@@ -149,5 +214,7 @@ class TweakRepository {
         applyRamPriority(executor, enabled = false),
         applyThermalThrottleOverride(executor, enabled = false),
         applyGpuPerformanceMode(executor, enabled = false),
+        applyIoSchedulerBoost(executor, enabled = false),
+        applyVmHeapBoost(executor, enabled = false),
     )
 }
