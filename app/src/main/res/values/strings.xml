@@ -40,20 +40,6 @@
     <string name="setup_method_notifications_desc">Dibutuhkan supaya layanan overlay tetap berjalan di latar belakang.</string>
 
 
-    <!-- Onboarding — Guide -->
-    <string name="guide_skip">Lewati</string>
-    <string name="guide_next">Lanjut</string>
-    <string name="guide_back">Kembali</string>
-    <string name="guide_finish">Ayo Mulai</string>
-    <string name="guide_step_label">Langkah %1$d dari %2$d</string>
-    <string name="guide_title_1">Selamat datang di AetherX</string>
-    <string name="guide_body_1">Ubah DPI, governor CPU, sampai swappiness — biasanya lewat adb shell atau terminal root satu per satu. Di sini semua tinggal ketuk, tanpa kehilangan kendali atas apa yang sebenarnya berjalan di baliknya.</string>
-    <string name="guide_title_2">Tetap kamu yang pegang kendali</string>
-    <string name="guide_body_2">Setiap slider dan saklar cuma menjalankan satu baris perintah shell biasa, sama seperti yang kamu ketik sendiri. Tidak ada proses tersembunyi, tidak ada modifikasi kernel image.</string>
-    <string name="guide_title_3">Root membuka lebih banyak</string>
-    <string name="guide_body_3">Lewat Shizuku kamu sudah bisa atur DPI, refresh rate, dan pointer speed. Kalau perangkat root, akses bertambah sampai governor CPU/GPU, swappiness, hingga trip point termal.</string>
-    <string name="guide_title_4">Coba saja, gampang dikembalikan</string>
-    <string name="guide_body_4">Utak-atik parameter di tab Tweak sesuka hati. Kalau ada yang terasa aneh, satu ketukan tombol Reset mengembalikan semuanya seperti semula.</string>
 
 
     <!-- Bottom navigation -->

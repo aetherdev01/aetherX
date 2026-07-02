@@ -43,8 +43,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * secara silent (tanpa dialog) dan sambungkan ke database. Permintaan izin
  * yang sesungguhnya (dengan penjelasan & kontrol per-izin) dipindah ke
  * [com.aether.x.ui.onboarding.PermissionSetupScreen] sebagai langkah
- * tersendiri setelah panduan (Guide), supaya pengguna tahu APA yang diminta
- * dan KENAPA sebelum dialog sistem muncul.
+ * tersendiri langsung setelah Splash (Guide sudah dihapus dari alur),
+ * supaya pengguna tahu APA yang diminta dan KENAPA sebelum dialog sistem
+ * muncul.
  *
  * Koneksi database (Firestore) tetap dilakukan di sini: memanggil
  * [UserIdRepository.resolveUserId] SUNGGUHAN, bukan delay kosmetik — kalau
@@ -66,8 +67,8 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         // 1. Cek status akses yang SUDAH ada secara silent — tidak memicu
         //    dialog/prompt apapun. Ini hanya membaca kondisi terkini supaya
-        //    layar-layar berikutnya (Guide, Permission, Main) mulai dengan
-        //    status yang akurat, bukan menunda-nunda meminta izin baru.
+        //    layar-layar berikutnya (Permission, Main) mulai dengan status
+        //    yang akurat, bukan menunda-nunda meminta izin baru.
         statusLabel = context.getString(R.string.splash_status_checking)
         PrivilegeManager.refreshAll()
         PrivilegeManager.refreshSupportingPermissions(context)

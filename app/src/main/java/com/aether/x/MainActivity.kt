@@ -26,7 +26,6 @@ import com.aether.x.data.DarkModePref
 import com.aether.x.ui.main.MainScreen
 import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
-import com.aether.x.ui.onboarding.GuideScreen
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
 import com.aether.x.ui.theme.AetherXTheme
@@ -107,17 +106,10 @@ private fun AetherXRoot(
         composable(AetherXRoutes.SETUP_ONBOARDING) {
             // Splash sekarang hanya loading singkat (cek status yang sudah
             // ada + koneksi database), tidak lagi memicu dialog izin apapun.
+            // Guide dihapus sepenuhnya dari alur onboarding — dari Splash
+            // langsung ke layar Izin Akses (wajib).
             SplashScreen(
-                onDone = { navController.navigate(AetherXRoutes.GUIDE_ONBOARDING) },
-            )
-        }
-        composable(AetherXRoutes.GUIDE_ONBOARDING) {
-            // Setelah panduan selesai dibaca, lanjut ke langkah Izin Akses
-            // (wajib) — bukan langsung ke Main seperti sebelumnya. Ini
-            // memberi pengguna konteks lebih dulu (lewat Guide) sebelum
-            // diminta memberi izin sistem.
-            GuideScreen(
-                onFinish = { navController.navigate(AetherXRoutes.PERMISSION_ONBOARDING) },
+                onDone = { navController.navigate(AetherXRoutes.PERMISSION_ONBOARDING) },
             )
         }
         composable(AetherXRoutes.PERMISSION_ONBOARDING) {
@@ -133,7 +125,6 @@ private fun AetherXRoot(
         }
         composable(AetherXRoutes.MAIN) {
             MainScreen(
-                onViewGuideAgain = { navController.navigate(AetherXRoutes.GUIDE_REVISIT) },
                 onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
             )
         }
@@ -142,9 +133,6 @@ private fun AetherXRoot(
                 onContinue = { navController.popBackStack() },
                 requireAccessToContinue = false,
             )
-        }
-        composable(AetherXRoutes.GUIDE_REVISIT) {
-            GuideScreen(onFinish = { navController.popBackStack() })
         }
     }
 

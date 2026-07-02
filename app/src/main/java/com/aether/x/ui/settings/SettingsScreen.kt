@@ -62,7 +62,6 @@ import com.aether.x.ui.components.TweakSwitch
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
-    onViewGuideAgain: () -> Unit,
     onManageAccess: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(),
 ) {
