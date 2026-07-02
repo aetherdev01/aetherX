@@ -9,19 +9,19 @@
 
     <!-- Onboarding — Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
     <string name="setup_title">Izin Akses</string>
-    <string name="setup_subtitle">Pilih salah satu metode di bawah supaya AetherX bisa mengatur DPI, resolusi, refresh rate, dan tweak sistem lainnya di perangkatmu.</string>
+    <string name="setup_subtitle">Pilih metode yang ingin digunakan agar AetherX dapat mengakses kernel dan menyediakan kontrol penuh terhadap fitur, performa, serta tweak sistem yang didukung perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
     <string name="setup_required_banner">Aktifkan Shizuku atau Root untuk melanjutkan</string>
-    <string name="setup_method_shizuku">Shizuku (Tanpa Root)</string>
-    <string name="setup_method_shizuku_desc">Cocok untuk HP yang tidak di-root. Perlu aplikasi Shizuku aktif lewat Wireless Debugging.</string>
-    <string name="setup_method_root">Root (Magisk / KernelSU / APatch)</string>
-    <string name="setup_method_root_desc">Cocok untuk HP yang sudah root. AetherX akan meminta izin superuser (su).</string>
+    <string name="setup_method_shizuku">Shizuku</string>
+    <string name="setup_method_shizuku_desc">Direkomendasikan untuk perangkat tanpa root. Beberapa fitur mungkin terbatas dibandingkan akses root.</string>
+    <string name="setup_method_root">Magisk</string>
+    <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser (su) untuk mengaktifkan fitur lanjutan./string>
     <string name="setup_status_granted">Aktif</string>
     <string name="setup_status_not_granted">Belum Aktif</string>
     <string name="setup_status_checking">Memeriksa…</string>
     <string name="setup_status_not_installed">Belum Terpasang</string>
-    <string name="setup_status_not_needed">Tidak perlu — Shizuku sudah aktif</string>
-    <string name="setup_or_divider">— ATAU —</string>
+    <string name="setup_status_not_needed">Shizuku sudah aktif</string>
+    <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
     <string name="setup_action_open_shizuku">Buka Shizuku</string>
     <string name="setup_action_install_shizuku">Pasang Shizuku</string>
@@ -30,7 +30,7 @@
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
 
     <!-- Onboarding — Izin pendukung (Write Settings, Overlay, Notifikasi) -->
-    <string name="setup_supporting_header">Opsional — Izin Pendukung</string>
+    <string name="setup_supporting_header">Izin Tambahan</string>
     <string name="setup_supporting_subtitle">Membantu tweak dan fitur overlay berjalan lebih stabil di perangkatmu.</string>
     <string name="setup_method_write_settings">Ubah Pengaturan Sistem</string>
     <string name="setup_method_write_settings_desc">Mengizinkan AetherX membaca/menulis sebagian setelan sistem secara langsung.</string>
@@ -82,7 +82,7 @@
     <string name="membership_pro_price">Rp10.000</string>
     <string name="membership_pro_price_period">/ bulan</string>
     <string name="membership_pro_description">Hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi Membership Pro.</string>
-    <string name="membership_pro_cta">Langganan via Telegram</string>
+    <string name="membership_pro_cta">Langganan Sekarang</string>
     <string name="membership_pro_telegram_url">https://t.me/AetherDev22</string>
     <string name="membership_pro_telegram_error">Tidak ada aplikasi yang bisa membuka tautan Telegram ini.</string>
     <string name="membership_device_section_title">Perangkat Ini</string>
@@ -108,7 +108,7 @@
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
-    <string name="tweak_touch_boost_desc">Eksperimental — menimpa parameter respons sentuh bawaan sistem. Dampak tergantung driver perangkat.</string>
+    <string name="tweak_touch_boost_desc">Eksperimental. Menimpa parameter respons sentuh pada kernel. Hasil dan kompatibilitas bergantung pada driver perangkat.</string>
     <string name="tweak_section_refresh">Display Refresh Rate</string>
     <string name="tweak_force_refresh">Paksa Refresh Rate Maksimal</string>
     <string name="tweak_force_refresh_desc">Mengunci parameter refresh rate layar pada nilai tertinggi yang didukung hardware.</string>
@@ -170,8 +170,8 @@
     <string name="settings_section_about">Tentang</string>
     <string name="settings_maintainer_name">Aldi Ahmad Khoirudin</string>
     <string name="settings_maintainer_handle">@AetherDev22</string>
-    <string name="settings_about">AetherX</string>
-    <string name="settings_about_tagline">Tweak performa &amp; overlay untuk gaming</string>
+    <string name="settings_about">AetherX Kernel Manager</string>
+    <string name="settings_about_tagline">Manajemen kernel &amp; optimasi sistem Android</string>
     <string name="settings_version">v%1$s</string>
     <string name="settings_social_github">GitHub</string>
     <string name="settings_social_github_handle">github.com/aetherdev01</string>
