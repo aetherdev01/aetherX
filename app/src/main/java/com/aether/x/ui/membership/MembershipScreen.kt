@@ -3,6 +3,7 @@ package com.aether.x.ui.membership
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +24,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,9 +48,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -213,7 +219,16 @@ fun MembershipScreen(
             }
         }
 
-        MembershipProCard()
+        // Begitu membership AKTIF, kartu promo "Langganan Membership Pro"
+        // tidak relevan lagi (pengguna sudah berlangganan) — disembunyikan,
+        // digantikan kartu Device ID + tombol Logout supaya pengguna tetap
+        // punya cara melihat identitas perangkat yang terkunci ke lisensinya
+        // dan (kalau perlu) melepas sesi lisensi ini dari perangkat.
+        if (status == MembershipUiStatus.ACTIVE) {
+            DeviceAccountCard(deviceId = viewModel.deviceId, onLogout = viewModel::logout)
+        } else {
+            MembershipProCard()
+        }
     }
 }
 
@@ -293,6 +308,104 @@ private fun MembershipProCard() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Kartu identitas perangkat, ditampilkan sebagai pengganti promo "Langganan
+ * Membership Pro" begitu membership perangkat ini aktif — menampilkan Device
+ * ID (ANDROID_ID, sama seperti yang dikunci ke lisensi ini di Firestore) dan
+ * tombol Logout untuk melepas cache lisensi lokal dari perangkat ini.
+ */
+@Composable
+private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+
+    SectionCard(title = stringResource(R.string.membership_device_section_title)) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.membership_device_id_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = deviceId,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(deviceId))
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.membership_device_id_copied),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = stringResource(R.string.membership_device_id_copy_cd),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+
+            Button(
+                onClick = { showLogoutConfirm = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = AccentRed,
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.membership_logout_button),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text(stringResource(R.string.membership_logout_confirm_title)) },
+            text = { Text(stringResource(R.string.membership_logout_confirm_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutConfirm = false
+                        onLogout()
+                    },
+                ) {
+                    Text(stringResource(R.string.membership_logout_confirm_action), color = AccentRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) {
+                    Text(stringResource(R.string.membership_logout_cancel))
+                }
+            },
+        )
     }
 }
 

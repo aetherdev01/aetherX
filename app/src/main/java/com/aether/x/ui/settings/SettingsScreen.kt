@@ -36,6 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -254,12 +257,23 @@ private fun AboutSection(versionName: String) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             SocialLinkRow(
                 iconRes = R.drawable.ic_social_github,
+                // Logo GitHub (Octocat) cuma satu warna solid di vector-nya, jadi
+                // aman di-tint mengikuti tema: putih di mode gelap (supaya tidak
+                // "hilang" di atas background gelap), warna resmi #181717 (hampir
+                // hitam) di mode terang seperti brand guideline GitHub. Ikon
+                // lain (Telegram) TIDAK dikasih tint karena logonya multi-warna.
+                iconTint = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+                    Color.White
+                } else {
+                    Color(0xFF181717)
+                },
                 label = stringResource(R.string.settings_social_github),
                 handle = stringResource(R.string.settings_social_github_handle),
                 url = stringResource(R.string.settings_social_github_url),
             )
             SocialLinkRow(
                 iconRes = R.drawable.ic_social_telegram,
+                iconTint = null,
                 label = stringResource(R.string.settings_social_telegram),
                 handle = stringResource(R.string.settings_social_telegram_handle),
                 url = stringResource(R.string.settings_social_telegram_url),
@@ -278,6 +292,11 @@ private fun SocialLinkRow(
     label: String,
     handle: String,
     url: String,
+    // null = tampilkan ikon apa adanya (warna asli multi-warna, mis. Telegram).
+    // Non-null = ikon di-tint satu warna ini (dipakai utamanya untuk logo
+    // GitHub yang aslinya solid #181717, supaya bisa "dibalik" jadi putih di
+    // mode tema gelap dan tetap kebaca di atas background gelap).
+    iconTint: Color? = null,
 ) {
     val context = LocalContext.current
     Row(
@@ -300,6 +319,7 @@ private fun SocialLinkRow(
         Image(
             painter = painterResource(id = iconRes),
             contentDescription = label,
+            colorFilter = iconTint?.let { ColorFilter.tint(it) },
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape),

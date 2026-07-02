@@ -98,6 +98,15 @@
     <string name="membership_pro_cta">Langganan via Telegram</string>
     <string name="membership_pro_telegram_url">https://t.me/AetherDev22</string>
     <string name="membership_pro_telegram_error">Tidak ada aplikasi yang bisa membuka tautan Telegram ini.</string>
+    <string name="membership_device_section_title">Perangkat Ini</string>
+    <string name="membership_device_id_label">Device ID</string>
+    <string name="membership_device_id_copy_cd">Salin Device ID</string>
+    <string name="membership_device_id_copied">Device ID disalin</string>
+    <string name="membership_logout_button">Logout dari Perangkat Ini</string>
+    <string name="membership_logout_confirm_title">Logout membership?</string>
+    <string name="membership_logout_confirm_message">Status membership di perangkat ini akan disembunyikan sampai kode lisensi dimasukkan lagi. Kode yang sama tetap bisa dipakai ulang di perangkat ini kapan saja.</string>
+    <string name="membership_logout_confirm_action">Logout</string>
+    <string name="membership_logout_cancel">Batal</string>
 
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>

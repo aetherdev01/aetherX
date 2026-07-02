@@ -5,12 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aether.x.R
 import com.aether.x.data.AetherXPreferences
+import com.aether.x.data.DeviceId
 import com.aether.x.data.LicenseRepository
 import com.aether.x.data.LicenseResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 enum class MembershipUiStatus { CHECKING, INACTIVE, ACTIVE, EXPIRED }
@@ -29,11 +33,26 @@ enum class MembershipUiStatus { CHECKING, INACTIVE, ACTIVE, EXPIRED }
  *
  * Penegakan sesungguhnya (satu kode = satu device, tidak bisa dipakai ulang
  * di device lain) tetap ada di [LicenseRepository] dan firestore.rules.
+ *
+ * STATUS SEKARANG REALTIME: dulu status membership hanya dicek SEKALI lewat
+ * [LicenseRepository.revalidate] saat tab ini pertama dibuka — kalau admin
+ * mengubah lisensi (revoke / perpanjang) lewat bot Telegram SAAT aplikasi
+ * sedang terbuka, badge di layar ini tidak berubah sampai pengguna menutup
+ * lalu membuka ulang aplikasi. Sekarang [observeLicenseStatus] berlangganan
+ * [LicenseRepository.observe] (Firestore `addSnapshotListener`) sehingga
+ * perubahan dari server didorong langsung ke UI tanpa refresh manual.
  */
 class MembershipViewModel(application: Application) : AndroidViewModel(application) {
 
     private val preferences = AetherXPreferences(application)
     private val licenseRepository = LicenseRepository(application)
+
+    /** Device ID (ANDROID_ID) perangkat ini — ditampilkan di tab Membership
+     *  begitu langganan aktif, supaya pengguna tahu identitas perangkat yang
+     *  terkunci ke lisensinya. Nilainya sama persis dengan yang dipakai
+     *  [LicenseRepository]/[com.aether.x.data.UserIdRepository] untuk
+     *  penguncian lisensi & pemulihan userId setelah uninstall/install ulang. */
+    val deviceId: String = DeviceId.read(application)
 
     private val _status = MutableStateFlow(MembershipUiStatus.CHECKING)
     val status: StateFlow<MembershipUiStatus> = _status.asStateFlow()
@@ -51,21 +70,40 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
 
     init {
-        // Cek status membership sekali saat tab Membership pertama kali dibuka
-        // (bukan blocking apa pun — cuma mengisi kartu ini). Kalau tidak ada
-        // cache lokal sama sekali, langsung dianggap INACTIVE tanpa perlu
-        // ke jaringan.
+        // Amati licenseKey yang tersimpan di preferences. distinctUntilChanged
+        // supaya listener Firestore tidak dibuat ulang tiap kali field LAIN di
+        // preferences berubah (mis. slider tweak) — hanya saat licenseKey itu
+        // sendiri berubah (aktivasi baru / logout / lisensi dihapus dari cache).
+        // collectLatest otomatis membatalkan listener lama sebelum memulai yang
+        // baru, jadi tidak ada listener Firestore yang menumpuk/bocor.
         viewModelScope.launch {
-            val cached = preferences.preferences.first()
-            val cachedKey = cached.licenseKey
-            if (cachedKey.isNullOrBlank()) {
-                _status.value = MembershipUiStatus.INACTIVE
-                return@launch
-            }
+            preferences.preferences
+                .map { it.licenseKey }
+                .distinctUntilChanged()
+                .collectLatest { key -> observeLicenseStatus(key) }
+        }
+    }
 
-            when (val result = licenseRepository.revalidate(cachedKey)) {
+    /**
+     * Berlangganan status lisensi [key] secara realtime. Kalau [key] null
+     * (belum pernah aktivasi / baru saja logout), langsung INACTIVE tanpa ke
+     * jaringan. Fungsi ini "menggantung" di collectLatest sampai licenseKey
+     * berubah lagi (lihat pemanggil di `init`) — selama itu, setiap perubahan
+     * dari Firestore (revoke, perpanjangan expiresAt, dsb) langsung
+     * memperbarui `_status`/`_expiresAtMillis`.
+     */
+    private suspend fun observeLicenseStatus(key: String?) {
+        if (key.isNullOrBlank()) {
+            _status.value = MembershipUiStatus.INACTIVE
+            _expiresAtMillis.value = null
+            return
+        }
+
+        _status.value = MembershipUiStatus.CHECKING
+        licenseRepository.observe(key).collectLatest { result ->
+            when (result) {
                 is LicenseResult.Valid -> {
-                    preferences.setLicenseCache(cachedKey, result.expiresAtMillis)
+                    preferences.setLicenseCache(key, result.expiresAtMillis)
                     _status.value = MembershipUiStatus.ACTIVE
                     _expiresAtMillis.value = result.expiresAtMillis
                 }
@@ -77,12 +115,15 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                 LicenseResult.Revoked, LicenseResult.BoundToOtherDevice, LicenseResult.NotFound -> {
                     preferences.clearLicenseCache()
                     _status.value = MembershipUiStatus.INACTIVE
+                    _expiresAtMillis.value = null
                 }
                 LicenseResult.NetworkError -> {
-                    // Offline: percaya cache lokal terakhir apa adanya (kalau
-                    // sempat tersimpan sebagai Valid sebelumnya) daripada
-                    // memaksa tampil INACTIVE hanya karena tidak ada koneksi.
-                    val cachedExpiry = cached.licenseExpiresAtMillis
+                    // Offline/listener sempat error: percaya cache lokal
+                    // terakhir apa adanya (kalau sempat tersimpan sebagai
+                    // Valid sebelumnya) daripada memaksa tampil INACTIVE
+                    // hanya karena satu event gagal — listener Firestore
+                    // otomatis mencoba lagi begitu koneksi pulih.
+                    val cachedExpiry = preferences.preferences.map { it.licenseExpiresAtMillis }.first()
                     _status.value = if (cachedExpiry != null && cachedExpiry > System.currentTimeMillis()) {
                         MembershipUiStatus.ACTIVE
                     } else {
@@ -91,6 +132,23 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     _expiresAtMillis.value = cachedExpiry
                 }
             }
+        }
+    }
+
+    /**
+     * "Logout" dari membership perangkat ini: menghapus cache lisensi lokal
+     * supaya kartu status kembali ke INACTIVE dan form aktivasi kode muncul
+     * lagi. TIDAK menghapus dokumen `licenses/{key}` di server maupun
+     * melepas ikatan device-nya — kode itu tetap terkunci ke device ini di
+     * Firestore (sesuai firestore.rules, hanya bot Telegram/admin yang bisa
+     * mencabut ikatan). Kalau pengguna mengetik ulang kode yang sama nanti,
+     * [LicenseRepository.activate] akan langsung mengenalinya sebagai device
+     * yang sama dan mengaktifkannya kembali tanpa error "sudah dipakai
+     * perangkat lain".
+     */
+    fun logout() {
+        viewModelScope.launch {
+            preferences.clearLicenseCache()
         }
     }
 

@@ -6,6 +6,10 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.MetadataChanges
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -98,10 +102,52 @@ class LicenseRepository(private val context: Context) {
     }
 
     /**
+     * Memantau dokumen `licenses/{key}` SECARA REALTIME lewat
+     * `addSnapshotListener` (bukan `get()` sekali jalan seperti [revalidate]) —
+     * setiap kali admin mengubah status lisensi ini lewat bot Telegram/Firebase
+     * Console (mis. revoke, atau perpanjang `expiresAt`), Firestore mendorong
+     * perubahan itu ke listener ini dan [LicenseResult] baru langsung di-emit
+     * ke Flow tanpa pengguna perlu menutup-buka ulang aplikasi.
+     *
+     * Dipakai oleh [com.aether.x.ui.membership.MembershipViewModel] sebagai
+     * pengganti panggilan [revalidate] satu kali di `init` — status di tab
+     * Membership sekarang selalu mengikuti kondisi server saat ini secara
+     * langsung (mis. begitu admin klik revoke, badge di tab Membership
+     * otomatis berubah dari "Aktif" ke status baru dalam hitungan detik,
+     * tanpa refresh manual).
+     *
+     * `MetadataChanges.EXCLUDE` dipakai supaya listener HANYA emit saat data
+     * benar-benar berubah dari server (bukan tiap kali metadata cache/pending
+     * write berubah), mengurangi emisi yang tidak perlu.
+     */
+    fun observe(key: String): Flow<LicenseResult> = callbackFlow {
+        val docRef = firestore.collection(COLLECTION).document(key)
+        val registration = docRef.addSnapshotListener(MetadataChanges.EXCLUDE) { snapshot, error ->
+            if (error != null) {
+                trySend(LicenseResult.NetworkError)
+                return@addSnapshotListener
+            }
+            if (snapshot == null || !snapshot.exists()) {
+                trySend(LicenseResult.NotFound)
+                return@addSnapshotListener
+            }
+            val status = snapshot.getString("status")
+            val boundDeviceId = snapshot.getString("deviceId")
+            val expiresAt = snapshot.getTimestamp("expiresAt")
+            trySend(
+                evaluate(status = status, boundDeviceId = boundDeviceId, expiresAtMillis = expiresAt?.toDate()?.time),
+            )
+        }
+        awaitClose { registration.remove() }
+    }
+
+    /**
      * Validasi ulang lisensi yang SUDAH tersimpan sebagai cache lokal (lihat
      * [AetherXPreferences.setLicenseCache]) — dipanggil tiap app dibuka untuk
      * memastikan status di server belum berubah (expired lebih cepat karena
-     * diperbarui admin, atau di-revoke).
+     * diperbarui admin, atau di-revoke). Sekarang dipertahankan sebagai
+     * fallback satu-kali (mis. dipanggil manual/pull-to-refresh) — alur utama
+     * di tab Membership sudah pindah ke [observe] yang realtime.
      */
     suspend fun revalidate(key: String): LicenseResult {
         val result = runCatching { fetchAndCheck(key) }
