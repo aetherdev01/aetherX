@@ -108,6 +108,11 @@
     <string name="membership_logout_confirm_action">Logout</string>
     <string name="membership_logout_cancel">Batal</string>
 
+    <string name="maintenance_default_title">Sedang Pemeliharaan</string>
+    <string name="maintenance_default_message">Aplikasi sedang dalam pemeliharaan sementara. Silakan hubungi admin untuk informasi lebih lanjut.</string>
+    <string name="maintenance_contact_admin_button">Hubungi Admin</string>
+    <string name="maintenance_telegram_url">https://t.me/AetherDev22</string>
+
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>
     <string name="tweak_user_id_pending">Menyambungkan…</string>

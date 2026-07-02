@@ -33,6 +33,18 @@ Bot ini adalah **satu-satunya** cara resmi membuat lisensi — tidak ada lagi
 script/tool terpisah, semua alur generate/edit/hapus/unbind lisensi dilakukan
 dari sini.
 
+Dokumen tunggal `config/maintenance` — dipakai fitur Maintenance Mode (dialog
+blocking di aplikasi, lihat bagian "Maintenance Mode" di bawah), dibaca
+REALTIME oleh `MaintenanceRepository.kt`:
+
+```
+config/maintenance
+  enabled: boolean    // true = dialog blocking tampil di semua app yang terbuka
+  title: string
+  message: string
+  updatedAt: timestamp
+```
+
 ## Setup
 
 1. **Ambil Service Account Key** (kalau belum ada / mau pakai punya sendiri):
@@ -95,7 +107,27 @@ dari sini.
 | `/device <deviceId>` | semua | Cari lisensi yang terkunci ke device ID tsb |
 | `/unbind <token>` | admin | Lepas device dari lisensi → status kembali `unused`, bisa dipakai device lain |
 | `/list` | admin | Daftar semua token lisensi |
+| `/maintenance` | admin | Lihat/atur mode maintenance (dialog blocking di app) |
 | `/cancel` | semua | Batalkan proses multi-langkah yang sedang berjalan |
+
+## Maintenance Mode
+
+Fitur ini menampilkan dialog **blocking** (tidak bisa di-cancel/back/tap-luar)
+di aplikasi Android, dengan satu-satunya tombol keluar adalah "Hubungi Admin"
+yang membuka Telegram. Dikontrol 100% dari sini, realtime — begitu diaktifkan,
+semua aplikasi yang sedang terbuka menampilkan dialognya dalam hitungan detik
+tanpa perlu restart/refresh, lewat Firestore snapshot listener
+(`MaintenanceRepository.kt`/`MaintenanceGate.kt`).
+
+Ketik `/maintenance` atau tap tombol "🛠️ Maintenance" di menu utama untuk:
+- Melihat status saat ini (aktif/nonaktif, judul, pesan, kapan terakhir diubah)
+- Aktifkan/matikan dengan satu tap
+- Edit judul dan pesan yang ditampilkan ke pengguna
+
+Karena dokumen ini dibuat/diubah HANYA lewat bot (service account, bypass
+Security Rules), client Android tidak pernah bisa mengubahnya sendiri — lihat
+`firestore.rules` untuk rule `config/maintenance` yang membatasi client hanya
+boleh `get`.
 
 ## Alur normal pemakaian
 

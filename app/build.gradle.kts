@@ -23,8 +23,8 @@ android {
         applicationId = "com.aether.x"
         minSdk        = 26
         targetSdk     = 35
-        versionCode   = 110
-        versionName   = "1.1.0 Beta"
+        versionCode   = 1
+        versionName   = "1.0.0"
 
         base.archivesName = "AetherX-v$versionName"
         ndk {

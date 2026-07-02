@@ -12,8 +12,9 @@ const {
   findLicensesByDevice,
   listAllTokens,
 } = require("./lib/licenseStore");
+const { getMaintenanceStatus, setMaintenanceStatus } = require("./lib/maintenanceStore");
 const { generateUniqueToken } = require("./lib/tokenGenerator");
-const { formatLicenseCard, isValidToken, isValidDeviceId, escapeMd } = require("./lib/format");
+const { formatLicenseCard, formatMaintenanceCard, isValidToken, isValidDeviceId, escapeMd } = require("./lib/format");
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID || "");
@@ -111,6 +112,7 @@ function mainMenuKeyboard() {
           { text: "🔓 Reset Device", callback_data: "menu:unbind" },
         ],
         [{ text: "📋 Daftar Lisensi", callback_data: "menu:list" }],
+        [{ text: "🛠️ Maintenance", callback_data: "menu:maintenance" }],
       ],
     },
   };
@@ -133,8 +135,15 @@ bot.onText(/^\/start$/, (msg) => {
 });
 
 bot.onText(/^\/help$/, (msg) => {
+  // Dikirim sebagai PLAIN TEXT (tanpa parse_mode) — bukan MarkdownV2 — karena
+  // teks bantuan ini penuh karakter yang di MarkdownV2 wajib di-escape
+  // (`<`, `>`, `-`, `[`, `]`, `.`, `'`, dst, mis. "/generate <hari> [catatan]").
+  // Menulis escape manual untuk teks statis sebanyak ini gampang meleset dan
+  // pernah menyebabkan "ETELEGRAM: 400 Bad Request: can't parse entities"
+  // saat ada karakter yang terlewat — plain text tidak butuh escaping sama
+  // sekali dan tidak mungkin salah parse.
   const helpText = [
-    "*Perintah tersedia:*",
+    "Perintah tersedia:",
     "",
     "/generate <hari> [catatan] — Buat lisensi baru. Contoh: /generate 30 Promo Juli",
     "/check <token> — Lihat detail lisensi",
@@ -143,11 +152,12 @@ bot.onText(/^\/help$/, (msg) => {
     "/device <deviceId> — Cari lisensi yang terpasang di device ID tsb",
     "/unbind <token> — Lepas device dari lisensi (reset ke status 'unused')",
     "/list — Daftar semua token lisensi",
+    "/maintenance — Lihat/atur mode maintenance (dialog blocking di app)",
     "/cancel — Batalkan proses yang sedang berjalan",
     "",
-    "Semua perintah admin hanya bisa dipakai oleh admin yang terdaftar\\.",
+    "Semua perintah admin hanya bisa dipakai oleh admin yang terdaftar.",
   ].join("\n");
-  bot.sendMessage(msg.chat.id, helpText, { parse_mode: "MarkdownV2" });
+  bot.sendMessage(msg.chat.id, helpText);
 });
 
 bot.onText(/^\/cancel$/, (msg) => {
@@ -360,6 +370,47 @@ bot.onText(/^\/list$/, async (msg) => {
 });
 
 // ─────────────────────────────────────────────────────────
+// MAINTENANCE MODE
+// /maintenance — tampilkan status & menu on/off/edit
+// ─────────────────────────────────────────────────────────
+function maintenanceMenuKeyboard(status) {
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          status.enabled
+            ? { text: "🟢 Matikan Maintenance", callback_data: "maint:disable" }
+            : { text: "🔴 Aktifkan Maintenance", callback_data: "maint:enable" },
+        ],
+        [
+          { text: "✏️ Edit Judul", callback_data: "maint:edit_title" },
+          { text: "✏️ Edit Pesan", callback_data: "maint:edit_message" },
+        ],
+        [{ text: "❌ Tutup", callback_data: "maint:close" }],
+      ],
+    },
+  };
+}
+
+bot.onText(/^\/maintenance$/, async (msg) => {
+  if (!requireAdmin(msg)) return;
+  await showMaintenanceMenu(msg.chat.id);
+});
+
+async function showMaintenanceMenu(chatId) {
+  try {
+    const status = await getMaintenanceStatus(firestore);
+    await bot.sendMessage(chatId, formatMaintenanceCard(status), {
+      parse_mode: "MarkdownV2",
+      ...maintenanceMenuKeyboard(status),
+    });
+  } catch (err) {
+    console.error(err);
+    bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 // EDIT LICENSE (conversation flow)
 // ─────────────────────────────────────────────────────────
 bot.onText(/^\/edit(?:\s+(.*))?$/, async (msg, match) => {
@@ -454,6 +505,10 @@ bot.on("callback_query", async (query) => {
         { parse_mode: "Markdown" }
       );
     }
+    if (key === "maintenance") {
+      if (!requireAdmin(msg)) return;
+      return showMaintenanceMenu(chatId);
+    }
     return;
   }
 
@@ -500,6 +555,39 @@ bot.on("callback_query", async (query) => {
   if (data === "edit_cancel") {
     clearSession(chatId);
     return bot.sendMessage(chatId, "❎ Proses edit dibatalkan.");
+  }
+
+  if (data === "maint:enable" || data === "maint:disable") {
+    if (!requireAdmin(msg)) return;
+    try {
+      const status = await setMaintenanceStatus(firestore, { enabled: data === "maint:enable" });
+      await bot.sendMessage(
+        chatId,
+        status.enabled
+          ? "🔴 *Mode maintenance DIAKTIFKAN\\.* Seluruh aplikasi Android yang sedang terbuka akan langsung menampilkan dialog blocking dalam beberapa detik\\."
+          : "🟢 *Mode maintenance DIMATIKAN\\.* Dialog blocking di aplikasi akan hilang otomatis\\.",
+        { parse_mode: "MarkdownV2" }
+      );
+      return showMaintenanceMenu(chatId);
+    } catch (err) {
+      console.error(err);
+      return bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+    }
+  }
+
+  if (data === "maint:edit_title" || data === "maint:edit_message") {
+    if (!requireAdmin(msg)) return;
+    const field = data === "maint:edit_title" ? "title" : "message";
+    sessions.set(chatId, { action: "maintenance", step: "awaiting_value", data: { field } });
+    return bot.sendMessage(
+      chatId,
+      field === "title" ? "Kirim judul dialog maintenance yang baru:" : "Kirim pesan/deskripsi dialog maintenance yang baru:"
+    );
+  }
+
+  if (data === "maint:close") {
+    clearSession(chatId);
+    return;
   }
 });
 
@@ -582,6 +670,24 @@ bot.on("message", async (msg) => {
       return bot.sendMessage(chatId, `✅ Lisensi berhasil diupdate\\!\n\n${formatLicenseCard(updated)}`, {
         parse_mode: "MarkdownV2",
       });
+    }
+
+    if (session.action === "maintenance" && session.step === "awaiting_value") {
+      if (!requireAdmin(msg)) return;
+      const { field } = session.data;
+      clearSession(chatId);
+      try {
+        const status = await setMaintenanceStatus(firestore, { [field]: text });
+        await bot.sendMessage(
+          chatId,
+          `✅ ${field === "title" ? "Judul" : "Pesan"} maintenance berhasil diupdate\\!`,
+          { parse_mode: "MarkdownV2" }
+        );
+        return showMaintenanceMenu(chatId);
+      } catch (err) {
+        console.error(err);
+        return bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+      }
     }
 
     if (session.action === "generate" && session.step === "ask_days") {

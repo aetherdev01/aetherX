@@ -66,6 +66,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /config/maintenance {
+      // Dokumen status mode maintenance/pemeliharaan aplikasi — dibaca
+      // REALTIME oleh semua instance aplikasi Android yang terbuka (lihat
+      // MaintenanceRepository.kt) untuk menampilkan/menyembunyikan dialog
+      // blocking. HANYA bot Telegram (service account, bypass rules ini)
+      // yang boleh mengubah dokumen ini lewat menu Maintenance di bot.js —
+      // client Android sama sekali tidak pernah menulis ke sini.
+      allow get: if true;
+      allow create, update: if false;
+      allow delete: if false;
+    }
+
     match /licenses/{key} {
       // CATATAN PENTING: rules ini SAMA SEKALI TIDAK BERLAKU untuk bot Telegram
       // (bot.js). Bot menulis lewat Firestore REST API pakai serviceAccountKey.json

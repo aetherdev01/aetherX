@@ -24,6 +24,7 @@ import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.DarkModePref
 import com.aether.x.ui.main.MainScreen
+import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
 import com.aether.x.ui.onboarding.GuideScreen
 import com.aether.x.ui.onboarding.PermissionSetupScreen
@@ -134,4 +135,12 @@ private fun AetherXRoot(
             GuideScreen(onFinish = { navController.popBackStack() })
         }
     }
+
+    // Dipasang PALING TERAKHIR (di luar NavHost, bukan di dalam salah satu
+    // composable rute) supaya secara komposisi selalu digambar PALING ATAS,
+    // menutupi layar rute manapun yang sedang aktif — termasuk saat onboarding
+    // masih berjalan. MaintenanceGate menggambar dirinya sendiri sebagai no-op
+    // (return awal) kalau mode maintenance sedang tidak aktif, jadi aman
+    // dipasang permanen di sini tanpa biaya tambahan saat tidak dipakai.
+    MaintenanceGate()
 }
