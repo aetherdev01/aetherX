@@ -4,22 +4,11 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -33,21 +22,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.data.AetherXPreferences
+import com.aether.x.data.DeviceId
+import com.aether.x.data.UserIdRepository
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Splash screen di dalam aplikasi (tampil setelah splash sistem Android 12+).
@@ -58,6 +46,16 @@ import kotlinx.coroutines.delay
  * notifikasi) begitu aplikasi dibuka, lalu lanjut sendiri ke panduan/main
  * setelah proses selesai — tanpa memblokir pengguna kalau salah satu izin
  * ditolak atau tidak tersedia di perangkatnya.
+ *
+ * Sejak rework ini, splash juga melakukan koneksi database yang SUNGGUHAN:
+ * memanggil [UserIdRepository.resolveUserId] (Firestore) di sini, bukan lagi
+ * ditunda sampai TweakScreen pertama kali dibuka. Progres yang ditampilkan
+ * ("Menyambungkan ke database…") jadi cerminan proses nyata, bukan delay
+ * kosmetik — kalau device sudah pernah dapat ID pengguna, panggilan ini
+ * langsung selesai dari cache lokal; kalau belum, splash benar-benar
+ * menunggu Firestore (dibatasi timeout supaya tidak menggantung selamanya
+ * saat offline). Hasilnya sudah tersimpan di [AetherXPreferences] begitu
+ * berhasil, jadi TweakScreen tinggal membacanya tanpa perlu resolve ulang.
  */
 @Composable
 fun SplashScreen(
@@ -117,6 +115,18 @@ fun SplashScreen(
             delay(600)
         }
 
+        // 3. Koneksi database (Firestore) — betulan menunggu resolveUserId(),
+        //    bukan cuma delay kosmetik. Dibatasi timeout supaya splash tetap
+        //    lanjut kalau perangkat offline; TweakScreen akan otomatis coba
+        //    lagi lewat retryResolveUserIdIfMissing() begitu koneksi pulih.
+        statusLabel = context.getString(R.string.splash_status_database)
+        val preferences = AetherXPreferences(context)
+        val deviceId = DeviceId.read(context)
+        val userIdRepository = UserIdRepository(preferences, deviceId)
+        withTimeoutOrNull(8_000L) {
+            userIdRepository.resolveUserId()
+        }
+
         // Beri sedikit jeda supaya splash tidak berkedip sekilas di perangkat cepat,
         // lalu lanjut apapun hasil izinnya — pengguna tetap bisa membuka ulang
         // izin yang terlewat lewat menu "Kelola Akses" di halaman utama.
@@ -142,13 +152,10 @@ private fun SplashScreenContent(statusLabel: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            AnimatedBrandMark()
-
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.White,
-                modifier = Modifier.padding(top = 24.dp),
             )
             Text(
                 text = statusLabel,
@@ -165,54 +172,5 @@ private fun SplashScreenContent(statusLabel: String) {
                 strokeWidth = 2.5.dp,
             )
         }
-    }
-}
-
-@Composable
-private fun AnimatedBrandMark() {
-    val infinite = rememberInfiniteTransition(label = "splash")
-    val pulse by infinite.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
-    val ringProgress by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(animation = tween(1800, easing = LinearEasing)),
-        label = "ring",
-    )
-
-    Box(
-        modifier = Modifier
-            .size(120.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .graphicsLayer { /* no-op container, keeps mark centered */ },
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val baseRadius = size.minDimension * 0.28f
-            listOf(0f, 0.5f).forEach { phase ->
-                val p = (ringProgress + phase) % 1f
-                drawCircle(
-                    color = Color(0xFF7FA8FF).copy(alpha = (1f - p) * 0.4f),
-                    radius = baseRadius + p * size.minDimension * 0.22f,
-                    center = center,
-                    style = Stroke(width = 2.dp.toPx()),
-                )
-            }
-        }
-        Image(
-            painter = painterResource(R.drawable.ic_aetherx_mark),
-            contentDescription = null,
-            modifier = Modifier
-                .size(56.dp)
-                .graphicsLayer { scaleX = pulse; scaleY = pulse },
-        )
     }
 }

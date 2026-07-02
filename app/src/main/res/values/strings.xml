@@ -6,6 +6,7 @@
     <string name="splash_status_checking">Memeriksa perangkat…</string>
     <string name="splash_status_access">Menyiapkan akses Shizuku / Root…</string>
     <string name="splash_status_permissions">Menyiapkan izin sistem…</string>
+    <string name="splash_status_database">Menyambungkan ke database…</string>
     <string name="splash_status_ready">Siap!</string>
 
     <!-- Onboarding — Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
@@ -45,14 +46,14 @@
     <string name="guide_back">Kembali</string>
     <string name="guide_finish">Ayo Mulai</string>
     <string name="guide_step_label">Langkah %1$d dari %2$d</string>
-    <string name="guide_title_1">Halo, ini AetherX</string>
-    <string name="guide_body_1">Selama ini kalau mau ubah DPI, governor CPU, atau swappiness, kamu ketik manual satu-satu lewat adb shell atau terminal root. AetherX kami buat supaya semua itu tinggal ketuk — tanpa kehilangan kendali atas apa yang sebenarnya dijalankan.</string>
-    <string name="guide_title_2">Kamu tetap yang pegang kendali</string>
-    <string name="guide_body_2">Tiap kali kamu geser slider atau nyalakan saklar, yang terjadi di baliknya cuma satu baris perintah shell biasa — sama seperti yang kamu ketik sendiri. Tidak ada proses tersembunyi, tidak ada modifikasi kernel image.</string>
-    <string name="guide_title_3">Root buka kunci yang lebih dalam</string>
-    <string name="guide_body_3">Dengan Shizuku kamu sudah bisa main-main dengan DPI, refresh rate, dan pointer speed. Tapi kalau perangkatmu root, kamu dapat akses ke governor CPU/GPU, swappiness, sampai trip point termal — bagian kernel yang biasanya cuma bisa disentuh dari terminal.</string>
-    <string name="guide_title_4">Coba, dan jangan takut salah</string>
-    <string name="guide_body_4">Utak-atik parameter di tab Tweak sesuka hati. Kalau ada yang terasa aneh, satu ketukan tombol Reset di pojok layar mengembalikan semuanya persis seperti semula. Selamat eksplorasi.</string>
+    <string name="guide_title_1">Selamat datang di AetherX</string>
+    <string name="guide_body_1">Ubah DPI, governor CPU, sampai swappiness — biasanya lewat adb shell atau terminal root satu per satu. Di sini semua tinggal ketuk, tanpa kehilangan kendali atas apa yang sebenarnya berjalan di baliknya.</string>
+    <string name="guide_title_2">Tetap kamu yang pegang kendali</string>
+    <string name="guide_body_2">Setiap slider dan saklar cuma menjalankan satu baris perintah shell biasa, sama seperti yang kamu ketik sendiri. Tidak ada proses tersembunyi, tidak ada modifikasi kernel image.</string>
+    <string name="guide_title_3">Root membuka lebih banyak</string>
+    <string name="guide_body_3">Lewat Shizuku kamu sudah bisa atur DPI, refresh rate, dan pointer speed. Kalau perangkat root, akses bertambah sampai governor CPU/GPU, swappiness, hingga trip point termal.</string>
+    <string name="guide_title_4">Coba saja, gampang dikembalikan</string>
+    <string name="guide_body_4">Utak-atik parameter di tab Tweak sesuka hati. Kalau ada yang terasa aneh, satu ketukan tombol Reset mengembalikan semuanya seperti semula.</string>
 
 
     <!-- Bottom navigation -->

@@ -24,7 +24,12 @@ enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
-    val darkModePref: DarkModePref = DarkModePref.SYSTEM,
+    // Default tema APLIKASI (bukan cuma nilai fallback saat DataStore belum
+    // pernah ditulis) sengaja DARK, bukan SYSTEM — supaya pengguna baru yang
+    // belum pernah mengubah pengaturan tema langsung melihat aplikasi dalam
+    // mode gelap, terlepas dari pengaturan tema sistem HP-nya. Pengguna tetap
+    // bisa mengganti ke LIGHT/SYSTEM kapan saja lewat menu Pengaturan.
+    val darkModePref: DarkModePref = DarkModePref.DARK,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val dpiValue: Int = -1,
     val widthValue: Int = -1,
@@ -119,7 +124,7 @@ class AetherXPreferences(private val context: Context) {
         AppPreferences(
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
             darkModePref = prefs[Keys.DARK_MODE]?.let { runCatching { DarkModePref.valueOf(it) }.getOrNull() }
-                ?: DarkModePref.SYSTEM,
+                ?: DarkModePref.DARK,
             temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]
                 ?.let { runCatching { TemperatureUnit.valueOf(it) }.getOrNull() }
                 ?: TemperatureUnit.CELSIUS,

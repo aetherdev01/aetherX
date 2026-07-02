@@ -1,6 +1,7 @@
 package com.aether.x.ui.onboarding
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -36,12 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import com.aether.x.R
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.BgVoid
@@ -61,14 +60,16 @@ private val guidePages = listOf(
 )
 
 /**
- * Halaman panduan/selamat datang — hasil rework total.
+ * Halaman panduan/selamat datang — rework total kedua.
  *
- * Beda dari versi lama: ilustrasi kini jadi hero penuh di bagian atas layar
- * (bukan kartu kecil di tengah), teks disusun dengan hierarki yang lebih
- * jelas, dan transisi antar halaman memakai efek parallax (ilustrasi
- * bergerak/scale lebih lambat dari swipe) supaya terasa lebih hidup saat
- * digeser. Progress ditampilkan sebagai step label + bar tipis di atas,
- * dilengkapi tombol kembali begitu pengguna sudah melewati halaman pertama.
+ * Rework sebelumnya membuat ilustrasi jadi hero penuh dengan animasi Canvas
+ * (ring radar berputar, ripple, parallax scale saat swipe) yang di layar
+ * kecil terasa terlalu besar dan ramai. Versi ini menurunkan hero jadi badge
+ * ikon kecil dan statis (lihat [GuideIllustration]) di dalam kartu datar
+ * bergaya sama seperti [com.aether.x.ui.components.SectionCard] pada tab
+ * lain, lalu memberi teks jauh lebih banyak ruang karena itulah inti dari
+ * halaman panduan. Transisi antar halaman disederhanakan jadi fade biasa,
+ * tanpa parallax/scale manual.
  */
 @Composable
 fun GuideScreen(
@@ -94,7 +95,7 @@ fun GuideScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    androidx.compose.animation.AnimatedVisibility(visible = !isFirstPage) {
+                    AnimatedVisibility(visible = !isFirstPage) {
                         IconButton(onClick = {
                             scope.launch {
                                 pagerState.animateScrollToPage(pagerState.currentPage - 1)
@@ -149,27 +150,16 @@ fun GuideScreen(
                 state = pagerState,
                 modifier = Modifier.weight(1f),
             ) { page ->
-                val pageOffset = (
-                    (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                    ).let { kotlin.math.abs(it) }.coerceIn(0f, 1f)
-
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // --- Hero: ilustrasi mengisi porsi besar layar dengan parallax ---
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                ) {
+                    // --- Badge ikon: kecil, statis, rata kiri di atas judul ---
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
-                            .graphicsLayer {
-                                // Parallax: ilustrasi bergerak & mengecil lebih lambat dari swipe,
-                                // beda dari versi lama yang cuma scale+fade simetris.
-                                translationX = pageOffset * size.width * 0.18f
-                                val scale = lerp(0.86f, 1f, 1f - pageOffset)
-                                scaleX = scale
-                                scaleY = scale
-                                alpha = lerp(0.35f, 1f, 1f - pageOffset)
-                            }
-                            .clip(RoundedCornerShape(32.dp))
+                            .padding(top = 12.dp, bottom = 24.dp)
+                            .clip(RoundedCornerShape(24.dp))
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
@@ -179,28 +169,25 @@ fun GuideScreen(
                                 ),
                             ),
                     ) {
-                        GuideIllustration(page = page, modifier = Modifier.fillMaxSize())
+                        GuideIllustration(
+                            page = page,
+                            modifier = Modifier.size(132.dp),
+                        )
                     }
 
                     // --- Teks: judul besar + body, rata kiri untuk hierarki lebih jelas ---
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 28.dp, vertical = 20.dp),
-                    ) {
-                        Text(
-                            text = stringResource(guidePages[page].title),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = stringResource(guidePages[page].body),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextSecondary,
-                        )
-                    }
+                    Text(
+                        text = stringResource(guidePages[page].title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(guidePages[page].body),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextSecondary,
+                    )
                 }
             }
 
