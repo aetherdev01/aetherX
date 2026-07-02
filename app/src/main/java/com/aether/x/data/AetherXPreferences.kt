@@ -62,6 +62,10 @@ data class AppPreferences(
     // Epoch millis kapan lisensi ini kadaluarsa, hasil cache dari validasi
     // Firestore terakhir yang berhasil. null = belum pernah tervalidasi.
     val licenseExpiresAtMillis: Long? = null,
+    // Backend privilese yang SENGAJA dipilih pengguna di layar Izin Akses:
+    // "SHIZUKU", "ROOT", atau null (belum memilih/direset). Dipakai supaya
+    // Shizuku dan Root tidak pernah aktif bersamaan — lihat PrivilegeManager.
+    val preferredPrivilegeBackend: String? = null,
 )
 
 /**
@@ -127,6 +131,10 @@ class AetherXPreferences(private val context: Context) {
         // menunggu round-trip ke Firestore.
         val LICENSE_KEY = stringPreferencesKey("license_key")
         val LICENSE_EXPIRES_AT_MILLIS = longPreferencesKey("license_expires_at_millis")
+
+        // Backend privilese pilihan pengguna ("SHIZUKU"/"ROOT"), lihat
+        // AppPreferences.preferredPrivilegeBackend di atas.
+        val PREFERRED_PRIVILEGE_BACKEND = stringPreferencesKey("preferred_privilege_backend")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -168,6 +176,7 @@ class AetherXPreferences(private val context: Context) {
             fpsMonitorOffsetY = prefs[Keys.FPS_MONITOR_OFFSET_Y] ?: 0,
             licenseKey = prefs[Keys.LICENSE_KEY],
             licenseExpiresAtMillis = prefs[Keys.LICENSE_EXPIRES_AT_MILLIS],
+            preferredPrivilegeBackend = prefs[Keys.PREFERRED_PRIVILEGE_BACKEND],
         )
     }
 
@@ -303,5 +312,21 @@ class AetherXPreferences(private val context: Context) {
             prefs.remove(Keys.LICENSE_KEY)
             prefs.remove(Keys.LICENSE_EXPIRES_AT_MILLIS)
         }
+    }
+
+    /** Baca preferensi backend privilese saat ini ("SHIZUKU"/"ROOT"/null) sekali (bukan Flow). */
+    suspend fun getPreferredPrivilegeBackend(): String? {
+        val prefs = context.dataStore.data.first()
+        return prefs[Keys.PREFERRED_PRIVILEGE_BACKEND]
+    }
+
+    /** Menyimpan backend privilese yang sengaja dipilih pengguna ("SHIZUKU" atau "ROOT"). */
+    suspend fun setPreferredPrivilegeBackend(value: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.PREFERRED_PRIVILEGE_BACKEND] = value }
+    }
+
+    /** Menghapus pilihan backend privilese — dipakai saat pengguna memilih "Ganti metode". */
+    suspend fun clearPreferredPrivilegeBackend() {
+        context.dataStore.edit { prefs -> prefs.remove(Keys.PREFERRED_PRIVILEGE_BACKEND) }
     }
 }

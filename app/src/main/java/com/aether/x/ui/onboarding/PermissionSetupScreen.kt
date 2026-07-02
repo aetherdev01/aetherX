@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
+import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.theme.AccentBlue
@@ -142,6 +144,15 @@ fun PermissionSetupScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionLabel(text = stringResource(R.string.setup_required_header))
 
+                    // Shizuku dan Root TIDAK BOLEH aktif bersamaan (lihat
+                    // PrivilegeStatus.preferredBackend) — begitu salah satu
+                    // dipilih pengguna, kartu yang lain terkunci (redup +
+                    // tombol nonaktif) sampai pengguna menekan "Ganti metode"
+                    // di bawah. Ini mencegah dua backend privilese berjalan
+                    // berbarengan yang bisa saling menimpa hasil tweak.
+                    val shizukuLocked = status.preferredBackend == PrivilegeBackend.ROOT
+                    val rootLocked = status.preferredBackend == PrivilegeBackend.SHIZUKU
+
                     PermissionMethodCard(
                         title = stringResource(R.string.setup_method_shizuku),
                         description = stringResource(R.string.setup_method_shizuku_desc),
@@ -150,7 +161,9 @@ fun PermissionSetupScreen(
                             status.shizukuGranted -> stringResource(R.string.setup_status_granted)
                             else -> stringResource(R.string.setup_status_not_granted)
                         },
-                        granted = status.shizukuGranted,
+                        granted = status.shizukuGranted && !shizukuLocked,
+                        locked = shizukuLocked,
+                        lockedHint = stringResource(R.string.setup_locked_by_root_hint),
                         actionLabel = when {
                             !status.shizukuAvailable -> stringResource(R.string.setup_action_install_shizuku)
                             status.shizukuGranted -> stringResource(R.string.setup_action_open_shizuku)
@@ -160,7 +173,7 @@ fun PermissionSetupScreen(
                             when {
                                 !status.shizukuAvailable -> openShizukuStorePage(context)
                                 status.shizukuGranted -> openShizukuApp(context)
-                                else -> PrivilegeManager.requestShizukuPermission()
+                                else -> PrivilegeManager.requestShizukuPermission(context)
                             }
                         },
                     )
@@ -175,13 +188,39 @@ fun PermissionSetupScreen(
                         statusText = when {
                             status.checkingRoot -> stringResource(R.string.setup_status_checking)
                             status.rootGranted -> stringResource(R.string.setup_status_granted)
-                            status.shizukuGranted -> stringResource(R.string.setup_status_not_needed)
                             else -> stringResource(R.string.setup_status_not_granted)
                         },
-                        granted = status.rootGranted,
+                        granted = status.rootGranted && !rootLocked,
+                        locked = rootLocked,
+                        lockedHint = stringResource(R.string.setup_locked_by_shizuku_hint),
                         actionLabel = stringResource(R.string.setup_action_request),
-                        onAction = { PrivilegeManager.requestRoot() },
+                        onAction = { PrivilegeManager.requestRoot(context) },
                     )
+
+                    // Muncul begitu pengguna sudah memilih salah satu metode
+                    // (kartu lain jadi terkunci) — satu-satunya jalan untuk
+                    // beralih ke metode lain tanpa perlu uninstall/copot izin
+                    // manual dari Magisk/Shizuku Manager.
+                    AnimatedVisibility(
+                        visible = status.preferredBackend != PrivilegeBackend.NONE,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.setup_switch_method),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AccentBlue,
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .clickable { PrivilegeManager.clearBackendPreference(context) },
+                            )
+                        }
+                    }
                 }
 
                 Box(

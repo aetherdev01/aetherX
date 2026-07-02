@@ -19,6 +19,6 @@ class AetherXApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        PrivilegeManager.init()
+        PrivilegeManager.init(this)
     }
 }

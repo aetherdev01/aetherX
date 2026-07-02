@@ -28,6 +28,9 @@
     <string name="setup_action_continue">Lanjutkan</string>
     <string name="setup_locked_hint">Aktifkan Shizuku atau Root terlebih dahulu untuk membuka tombol Lanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
+    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Shizuku — kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_locked_by_shizuku_hint">Shizuku sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Root — kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_switch_method">Ganti metode</string>
 
     <!-- Onboarding — Izin pendukung (Write Settings, Overlay, Notifikasi) -->
     <string name="setup_supporting_header">Izin Tambahan</string>

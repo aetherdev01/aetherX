@@ -9,6 +9,7 @@ import android.provider.Settings
 import com.aether.x.core.shell.RootShellExecutor
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.core.shell.ShizukuShellExecutor
+import com.aether.x.data.AetherXPreferences
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,8 +43,12 @@ object PrivilegeManager {
             if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) refreshShizuku()
         }
 
-    /** Panggil sekali saat aplikasi dibuat. Aman dipanggil berkali-kali. */
-    fun init() {
+    /** Panggil sekali saat aplikasi dibuat. Aman dipanggil berkali-kali.
+     *
+     * [context] dipakai sekali untuk memuat preferensi backend yang pernah
+     * dipilih pengguna (Shizuku/Root) dari DataStore, supaya pemisahan
+     * Shizuku vs Root tetap konsisten walau app baru saja dibuka ulang. */
+    fun init(context: Context) {
         if (initialized) return
         initialized = true
 
@@ -53,6 +58,46 @@ object PrivilegeManager {
 
         refreshShizuku()
         checkRootSilently()
+
+        val preferences = AetherXPreferences(context.applicationContext)
+        scope.launch {
+            val saved = preferences.getPreferredPrivilegeBackend()
+            val backend = when (saved) {
+                "SHIZUKU" -> PrivilegeBackend.SHIZUKU
+                "ROOT" -> PrivilegeBackend.ROOT
+                else -> PrivilegeBackend.NONE
+            }
+            _status.update { it.copy(preferredBackend = backend) }
+        }
+    }
+
+    /**
+     * Menetapkan backend privilese yang SENGAJA dipilih pengguna di layar
+     * Izin Akses, lalu menyimpannya secara permanen. Sejak dipanggil,
+     * backend yang tidak dipilih tidak akan pernah dipakai untuk menjalankan
+     * tweak (lihat [PrivilegeStatus.activeBackend]) — walaupun izinnya masih
+     * granted secara sistem — supaya Shizuku dan Root tidak pernah aktif
+     * berbarengan dan saling konflik.
+     */
+    fun selectBackend(context: Context, backend: PrivilegeBackend) {
+        require(backend != PrivilegeBackend.NONE) { "Gunakan clearBackendPreference() untuk mereset pilihan." }
+        _status.update { it.copy(preferredBackend = backend) }
+        val preferences = AetherXPreferences(context.applicationContext)
+        scope.launch {
+            preferences.setPreferredPrivilegeBackend(if (backend == PrivilegeBackend.SHIZUKU) "SHIZUKU" else "ROOT")
+        }
+    }
+
+    /**
+     * Menghapus pilihan backend privilese ("Ganti metode" di layar Izin
+     * Akses) supaya pengguna bisa beralih Shizuku <-> Root. Tidak mencabut
+     * izin yang sudah diberikan sistem (itu di luar kendali app), hanya
+     * membuat app berhenti memakainya sampai pengguna memilih ulang.
+     */
+    fun clearBackendPreference(context: Context) {
+        _status.update { it.copy(preferredBackend = PrivilegeBackend.NONE) }
+        val preferences = AetherXPreferences(context.applicationContext)
+        scope.launch { preferences.clearPreferredPrivilegeBackend() }
     }
 
     /**
@@ -62,10 +107,16 @@ object PrivilegeManager {
      * lalu Shizuku diminta kalau server-nya sudah hidup dan izinnya belum diberikan.
      * Aman dipanggil berkali-kali; tidak melakukan apa-apa kalau salah satu backend
      * sudah aktif.
+     *
+     * Kalau pengguna SUDAH memilih salah satu backend sebelumnya (preferensi
+     * tersimpan), hanya backend itu yang dicoba secara otomatis — supaya
+     * tidak diam-diam menyalakan backend lain yang tidak dipilih.
      */
     suspend fun autoRequestAccess() {
+        val preferred = _status.value.preferredBackend
+
         // Root: cek dulu secara silent, baru minta prompt su kalau memang belum ada.
-        if (!_status.value.rootGranted) {
+        if (preferred != PrivilegeBackend.SHIZUKU && !_status.value.rootGranted) {
             _status.update { it.copy(checkingRoot = true) }
             val granted = withContext(Dispatchers.IO) {
                 try {
@@ -79,9 +130,11 @@ object PrivilegeManager {
 
         // Shizuku: hanya minta dialog izin kalau server-nya memang sudah berjalan
         // (mis. lewat Wireless Debugging / Sui) dan izin belum disetujui.
-        refreshShizuku()
-        if (!_status.value.shizukuGranted && _status.value.shizukuAvailable) {
-            requestShizukuPermission()
+        if (preferred != PrivilegeBackend.ROOT) {
+            refreshShizuku()
+            if (!_status.value.shizukuGranted && _status.value.shizukuAvailable) {
+                requestShizukuPermission()
+            }
         }
     }
 
@@ -104,10 +157,22 @@ object PrivilegeManager {
         _status.update { it.copy(shizukuAvailable = alive, shizukuGranted = granted) }
     }
 
-    /** Memicu dialog izin Shizuku. Tidak melakukan apa-apa jika server belum hidup. */
-    fun requestShizukuPermission() {
+    /**
+     * Memicu dialog izin Shizuku. Tidak melakukan apa-apa jika server belum hidup.
+     *
+     * [context] wajib diisi kalau pemanggilan ini merupakan PILIHAN SADAR
+     * pengguna (mis. menekan tombol "Izinkan" di kartu Shizuku pada layar
+     * Izin Akses) — akan langsung menetapkan Shizuku sebagai
+     * [PrivilegeStatus.preferredBackend] via [selectBackend], sehingga Root
+     * otomatis dianggap tidak aktif oleh app meski masih granted secara
+     * sistem. Kalau null (mis. dipanggil dari alur otomatis/internal),
+     * preferensi tidak diubah.
+     */
+    fun requestShizukuPermission(context: Context? = null) {
         if (!try { Shizuku.pingBinder() } catch (t: Throwable) { false }) return
         if (try { Shizuku.isPreV11() } catch (t: Throwable) { true }) return
+
+        context?.let { selectBackend(it, PrivilegeBackend.SHIZUKU) }
 
         val granted = try {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
@@ -165,8 +230,19 @@ object PrivilegeManager {
         checkRootSilently()
     }
 
-    /** Memicu prompt superuser (su) dari Magisk/KernelSU/APatch. */
-    fun requestRoot() {
+    /**
+     * Memicu prompt superuser (su) dari Magisk/KernelSU/APatch.
+     *
+     * [context] wajib diisi kalau pemanggilan ini merupakan PILIHAN SADAR
+     * pengguna (mis. menekan tombol "Izinkan" di kartu Root pada layar Izin
+     * Akses) — akan langsung menetapkan Root sebagai
+     * [PrivilegeStatus.preferredBackend] via [selectBackend], sehingga
+     * Shizuku otomatis dianggap tidak aktif oleh app meski masih granted
+     * secara sistem. Kalau null (mis. dipanggil dari alur otomatis/internal),
+     * preferensi tidak diubah.
+     */
+    fun requestRoot(context: Context? = null) {
+        context?.let { selectBackend(it, PrivilegeBackend.ROOT) }
         scope.launch {
             _status.update { it.copy(checkingRoot = true) }
             val granted = withContext(Dispatchers.IO) {

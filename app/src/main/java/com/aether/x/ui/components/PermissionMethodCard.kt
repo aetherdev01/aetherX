@@ -17,8 +17,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 
+/**
+ * Kartu satu metode akses privilese (Shizuku atau Root) di layar Izin Akses.
+ *
+ * [locked] = true saat metode LAIN sudah dipilih pengguna (lihat
+ * PrivilegeManager.selectBackend) — supaya Shizuku dan Root tidak pernah
+ * bisa diaktifkan berbarengan dari layar ini. Saat terkunci, kartu tampil
+ * redup, tombol aksi dinonaktifkan, dan [lockedHint] ditampilkan
+ * menggantikan tombol untuk menjelaskan kenapa (mis. "Matikan Root dulu
+ * untuk pakai Shizuku").
+ */
 @Composable
 fun PermissionMethodCard(
     title: String,
@@ -28,7 +39,10 @@ fun PermissionMethodCard(
     actionLabel: String,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    locked: Boolean = false,
+    lockedHint: String? = null,
 ) {
+    val contentAlpha = if (locked) 0.5f else 1f
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -43,7 +57,7 @@ fun PermissionMethodCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(18.dp).alpha(contentAlpha),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
@@ -65,25 +79,33 @@ fun PermissionMethodCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                StatusPill(
-                    text = statusText,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = if (granted) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    dotColor = if (granted) MaterialTheme.colorScheme.primary else null,
+            if (locked && lockedHint != null) {
+                Text(
+                    text = lockedHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (granted) {
-                    OutlinedButton(onClick = onAction) { Text(actionLabel) }
-                } else {
-                    Button(onClick = onAction) { Text(actionLabel) }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StatusPill(
+                        text = statusText,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (granted) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        dotColor = if (granted) MaterialTheme.colorScheme.primary else null,
+                    )
+                    if (granted) {
+                        OutlinedButton(onClick = onAction, enabled = !locked) { Text(actionLabel) }
+                    } else {
+                        Button(onClick = onAction, enabled = !locked) { Text(actionLabel) }
+                    }
                 }
             }
         }
