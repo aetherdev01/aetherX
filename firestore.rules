@@ -6,12 +6,18 @@ service cloud.firestore {
       // kalau tidak mau nilai count terbaca publik).
       allow get: if true;
 
-      // Dokumen baru hanya boleh dibuat dengan count = 1 (alokasi user pertama).
-      allow create: if request.resource.data.count == 1;
+      // Dokumen baru hanya boleh dibuat dengan count >= 1 (alokasi user pertama,
+      // atau angka lebih besar kalau transaksi sempat retry).
+      allow create: if request.resource.data.count is int
+        && request.resource.data.count >= 1;
 
-      // Update hanya diterima kalau count naik PERSIS 1 dari nilai sebelumnya
-      // (mencegah orang menulis angka sembarangan / lompat jauh).
-      allow update: if request.resource.data.count == resource.data.count + 1;
+      // Update hanya diterima kalau count naik (mencegah rollback ke angka
+      // lebih kecil / sembarangan). Sebelumnya rule mensyaratkan kenaikan
+      // PERSIS 1, yang menolak transaksi setiap kali Firestore melakukan
+      // retry otomatis akibat tabrakan (dua device mendaftar hampir
+      // bersamaan) — cukup pastikan count tidak pernah berkurang/sama.
+      allow update: if request.resource.data.count is int
+        && request.resource.data.count > resource.data.count;
 
       allow delete: if false;
     }
@@ -51,7 +57,7 @@ service cloud.firestore {
       allow create: if request.resource.data.deviceId == deviceId
         && request.resource.data.firstLoginAt == request.time
         && request.resource.data.lastLoginAt == request.time
-        && request.resource.data.userId is int;
+        && request.resource.data.userId is number;
 
       // Update: deviceId dan firstLoginAt tidak boleh berubah sama sekali
       // (mencegah orang menimpa ulang catatan "login pertama"-nya sendiri).

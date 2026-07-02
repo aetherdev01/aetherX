@@ -195,6 +195,13 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
                 )
             }
 
+            // txn.set (bukan update) supaya percobaan PERTAMA kali dokumen
+            // meta/user_counter belum pernah ada sama sekali tetap berhasil
+            // dibuat (Firestore rules memperlakukan ini sebagai "create").
+            // Transaksi ini otomatis di-retry oleh SDK kalau ada tabrakan
+            // (dua device mendaftar bersamaan) — retry membaca ulang
+            // counterSnapshot & deviceSnapshot dari awal fungsi lambda ini,
+            // jadi `next` selalu dihitung dari nilai TERBARU, tidak pernah stale.
             txn.set(counterRef, mapOf("count" to next))
             next
         }.addOnSuccessListener { next ->
