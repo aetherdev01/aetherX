@@ -95,7 +95,7 @@ fun GuideScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    AnimatedVisibility(visible = !isFirstPage) {
+                    androidx.compose.animation.AnimatedVisibility(visible = !isFirstPage) {
                         IconButton(onClick = {
                             scope.launch {
                                 pagerState.animateScrollToPage(pagerState.currentPage - 1)

@@ -231,7 +231,7 @@ private fun AboutSection(versionName: String) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo),
+                painter = painterResource(id = R.drawable.ic_aetherx_logo),
                 contentDescription = stringResource(R.string.settings_maintainer_name),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
