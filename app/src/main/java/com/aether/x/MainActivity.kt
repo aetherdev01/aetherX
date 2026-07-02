@@ -105,18 +105,30 @@ private fun AetherXRoot(
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable(AetherXRoutes.SETUP_ONBOARDING) {
+            // Splash sekarang hanya loading singkat (cek status yang sudah
+            // ada + koneksi database), tidak lagi memicu dialog izin apapun.
             SplashScreen(
                 onDone = { navController.navigate(AetherXRoutes.GUIDE_ONBOARDING) },
             )
         }
         composable(AetherXRoutes.GUIDE_ONBOARDING) {
+            // Setelah panduan selesai dibaca, lanjut ke langkah Izin Akses
+            // (wajib) — bukan langsung ke Main seperti sebelumnya. Ini
+            // memberi pengguna konteks lebih dulu (lewat Guide) sebelum
+            // diminta memberi izin sistem.
             GuideScreen(
-                onFinish = {
+                onFinish = { navController.navigate(AetherXRoutes.PERMISSION_ONBOARDING) },
+            )
+        }
+        composable(AetherXRoutes.PERMISSION_ONBOARDING) {
+            PermissionSetupScreen(
+                onContinue = {
                     scope.launch { preferences.setOnboardingCompleted(true) }
                     navController.navigate(AetherXRoutes.MAIN) {
                         popUpTo(AetherXRoutes.SETUP_ONBOARDING) { inclusive = true }
                     }
                 },
+                requireAccessToContinue = true,
             )
         }
         composable(AetherXRoutes.MAIN) {

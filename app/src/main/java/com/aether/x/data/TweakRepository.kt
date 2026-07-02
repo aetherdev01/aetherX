@@ -76,26 +76,57 @@ class TweakRepository {
     /**
      * Khusus root: kunci semua core CPU ke governor "performance" (clock
      * selalu maksimum) selama bermain, mengurangi micro-stutter akibat
-     * frekuensi naik-turun. Dikembalikan ke "schedutil" (default umum kernel
-     * modern) saat dimatikan. Butuh akses tulis ke /sys/devices/system/cpu,
-     * yang biasanya hanya bisa lewat root (bukan Shizuku/adb shell biasa).
+     * frekuensi naik-turun. Dikembalikan ke governor default kernel saat
+     * dimatikan. Butuh akses tulis ke /sys/devices/system/cpu, yang biasanya
+     * hanya bisa lewat root (bukan Shizuku/adb shell biasa).
+     *
+     * DUKUNGAN MULTI-CHIPSET: sebelumnya hanya menulis "schedutil" sebagai
+     * governor default saat dimatikan — governor itu memang default umum di
+     * kernel Snapdragon/Exynos modern, tapi banyak chipset MediaTek (Helio/
+     * Dimensity) memakai kernel yang defaultnya "walt" atau "interactive",
+     * dan sebagian tidak mengenali "schedutil" sama sekali (tulisan ke situ
+     * gagal diam-diam). Sekarang governor "OFF" dipilih otomatis per-core
+     * dari daftar governor yang benar-benar didukung kernel tersebut (dibaca
+     * dari scaling_available_governors), diprioritaskan ke governor hemat
+     * daya standar (schedutil > interactive > walt > ondemand > lain-lain
+     * yang tersedia) alih-alih memaksa satu nama yang belum tentu ada.
      */
     suspend fun applyCpuPerformanceMode(executor: ShellExecutor, enabled: Boolean): ShellResult {
-        val governor = if (enabled) "performance" else "schedutil"
-        return executor.exec(
-            "for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo $governor > \$g; done",
-        )
+        val script = if (enabled) {
+            """
+            for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+              echo performance > ${'$'}g 2>/dev/null
+            done
+            """.trimIndent()
+        } else {
+            """
+            for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+              avail_file="${'$'}(dirname ${'$'}g)/scaling_available_governors"
+              avail="${'$'}(cat ${'$'}avail_file 2>/dev/null)"
+              chosen="schedutil"
+              for candidate in schedutil interactive walt ondemand conservative; do
+                case " ${'$'}avail " in
+                  *" ${'$'}candidate "*) chosen="${'$'}candidate"; break ;;
+                esac
+              done
+              echo ${'$'}chosen > ${'$'}g 2>/dev/null
+            done
+            """.trimIndent()
+        }
+        return executor.exec(script)
     }
 
     /**
      * Khusus root: turunkan swappiness kernel supaya sistem lebih jarang
      * menukar (swap) data game ke zram/disk, menjaga proses game tetap di
      * RAM. Dikembalikan ke nilai default (60) saat dimatikan. Butuh akses
-     * tulis ke /proc/sys/vm, yang biasanya hanya bisa lewat root.
+     * tulis ke /proc/sys/vm, yang biasanya hanya bisa lewat root. Path ini
+     * generik di semua kernel Linux/Android (Qualcomm/MediaTek/Exynos sama
+     * saja), jadi tidak perlu penyesuaian per-chipset seperti governor CPU/GPU.
      */
     suspend fun applyRamPriority(executor: ShellExecutor, enabled: Boolean): ShellResult {
         val value = if (enabled) 10 else 60
-        return executor.exec("echo $value > /proc/sys/vm/swappiness")
+        return executor.exec("echo $value > /proc/sys/vm/swappiness 2>/dev/null")
     }
 
     /**
@@ -107,12 +138,23 @@ class TweakRepository {
      * dimatikan kita tidak menulis ulang apa pun — cukup andalkan reboot
      * atau reset manual perangkat untuk kembali ke batas asli vendor.
      * Butuh akses tulis ke /sys/class/thermal, hanya bisa lewat root.
+     *
+     * DUKUNGAN MULTI-CHIPSET: beberapa kernel MediaTek menandai sebagian
+     * trip_point sebagai read-only (mis. zona "mtktscpu"/"tzs" pada
+     * beberapa Helio/Dimensity), sehingga menulis ke situ gagal walau file-
+     * nya ada. Penulisan sekarang dibungkus percobaan-diam (`2>/dev/null`)
+     * per zona alih-alih satu perintah gabungan, supaya satu zona read-only
+     * tidak menggagalkan penulisan ke zona lain yang writable di perangkat
+     * yang sama.
      */
     suspend fun applyThermalThrottleOverride(executor: ShellExecutor, enabled: Boolean): ShellResult {
         return if (enabled) {
             executor.exec(
-                "for z in /sys/class/thermal/thermal_zone*/trip_point_0_temp; do " +
-                    "echo 90000 > \$z; done",
+                """
+                for z in /sys/class/thermal/thermal_zone*/trip_point_0_temp; do
+                  echo 90000 > ${'$'}z 2>/dev/null
+                done
+                """.trimIndent(),
             )
         } else {
             executor.exec("echo 'thermal override dimatikan, restart perangkat untuk memulihkan batas asli vendor'")
@@ -121,21 +163,60 @@ class TweakRepository {
 
     /**
      * Khusus root: kunci frekuensi GPU ke nilai maksimum yang didukung
-     * (governor "performance"), mirip cara kerja Mode Performa CPU. Path
-     * governor GPU tidak seragam antar chipset (Adreno/Mali/dsb), jadi
-     * perintah ini mencoba beberapa lokasi umum sekaligus — yang tidak ada
-     * di perangkat akan otomatis diabaikan shell tanpa membuat proses gagal.
-     * Dikembalikan ke "simple_ondemand"/"default" saat dimatikan.
-     * Butuh akses tulis ke /sys/class/kgsl atau /sys/devices/[chip]/kgsl-3d0,
-     * yang biasanya hanya bisa lewat root.
+     * selama bermain, mengurangi drop FPS akibat governor GPU turun-naik.
+     * Butuh akses tulis ke sysfs GPU vendor, hanya bisa lewat root.
+     *
+     * DUKUNGAN MULTI-CHIPSET: versi sebelumnya cuma menyasar path kgsl
+     * (driver Adreno/Qualcomm) — di perangkat MediaTek path itu tidak
+     * pernah ada sama sekali sehingga tweak ini diam-diam tidak berefek.
+     * Sekarang mencoba SEMUA jalur vendor umum sekaligus; yang tidak ada di
+     * perangkat otomatis dilewati (dicek dengan `[ -f ... ]` dulu) tanpa
+     * membuat proses gagal:
+     *  - Qualcomm/Adreno: /sys/class/kgsl/kgsl-3d0/devfreq/governor
+     *  - MediaTek/Mali (skema devfreq umum di Helio & sebagian Dimensity):
+     *    /sys/class/devfreq/(dot)mali/governor atau (star)mali(star)/governor
+     *  - MediaTek/Mali (skema GED, dipakai banyak Dimensity modern —
+     *    "ged" = Graphics Engine Driver bawaan MediaTek yang mengatur
+     *    frequency scaling GPU terpisah dari devfreq generik):
+     *    /sys/module/ged/parameters/gpu_freq_bound (kunci ke frekuensi
+     *    maksimum yang dibaca dari gpufreq_opp_freq_0, bukan governor)
+     *  - Mali generik (Exynos/sebagian MediaTek lain):
+     *    /sys/class/misc/mali0/device/dvfs_governor atau /sys/devices/platform/(star)/devfreq/(star)mali(star)/governor
+     * Dikembalikan ke governor/mode hemat daya default masing-masing jalur
+     * saat dimatikan; jalur GED dikembalikan dengan menghapus batas (echo 0).
      */
     suspend fun applyGpuPerformanceMode(executor: ShellExecutor, enabled: Boolean): ShellResult {
-        val governor = if (enabled) "performance" else "simple_ondemand"
-        return executor.exec(
-            "for g in /sys/class/kgsl/kgsl-3d0/devfreq/governor " +
-                "/sys/devices/platform/*/kgsl-3d0/devfreq/governor; do " +
-                "[ -f \$g ] && echo $governor > \$g; done",
-        )
+        val devfreqGovernor = if (enabled) "performance" else "simple_ondemand"
+        val misGovernor = if (enabled) "performance" else "default"
+        val gedBlock = if (enabled) {
+            """
+            if [ -f /sys/module/ged/parameters/gpu_freq_bound ] && [ -f /proc/gpufreq/gpufreq_opp_freq ]; then
+              max_freq="${'$'}(head -n1 /proc/gpufreq/gpufreq_opp_freq 2>/dev/null | awk '{print ${'$'}1}')"
+              [ -n "${'$'}max_freq" ] && echo ${'$'}max_freq > /sys/module/ged/parameters/gpu_freq_bound 2>/dev/null
+            fi
+            """.trimIndent()
+        } else {
+            """
+            [ -f /sys/module/ged/parameters/gpu_freq_bound ] && echo 0 > /sys/module/ged/parameters/gpu_freq_bound 2>/dev/null
+            """.trimIndent()
+        }
+        val script = """
+            # Qualcomm/Adreno
+            for g in /sys/class/kgsl/kgsl-3d0/devfreq/governor /sys/devices/platform/*/kgsl-3d0/devfreq/governor; do
+              [ -f ${'$'}g ] && echo $devfreqGovernor > ${'$'}g 2>/dev/null
+            done
+            # MediaTek/Mali & Exynos/Mali — skema devfreq umum
+            for g in /sys/class/devfreq/*mali*/governor /sys/devices/platform/*/devfreq/*mali*/governor; do
+              [ -f ${'$'}g ] && echo $devfreqGovernor > ${'$'}g 2>/dev/null
+            done
+            # Mali generik lewat node misc
+            for g in /sys/class/misc/mali0/device/dvfs_governor; do
+              [ -f ${'$'}g ] && echo $misGovernor > ${'$'}g 2>/dev/null
+            done
+            # MediaTek GED (Dimensity modern) — kunci/lepas batas frekuensi opp tertinggi
+            $gedBlock
+        """.trimIndent()
+        return executor.exec(script)
     }
 
     /**
@@ -145,7 +226,7 @@ class TweakRepository {
      * dicoba fallback ke "bfq" yang juga lebih baik dari "noop"/"none"
      * untuk beban baca-tulis campuran. Dikembalikan ke governor default
      * kernel modern ("mq-deadline") saat dimatikan. Butuh akses tulis ke
-     * /sys/block/*/queue/scheduler, hanya bisa lewat root.
+     * /sys/block/(star)/queue/scheduler, hanya bisa lewat root.
      */
     suspend fun applyIoSchedulerBoost(executor: ShellExecutor, enabled: Boolean): ShellResult {
         return if (enabled) {

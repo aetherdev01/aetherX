@@ -2,17 +2,16 @@
 <resources>
     <string name="app_name">AetherX</string>
 
-    <!-- Splash — auto permission request -->
+    <!-- Splash — loading singkat, tidak lagi memicu dialog izin -->
     <string name="splash_status_checking">Memeriksa perangkat…</string>
-    <string name="splash_status_access">Menyiapkan akses Shizuku / Root…</string>
-    <string name="splash_status_permissions">Menyiapkan izin sistem…</string>
     <string name="splash_status_database">Menyambungkan ke database…</string>
     <string name="splash_status_ready">Siap!</string>
 
     <!-- Onboarding — Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
-    <string name="setup_title">Kelola Akses</string>
-    <string name="setup_subtitle">AetherX butuh salah satu akses berikut untuk bisa mengatur parameter sistem, DPI, dan refresh rate perangkatmu. Semua izin ini otomatis diminta saat aplikasi dibuka — halaman ini untuk memeriksa ulang atau memberi izin yang sempat terlewat/ditolak.</string>
-    <string name="setup_required_banner">Wajib diaktifkan salah satu sebelum bisa melanjutkan</string>
+    <string name="setup_title">Izin Akses</string>
+    <string name="setup_subtitle">Pilih salah satu metode di bawah supaya AetherX bisa mengatur DPI, resolusi, refresh rate, dan tweak sistem lainnya di perangkatmu.</string>
+    <string name="setup_required_header">Wajib Salah Satu</string>
+    <string name="setup_required_banner">Aktifkan Shizuku atau Root untuk melanjutkan</string>
     <string name="setup_method_shizuku">Shizuku (Tanpa Root)</string>
     <string name="setup_method_shizuku_desc">Cocok untuk HP yang tidak di-root. Perlu aplikasi Shizuku aktif lewat Wireless Debugging.</string>
     <string name="setup_method_root">Root (Magisk / KernelSU / APatch)</string>
@@ -28,10 +27,10 @@
     <string name="setup_action_install_shizuku">Pasang Shizuku</string>
     <string name="setup_action_continue">Lanjutkan</string>
     <string name="setup_locked_hint">Aktifkan Shizuku atau Root terlebih dahulu untuk membuka tombol Lanjutkan.</string>
-    <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut ke panduan.</string>
+    <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
 
     <!-- Onboarding — Izin pendukung (Write Settings, Overlay, Notifikasi) -->
-    <string name="setup_supporting_header">Izin Pendukung</string>
+    <string name="setup_supporting_header">Opsional — Izin Pendukung</string>
     <string name="setup_supporting_subtitle">Membantu tweak dan fitur overlay berjalan lebih stabil di perangkatmu.</string>
     <string name="setup_method_write_settings">Ubah Pengaturan Sistem</string>
     <string name="setup_method_write_settings_desc">Mengizinkan AetherX membaca/menulis sebagian setelan sistem secara langsung.</string>
@@ -39,6 +38,7 @@
     <string name="setup_method_overlay_desc">Dibutuhkan untuk crosshair dan monitor FPS saat bermain.</string>
     <string name="setup_method_notifications">Notifikasi</string>
     <string name="setup_method_notifications_desc">Dibutuhkan supaya layanan overlay tetap berjalan di latar belakang.</string>
+
 
     <!-- Onboarding — Guide -->
     <string name="guide_skip">Lewati</string>
@@ -133,13 +133,13 @@
     <!-- Tweak khusus root -->
     <string name="tweak_section_root">Kernel Tuning (Root)</string>
     <string name="tweak_cpu_performance">CPU Governor: Performance</string>
-    <string name="tweak_cpu_performance_desc">Kunci semua core CPU ke clock speed maksimum (governor performance) selama bermain, mengurangi micro-stutter akibat naik-turun frekuensi. Butuh akses root.</string>
+    <string name="tweak_cpu_performance_desc">Kunci semua core CPU ke clock speed maksimum (governor performance) selama bermain, mengurangi micro-stutter akibat naik-turun frekuensi. Mendukung chipset Snapdragon, MediaTek, dan Exynos. Butuh akses root.</string>
     <string name="tweak_ram_priority">Swappiness Override</string>
     <string name="tweak_ram_priority_desc">Turunkan nilai swappiness kernel supaya sistem lebih jarang menukar data game ke swap/zram, menjaga game tetap di RAM. Butuh akses root.</string>
     <string name="tweak_thermal_throttle">Thermal Throttle Override</string>
     <string name="tweak_thermal_throttle_desc">Naikkan batas suhu trip point kernel sebelum sistem menurunkan clock CPU/GPU (throttling). Berguna untuk sesi main lama, tapi tingkatkan suhu perangkat — pakai dengan hati-hati. Butuh akses root.</string>
     <string name="tweak_gpu_performance">GPU Governor: Performance</string>
-    <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Butuh akses root.</string>
+    <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Mendukung GPU Adreno (Snapdragon) maupun Mali/GED (MediaTek, Exynos). Butuh akses root.</string>
     <string name="tweak_io_scheduler_boost">I/O Scheduler: Latensi Rendah</string>
     <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan internal ke mode latensi rendah (kyber/bfq) supaya aset game lebih cepat dibaca dari storage. Butuh akses root.</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
