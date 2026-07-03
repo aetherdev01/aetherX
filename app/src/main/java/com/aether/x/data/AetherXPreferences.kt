@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+// CpuGovernor didefinisikan di TweakRepository.kt tapi satu package (com.aether.x.data),
+// jadi tidak perlu import eksplisit.
 private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
@@ -37,7 +39,7 @@ data class AppPreferences(
     val touchBoostEnabled: Boolean = false,
     val forceMaxRefreshRate: Boolean = false,
     val gameModeEnabled: Boolean = false,
-    val cpuPerformanceMode: Boolean = false,
+    val cpuGovernor: CpuGovernor = CpuGovernor.UNIVERSAL,
     val ramPriorityMode: Boolean = false,
     val thermalThrottleOverride: Boolean = false,
     val gpuPerformanceMode: Boolean = false,
@@ -94,8 +96,9 @@ class AetherXPreferences(private val context: Context) {
         val TOUCH_BOOST = booleanPreferencesKey("touch_boost_enabled")
         val FORCE_REFRESH = booleanPreferencesKey("force_max_refresh_rate")
         val GAME_MODE = booleanPreferencesKey("game_mode_enabled")
-        // Khusus root: mode performa CPU (governor) & prioritas RAM (swappiness).
-        val CPU_PERFORMANCE_MODE = booleanPreferencesKey("cpu_performance_mode")
+        // Khusus root: governor CPU pilihan (Schedutil/Performance/Ondemand/
+        // Battery/Universal) & prioritas RAM (swappiness).
+        val CPU_GOVERNOR = stringPreferencesKey("cpu_governor")
         val RAM_PRIORITY_MODE = booleanPreferencesKey("ram_priority_mode")
         // Khusus root: override batas thermal throttling & governor performa GPU.
         val THERMAL_THROTTLE_OVERRIDE = booleanPreferencesKey("thermal_throttle_override")
@@ -166,7 +169,9 @@ class AetherXPreferences(private val context: Context) {
             touchBoostEnabled = prefs[Keys.TOUCH_BOOST] ?: false,
             forceMaxRefreshRate = prefs[Keys.FORCE_REFRESH] ?: false,
             gameModeEnabled = prefs[Keys.GAME_MODE] ?: false,
-            cpuPerformanceMode = prefs[Keys.CPU_PERFORMANCE_MODE] ?: false,
+            cpuGovernor = prefs[Keys.CPU_GOVERNOR]
+                ?.let { runCatching { CpuGovernor.valueOf(it) }.getOrNull() }
+                ?: CpuGovernor.UNIVERSAL,
             ramPriorityMode = prefs[Keys.RAM_PRIORITY_MODE] ?: false,
             thermalThrottleOverride = prefs[Keys.THERMAL_THROTTLE_OVERRIDE] ?: false,
             gpuPerformanceMode = prefs[Keys.GPU_PERFORMANCE_MODE] ?: false,
@@ -214,7 +219,7 @@ class AetherXPreferences(private val context: Context) {
         touchBoostEnabled: Boolean,
         forceMaxRefreshRate: Boolean,
         gameModeEnabled: Boolean,
-        cpuPerformanceMode: Boolean = false,
+        cpuGovernor: CpuGovernor = CpuGovernor.UNIVERSAL,
         ramPriorityMode: Boolean = false,
         thermalThrottleOverride: Boolean = false,
         gpuPerformanceMode: Boolean = false,
@@ -227,7 +232,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.TOUCH_BOOST] = touchBoostEnabled
             prefs[Keys.FORCE_REFRESH] = forceMaxRefreshRate
             prefs[Keys.GAME_MODE] = gameModeEnabled
-            prefs[Keys.CPU_PERFORMANCE_MODE] = cpuPerformanceMode
+            prefs[Keys.CPU_GOVERNOR] = cpuGovernor.name
             prefs[Keys.RAM_PRIORITY_MODE] = ramPriorityMode
             prefs[Keys.THERMAL_THROTTLE_OVERRIDE] = thermalThrottleOverride
             prefs[Keys.GPU_PERFORMANCE_MODE] = gpuPerformanceMode
@@ -245,7 +250,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.TOUCH_BOOST] = false
             prefs[Keys.FORCE_REFRESH] = false
             prefs[Keys.GAME_MODE] = false
-            prefs[Keys.CPU_PERFORMANCE_MODE] = false
+            prefs[Keys.CPU_GOVERNOR] = CpuGovernor.UNIVERSAL.name
             prefs[Keys.RAM_PRIORITY_MODE] = false
             prefs[Keys.THERMAL_THROTTLE_OVERRIDE] = false
             prefs[Keys.GPU_PERFORMANCE_MODE] = false

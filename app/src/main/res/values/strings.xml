@@ -121,8 +121,13 @@
 
     <!-- Tweak khusus root -->
     <string name="tweak_section_root">Kernel Tuning (Root)</string>
-    <string name="tweak_cpu_performance">CPU Governor: Performance</string>
-    <string name="tweak_cpu_performance_desc">Kunci semua core CPU ke clock speed maksimum (governor performance) selama bermain, mengurangi micro-stutter akibat naik-turun frekuensi. Mendukung chipset Snapdragon, MediaTek, dan Exynos. Butuh akses root.</string>
+    <string name="tweak_cpu_governor">Governor CPU</string>
+    <string name="tweak_cpu_governor_desc">Pilih governor clock CPU: Performance untuk clock maksimum terus-menerus, Ondemand/Schedutil untuk seimbang, Battery untuk hemat daya, atau Universal untuk otomatis sesuai dukungan chipset (Snapdragon, MediaTek, Exynos). Butuh akses root.</string>
+    <string name="tweak_cpu_governor_schedutil">Schedutil</string>
+    <string name="tweak_cpu_governor_performance">Performance</string>
+    <string name="tweak_cpu_governor_ondemand">Ondemand</string>
+    <string name="tweak_cpu_governor_battery">Battery</string>
+    <string name="tweak_cpu_governor_universal">Universal</string>
     <string name="tweak_ram_priority">Swappiness Override</string>
     <string name="tweak_ram_priority_desc">Turunkan nilai swappiness kernel supaya sistem lebih jarang menukar data game ke swap/zram, menjaga game tetap di RAM. Butuh akses root.</string>
     <string name="tweak_thermal_throttle">Thermal Throttle Override</string>

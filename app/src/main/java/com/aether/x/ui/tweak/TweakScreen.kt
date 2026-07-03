@@ -46,8 +46,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.data.CpuGovernor
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
+import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 
@@ -205,11 +207,19 @@ fun TweakScreen(
             // backend aktifnya benar-benar Root.
             if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
                 SectionCard(title = stringResource(R.string.tweak_section_root)) {
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_cpu_performance),
-                        description = stringResource(R.string.tweak_cpu_performance_desc),
-                        checked = state.cpuPerformanceMode,
-                        onCheckedChange = viewModel::onCpuPerformanceModeChange,
+                    TweakDropdown(
+                        label = stringResource(R.string.tweak_cpu_governor),
+                        description = stringResource(R.string.tweak_cpu_governor_desc),
+                        options = listOf(
+                            CpuGovernor.SCHEDUTIL,
+                            CpuGovernor.PERFORMANCE,
+                            CpuGovernor.ONDEMAND,
+                            CpuGovernor.POWERSAVE,
+                            CpuGovernor.UNIVERSAL,
+                        ),
+                        selected = state.cpuGovernor,
+                        optionLabel = { governor -> cpuGovernorLabel(governor) },
+                        onOptionSelected = viewModel::onCpuGovernorChange,
                         icon = Icons.Outlined.Speed,
                     )
                     TweakSwitch(
@@ -277,6 +287,16 @@ fun TweakScreen(
         }
         SnackbarHost(hostState = snackbarHostState)
     }
+}
+
+/** Label tampilan untuk tiap pilihan [CpuGovernor] di dropdown Governor CPU. */
+@Composable
+private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
+    CpuGovernor.SCHEDUTIL -> stringResource(R.string.tweak_cpu_governor_schedutil)
+    CpuGovernor.PERFORMANCE -> stringResource(R.string.tweak_cpu_governor_performance)
+    CpuGovernor.ONDEMAND -> stringResource(R.string.tweak_cpu_governor_ondemand)
+    CpuGovernor.POWERSAVE -> stringResource(R.string.tweak_cpu_governor_battery)
+    CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
 private enum class TweakSubTab { TWEAK, GAME_PROFILE }

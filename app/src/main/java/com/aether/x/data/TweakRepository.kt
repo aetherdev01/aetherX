@@ -4,6 +4,23 @@ import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.core.shell.ShellResult
 
 /**
+ * Pilihan governor CPU untuk section Root di tab Tweak. [UNIVERSAL] bukan
+ * nama governor kernel sungguhan — ini mode "otomatis" yang menyuruh
+ * [TweakRepository.applyCpuGovernor] memilih sendiri governor hemat-daya
+ * standar yang didukung kernel perangkat (schedutil > interactive > walt >
+ * ondemand > conservative > lainnya yang tersedia), aman dipakai lintas
+ * chipset Snapdragon/MediaTek/Exynos tanpa pengguna perlu tahu governor apa
+ * yang cocok untuk HP-nya.
+ */
+enum class CpuGovernor(val sysfsName: String?) {
+    SCHEDUTIL("schedutil"),
+    PERFORMANCE("performance"),
+    ONDEMAND("ondemand"),
+    POWERSAVE("powersave"),
+    UNIVERSAL(null),
+}
+
+/**
  * Menerjemahkan nilai tweak (DPI, resolusi, pointer speed, refresh rate) menjadi
  * perintah shell Android resmi (`wm`, `settings`). Semua perintah ini sama
  * persis dengan yang dipakai lewat `adb shell`, hanya dijalankan lewat
@@ -74,31 +91,29 @@ class TweakRepository {
     }
 
     /**
-     * Khusus root: kunci semua core CPU ke governor "performance" (clock
-     * selalu maksimum) selama bermain, mengurangi micro-stutter akibat
-     * frekuensi naik-turun. Dikembalikan ke governor default kernel saat
-     * dimatikan. Butuh akses tulis ke /sys/devices/system/cpu, yang biasanya
-     * hanya bisa lewat root (bukan Shizuku/adb shell biasa).
+     * Khusus root: terapkan governor CPU pilihan pengguna (Schedutil,
+     * Performance, Ondemand, Battery/Powersave, atau Universal) ke semua
+     * core sekaligus. Butuh akses tulis ke /sys/devices/system/cpu, yang
+     * biasanya hanya bisa lewat root (bukan Shizuku/adb shell biasa).
      *
-     * DUKUNGAN MULTI-CHIPSET: sebelumnya hanya menulis "schedutil" sebagai
-     * governor default saat dimatikan — governor itu memang default umum di
-     * kernel Snapdragon/Exynos modern, tapi banyak chipset MediaTek (Helio/
-     * Dimensity) memakai kernel yang defaultnya "walt" atau "interactive",
-     * dan sebagian tidak mengenali "schedutil" sama sekali (tulisan ke situ
-     * gagal diam-diam). Sekarang governor "OFF" dipilih otomatis per-core
-     * dari daftar governor yang benar-benar didukung kernel tersebut (dibaca
-     * dari scaling_available_governors), diprioritaskan ke governor hemat
-     * daya standar (schedutil > interactive > walt > ondemand > lain-lain
-     * yang tersedia) alih-alih memaksa satu nama yang belum tentu ada.
+     * DUKUNGAN MULTI-CHIPSET: untuk [CpuGovernor.UNIVERSAL] (mode "otomatis
+     * sesuai CPU bawaan"), nama governor TIDAK dipaksa satu nilai tetap —
+     * banyak chipset MediaTek (Helio/Dimensity) memakai kernel yang
+     * defaultnya "walt" atau "interactive" dan tidak mengenali "schedutil"
+     * sama sekali (tulisan ke situ gagal diam-diam), sementara kernel
+     * Snapdragon/Exynos modern umumnya default ke "schedutil". Governor
+     * dipilih otomatis PER-CORE dari daftar governor yang benar-benar
+     * didukung kernel tersebut (dibaca dari scaling_available_governors),
+     * diprioritaskan ke governor hemat daya standar (schedutil > interactive
+     * > walt > ondemand > conservative > lain-lain yang tersedia).
+     *
+     * Untuk governor eksplisit lain (Performance/Ondemand/Battery), nama
+     * governor dituliskan langsung ke tiap core — kalau kernel perangkat
+     * tidak mendukung nama tersebut, penulisan ke file itu gagal diam-diam
+     * (perilaku sysfs standar) dan core itu tetap pada governor sebelumnya.
      */
-    suspend fun applyCpuPerformanceMode(executor: ShellExecutor, enabled: Boolean): ShellResult {
-        val script = if (enabled) {
-            """
-            for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-              echo performance > ${'$'}g 2>/dev/null
-            done
-            """.trimIndent()
-        } else {
+    suspend fun applyCpuGovernor(executor: ShellExecutor, governor: CpuGovernor): ShellResult {
+        val script = if (governor == CpuGovernor.UNIVERSAL) {
             """
             for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
               avail_file="${'$'}(dirname ${'$'}g)/scaling_available_governors"
@@ -110,6 +125,13 @@ class TweakRepository {
                 esac
               done
               echo ${'$'}chosen > ${'$'}g 2>/dev/null
+            done
+            """.trimIndent()
+        } else {
+            val name = governor.sysfsName
+            """
+            for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+              echo $name > ${'$'}g 2>/dev/null
             done
             """.trimIndent()
         }
@@ -291,7 +313,7 @@ class TweakRepository {
         applyTouchBoost(executor, false),
         applyRefreshRate(executor, enabled = false, maxHz = 60f),
         applyGameMode(executor, enabled = false),
-        applyCpuPerformanceMode(executor, enabled = false),
+        applyCpuGovernor(executor, CpuGovernor.UNIVERSAL),
         applyRamPriority(executor, enabled = false),
         applyThermalThrottleOverride(executor, enabled = false),
         applyGpuPerformanceMode(executor, enabled = false),
@@ -311,7 +333,10 @@ class TweakRepository {
         executor: ShellExecutor,
         profile: GameProfile,
     ): List<ShellResult> = listOf(
-        applyCpuPerformanceMode(executor, profile.cpuPerformanceMode),
+        applyCpuGovernor(
+            executor,
+            if (profile.cpuPerformanceMode) CpuGovernor.PERFORMANCE else CpuGovernor.UNIVERSAL,
+        ),
         applyRamPriority(executor, profile.ramPriorityMode),
         applyThermalThrottleOverride(executor, profile.thermalThrottleOverride),
         applyGpuPerformanceMode(executor, profile.gpuPerformanceMode),
@@ -327,7 +352,7 @@ class TweakRepository {
      * yang pengguna set manual di section non-root tidak ikut ter-reset.
      */
     suspend fun resetRootTweaksOnly(executor: ShellExecutor): List<ShellResult> = listOf(
-        applyCpuPerformanceMode(executor, enabled = false),
+        applyCpuGovernor(executor, CpuGovernor.UNIVERSAL),
         applyRamPriority(executor, enabled = false),
         applyThermalThrottleOverride(executor, enabled = false),
         applyGpuPerformanceMode(executor, enabled = false),

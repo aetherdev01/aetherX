@@ -12,6 +12,7 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.core.shell.ShellResult
 import com.aether.x.data.AetherXPreferences
+import com.aether.x.data.CpuGovernor
 import com.aether.x.data.DeviceId
 import com.aether.x.data.TweakRepository
 import com.aether.x.data.UserIdRepository
@@ -28,7 +29,7 @@ data class TweakUiState(
     val touchBoost: Boolean = false,
     val forceMaxRefreshRate: Boolean = false,
     val gameModeEnabled: Boolean = false,
-    val cpuPerformanceMode: Boolean = false,
+    val cpuGovernor: CpuGovernor = CpuGovernor.UNIVERSAL,
     val ramPriorityMode: Boolean = false,
     val thermalThrottleOverride: Boolean = false,
     val gpuPerformanceMode: Boolean = false,
@@ -72,7 +73,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     touchBoost = saved.touchBoostEnabled,
                     forceMaxRefreshRate = saved.forceMaxRefreshRate,
                     gameModeEnabled = saved.gameModeEnabled,
-                    cpuPerformanceMode = saved.cpuPerformanceMode,
+                    cpuGovernor = saved.cpuGovernor,
                     ramPriorityMode = saved.ramPriorityMode,
                     thermalThrottleOverride = saved.thermalThrottleOverride,
                     gpuPerformanceMode = saved.gpuPerformanceMode,
@@ -168,10 +169,10 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         applyAndPersist { executor -> repository.applyGameMode(executor, checked) }
     }
 
-    /** Khusus root: kunci semua core CPU ke governor performance selama bermain. */
-    fun onCpuPerformanceModeChange(checked: Boolean) {
-        _state.update { it.copy(cpuPerformanceMode = checked) }
-        applyAndPersist { executor -> repository.applyCpuPerformanceMode(executor, checked) }
+    /** Khusus root: terapkan governor CPU yang dipilih pengguna dari dropdown. */
+    fun onCpuGovernorChange(governor: CpuGovernor) {
+        _state.update { it.copy(cpuGovernor = governor) }
+        applyAndPersist { executor -> repository.applyCpuGovernor(executor, governor) }
     }
 
     /** Khusus root: turunkan swappiness kernel supaya game tetap di RAM. */
@@ -245,7 +246,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 repository.applyTouchBoost(executor, false)
                 repository.applyRefreshRate(executor, enabled = false, maxHz = 60f)
                 repository.applyGameMode(executor, false)
-                repository.applyCpuPerformanceMode(executor, false)
+                repository.applyCpuGovernor(executor, CpuGovernor.UNIVERSAL)
                 repository.applyRamPriority(executor, false)
                 repository.applyThermalThrottleOverride(executor, false)
                 repository.applyGpuPerformanceMode(executor, false)
@@ -259,7 +260,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     touchBoost = false,
                     forceMaxRefreshRate = false,
                     gameModeEnabled = false,
-                    cpuPerformanceMode = false,
+                    cpuGovernor = CpuGovernor.UNIVERSAL,
                     ramPriorityMode = false,
                     thermalThrottleOverride = false,
                     gpuPerformanceMode = false,
@@ -295,7 +296,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 touchBoostEnabled = s.touchBoost,
                 forceMaxRefreshRate = s.forceMaxRefreshRate,
                 gameModeEnabled = s.gameModeEnabled,
-                cpuPerformanceMode = s.cpuPerformanceMode,
+                cpuGovernor = s.cpuGovernor,
                 ramPriorityMode = s.ramPriorityMode,
                 thermalThrottleOverride = s.thermalThrottleOverride,
                 gpuPerformanceMode = s.gpuPerformanceMode,
