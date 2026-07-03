@@ -128,6 +128,8 @@
     <string name="tweak_cpu_governor_ondemand">Ondemand</string>
     <string name="tweak_cpu_governor_battery">Battery</string>
     <string name="tweak_cpu_governor_universal">Universal</string>
+    <string name="tweak_cpu_performance">CPU Governor: Performance</string>
+    <string name="tweak_cpu_performance_desc">Kunci clock CPU ke frekuensi maksimum selama bermain, mengurangi drop FPS akibat governor CPU turun-naik. Butuh akses root.</string>
     <string name="tweak_ram_priority">Swappiness Override</string>
     <string name="tweak_ram_priority_desc">Turunkan nilai swappiness kernel supaya sistem lebih jarang menukar data game ke swap/zram, menjaga game tetap di RAM. Butuh akses root.</string>
     <string name="tweak_thermal_throttle">Thermal Throttle Override</string>
