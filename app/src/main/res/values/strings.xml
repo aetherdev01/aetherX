@@ -107,6 +107,8 @@
     <string name="update_version_label">Versi %1$s</string>
     <string name="update_download_button">Update Sekarang</string>
     <string name="update_later_button">Nanti</string>
+    <string name="update_desc_expand">Selengkapnya</string>
+    <string name="update_desc_collapse">Sembunyikan</string>
 
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>
