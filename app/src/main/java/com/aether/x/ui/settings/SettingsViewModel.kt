@@ -11,7 +11,6 @@ import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.CrosshairStyle
-import com.aether.x.data.DarkModePref
 import com.aether.x.data.FpsMonitorStyle
 import com.aether.x.data.TemperatureUnit
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,10 +27,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AppPreferences(),
     )
-
-    fun setDarkModePref(pref: DarkModePref) {
-        viewModelScope.launch { preferences.setDarkModePref(pref) }
-    }
 
     fun setTemperatureUnit(unit: TemperatureUnit) {
         viewModelScope.launch { preferences.setTemperatureUnit(unit) }

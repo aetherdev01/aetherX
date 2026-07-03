@@ -151,11 +151,6 @@
 
 
     <!-- Settings screen -->
-    <string name="settings_section_appearance">Tampilan</string>
-    <string name="settings_dark_mode">Mode Gelap</string>
-    <string name="settings_dark_mode_system">Ikuti Sistem</string>
-    <string name="settings_dark_mode_light">Terang</string>
-    <string name="settings_dark_mode_dark">Gelap</string>
     <string name="settings_section_crosshair">Crosshair</string>
 
     <!-- Settings — Monitor FPS -->

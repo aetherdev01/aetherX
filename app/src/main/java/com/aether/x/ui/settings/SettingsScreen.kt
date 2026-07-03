@@ -53,7 +53,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
-import com.aether.x.data.DarkModePref
 import com.aether.x.data.TemperatureUnit
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.TweakSwitch
@@ -95,27 +94,10 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        SectionCard(title = stringResource(R.string.settings_section_appearance)) {
-            Column {
-                Text(text = stringResource(R.string.settings_dark_mode), style = MaterialTheme.typography.bodyLarge)
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    val options = listOf(
-                        DarkModePref.SYSTEM to stringResource(R.string.settings_dark_mode_system),
-                        DarkModePref.LIGHT to stringResource(R.string.settings_dark_mode_light),
-                        DarkModePref.DARK to stringResource(R.string.settings_dark_mode_dark),
-                    )
-                    options.forEachIndexed { index, (pref, label) ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                            selected = prefs.darkModePref == pref,
-                            onClick = { viewModel.setDarkModePref(pref) },
-                        ) {
-                            Text(label)
-                        }
-                    }
-                }
-            }
-        }
+        // Section "Tampilan" (pemilih tema) dihapus total — aplikasi hanya
+        // mendukung Mode Gelap (lihat AetherXPreferences.preferences yang
+        // selalu mengembalikan DarkModePref.DARK), jadi tidak ada lagi
+        // pengaturan tema yang perlu ditampilkan ke pengguna sama sekali.
 
         SectionCard(title = stringResource(R.string.settings_section_general)) {
             Column {

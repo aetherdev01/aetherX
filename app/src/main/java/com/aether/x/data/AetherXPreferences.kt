@@ -158,8 +158,13 @@ class AetherXPreferences(private val context: Context) {
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
         AppPreferences(
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
-            darkModePref = prefs[Keys.DARK_MODE]?.let { runCatching { DarkModePref.valueOf(it) }.getOrNull() }
-                ?: DarkModePref.DARK,
+            // Pilihan tema Ikuti Sistem/Terang dikunci — aplikasi hanya
+            // mendukung Mode Gelap. Nilai lama yang mungkin masih tersimpan
+            // di DataStore dari versi sebelumnya (SYSTEM/LIGHT) SENGAJA
+            // diabaikan di sini alih-alih dibaca apa adanya, supaya
+            // pengguna yang pernah memilih tema lain sebelum update ini
+            // tetap otomatis kembali ke Gelap tanpa perlu reset manual.
+            darkModePref = DarkModePref.DARK,
             temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]
                 ?.let { runCatching { TemperatureUnit.valueOf(it) }.getOrNull() }
                 ?: TemperatureUnit.CELSIUS,
@@ -204,10 +209,6 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setOnboardingCompleted(value: Boolean) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
-    }
-
-    suspend fun setDarkModePref(value: DarkModePref) {
-        context.dataStore.edit { it[Keys.DARK_MODE] = value.name }
     }
 
     suspend fun setTemperatureUnit(value: TemperatureUnit) {
