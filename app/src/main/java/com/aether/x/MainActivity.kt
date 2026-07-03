@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.aether.x.core.monitor.GameProfileMonitorService
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.core.security.SignatureGuard
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.DarkModePref
@@ -42,6 +43,13 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Titik verifikasi signature KEDUA yang independen dari yang di
+        // AetherXApp.onCreate (lihat SignatureGuard.kt untuk kenapa). Kalau
+        // seseorang berhasil melewati/nge-nop-kan titik pertama tapi tidak
+        // sadar ada titik kedua di sini, app tetap force-close begitu
+        // Activity ini dibuat.
+        SignatureGuard.verifyOrDieAgain(this)
 
         // Splash tetap tampil sampai status onboarding selesai dibaca dari DataStore,
         // supaya tidak ada "flash" layar kosong sebelum tujuan navigasi ditentukan.

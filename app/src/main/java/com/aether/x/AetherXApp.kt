@@ -3,6 +3,7 @@ package com.aether.x
 import android.app.Application
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
+import com.aether.x.core.security.SignatureGuard
 import com.topjohnwu.superuser.Shell
 
 class AetherXApp : Application() {
@@ -20,6 +21,14 @@ class AetherXApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // WAJIB dipanggil PALING PERTAMA, sebelum apa pun lain (bahkan
+        // sebelum AppCheckInitializer) — kalau APK ini sudah dimodifikasi
+        // dan di-resign ulang dengan kunci lain, app harus force-close
+        // sesegera mungkin, sebelum sempat menampilkan splash screen atau
+        // menyentuh Firebase/Firestore sama sekali. Lihat SignatureGuard.kt
+        // untuk detail & batasan proteksi ini.
+        SignatureGuard.verifyOrDie(this)
+
         // WAJIB dipanggil SEBELUM Firestore dipakai di mana pun (mis. sebelum
         // LicenseRepository/UserIdRepository melakukan panggilan pertama) —
         // App Check harus terpasang sebelum instance FirebaseFirestore dibuat

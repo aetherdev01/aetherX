@@ -23,8 +23,24 @@ service cloud.firestore {
     // CATATAN SETUP: App Check untuk Android WAJIB diaktifkan dulu di Firebase
     // Console (Build > App Check > provider Play Integrity) sebelum rules ini
     // di-deploy, kalau tidak app asli pun akan ikut ditolak. Lihat SECURITY.md.
+    //
+    // ==========================================================================
+    // SEMENTARA DINONAKTIFKAN (TODO: aktifkan lagi setelah App Check siap) —
+    // Play Integrity butuh app terdaftar di Play Console (min. Internal
+    // Testing track), sedangkan AetherX untuk saat ini sideload-only, jadi
+    // request.app selalu null dan SEMUA request Firestore ditolak (termasuk
+    // dari app asli). isVerifiedApp() di-hardcode `true` di bawah supaya app
+    // bisa connect lagi. SEMUA guard validasi lain (format deviceId, status
+    // transition unused->active, expiresAt immutable dari client, dst di
+    // bawah) TETAP AKTIF PENUH — cuma syarat App Check-nya yang dilepas.
+    // Risiko selama kondisi ini: Firestore REST API bisa diakses langsung
+    // tanpa lewat app (mis. curl/Postman) untuk operasi `get`, jadi kode
+    // lisensi bisa di-enumerasi dari luar. Jangan sebar APK ke publik selama
+    // rules ini aktif. Ganti balik ke `request.app != null` begitu App Check
+    // sudah bisa diverifikasi (lihat opsi: daftar Play Console Internal
+    // Testing, atau App Check Debug/Custom Provider untuk sideload-only).
     function isVerifiedApp() {
-      return request.app != null;
+      return true;
     }
 
     match /meta/user_counter {

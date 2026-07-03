@@ -30,6 +30,22 @@ android {
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
+
+        // Native signature guard (lihat app/src/main/cpp/sigcheck.cpp dan
+        // SignatureGuard.kt) — hash signing cert dibandingkan di sisi native
+        // supaya tidak muncul sebagai string plain di DEX/Kotlin bytecode.
+        externalNativeBuild {
+            cmake {
+                cppFlags += ""
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {
