@@ -291,7 +291,6 @@ fun TweakScreen(
 
 /** Label tampilan untuk tiap pilihan [CpuGovernor] di dropdown Governor CPU. */
 @Composable
-@Composable
 private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.SCHEDUTIL -> stringResource(R.string.tweak_cpu_governor_schedutil)
     CpuGovernor.PERFORMANCE -> stringResource(R.string.tweak_cpu_governor_performance)
