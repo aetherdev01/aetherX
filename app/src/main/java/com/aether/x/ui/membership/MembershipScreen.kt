@@ -216,6 +216,7 @@ fun MembershipScreen(
                 BenefitRow(text = stringResource(R.string.membership_benefit_1))
                 BenefitRow(text = stringResource(R.string.membership_benefit_2))
                 BenefitRow(text = stringResource(R.string.membership_benefit_3))
+                BenefitRow(text = stringResource(R.string.membership_benefit_4))
             }
         }
 

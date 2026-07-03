@@ -81,6 +81,7 @@
     <string name="membership_benefit_1">Akses penuh ke semua tweak kernel-level (Root)</string>
     <string name="membership_benefit_2">Update fitur lebih awal dibanding versi gratis</string>
     <string name="membership_benefit_3">Dukungan prioritas lewat Telegram</string>
+    <string name="membership_benefit_4">Tanpa Iklan Mengganggu</string>
     <string name="membership_pro_title">Langganan Membership Pro</string>
     <string name="membership_pro_price">Rp10.000</string>
     <string name="membership_pro_price_period">/ bulan</string>
@@ -102,6 +103,11 @@
     <string name="maintenance_default_message">Aplikasi sedang dalam pemeliharaan sementara. Silakan hubungi admin untuk informasi lebih lanjut.</string>
     <string name="maintenance_contact_admin_button">Hubungi Admin</string>
     <string name="maintenance_telegram_url">https://t.me/AetherDev22</string>
+
+    <string name="update_available_title">Pembaruan Tersedia</string>
+    <string name="update_version_label">Versi %1$s</string>
+    <string name="update_download_button">Update Sekarang</string>
+    <string name="update_later_button">Nanti</string>
 
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>

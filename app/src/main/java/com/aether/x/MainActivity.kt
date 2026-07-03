@@ -32,6 +32,7 @@ import com.aether.x.ui.navigation.AetherXRoutes
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
 import com.aether.x.ui.theme.AetherXTheme
+import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -168,4 +169,12 @@ private fun AetherXRoot(
     // (return awal) kalau mode maintenance sedang tidak aktif, jadi aman
     // dipasang permanen di sini tanpa biaya tambahan saat tidak dipakai.
     MaintenanceGate()
+
+    // UpdateGate: sama seperti MaintenanceGate (dipasang di root, no-op kalau
+    // tidak ada versi baru), TAPI dialognya BISA di-dismiss — update di
+    // AetherX selalu opsional, tidak pernah memblokir pemakaian aplikasi.
+    // Dipasang SETELAH MaintenanceGate supaya kalau kedua kondisi aktif
+    // bersamaan, dialog maintenance (blocking) tetap yang paling atas/menang
+    // secara visual.
+    UpdateGate()
 }

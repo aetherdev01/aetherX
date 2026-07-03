@@ -13,8 +13,16 @@ const {
   listAllTokens,
 } = require("./lib/licenseStore");
 const { getMaintenanceStatus, setMaintenanceStatus } = require("./lib/maintenanceStore");
+const { getUpdateInfo, setUpdateInfo } = require("./lib/updateStore");
 const { generateUniqueToken } = require("./lib/tokenGenerator");
-const { formatLicenseCard, formatMaintenanceCard, isValidToken, isValidDeviceId, escapeMd } = require("./lib/format");
+const {
+  formatLicenseCard,
+  formatMaintenanceCard,
+  formatUpdateCard,
+  isValidToken,
+  isValidDeviceId,
+  escapeMd,
+} = require("./lib/format");
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID || "");
@@ -112,7 +120,10 @@ function mainMenuKeyboard() {
           { text: "🔓 Reset Device", callback_data: "menu:unbind" },
         ],
         [{ text: "📋 Daftar Lisensi", callback_data: "menu:list" }],
-        [{ text: "🛠️ Maintenance", callback_data: "menu:maintenance" }],
+        [
+          { text: "🛠️ Maintenance", callback_data: "menu:maintenance" },
+          { text: "🚀 Update Versi", callback_data: "menu:update" },
+        ],
       ],
     },
   };
@@ -153,6 +164,7 @@ bot.onText(/^\/help$/, (msg) => {
     "/unbind <token> — Lepas device dari lisensi (reset ke status 'unused')",
     "/list — Daftar semua token lisensi",
     "/maintenance — Lihat/atur mode maintenance (dialog blocking di app)",
+    "/update — Lihat/publish info versi terbaru (dialog update opsional di app)",
     "/cancel — Batalkan proses yang sedang berjalan",
     "",
     "Semua perintah admin hanya bisa dipakai oleh admin yang terdaftar.",
@@ -411,6 +423,56 @@ async function showMaintenanceMenu(chatId) {
 }
 
 // ─────────────────────────────────────────────────────────
+// UPDATE VERSI APLIKASI
+// /update — tampilkan info versi terbaru & menu publish/edit
+//
+// Alur "Publish Versi Baru" adalah conversation 4 langkah berurutan:
+// versionCode (angka, wajib > yang tersimpan) -> versionName (teks bebas,
+// mis. "1.2.0") -> downloadUrl (link GitHub Release) -> description
+// (changelog, teks bebas, boleh multi-baris — kirim `-` untuk kosongkan).
+// mandatory TIDAK ditanya di alur cepat ini (selalu tersimpan `false` kalau
+// belum pernah diisi sebelumnya); admin bisa mengubahnya lewat tombol
+// terpisah di menu kalau perlu.
+// ─────────────────────────────────────────────────────────
+function updateMenuKeyboard(info) {
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🚀 Publish Versi Baru", callback_data: "upd:publish" }],
+        [
+          { text: "✏️ Edit Link Download", callback_data: "upd:edit_url" },
+          { text: "✏️ Edit Deskripsi", callback_data: "upd:edit_desc" },
+        ],
+        [
+          info.mandatory
+            ? { text: "🟢 Jadikan Opsional", callback_data: "upd:optional" }
+            : { text: "🔴 Jadikan Wajib", callback_data: "upd:mandatory" },
+        ],
+        [{ text: "❌ Tutup", callback_data: "upd:close" }],
+      ],
+    },
+  };
+}
+
+bot.onText(/^\/update$/, async (msg) => {
+  if (!requireAdmin(msg)) return;
+  await showUpdateMenu(msg.chat.id);
+});
+
+async function showUpdateMenu(chatId) {
+  try {
+    const info = await getUpdateInfo(firestore);
+    await bot.sendMessage(chatId, formatUpdateCard(info), {
+      parse_mode: "MarkdownV2",
+      ...updateMenuKeyboard(info),
+    });
+  } catch (err) {
+    console.error(err);
+    bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 // EDIT LICENSE (conversation flow)
 // ─────────────────────────────────────────────────────────
 bot.onText(/^\/edit(?:\s+(.*))?$/, async (msg, match) => {
@@ -509,6 +571,10 @@ bot.on("callback_query", async (query) => {
       if (!requireAdmin(msg)) return;
       return showMaintenanceMenu(chatId);
     }
+    if (key === "update") {
+      if (!requireAdmin(msg)) return;
+      return showUpdateMenu(chatId);
+    }
     return;
   }
 
@@ -586,6 +652,51 @@ bot.on("callback_query", async (query) => {
   }
 
   if (data === "maint:close") {
+    clearSession(chatId);
+    return;
+  }
+
+  if (data === "upd:publish") {
+    if (!requireAdmin(msg)) return;
+    sessions.set(chatId, { action: "update_publish", step: "ask_version_code", data: {} });
+    return bot.sendMessage(
+      chatId,
+      "Kirim *versionCode* rilis baru (angka bulat, harus lebih besar dari versionCode yang sudah terdaftar):",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  if (data === "upd:edit_url" || data === "upd:edit_desc") {
+    if (!requireAdmin(msg)) return;
+    const field = data === "upd:edit_url" ? "downloadUrl" : "description";
+    sessions.set(chatId, { action: "update_field", step: "awaiting_value", data: { field } });
+    return bot.sendMessage(
+      chatId,
+      field === "downloadUrl"
+        ? "Kirim link download rilis (URL GitHub Release):"
+        : "Kirim deskripsi/changelog baru:"
+    );
+  }
+
+  if (data === "upd:mandatory" || data === "upd:optional") {
+    if (!requireAdmin(msg)) return;
+    try {
+      const info = await setUpdateInfo(firestore, { mandatory: data === "upd:mandatory" });
+      await bot.sendMessage(
+        chatId,
+        info.mandatory
+          ? "🔴 *Update dijadikan WAJIB\\.* \\(catatan: saat ini app Android masih menampilkan dialog opsional — field ini disiapkan untuk versi mendatang\\.\\)"
+          : "🟢 *Update dijadikan opsional kembali\\.*",
+        { parse_mode: "MarkdownV2" }
+      );
+      return showUpdateMenu(chatId);
+    } catch (err) {
+      console.error(err);
+      return bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+    }
+  }
+
+  if (data === "upd:close") {
     clearSession(chatId);
     return;
   }
@@ -684,6 +795,89 @@ bot.on("message", async (msg) => {
           { parse_mode: "MarkdownV2" }
         );
         return showMaintenanceMenu(chatId);
+      } catch (err) {
+        console.error(err);
+        return bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+      }
+    }
+
+    if (session.action === "update_field" && session.step === "awaiting_value") {
+      if (!requireAdmin(msg)) return;
+      const { field } = session.data;
+      clearSession(chatId);
+      try {
+        await setUpdateInfo(firestore, { [field]: text });
+        await bot.sendMessage(
+          chatId,
+          `✅ ${field === "downloadUrl" ? "Link download" : "Deskripsi"} berhasil diupdate\\!`,
+          { parse_mode: "MarkdownV2" }
+        );
+        return showUpdateMenu(chatId);
+      } catch (err) {
+        console.error(err);
+        return bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);
+      }
+    }
+
+    if (session.action === "update_publish" && session.step === "ask_version_code") {
+      if (!requireAdmin(msg)) return;
+      const versionCode = parseInt(text, 10);
+      if (!Number.isFinite(versionCode) || versionCode <= 0) {
+        return bot.sendMessage(chatId, "⚠️ Masukkan versionCode berupa angka bulat positif.");
+      }
+      const current = await getUpdateInfo(firestore);
+      if (versionCode <= current.latestVersionCode) {
+        return bot.sendMessage(
+          chatId,
+          `⚠️ versionCode harus lebih besar dari yang sudah terdaftar saat ini (${current.latestVersionCode}). Kirim ulang versionCode yang valid, atau /cancel untuk batal.`
+        );
+      }
+      session.data.latestVersionCode = versionCode;
+      session.step = "ask_version_name";
+      sessions.set(chatId, session);
+      return bot.sendMessage(chatId, "Kirim *versionName* rilis ini (mis. `1.2.0` atau `1.2 Beta`):", {
+        parse_mode: "Markdown",
+      });
+    }
+    if (session.action === "update_publish" && session.step === "ask_version_name") {
+      if (!requireAdmin(msg)) return;
+      session.data.latestVersionName = text;
+      session.step = "ask_download_url";
+      sessions.set(chatId, session);
+      return bot.sendMessage(chatId, "Kirim link download (URL GitHub Release) untuk rilis ini:");
+    }
+    if (session.action === "update_publish" && session.step === "ask_download_url") {
+      if (!requireAdmin(msg)) return;
+      session.data.downloadUrl = text;
+      session.step = "ask_description";
+      sessions.set(chatId, session);
+      return bot.sendMessage(
+        chatId,
+        "Kirim deskripsi/changelog rilis ini (boleh multi-baris), atau `-` untuk kosongkan:",
+        { parse_mode: "Markdown" }
+      );
+    }
+    if (session.action === "update_publish" && session.step === "ask_description") {
+      if (!requireAdmin(msg)) return;
+      const description = text === "-" ? "" : text;
+      const { latestVersionCode, latestVersionName, downloadUrl } = session.data;
+      clearSession(chatId);
+      try {
+        const info = await setUpdateInfo(firestore, {
+          latestVersionCode,
+          latestVersionName,
+          downloadUrl,
+          description,
+        });
+        await bot.sendMessage(
+          chatId,
+          `✅ Versi baru berhasil dipublish\\! Semua aplikasi Android yang terbuka akan menampilkan dialog update dalam beberapa saat\\.`,
+          { parse_mode: "MarkdownV2" }
+        );
+        return bot.sendMessage(chatId, formatUpdateCard(info), {
+          parse_mode: "MarkdownV2",
+          ...updateMenuKeyboard(info),
+        });
       } catch (err) {
         console.error(err);
         return bot.sendMessage(chatId, `❌ Terjadi error: ${err.message}`);

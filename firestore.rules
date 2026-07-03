@@ -78,6 +78,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /config/update {
+      // Dokumen info versi terbaru aplikasi — dibaca REALTIME oleh semua
+      // instance aplikasi Android yang terbuka (lihat UpdateRepository.kt)
+      // untuk menampilkan dialog update opsional. Sama seperti
+      // config/maintenance: HANYA bot Telegram (service account, bypass
+      // rules ini) yang boleh mengubah dokumen ini lewat menu "Update Versi"
+      // di bot.js — client Android sama sekali tidak pernah menulis ke sini.
+      allow get: if true;
+      allow create, update: if false;
+      allow delete: if false;
+    }
+
     match /licenses/{key} {
       // CATATAN PENTING: rules ini SAMA SEKALI TIDAK BERLAKU untuk bot Telegram
       // (bot.js). Bot menulis lewat Firestore REST API pakai serviceAccountKey.json
