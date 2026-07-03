@@ -158,12 +158,11 @@ private fun GameProfileListPane(
     onSearchQueryChange: (String) -> Unit,
     onSelectGame: (String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        Text(
-            text = stringResource(R.string.nav_game_profile),
-            style = MaterialTheme.typography.headlineSmall,
-            color = TextPrimary,
-        )
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        // Judul besar "Game Profile" TIDAK diulang di sini — sudah jelas
+        // dari TweakSubTabSwitcher di atas mana sub-tab yang sedang aktif,
+        // dan TweakHeader ("Tweak" + pill ID) tetap tampil permanen di
+        // puncak layar terlepas dari sub-tab mana yang dipilih.
         Text(
             text = stringResource(R.string.game_profile_subtitle),
             style = MaterialTheme.typography.bodyMedium,

@@ -97,30 +97,28 @@ fun TweakScreen(
         }
     }
 
-    if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
-        // GameProfileScreen mengurus tata letaknya sendiri (sidebar list +
-        // panel detail), termasuk header "Game Profile" — jadi ditampilkan
-        // sebagai pengganti penuh Column tweak biasa di bawah, bukan
-        // disisipkan di dalamnya.
-        Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
-            TweakSubTabSwitcher(
-                selected = selectedSubTab,
-                onSelect = { selectedSubTab = it },
-                showGameProfileTab = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
-            )
-            GameProfileScreen(modifier = Modifier.weight(1f))
-        }
-        return
-    }
-
     Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .then(
+                    // Section tweak biasa perlu scroll (banyak kartu), tapi
+                    // GameProfileScreen mengurus scroll-nya SENDIRI secara
+                    // internal (sidebar list + detail pane, masing-masing
+                    // punya area scroll berbeda) — verticalScroll ganda di
+                    // sini akan bentrok dengan LazyColumn di dalamnya.
+                    if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+                        Modifier
+                    } else {
+                        Modifier.verticalScroll(rememberScrollState())
+                    },
+                )
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Header "Tweak" + pill ID pengguna SELALU tampil, baik di
+            // sub-tab Tweak maupun Game Profile — hanya konten di bawahnya
+            // yang berganti.
             TweakHeader(userId = state.userId, onRetryUserId = viewModel::retryResolveUserIdIfMissing)
 
             // Sub-tab switcher Tweak/Game Profile — HANYA ditampilkan sama
@@ -134,6 +132,19 @@ fun TweakScreen(
                     onSelect = { selectedSubTab = it },
                     showGameProfileTab = true,
                 )
+            }
+
+            if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+                // GameProfileScreen mengisi SISA ruang di bawah header/switcher
+                // dengan tata letaknya sendiri (sidebar list + panel detail).
+                GameProfileScreen(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    // Padding horizontal/vertical sudah diterapkan Column induk
+                    // di atas, jadi GameProfileScreen tidak perlu padding ganda.
+                )
+                return@Column
             }
 
             // Section Input Driver (pointer speed & touch boost) khusus untuk
