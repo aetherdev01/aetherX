@@ -12,7 +12,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,6 +28,12 @@ import androidx.compose.ui.unit.dp
  * redup, tombol aksi dinonaktifkan, dan [lockedHint] ditampilkan
  * menggantikan tombol untuk menjelaskan kenapa (mis. "Matikan Root dulu
  * untuk pakai Shizuku").
+ *
+ * Saat [granted] = true (dan tidak [locked]): pill status + tombol aksi
+ * ("Aktif" / "Izinkan" dsb.) SENGAJA tidak ditampilkan lagi — kartu yang
+ * sudah beres tidak perlu terus "berteriak" dengan label dan tombol yang
+ * sudah tidak relevan. Ikon centang di header sudah cukup jadi checklist
+ * bahwa metode ini aktif, tanpa elemen tambahan yang mengganggu.
  */
 @Composable
 fun PermissionMethodCard(
@@ -79,31 +84,33 @@ fun PermissionMethodCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (locked && lockedHint != null) {
-                Text(
-                    text = lockedHint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StatusPill(
-                        text = statusText,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = if (granted) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        dotColor = if (granted) MaterialTheme.colorScheme.primary else null,
+            when {
+                locked && lockedHint != null -> {
+                    Text(
+                        text = lockedHint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (granted) {
-                        OutlinedButton(onClick = onAction, enabled = !locked) { Text(actionLabel) }
-                    } else {
+                }
+                granted -> {
+                    // Sudah aktif: tidak ada pill "Aktif", teks status,
+                    // maupun tombol "Izinkan" lagi — semua itu tidak
+                    // relevan begitu izin sudah diberikan dan cuma bikin
+                    // ramai. Ikon centang di header (di atas) sudah cukup
+                    // jadi penanda checklist bahwa metode ini aktif.
+                }
+                else -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StatusPill(
+                            text = statusText,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            dotColor = null,
+                        )
                         Button(onClick = onAction, enabled = !locked) { Text(actionLabel) }
                     }
                 }

@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     sigcheck.cpp
+    integrityguard.cpp
 )
 
 find_library(log-lib log)

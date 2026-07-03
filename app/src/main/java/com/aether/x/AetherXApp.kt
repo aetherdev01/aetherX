@@ -3,6 +3,7 @@ package com.aether.x
 import android.app.Application
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
+import com.aether.x.core.security.NativeIntegrityGuard
 import com.aether.x.core.security.SignatureGuard
 import com.topjohnwu.superuser.Shell
 
@@ -28,6 +29,15 @@ class AetherXApp : Application() {
         // menyentuh Firebase/Firestore sama sekali. Lihat SignatureGuard.kt
         // untuk detail & batasan proteksi ini.
         SignatureGuard.verifyOrDie(this)
+
+        // Guard TAMBAHAN yang melengkapi baris di atas: SignatureGuard hanya
+        // tahu kalau APK di-resign dengan kunci lain — tidak tahu kalau
+        // libaetherxsig.so ITU SENDIRI dipatch langsung (byte instruksi
+        // diubah lewat lief/radare2/Ghidra) tanpa perlu resign APK sama
+        // sekali. Dipanggil di sini, tepat setelah SignatureGuard, supaya
+        // urutan cek tetap: (1) APK resmi? (2) kalau ya, .so-nya belum
+        // disunting? Lihat integrityguard.cpp & NativeIntegrityGuard.kt.
+        NativeIntegrityGuard.verifyOrDie(this)
 
         // WAJIB dipanggil SEBELUM Firestore dipakai di mana pun (mis. sebelum
         // LicenseRepository/UserIdRepository melakukan panggilan pertama) —

@@ -20,7 +20,6 @@
     <string name="setup_status_not_granted">Belum Aktif</string>
     <string name="setup_status_checking">Memeriksa…</string>
     <string name="setup_status_not_installed">Belum Terpasang</string>
-    <string name="setup_status_not_needed">Shizuku sudah aktif</string>
     <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
     <string name="setup_action_open_shizuku">Buka Shizuku</string>
