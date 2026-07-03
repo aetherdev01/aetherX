@@ -193,62 +193,65 @@ private fun UpdateDescriptionBlock(description: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Column(
-            modifier = if (expanded) {
-                Modifier.fillMaxWidth()
-            } else {
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = COLLAPSED_MAX_HEIGHT)
-                    .verticalScroll(rememberScrollState())
-            },
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            lines.forEach { line ->
-                if (line.isBullet) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = AccentBlue,
-                        )
-                        Text(
-                            text = line.text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+            // animateContentSize HARUS di Column yang SAMA dengan yang
+            // ukurannya berubah (heightIn di bawah), bukan di parent luar.
+            // Sebelumnya dipasang satu level di atas — itu yang membuat
+            // Compose gagal re-measure ke ukuran lebih kecil saat collapse
+            // (macet di ukuran besar/expanded, tombol "Tutup" seolah tidak
+            // berfungsi walau state expanded sudah berubah ke false).
+            .then(
+                if (expanded) {
+                    Modifier.animateContentSize()
                 } else {
+                    Modifier
+                        .heightIn(max = COLLAPSED_MAX_HEIGHT)
+                        .animateContentSize()
+                        .verticalScroll(rememberScrollState())
+                }
+            ),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        lines.forEach { line ->
+            if (line.isBullet) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AccentBlue,
+                    )
                     Text(
                         text = line.text,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            } else {
+                Text(
+                    text = line.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
+    }
 
-        if (isLong) {
-            TextButton(onClick = { expanded = !expanded }) {
-                Text(
-                    text = stringResource(
-                        if (expanded) R.string.update_desc_collapse else R.string.update_desc_expand,
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AccentBlue,
-                )
-                Icon(
-                    imageVector = Icons.Outlined.ExpandMore,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .rotate(if (expanded) 180f else 0f),
-                )
-            }
+    if (isLong) {
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(
+                text = stringResource(
+                    if (expanded) R.string.update_desc_collapse else R.string.update_desc_expand,
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = AccentBlue,
+            )
+            Icon(
+                imageVector = Icons.Outlined.ExpandMore,
+                contentDescription = null,
+                tint = AccentBlue,
+                modifier = Modifier
+                    .size(18.dp)
+                    .rotate(if (expanded) 180f else 0f),
+            )
         }
     }
 }

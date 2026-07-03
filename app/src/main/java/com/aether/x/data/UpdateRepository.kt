@@ -21,6 +21,13 @@ import kotlinx.coroutines.flow.callbackFlow
  * mandatory: boolean           // disiapkan untuk masa depan; UpdateGate saat ini
  *                               // SELALU menampilkan dialog yang bisa di-dismiss
  *                               // terlepas dari nilai field ini
+ * disabled: boolean            // saklar admin dari bot Telegram ("🔕 Tutup Update") —
+ *                               // kalau true, UpdateGate TIDAK PERNAH menampilkan
+ *                               // dialog apa pun, terlepas dari latestVersionCode.
+ *                               // Dipakai saat admin ingin menghentikan notifikasi
+ *                               // update sementara (mis. rilis baru ada bug, atau
+ *                               // link download sedang bermasalah) TANPA perlu
+ *                               // menghapus/menimpa data versi yang sudah tersimpan.
  * updatedAt: timestamp
  * ```
  *
@@ -33,6 +40,7 @@ data class UpdateInfo(
     val description: String,
     val downloadUrl: String,
     val mandatory: Boolean,
+    val disabled: Boolean,
 )
 
 private val UPDATE_NONE = UpdateInfo(
@@ -41,6 +49,7 @@ private val UPDATE_NONE = UpdateInfo(
     description = "",
     downloadUrl = "",
     mandatory = false,
+    disabled = false,
 )
 
 class UpdateRepository {
@@ -55,13 +64,20 @@ class UpdateRepository {
      * perlu restart, persis seperti [MaintenanceRepository].
      *
      * Kalau dokumen belum pernah dibuat, ATAU terjadi error (offline, dsb),
-     * dianggap [UPDATE_NONE] (versionCode 0) — supaya perbandingan dengan
-     * versionCode lokal (selalu >= 1) otomatis tidak pernah memicu dialog
-     * update secara keliru akibat masalah jaringan/konfigurasi.
+     * ATAU admin sudah menonaktifkan lewat `disabled = true`, dianggap
+     * [UPDATE_NONE] (versionCode 0) — supaya perbandingan dengan versionCode
+     * lokal (selalu >= 1) otomatis tidak pernah memicu dialog update secara
+     * keliru akibat masalah jaringan/konfigurasi, ATAU saat admin memang
+     * sengaja ingin mematikan notifikasi update untuk sementara.
      */
     fun observe(): Flow<UpdateInfo> = callbackFlow {
         val registration = docRef.addSnapshotListener(MetadataChanges.EXCLUDE) { snapshot, error ->
             if (error != null || snapshot == null || !snapshot.exists()) {
+                trySend(UPDATE_NONE)
+                return@addSnapshotListener
+            }
+            val disabled = snapshot.getBoolean("disabled") ?: false
+            if (disabled) {
                 trySend(UPDATE_NONE)
                 return@addSnapshotListener
             }
@@ -72,6 +88,7 @@ class UpdateRepository {
                     description = snapshot.getString("description").orEmpty(),
                     downloadUrl = snapshot.getString("downloadUrl").orEmpty(),
                     mandatory = snapshot.getBoolean("mandatory") ?: false,
+                    disabled = false,
                 ),
             )
         }

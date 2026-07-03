@@ -42,7 +42,7 @@ class UpdateViewModel : ViewModel() {
     private val _state = MutableStateFlow(
         UpdateUiState(
             visible = false,
-            info = UpdateInfo(0, "", "", "", false),
+            info = UpdateInfo(0, "", "", "", false, false),
             currentVersionCode = currentVersionCode,
         ),
     )
