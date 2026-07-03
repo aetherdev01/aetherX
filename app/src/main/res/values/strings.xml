@@ -55,6 +55,7 @@
     <string name="membership_subtitle">Kelola status dan aktivasi kode lisensi perangkat ini.</string>
     <string name="membership_activate_button">Aktivasi Membership</string>
     <string name="membership_key_error_empty">Masukkan kode lisensi terlebih dulu.</string>
+    <string name="membership_key_error_locked">Terlalu banyak percobaan. Coba lagi dalam %d detik.</string>
     <string name="membership_key_error_expired">Kode ini sudah kedaluwarsa.</string>
     <string name="membership_key_error_revoked">Kode ini sudah dicabut oleh admin.</string>
     <string name="membership_key_error_bound">Kode ini sudah dipakai di perangkat lain.</string>
