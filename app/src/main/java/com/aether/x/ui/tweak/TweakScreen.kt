@@ -1,5 +1,6 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,9 +30,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -47,6 +51,7 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 
+
 @Composable
 fun TweakScreen(
     modifier: Modifier = Modifier,
@@ -56,6 +61,17 @@ fun TweakScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Sub-tab "Game Profile" (lihat GameProfileScreen) hanya relevan untuk
+    // backend Root — kalau pengguna beralih ke Shizuku sementara sub-tab ini
+    // sedang dibuka, otomatis kembali ke sub-tab Tweak biasa supaya tidak
+    // menampilkan fitur khusus-root ke pengguna non-root.
+    var selectedSubTab by remember { mutableStateOf(TweakSubTab.TWEAK) }
+    LaunchedEffect(privilegeStatus.activeBackend) {
+        if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
+            selectedSubTab = TweakSubTab.TWEAK
+        }
+    }
 
     // Deteksi ulang game terpasang setiap kali layar Tweak kembali aktif
     // (mis. setelah pengguna baru saja memasang Free Fire dari luar app).
@@ -81,6 +97,22 @@ fun TweakScreen(
         }
     }
 
+    if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+        // GameProfileScreen mengurus tata letaknya sendiri (sidebar list +
+        // panel detail), termasuk header "Game Profile" — jadi ditampilkan
+        // sebagai pengganti penuh Column tweak biasa di bawah, bukan
+        // disisipkan di dalamnya.
+        Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
+            TweakSubTabSwitcher(
+                selected = selectedSubTab,
+                onSelect = { selectedSubTab = it },
+                showGameProfileTab = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
+            )
+            GameProfileScreen(modifier = Modifier.weight(1f))
+        }
+        return
+    }
+
     Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
         Column(
             modifier = Modifier
@@ -91,26 +123,48 @@ fun TweakScreen(
         ) {
             TweakHeader(userId = state.userId, onRetryUserId = viewModel::retryResolveUserIdIfMissing)
 
-            SectionCard(title = stringResource(R.string.tweak_section_touch)) {
-                // Nilai diterapkan langsung ke sistem saat slider dilepas (tidak perlu
-                // tombol "Terapkan" terpisah lagi).
-                TweakSlider(
-                    label = stringResource(R.string.tweak_pointer_speed),
-                    description = stringResource(R.string.tweak_pointer_speed_desc),
-                    valueText = state.pointerSpeed.toString(),
-                    value = state.pointerSpeed.toFloat(),
-                    range = -7f..7f,
-                    steps = 13,
-                    onValueChange = viewModel::onPointerSpeedChange,
-                    onValueChangeFinished = viewModel::onPointerSpeedChangeFinished,
+            // Sub-tab switcher Tweak/Game Profile — HANYA ditampilkan sama
+            // sekali kalau backend aktif adalah Root, karena Game Profile
+            // sepenuhnya fitur khusus root (lihat perintah pengguna). Untuk
+            // backend Shizuku/belum ada akses, tab ini tidak ada gunanya
+            // jadi tidak perlu memakan tempat di layar.
+            if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
+                TweakSubTabSwitcher(
+                    selected = selectedSubTab,
+                    onSelect = { selectedSubTab = it },
+                    showGameProfileTab = true,
                 )
-                TweakSwitch(
-                    label = stringResource(R.string.tweak_touch_boost),
-                    description = stringResource(R.string.tweak_touch_boost_desc),
-                    checked = state.touchBoost,
-                    onCheckedChange = viewModel::onTouchBoostChange,
-                    icon = Icons.Outlined.TouchApp,
-                )
+            }
+
+            // Section Input Driver (pointer speed & touch boost) khusus untuk
+            // backend NON-ROOT (Shizuku) — disembunyikan saat backend aktif
+            // adalah Root, sama seperti section "Root" di bawah yang hanya
+            // muncul untuk backend Root. Ini bagian dari pemisahan fitur
+            // root vs non-root: pengguna root diarahkan memakai tweak
+            // kernel-level (governor CPU/GPU, swappiness, dst.) di section
+            // Root, bukan campur dengan tweak Input Driver.
+            if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
+                SectionCard(title = stringResource(R.string.tweak_section_touch)) {
+                    // Nilai diterapkan langsung ke sistem saat slider dilepas (tidak perlu
+                    // tombol "Terapkan" terpisah lagi).
+                    TweakSlider(
+                        label = stringResource(R.string.tweak_pointer_speed),
+                        description = stringResource(R.string.tweak_pointer_speed_desc),
+                        valueText = state.pointerSpeed.toString(),
+                        value = state.pointerSpeed.toFloat(),
+                        range = -7f..7f,
+                        steps = 13,
+                        onValueChange = viewModel::onPointerSpeedChange,
+                        onValueChangeFinished = viewModel::onPointerSpeedChangeFinished,
+                    )
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_touch_boost),
+                        description = stringResource(R.string.tweak_touch_boost_desc),
+                        checked = state.touchBoost,
+                        onCheckedChange = viewModel::onTouchBoostChange,
+                        icon = Icons.Outlined.TouchApp,
+                    )
+                }
             }
 
             SectionCard(title = stringResource(R.string.tweak_section_refresh)) {
@@ -211,6 +265,68 @@ fun TweakScreen(
             }
         }
         SnackbarHost(hostState = snackbarHostState)
+    }
+}
+
+private enum class TweakSubTab { TWEAK, GAME_PROFILE }
+
+/**
+ * Sub-tab "list kayak sidebar" di sisi... sebenarnya ditampilkan sebagai
+ * segmented switcher horizontal di ATAS konten (bukan sidebar vertikal
+ * permanen) karena tab Tweak sendiri sudah berupa layar penuh di HP —
+ * sidebar SESUNGGUHNYA (daftar game di kiri, detail di kanan) ada DI DALAM
+ * [GameProfileScreen] begitu sub-tab "Game Profile" ini dipilih.
+ */
+@Composable
+private fun TweakSubTabSwitcher(
+    selected: TweakSubTab,
+    onSelect: (TweakSubTab) -> Unit,
+    showGameProfileTab: Boolean,
+) {
+    if (!showGameProfileTab) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        TweakSubTabButton(
+            label = stringResource(R.string.nav_tweak),
+            selected = selected == TweakSubTab.TWEAK,
+            onClick = { onSelect(TweakSubTab.TWEAK) },
+            modifier = Modifier.weight(1f),
+        )
+        TweakSubTabButton(
+            label = stringResource(R.string.nav_game_profile),
+            selected = selected == TweakSubTab.GAME_PROFILE,
+            onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun TweakSubTabButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

@@ -66,6 +66,16 @@ data class AppPreferences(
     // "SHIZUKU", "ROOT", atau null (belum memilih/direset). Dipakai supaya
     // Shizuku dan Root tidak pernah aktif bersamaan — lihat PrivilegeManager.
     val preferredPrivilegeBackend: String? = null,
+    // Game Profile (khusus Root) — lihat data/GameProfile.kt & GameProfileMonitorService.
+    // Map package name -> tweak root yang tersimpan untuk game itu.
+    val gameProfiles: Map<String, GameProfile> = emptyMap(),
+    // Package name game yang SEDANG diterapkan profil-nya oleh
+    // GameProfileMonitorService (null kalau tidak ada game profile yang
+    // sedang aktif dipantau). Disimpan persist supaya kalau service sempat
+    // mati (mis. proses AetherX di-kill sistem) sementara game masih
+    // terbuka, saat service hidup lagi ia tahu tweak profil mana yang
+    // seharusnya sedang aktif dan perlu direset saat game itu ditutup.
+    val activeGameProfilePackage: String? = null,
 )
 
 /**
@@ -135,6 +145,11 @@ class AetherXPreferences(private val context: Context) {
         // Backend privilese pilihan pengguna ("SHIZUKU"/"ROOT"), lihat
         // AppPreferences.preferredPrivilegeBackend di atas.
         val PREFERRED_PRIVILEGE_BACKEND = stringPreferencesKey("preferred_privilege_backend")
+
+        // Game Profile: satu string JSON berisi seluruh map packageName -> GameProfile
+        // (lihat GameProfileSerializer) dan package yang sedang aktif dipantau.
+        val GAME_PROFILES_JSON = stringPreferencesKey("game_profiles_json")
+        val ACTIVE_GAME_PROFILE_PACKAGE = stringPreferencesKey("active_game_profile_package")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -177,6 +192,8 @@ class AetherXPreferences(private val context: Context) {
             licenseKey = prefs[Keys.LICENSE_KEY],
             licenseExpiresAtMillis = prefs[Keys.LICENSE_EXPIRES_AT_MILLIS],
             preferredPrivilegeBackend = prefs[Keys.PREFERRED_PRIVILEGE_BACKEND],
+            gameProfiles = GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON]),
+            activeGameProfilePackage = prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE],
         )
     }
 
@@ -328,5 +345,60 @@ class AetherXPreferences(private val context: Context) {
     /** Menghapus pilihan backend privilese — dipakai saat pengguna memilih "Ganti metode". */
     suspend fun clearPreferredPrivilegeBackend() {
         context.dataStore.edit { prefs -> prefs.remove(Keys.PREFERRED_PRIVILEGE_BACKEND) }
+    }
+
+    /**
+     * Menyimpan/memperbarui satu [GameProfile]. Kalau profil ini tidak punya
+     * satupun tweak yang aktif ([GameProfile.hasAnyTweakEnabled] false),
+     * entrinya dihapus sepenuhnya dari map alih-alih disimpan sebagai profil
+     * kosong — supaya daftar tersimpan tidak menumpuk entri "semua OFF" yang
+     * tidak berguna.
+     */
+    suspend fun saveGameProfile(profile: GameProfile) {
+        context.dataStore.edit { prefs ->
+            val current = GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON]).toMutableMap()
+            if (profile.hasAnyTweakEnabled) {
+                current[profile.packageName] = profile
+            } else {
+                current.remove(profile.packageName)
+            }
+            prefs[Keys.GAME_PROFILES_JSON] = GameProfileSerializer.serialize(current)
+        }
+    }
+
+    /** Menghapus profil satu game sepenuhnya (dipakai tombol "Reset profil ini"). */
+    suspend fun deleteGameProfile(packageName: String) {
+        context.dataStore.edit { prefs ->
+            val current = GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON]).toMutableMap()
+            current.remove(packageName)
+            prefs[Keys.GAME_PROFILES_JSON] = GameProfileSerializer.serialize(current)
+        }
+    }
+
+    /**
+     * Menandai package name game yang SEDANG diterapkan profilnya oleh
+     * [com.aether.x.core.monitor.GameProfileMonitorService] (null untuk
+     * menandai "tidak ada game profile aktif" — dipanggil setelah reset).
+     */
+    suspend fun setActiveGameProfilePackage(packageName: String?) {
+        context.dataStore.edit { prefs ->
+            if (packageName == null) {
+                prefs.remove(Keys.ACTIVE_GAME_PROFILE_PACKAGE)
+            } else {
+                prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE] = packageName
+            }
+        }
+    }
+
+    /** Baca sekali (bukan Flow) package game profile yang sedang aktif, kalau ada. */
+    suspend fun getActiveGameProfilePackage(): String? {
+        val prefs = context.dataStore.data.first()
+        return prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE]
+    }
+
+    /** Baca sekali (bukan Flow) seluruh map profil game tersimpan. */
+    suspend fun getGameProfiles(): Map<String, GameProfile> {
+        val prefs = context.dataStore.data.first()
+        return GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON])
     }
 }

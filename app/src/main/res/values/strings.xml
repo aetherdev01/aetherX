@@ -170,6 +170,24 @@
     <string name="fps_monitor_notification_channel">Overlay Monitor FPS</string>
     <string name="fps_monitor_notification_title">Monitor FPS AetherX aktif</string>
     <string name="fps_monitor_notification_text">Ketuk untuk membuka pengaturan Monitor FPS</string>
+
+    <!-- Game Profile — khusus Root, sidebar di tab Tweak -->
+    <string name="nav_game_profile">Game Profile</string>
+    <string name="game_profile_subtitle">Tweak root otomatis diterapkan saat game dibuka, direset saat ditutup dari recent apps.</string>
+    <string name="game_profile_scope_disclaimer">Tweak kernel-level berlaku untuk seluruh sistem (bukan benar-benar terisolasi per aplikasi) — hindari menyalakan tweak yang sama secara manual di tab Tweak biasa supaya keduanya tidak saling menimpa.</string>
+    <string name="game_profile_root_required_title">Butuh Akses Root</string>
+    <string name="game_profile_root_required_desc">Game Profile memakai tweak kernel-level (governor CPU/GPU, swappiness, dst.) yang hanya bisa dijalankan lewat akses root sungguhan. Aktifkan Root di Izin Akses untuk memakai fitur ini.</string>
+    <string name="game_profile_empty_list">Tidak ada game dari daftar AetherX yang terpasang di perangkat ini.</string>
+    <string name="game_profile_search_hint">Cari game…</string>
+    <string name="game_profile_select_hint">Pilih game di daftar sebelah kiri untuk mengatur tweak khususnya.</string>
+    <string name="game_profile_active_badge">Sedang Diterapkan</string>
+    <string name="game_profile_configured_badge">%1$d tweak diatur</string>
+    <string name="game_profile_reset_button">Reset Profil Ini</string>
+    <string name="game_profile_reset_toast">Profil game direset ke default.</string>
+    <string name="game_profile_saved_toast">Profil game disimpan.</string>
+    <string name="game_profile_monitor_notification_channel">Pemantau Game Profile</string>
+    <string name="game_profile_monitor_notification_title">Game Profile AetherX aktif</string>
+    <string name="game_profile_monitor_notification_text">Memantau game untuk menerapkan/mereset tweak otomatis</string>
     <string name="settings_section_about">Tentang</string>
     <string name="settings_maintainer_name">Aldi Ahmad Khoirudin</string>
     <string name="settings_maintainer_handle">@AetherDev22</string>

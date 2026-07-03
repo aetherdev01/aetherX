@@ -110,6 +110,13 @@ fun PermissionSetupScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshSupportingPermissions(context)
                 PrivilegeManager.refreshShizuku()
+                // Jaring pengaman: kalau ternyata sudah ada backend granted
+                // (mis. pengguna baru saja approve dialog Shizuku/su di luar
+                // app, atau ini pengguna lama sebelum fitur pemisahan ada)
+                // tapi preferensi belum sempat ter-set, adopsi otomatis di
+                // sini supaya kartu yang lain langsung terkunci begitu
+                // layar ini terlihat lagi.
+                PrivilegeManager.adoptExistingGrantIfNoPreference(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -118,6 +125,15 @@ fun PermissionSetupScreen(
 
     LaunchedEffect(Unit) {
         PrivilegeManager.refreshSupportingPermissions(context)
+    }
+
+    // Sama seperti jaring pengaman di atas, tapi untuk saat layar ini
+    // PERTAMA kali ditampilkan (bukan cuma saat resume dari background) —
+    // mis. pengguna lama yang baru buka layar Izin Akses pertama kali
+    // setelah update app dan status Shizuku/Root granted-nya sudah terisi
+    // duluan sebelum status.preferredBackend sempat diadopsi dari init().
+    LaunchedEffect(status.shizukuGranted, status.rootGranted) {
+        PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
     Scaffold(containerColor = BgVoid) { padding ->

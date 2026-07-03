@@ -83,5 +83,17 @@
                 android:value="fps_monitor_overlay" />
         </service>
 
+        <!-- Pemantau Game Profile (khusus Root): TIDAK menggambar overlay,
+             murni polling shell di background untuk menerapkan/mereset
+             tweak root sesuai game yang sedang dimainkan pengguna. -->
+        <service
+            android:name=".core.monitor.GameProfileMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_profile_monitor" />
+        </service>
+
     </application>
 </manifest>

@@ -298,4 +298,40 @@ class TweakRepository {
         applyIoSchedulerBoost(executor, enabled = false),
         applyVmHeapBoost(executor, enabled = false),
     )
+
+    /**
+     * Menerapkan seluruh tweak root sesuai satu [com.aether.x.data.GameProfile] —
+     * dipakai oleh [com.aether.x.core.monitor.GameProfileMonitorService] saat
+     * game yang punya profil tersimpan terdeteksi dibuka. Memakai fungsi
+     * `apply*` yang SAMA dengan yang dipakai section "Root" global di layar
+     * Tweak, hanya nilainya diambil dari profil per-game alih-alih dari
+     * [com.aether.x.ui.tweak.TweakUiState] global.
+     */
+    suspend fun applyGameProfile(
+        executor: ShellExecutor,
+        profile: GameProfile,
+    ): List<ShellResult> = listOf(
+        applyCpuPerformanceMode(executor, profile.cpuPerformanceMode),
+        applyRamPriority(executor, profile.ramPriorityMode),
+        applyThermalThrottleOverride(executor, profile.thermalThrottleOverride),
+        applyGpuPerformanceMode(executor, profile.gpuPerformanceMode),
+        applyIoSchedulerBoost(executor, profile.ioSchedulerBoost),
+        applyVmHeapBoost(executor, profile.vmHeapBoost),
+    )
+
+    /**
+     * Mengembalikan HANYA tweak root ("kernel-level": CPU/RAM/GPU/thermal/IO/
+     * VM heap) ke kondisi OFF/default, TANPA menyentuh tweak lain (Input
+     * Driver, refresh rate, game mode/DND) — dipakai saat game yang punya
+     * Game Profile aktif ditutup dari recent apps, supaya tweak global lain
+     * yang pengguna set manual di section non-root tidak ikut ter-reset.
+     */
+    suspend fun resetRootTweaksOnly(executor: ShellExecutor): List<ShellResult> = listOf(
+        applyCpuPerformanceMode(executor, enabled = false),
+        applyRamPriority(executor, enabled = false),
+        applyThermalThrottleOverride(executor, enabled = false),
+        applyGpuPerformanceMode(executor, enabled = false),
+        applyIoSchedulerBoost(executor, enabled = false),
+        applyVmHeapBoost(executor, enabled = false),
+    )
 }

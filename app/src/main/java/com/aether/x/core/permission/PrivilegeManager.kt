@@ -13,6 +13,7 @@ import com.aether.x.data.AetherXPreferences
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,7 +60,8 @@ object PrivilegeManager {
         refreshShizuku()
         checkRootSilently()
 
-        val preferences = AetherXPreferences(context.applicationContext)
+        val appContext = context.applicationContext
+        val preferences = AetherXPreferences(appContext)
         scope.launch {
             val saved = preferences.getPreferredPrivilegeBackend()
             val backend = when (saved) {
@@ -68,7 +70,47 @@ object PrivilegeManager {
                 else -> PrivilegeBackend.NONE
             }
             _status.update { it.copy(preferredBackend = backend) }
+
+            // Kalau belum ada preferensi tersimpan, kemungkinan besar ini
+            // pengguna LAMA yang sudah pernah mengizinkan Shizuku/Root
+            // sebelum fitur pemisahan ini ada — refreshShizuku()/
+            // checkRootSilently() di atas baru saja mengisi status granted-
+            // nya secara async, jadi tunggu sebentar lalu adopsi otomatis
+            // supaya kartu yang lain langsung terkunci tanpa pengguna harus
+            // menekan ulang tombol "Izinkan" yang statusnya sudah "Aktif".
+            if (backend == PrivilegeBackend.NONE) {
+                delay(1500)
+                adoptExistingGrantIfNoPreference(appContext)
+            }
         }
+    }
+
+    /**
+     * Kalau pengguna belum pernah memilih backend secara eksplisit TAPI
+     * salah satu (atau bahkan keduanya) sudah granted secara sistem — mis.
+     * pengguna lama dari sebelum fitur pemisahan Shizuku/Root ini ada —
+     * adopsi otomatis salah satunya sebagai preferensi (diutamakan Shizuku,
+     * konsisten dengan urutan fallback lama) supaya kartu yang lain langsung
+     * terkunci di layar Izin Akses tanpa aksi tambahan dari pengguna.
+     * Tidak melakukan apa-apa kalau preferensi sudah pernah diset atau kalau
+     * belum ada satupun backend yang granted.
+     *
+     * Dipanggil otomatis dari [init] (dengan jeda), dan juga dipanggil lagi
+     * dari [com.aether.x.ui.onboarding.PermissionSetupScreen] setiap kali
+     * layar itu resume — sebagai jaring pengaman kedua untuk kasus status
+     * granted baru terisi SETELAH jeda awal di [init] sudah lewat (mis.
+     * checkRootSilently() lambat karena perangkat sedang berat).
+     */
+    fun adoptExistingGrantIfNoPreference(context: Context) {
+        if (_status.value.preferredBackend != PrivilegeBackend.NONE) return
+
+        val backend = when {
+            _status.value.shizukuAvailable && _status.value.shizukuGranted -> PrivilegeBackend.SHIZUKU
+            _status.value.rootGranted -> PrivilegeBackend.ROOT
+            else -> null
+        } ?: return
+
+        selectBackend(context, backend)
     }
 
     /**

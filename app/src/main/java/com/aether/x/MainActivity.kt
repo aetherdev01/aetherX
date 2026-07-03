@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -19,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.aether.x.core.monitor.GameProfileMonitorService
+import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
@@ -100,6 +103,28 @@ private fun AetherXRoot(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Auto start/stop GameProfileMonitorService: service ini hanya berguna
+    // (dan hanya boleh berjalan — lihat perintah pengguna: "khusus root
+    // saja") kalau ADA minimal satu Game Profile tersimpan DAN backend
+    // privilese aktif saat ini adalah Root. Direaksikan di sini (app-wide,
+    // bukan di layar Game Profile saja) supaya tweak profil tetap
+    // aktif/terpantau walau pengguna sedang membuka tab lain (Membership,
+    // Settings) atau app di-background — persis kebutuhan "tweak aktif
+    // ketika game dibuka, reset kalau game ditutup dari recent apps"
+    // walaupun AetherX sendiri tidak sedang dilihat pengguna saat itu.
+    val context = LocalContext.current
+    val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
+    val appPrefsForService by preferences.preferences.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(privilegeStatus.activeBackend, appPrefsForService?.gameProfiles?.keys) {
+        val hasProfiles = appPrefsForService?.gameProfiles?.isNotEmpty() == true
+        val isRoot = privilegeStatus.activeBackend == PrivilegeBackend.ROOT
+        if (hasProfiles && isRoot) {
+            GameProfileMonitorService.start(context)
+        } else {
+            GameProfileMonitorService.stop(context)
+        }
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
