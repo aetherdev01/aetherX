@@ -853,7 +853,14 @@ bot.on("message", async (msg) => {
       sessions.set(chatId, session);
       return bot.sendMessage(
         chatId,
-        "Kirim deskripsi/changelog rilis ini (boleh multi-baris), atau `-` untuk kosongkan:",
+        [
+          "Kirim deskripsi/changelog rilis ini (boleh multi-baris), atau `-` untuk kosongkan.",
+          "",
+          "Format yang didukung di app:",
+          "• `**tebal**` dan `*miring*`",
+          "• `- item` di awal baris jadi bullet point",
+          "• `[blue]teks[/blue]` teks berwarna — pilihan: blue, green, amber, red",
+        ].join("\n"),
         { parse_mode: "Markdown" }
       );
     }

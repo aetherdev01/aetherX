@@ -3,6 +3,7 @@ package com.aether.x.ui.update
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,9 +30,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -113,15 +119,7 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
             }
 
             if (state.info.description.isNotBlank()) {
-                Text(
-                    text = state.info.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .heightIn(max = 180.dp)
-                        .verticalScroll(rememberScrollState()),
-                )
+                UpdateDescriptionBlock(description = state.info.description)
             }
 
             Button(
@@ -165,6 +163,90 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
                 Text(
                     text = stringResource(R.string.update_later_button),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Baris pendek dianggap "sudah muat" tanpa perlu dibatasi/di-scroll. */
+private const val COLLAPSED_LINE_THRESHOLD = 6
+private val COLLAPSED_MAX_HEIGHT = 180.dp
+
+/**
+ * Blok deskripsi/changelog di [UpdateGate]. Menerapkan markdown ringan lewat
+ * [parseUpdateDescription] (bold/italic/warna/bullet) dan menyesuaikan tata
+ * letak berdasarkan panjang teks:
+ * - Deskripsi pendek (≤ [COLLAPSED_LINE_THRESHOLD] baris): tampil penuh apa
+ *   adanya, tanpa scroll maupun tombol tambahan — tetap ringkas dan rapi.
+ * - Deskripsi panjang: dibatasi ke tinggi maksimum ([COLLAPSED_MAX_HEIGHT])
+ *   dengan scroll, plus tombol "Lihat selengkapnya" untuk expand ke tinggi
+ *   penuh (dengan animasi halus lewat [animateContentSize]) kalau pengguna
+ *   memang ingin membaca semuanya.
+ */
+@Composable
+private fun UpdateDescriptionBlock(description: String) {
+    val lines = parseUpdateDescription(description)
+    val isLong = lines.size > COLLAPSED_LINE_THRESHOLD
+    var expanded by remember(description) { mutableStateOf(!isLong) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Column(
+            modifier = if (expanded) {
+                Modifier.fillMaxWidth()
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = COLLAPSED_MAX_HEIGHT)
+                    .verticalScroll(rememberScrollState())
+            },
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            lines.forEach { line ->
+                if (line.isBullet) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AccentBlue,
+                        )
+                        Text(
+                            text = line.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Text(
+                        text = line.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        if (isLong) {
+            TextButton(onClick = { expanded = !expanded }) {
+                Text(
+                    text = stringResource(
+                        if (expanded) R.string.update_desc_collapse else R.string.update_desc_expand,
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AccentBlue,
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ExpandMore,
+                    contentDescription = null,
+                    tint = AccentBlue,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .rotate(if (expanded) 180f else 0f),
                 )
             }
         }
