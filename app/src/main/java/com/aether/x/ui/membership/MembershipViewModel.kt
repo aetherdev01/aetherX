@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aether.x.R
+import com.aether.x.core.security.AttemptGuardResult
+import com.aether.x.core.security.LicenseAttemptGuard
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.DeviceId
 import com.aether.x.data.LicenseRepository
@@ -46,6 +48,11 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
 
     private val preferences = AetherXPreferences(application)
     private val licenseRepository = LicenseRepository(application)
+
+    // Guard anti brute-force lapis kedua (lapis pertama ada di App Check +
+    // firestore.rules, lihat AppCheckInitializer.kt & SECURITY.md) — membatasi
+    // kecepatan percobaan aktivasi manual dari dalam app asli itu sendiri.
+    private val attemptGuard = LicenseAttemptGuard(preferences)
 
     /** Device ID (ANDROID_ID) perangkat ini — ditampilkan di tab Membership
      *  begitu langganan aktif, supaya pengguna tahu identitas perangkat yang
@@ -171,26 +178,50 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
         _errorMessage.value = null
         _isSubmitting.value = true
         viewModelScope.launch {
+            // Guard anti brute-force: cek lockout SEBELUM mengirim apa pun ke
+            // Firestore. Kalau sedang lockout, tampilkan sisa waktunya dan
+            // jangan sentuh network sama sekali (juga menghemat kuota Firestore
+            // dari percobaan yang sudah pasti akan gagal/percuma).
+            when (val guardCheck = attemptGuard.checkBeforeAttempt()) {
+                is AttemptGuardResult.Locked -> {
+                    _errorMessage.value = appString(R.string.membership_key_error_locked)
+                        .format(guardCheck.remainingSeconds)
+                    _isSubmitting.value = false
+                    return@launch
+                }
+                AttemptGuardResult.Allowed -> Unit
+            }
+
             when (val result = licenseRepository.activate(key)) {
                 is LicenseResult.Valid -> {
                     preferences.setLicenseCache(key, result.expiresAtMillis)
+                    attemptGuard.recordSuccess()
                     _status.value = MembershipUiStatus.ACTIVE
                     _expiresAtMillis.value = result.expiresAtMillis
                     _keyInput.value = ""
                 }
                 is LicenseResult.Expired -> {
+                    attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_expired)
                 }
                 LicenseResult.Revoked -> {
+                    attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_revoked)
                 }
                 LicenseResult.BoundToOtherDevice -> {
+                    attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_bound)
                 }
                 LicenseResult.NotFound -> {
+                    // Kode tidak ditemukan adalah sinyal PALING kuat dari
+                    // percobaan brute-force (tebakan acak) — selalu dihitung
+                    // sebagai kegagalan oleh guard.
+                    attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_not_found)
                 }
                 LicenseResult.NetworkError -> {
+                    // TIDAK dihitung sebagai percobaan gagal — offline/App
+                    // Check belum siap bukan indikasi brute-force.
                     _errorMessage.value = appString(R.string.membership_key_error_network)
                 }
             }

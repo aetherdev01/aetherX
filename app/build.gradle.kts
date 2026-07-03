@@ -131,4 +131,17 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
+
+    // ── Firebase App Check (Play Integrity) — GUARD anti brute-force lisensi ─
+    // Menandatangani setiap request Firestore dengan bukti bahwa request ini
+    // datang dari APK asli yang ditandatangani dengan kunci rilis kita dan
+    // lolos verifikasi integritas Google Play — bukan dari script/curl/APK
+    // hasil modifikasi. Firestore rules (lihat firestore.rules, fungsi
+    // isVerifiedApp()) menolak SEMUA request yang tidak membawa token App
+    // Check yang valid. Dependency ini TIDAK memakai version catalog (libs.*)
+    // karena entrinya belum ada di gradle/libs.versions.toml — koordinat Maven
+    // ditulis langsung di sini, cukup selaraskan versinya dengan BOM Firebase
+    // yang sudah dipakai (libs.firebase.bom) kalau nanti ingin dipindah ke
+    // catalog.
+    implementation("com.google.firebase:firebase-appcheck-playintegrity:18.0.0")
 }

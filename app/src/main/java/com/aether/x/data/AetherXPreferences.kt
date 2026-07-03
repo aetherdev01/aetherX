@@ -145,6 +145,18 @@ class AetherXPreferences(private val context: Context) {
         val LICENSE_KEY = stringPreferencesKey("license_key")
         val LICENSE_EXPIRES_AT_MILLIS = longPreferencesKey("license_expires_at_millis")
 
+        // ── Guard anti brute-force aktivasi lisensi (lihat LicenseAttemptGuard) ──
+        // Dipersist (bukan cuma in-memory) supaya lockout TETAP berlaku walau
+        // pengguna/penyerang menutup-buka ulang aplikasi untuk mereset state.
+        // FAILED_ATTEMPT_COUNT: jumlah percobaan gagal berturut-turut sejak
+        // window saat ini dimulai. Direset ke 0 begitu satu aktivasi berhasil.
+        val LICENSE_FAILED_ATTEMPT_COUNT = intPreferencesKey("license_failed_attempt_count")
+        // Epoch millis kapan window percobaan saat ini mulai dihitung.
+        val LICENSE_ATTEMPT_WINDOW_START_MILLIS = longPreferencesKey("license_attempt_window_start_millis")
+        // Epoch millis sampai kapan tombol aktivasi dikunci (lockout aktif).
+        // null/tidak ada = tidak sedang lockout.
+        val LICENSE_LOCKOUT_UNTIL_MILLIS = longPreferencesKey("license_lockout_until_millis")
+
         // Backend privilese pilihan pengguna ("SHIZUKU"/"ROOT"), lihat
         // AppPreferences.preferredPrivilegeBackend di atas.
         val PREFERRED_PRIVILEGE_BACKEND = stringPreferencesKey("preferred_privilege_backend")
@@ -334,6 +346,51 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs.remove(Keys.LICENSE_KEY)
             prefs.remove(Keys.LICENSE_EXPIRES_AT_MILLIS)
+        }
+    }
+
+    /**
+     * Snapshot state guard percobaan aktivasi lisensi saat ini — dibaca oleh
+     * [LicenseAttemptGuard] tiap kali pengguna menekan tombol aktivasi.
+     */
+    data class LicenseAttemptState(
+        val failedAttemptCount: Int,
+        val windowStartMillis: Long?,
+        val lockoutUntilMillis: Long?,
+    )
+
+    suspend fun getLicenseAttemptState(): LicenseAttemptState {
+        val prefs = context.dataStore.data.first()
+        return LicenseAttemptState(
+            failedAttemptCount = prefs[Keys.LICENSE_FAILED_ATTEMPT_COUNT] ?: 0,
+            windowStartMillis = prefs[Keys.LICENSE_ATTEMPT_WINDOW_START_MILLIS],
+            lockoutUntilMillis = prefs[Keys.LICENSE_LOCKOUT_UNTIL_MILLIS],
+        )
+    }
+
+    /** Mencatat satu percobaan aktivasi gagal beserta window & lockout terbarunya. */
+    suspend fun recordFailedLicenseAttempt(
+        failedAttemptCount: Int,
+        windowStartMillis: Long,
+        lockoutUntilMillis: Long?,
+    ) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LICENSE_FAILED_ATTEMPT_COUNT] = failedAttemptCount
+            prefs[Keys.LICENSE_ATTEMPT_WINDOW_START_MILLIS] = windowStartMillis
+            if (lockoutUntilMillis != null) {
+                prefs[Keys.LICENSE_LOCKOUT_UNTIL_MILLIS] = lockoutUntilMillis
+            } else {
+                prefs.remove(Keys.LICENSE_LOCKOUT_UNTIL_MILLIS)
+            }
+        }
+    }
+
+    /** Reset guard percobaan lisensi — dipanggil begitu satu aktivasi berhasil. */
+    suspend fun clearLicenseAttemptState() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(Keys.LICENSE_FAILED_ATTEMPT_COUNT)
+            prefs.remove(Keys.LICENSE_ATTEMPT_WINDOW_START_MILLIS)
+            prefs.remove(Keys.LICENSE_LOCKOUT_UNTIL_MILLIS)
         }
     }
 

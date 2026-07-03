@@ -1,17 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ==========================================================================
+    // GUARD GLOBAL — App Check
+    //
+    // isVerifiedApp() hanya bernilai true kalau request Firestore membawa token
+    // App Check yang valid, yang HANYA bisa didapat oleh app Android asli yang
+    // lolos verifikasi Play Integrity (lihat AppCheckInitializer.kt di sisi
+    // Android). Request langsung ke Firestore REST API pakai curl/Postman/script
+    // TIDAK PUNYA token ini, jadi otomatis ditolak di sini — sebelum kondisi lain
+    // di bawah sempat dievaluasi sama sekali.
+    //
+    // Ini adalah lapis pertahanan PALING PENTING terhadap brute-force/enumerasi
+    // kode lisensi: sebelumnya `licenses/{key}` punya `allow get: if true`, yang
+    // artinya siapa pun yang tahu/menebak sebuah key bisa langsung query REST
+    // API tanpa lewat app sama sekali dan tanpa batas kecepatan apa pun. Dengan
+    // App Check aktif, jalur itu tertutup total — brute-force harus lewat app
+    // asli, yang sudah dibatasi lebih lanjut oleh guard sisi client (lihat
+    // LicenseRepository.kt: cooldown + percobaan maksimal + backoff).
+    //
+    // CATATAN SETUP: App Check untuk Android WAJIB diaktifkan dulu di Firebase
+    // Console (Build > App Check > provider Play Integrity) sebelum rules ini
+    // di-deploy, kalau tidak app asli pun akan ikut ditolak. Lihat SECURITY.md.
+    function isVerifiedApp() {
+      return request.app != null;
+    }
+
     match /meta/user_counter {
       // Siapa saja boleh baca nilai counter saat ini (opsional, bisa dihapus
       // kalau tidak mau nilai count terbaca publik).
       allow get: if true;
 
       // Dokumen baru hanya boleh dibuat dengan count = 1 (alokasi user pertama).
-      allow create: if request.resource.data.count == 1;
+      allow create: if isVerifiedApp() && request.resource.data.count == 1;
 
       // Update hanya diterima kalau count naik PERSIS 1 dari nilai sebelumnya
       // (mencegah orang menulis angka sembarangan / lompat jauh).
-      allow update: if request.resource.data.count == resource.data.count + 1;
+      allow update: if isVerifiedApp() && request.resource.data.count == resource.data.count + 1;
 
       allow delete: if false;
     }
@@ -24,21 +50,14 @@ service cloud.firestore {
       // supaya LicenseRepository/MembershipViewModel bisa menampilkan status
       // lisensi device ini kalau diperlukan.
       //
-      // Sejak dokumen ini juga menyimpan `licenseActive`/`licenseExpiresAt`
-      // (lihat UserIdRepository & LicenseRepository), dokumen `devices/{id}`
-      // adalah SATU sumber kebenaran ringkasan per-device: siapa (userId),
-      // device mana (deviceId), dan status lisensinya — semua kebaca sekaligus
-      // dari satu dokumen di Firebase Console, tidak perlu gabung dua koleksi.
-      //
-      // CATATAN KEAMANAN: karena app ini tidak pakai Firebase Auth, rules
-      // tidak punya cara memverifikasi "pemanggil get ini benar pemilik
-      // ANDROID_ID tsb" — siapa pun yang tahu/menebak sebuah deviceId bisa
-      // ikut membaca dokumennya (isinya timestamp login, nomor urut userId,
-      // dan status aktif/tidaknya lisensi — bukan kode lisensi itu sendiri,
-      // yang tetap hanya ada di koleksi `licenses`). Kalau ke depan butuh
-      // proteksi lebih ketat, tambahkan Firebase Auth anonim dan ganti
-      // kondisi ini jadi `request.auth != null && request.auth.uid == deviceId`.
-      allow get: if true;
+      // CATATAN KEAMANAN: App Check sekarang WAJIB (isVerifiedApp()) untuk
+      // membaca dokumen ini juga — dulu "allow get: if true" berarti siapa pun
+      // yang tahu/menebak deviceId bisa ikut membaca isinya (timestamp login,
+      // nomor urut userId, status aktif/tidaknya lisensi). App Check menutup
+      // akses dari luar app asli. Kalau ke depan butuh proteksi lebih ketat
+      // lagi, tambahkan Firebase Auth anonim dan ganti kondisi ini jadi
+      // `request.auth != null && request.auth.uid == deviceId`.
+      allow get: if isVerifiedApp();
 
       // Dokumen baru: field identitas wajib ada dan valid, deviceId di data
       // harus cocok dengan document ID (mencegah orang menulis ke devices/A
@@ -48,7 +67,8 @@ service cloud.firestore {
       // `licenseExpiresAt` opsional saat create (device baru belum tentu
       // langsung punya lisensi) — makanya tidak divalidasi tipenya di sini,
       // hanya dibatasi lewat rule `update` di bawah kalau field itu diisi.
-      allow create: if request.resource.data.deviceId == deviceId
+      allow create: if isVerifiedApp()
+        && request.resource.data.deviceId == deviceId
         && request.resource.data.firstLoginAt == request.time
         && request.resource.data.lastLoginAt == request.time
         && request.resource.data.userId is number;
@@ -59,7 +79,8 @@ service cloud.firestore {
       // licenseExpiresAt boleh berubah — dua field terakhir inilah yang
       // dipakai LicenseRepository untuk mencatat status lisensi device ini
       // setiap kali aktivasi berhasil/berubah.
-      allow update: if request.resource.data.deviceId == resource.data.deviceId
+      allow update: if isVerifiedApp()
+        && request.resource.data.deviceId == resource.data.deviceId
         && request.resource.data.firstLoginAt == resource.data.firstLoginAt
         && request.resource.data.lastLoginAt == request.time;
 
@@ -73,6 +94,8 @@ service cloud.firestore {
       // blocking. HANYA bot Telegram (service account, bypass rules ini)
       // yang boleh mengubah dokumen ini lewat menu Maintenance di bot.js —
       // client Android sama sekali tidak pernah menulis ke sini.
+      // Dibiarkan publik (bukan isVerifiedApp()) karena dialog ini perlu
+      // muncul bahkan kalau App Check gagal/belum siap saat splash screen.
       allow get: if true;
       allow create, update: if false;
       allow delete: if false;
@@ -103,21 +126,33 @@ service cloud.firestore {
       // apakah serviceAccountKey.json yang dipakai bot benar-benar untuk project
       // Firebase yang sama dengan app/google-services.json (lihat EXPECTED_PROJECT_ID
       // di bot.js/.env).
+      //
+      // ==========================================================================
+      // GUARD ANTI BRUTE-FORCE (lihat SECURITY.md untuk detail lengkap):
+      //
+      // 1) App Check WAJIB (isVerifiedApp()) di SEMUA operasi termasuk `get`.
+      //    Ini menutup celah lama: dulu "allow get: if true" membuat Firestore
+      //    REST API menjadi ORACLE brute-force publik — siapa pun bisa mem-
+      //    beri ribuan tebakan kode per detik langsung ke REST API (tanpa lewat
+      //    app sama sekali) dan tahu kode mana yang valid hanya dari respons
+      //    200 vs 404, tanpa rate limit apa pun. Sekarang HANYA app Android
+      //    asli (lolos Play Integrity) yang bisa membaca/menulis di sini.
+      // 2) deviceId pada `update` divalidasi FORMATnya (regex 16 hex char,
+      //    sesuai format ANDROID_ID asli) — bukan cuma "string non-kosong".
+      allow get: if isVerifiedApp();
 
       // Dokumen lisensi HANYA dibuat lewat bot Telegram (service account, bypass
       // rules ini). Client Android tidak pernah boleh membuat kode lisensinya sendiri.
       allow create: if false;
 
-      // Boleh dibaca untuk mengecek status (dipakai LicenseGateScreen saat
-      // revalidasi dari cache lokal).
-      allow get: if true;
-
-      // Update HANYA diterima sebagai aktivasi kode yang belum terpakai:
-      // - deviceId sebelumnya harus null (belum pernah diaktivasi siapa pun)
-      // - deviceId baru harus diisi (string non-kosong) — devicenya sendiri
-      //   tidak bisa diverifikasi dari sisi rules (client bisa kirim device ID
-      //   apa saja), makanya field lain yang sensitif (expiresAt, status lama)
-      //   dikunci ketat supaya kerusakan akibat penyalahgunaan ini terbatas.
+      // Update HANYA diterima sebagai aktivasi kode yang belum terpakai, DAN
+      // HANYA dari app asli (App Check):
+      // - request harus lolos App Check (isVerifiedApp()) — menutup jalur bot
+      //   brute-force mencoba langsung menulis aktivasi lewat REST API.
+      // - deviceId sebelumnya harus null (belum pernah diaktivasi siapa pun).
+      // - deviceId baru harus STRING BERFORMAT ANDROID_ID VALID: tepat 16
+      //   karakter hex lowercase. Ini menutup celah lama di mana client bisa
+      //   mengirim deviceId string apa saja (mis. nilai rekayasa/kosong).
       // - status berubah dari "unused" ke "active" saja (tidak bisa langsung
       //   ke status lain, dan tidak bisa mengubah lisensi yang sudah revoked).
       // - activatedAt harus timestamp server asli (request.time).
@@ -125,10 +160,11 @@ service cloud.firestore {
       //   Telegram, lewat service account, yang bisa memperpanjang/mempersingkat
       //   masa berlaku).
       // - note (field opsional dari bot) tidak boleh diubah lewat client.
-      allow update: if resource.data.deviceId == null
+      allow update: if isVerifiedApp()
+        && resource.data.deviceId == null
         && resource.data.status == "unused"
         && request.resource.data.deviceId is string
-        && request.resource.data.deviceId.size() > 0
+        && request.resource.data.deviceId.matches('^[a-f0-9]{16}$')
         && request.resource.data.status == "active"
         && request.resource.data.activatedAt == request.time
         && request.resource.data.expiresAt == resource.data.expiresAt
