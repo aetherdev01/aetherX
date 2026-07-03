@@ -47,7 +47,7 @@ fun <T> TweakDropdown(
     description: String,
     options: List<T>,
     selected: T,
-    optionLabel: (T) -> String,
+    optionLabel: @Composable (T) -> String,
     onOptionSelected: (T) -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
