@@ -25,6 +25,7 @@ data class UpdateUiState(
     val visible: Boolean,
     val info: UpdateInfo,
     val currentVersionCode: Int,
+    val currentVersionName: String,
 )
 
 /**
@@ -36,6 +37,7 @@ class UpdateViewModel : ViewModel() {
 
     private val repository = UpdateRepository()
     private val currentVersionCode = BuildConfig.VERSION_CODE
+    private val currentVersionName = BuildConfig.VERSION_NAME
 
     private val _dismissedVersionCode = MutableStateFlow(0)
 
@@ -44,6 +46,7 @@ class UpdateViewModel : ViewModel() {
             visible = false,
             info = UpdateInfo(0, "", "", "", false, false),
             currentVersionCode = currentVersionCode,
+            currentVersionName = currentVersionName,
         ),
     )
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
@@ -57,6 +60,7 @@ class UpdateViewModel : ViewModel() {
                     visible = hasNewerVersion && !alreadyDismissed,
                     info = info,
                     currentVersionCode = currentVersionCode,
+                    currentVersionName = currentVersionName,
                 )
             }.collect { _state.value = it }
         }
