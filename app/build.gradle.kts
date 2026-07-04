@@ -160,4 +160,11 @@ dependencies {
     // yang sudah dipakai (libs.firebase.bom) kalau nanti ingin dipindah ke
     // catalog.
     implementation("com.google.firebase:firebase-appcheck-playintegrity:18.0.0")
+
+    // ── Ads: Unity Ads (rewarded ads untuk fitur non-member) ─────────────────
+    // Dipakai lewat abstraksi RewardedAdManager (lihat core/ads/RewardedAdManager.kt)
+    // — bukan direferensikan langsung di luar core/ads/UnityRewardedAdManager.kt.
+    // WAJIB isi GAME_ID & PLACEMENT_ID asli di UnityRewardedAdManager.kt sebelum
+    // build release (lihat TODO di file itu dan core/ads/README.md).
+    implementation(libs.unity.ads)
 }

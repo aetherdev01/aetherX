@@ -37,6 +37,8 @@
 #include <cstring>
 #include <android/log.h>
 
+#include "native_symbols.h"
+
 #define LOG_TAG "AetherXSig"
 // Sengaja TIDAK ada logging sama sekali di path verifikasi ini di build
 // release — logcat adalah salah satu cara termudah orang lain memahami
@@ -90,9 +92,15 @@ bool constantTimeEquals(const uint8_t* a, const uint8_t* b, int len) {
 
 }  // namespace
 
+// PENAMAAN FUNGSI: sengaja PENDEK (nvfy/nvfy2), bukan konvensi panjang
+// `Java_com_aether_x_..._nativeVerify` — karena native method di sini
+// didaftarkan MANUAL lewat RegisterNatives() di jni_onload.cpp, bukan
+// dicari otomatis oleh JVM lewat pencocokan nama simbol. Kotlin-nya
+// (SignatureGuard.kt: `external fun nativeVerify`) tidak perlu tahu atau
+// berubah sama sekali — pemetaan nama Kotlin -> fungsi C++ ini terjadi di
+// satu tempat saja (jni_onload.cpp), bukan lewat nama simbol yang panjang.
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_aether_x_core_security_SignatureGuard_nativeVerify(
-        JNIEnv* env, jobject /* thiz */, jbyteArray actualHashBytes) {
+nvfy(JNIEnv* env, jobject /* thiz */, jbyteArray actualHashBytes) {
 
     if (actualHashBytes == nullptr) {
         SIG_LOG("actualHashBytes null");
@@ -129,8 +137,6 @@ Java_com_aether_x_core_security_SignatureGuard_nativeVerify(
 // satu titik verifikasi (mis. hook nativeVerify lewat Frida) belum tentu
 // otomatis melewati titik kedua ini juga kalau tidak sadar keduanya ada.
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_aether_x_core_security_SignatureGuard_nativeVerifyRecheck(
-        JNIEnv* env, jobject thiz, jbyteArray actualHashBytes) {
-    return Java_com_aether_x_core_security_SignatureGuard_nativeVerify(
-        env, thiz, actualHashBytes);
+nvfy2(JNIEnv* env, jobject thiz, jbyteArray actualHashBytes) {
+    return nvfy(env, thiz, actualHashBytes);
 }

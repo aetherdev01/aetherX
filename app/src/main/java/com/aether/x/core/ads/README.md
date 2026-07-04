@@ -17,12 +17,9 @@ nyata nanti.
 
 ## Langkah yang MASIH PERLU dilakukan sebelum dipakai di fitur nyata
 
-1. **Tambahkan dependency Gradle** (project export ini tidak menyertakan
-   file `build.gradle` untuk diedit langsung):
-   ```kotlin
-   // app/build.gradle.kts
-   implementation("com.unity3d.ads:unity-ads:4.+")
-   ```
+1. ~~Tambahkan dependency Gradle~~ — **SUDAH** ditambahkan di
+   `app/build.gradle.kts` (`implementation(libs.unity.ads)`) dan
+   `gradle/libs.versions.toml` (entri `unityAds`/`unity-ads`).
 
 2. **Isi kredensial** di `UnityRewardedAdManager.kt`:
    - `GAME_ID` — dari Unity Ads Dashboard, per platform (Android).

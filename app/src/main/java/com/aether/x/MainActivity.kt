@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.monitor.GameProfileMonitorService
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
@@ -50,6 +51,17 @@ class MainActivity : ComponentActivity() {
         // sadar ada titik kedua di sini, app tetap force-close begitu
         // Activity ini dibuat.
         SignatureGuard.verifyOrDieAgain(this)
+
+        // Inisialisasi SDK rewarded ads di sini (bukan di AetherXApp) karena
+        // UnityRewardedAdManager.initialize() butuh parameter Activity, dan
+        // MainActivity adalah titik PERTAMA di app ini yang punya instance
+        // Activity sungguhan — Application (AetherXApp) tidak punya. Aman
+        // dipanggil di setiap onCreate MainActivity (mis. setelah rotasi
+        // konfigurasi/re-create) karena initialize() sendiri sudah no-op
+        // kalau sebelumnya sudah pernah berhasil (lihat implementasinya).
+        // Bukan hal kritis-keamanan seperti SignatureGuard di atas, jadi
+        // aman ditaruh setelahnya, sebelum UI dirender.
+        (AetherXApp.rewardedAdManager as? UnityRewardedAdManager)?.initialize(this)
 
         // Splash tetap tampil sampai status onboarding selesai dibaca dari DataStore,
         // supaya tidak ada "flash" layar kosong sebelum tujuan navigasi ditentukan.

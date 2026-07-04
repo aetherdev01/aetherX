@@ -56,6 +56,8 @@
 #include <cstring>
 #include <android/log.h>
 
+#include "native_symbols.h"
+
 #define LOG_TAG "AetherXIntegrity"
 #ifdef AETHERX_DEBUG_LOG
 #define GUARD_LOG(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -63,16 +65,10 @@
 #define GUARD_LOG(...)
 #endif
 
-// Deklarasi maju simbol dari sigcheck.cpp — kita ambil ALAMATnya (bukan
-// panggil fungsinya) untuk membaca byte code mentahnya langsung dari
-// memory proses yang sedang berjalan.
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_aether_x_core_security_SignatureGuard_nativeVerify(
-        JNIEnv* env, jobject thiz, jbyteArray actualHashBytes);
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_aether_x_core_security_SignatureGuard_nativeVerifyRecheck(
-        JNIEnv* env, jobject thiz, jbyteArray actualHashBytes);
+// nvfy/nvfy2 dideklarasikan di native_symbols.h (didefinisikan di
+// sigcheck.cpp) — kita ambil ALAMATnya (bukan panggil fungsinya) untuk
+// membaca byte code mentahnya langsung dari memory proses yang sedang
+// berjalan.
 
 namespace {
 
@@ -138,10 +134,8 @@ uint64_t decodeExpectedChecksum() {
 // dari memory proses yang sedang berjalan sekarang (bukan dari file di
 // disk) lewat alamat simbolnya.
 uint64_t computeLiveChecksum() {
-    const auto* verifyAddr = reinterpret_cast<const uint8_t*>(
-        &Java_com_aether_x_core_security_SignatureGuard_nativeVerify);
-    const auto* recheckAddr = reinterpret_cast<const uint8_t*>(
-        &Java_com_aether_x_core_security_SignatureGuard_nativeVerifyRecheck);
+    const auto* verifyAddr = reinterpret_cast<const uint8_t*>(&nvfy);
+    const auto* recheckAddr = reinterpret_cast<const uint8_t*>(&nvfy2);
 
     uint64_t hash = fnv1a64(verifyAddr, kScanLen, 0xCBF29CE484222325ULL);
     hash = fnv1a64(recheckAddr, kScanLen, hash);
@@ -153,8 +147,11 @@ uint64_t computeLiveChecksum() {
 
 }  // namespace
 
-// Dipanggil dari NativeIntegrityGuard.kt. Return kode int (bukan boolean)
-// supaya sisi Kotlin bisa membedakan tiga kondisi:
+// Dipanggil dari NativeIntegrityGuard.kt (didaftarkan sebagai
+// "nativeVerifyIntegrity" lewat RegisterNatives di jni_onload.cpp — nama
+// simbol C++ di sini (nvint) sengaja pendek dan tidak perlu cocok dengan
+// nama method Kotlin sama sekali). Return kode int (bukan boolean) supaya
+// sisi Kotlin bisa membedakan tiga kondisi:
 //   0 = MISMATCH — byte code fungsi verifikasi sudah berubah, kemungkinan dipatch.
 //   1 = MATCH — checksum cocok, fungsi verifikasi masih utuh seperti build resmi.
 //   2 = NOT_CONFIGURED — kEncodedChecksum masih placeholder (lihat catatan
@@ -162,8 +159,7 @@ uint64_t computeLiveChecksum() {
 //       menegakkan apa pun; Kotlin sebaiknya skip (bukan force-close ATAU
 //       anggap valid) sampai nilai asli diisi.
 extern "C" JNIEXPORT jint JNICALL
-Java_com_aether_x_core_security_NativeIntegrityGuard_nativeVerifyIntegrity(
-        JNIEnv* /* env */, jobject /* thiz */) {
+nvint(JNIEnv* /* env */, jobject /* thiz */) {
     if (kPlaceholderNotConfigured) {
         GUARD_LOG("checksum belum dikonfigurasi — lihat catatan REGENERASI CHECKSUM");
         return 2;

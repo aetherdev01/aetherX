@@ -27,6 +27,17 @@ libsu                   = "6.0.0"
 googleServices          = "4.5.0"
 firebaseBom             = "34.15.0"
 
+# Ads (rewarded ads untuk fitur non-member — lihat core/ads/RewardGate.kt)
+# CATATAN: "4.+" dipakai (bukan versi patch spesifik) supaya Gradle otomatis
+# resolve ke versi mayor-4 TERBARU yang benar-benar ada di Maven Central,
+# alih-alih menebak nomor patch tanpa akses internet untuk verifikasi —
+# versi sebelumnya ("4.15.1") kemungkinan besar tidak exist dan menyebabkan
+# SEMUA `import com.unity3d.ads.*` gagal resolve saat compile (Unresolved
+# reference 'unity3d'). Kalau build masih gagal, cek versi konkret yang
+# tersedia di https://dashboard.unity3d.com atau search.maven.org
+# (com.unity3d.ads:unity-ads) dan ganti "4.+" dengan nomor pasti hasil cek.
+unityAds                = "4.+"
+
 [plugins]
 android-application     = { id = "com.android.application",             version.ref = "agp"    }
 kotlin-android          = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
@@ -75,3 +86,6 @@ libsu-core                              = { group = "com.github.topjohnwu.libsu"
 firebase-bom                            = { group = "com.google.firebase",        name = "firebase-bom",               version.ref = "firebaseBom"         }
 firebase-analytics                      = { group = "com.google.firebase",        name = "firebase-analytics"                                               }
 firebase-firestore                      = { group = "com.google.firebase",        name = "firebase-firestore"                                               }
+
+# ── Ads: Unity Ads (rewarded ads — lihat core/ads/RewardGate.kt) ────────────
+unity-ads                               = { group = "com.unity3d.ads",            name = "unity-ads",                   version.ref = "unityAds"            }

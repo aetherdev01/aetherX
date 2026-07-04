@@ -64,15 +64,13 @@ class AetherXApp : Application() {
         AppCheckInitializer.init(this)
         PrivilegeManager.init(this)
 
-        // Inisialisasi SDK rewarded ads — SENGAJA ditaruh PALING TERAKHIR di
-        // antara semua langkah startup di atas. Berbeda dari App Check/guard
-        // keamanan, ini bukan hal kritis-keamanan; menundanya sedikit tidak
-        // apa-apa, dan preload() di dalamnya butuh initialize() Unity Ads
-        // selesai lebih dulu (lihat UnityRewardedAdManager.initialize).
-        // Kalau GAME_ID belum diisi (lihat TODO di UnityRewardedAdManager),
-        // ini otomatis no-op — RewardGate akan tetap berfungsi (fitur tetap
-        // bisa dipakai via kuota gratis), hanya jalur "tonton iklan untuk
-        // tambahan" yang belum aktif sampai kredensial diisi.
-        (rewardedAdManager as? UnityRewardedAdManager)?.initialize(this)
+        // Inisialisasi SDK rewarded ads SENGAJA TIDAK dilakukan di sini.
+        // UnityRewardedAdManager.initialize() butuh parameter bertipe
+        // Activity (persyaratan Unity Ads SDK), sedangkan AetherXApp adalah
+        // Application — dua tipe berbeda yang tidak bisa saling
+        // menggantikan (`this` di sini adalah Application, bukan Activity).
+        // Inisialisasi sesungguhnya terjadi di MainActivity.onCreate, titik
+        // pertama di app ini yang benar-benar punya instance Activity.
+        // Lihat komentar di sana untuk urutan pemanggilannya.
     }
 }

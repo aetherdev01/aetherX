@@ -21,7 +21,9 @@ import com.unity3d.ads.UnityAdsShowOptions
  *   ada lebih dari satu titik reward-gate, supaya statistik fill-rate/eCPM
  *   tiap fitur bisa dipantau terpisah di dashboard Unity Ads).
  *
- * Dependency Gradle yang perlu ditambahkan (belum ada di project ini):
+ * Dependency Gradle yang perlu ditambahkan (SUDAH ditambahkan di
+ * `app/build.gradle.kts` via `implementation(libs.unity.ads)` — lihat
+ * `gradle/libs.versions.toml` entri `unityAds`):
  * ```
  * // app/build.gradle(.kts)
  * implementation("com.unity3d.ads:unity-ads:4.+")
@@ -52,11 +54,15 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
     override val isReady: Boolean get() = loaded
 
     /**
-     * WAJIB dipanggil sekali (mis. dari [com.aether.x.AetherXApp.onCreate],
-     * SETELAH guard keamanan/App Check — inisialisasi SDK iklan pihak
-     * ketiga bukan hal kritis-keamanan, tidak perlu jadi prioritas paling
-     * awal) sebelum [preload]/[show] dipanggil. Aman dipanggil berkali-kali
-     * — no-op kalau sudah pernah berhasil init sebelumnya.
+     * WAJIB dipanggil sekali dengan instance [Activity] yang sedang
+     * foreground — lihat [com.aether.x.MainActivity.onCreate], titik
+     * PERTAMA di app ini yang punya Activity sungguhan (BUKAN dari
+     * [com.aether.x.AetherXApp.onCreate]: Application bukan Activity, dua
+     * tipe berbeda yang tidak bisa saling menggantikan di parameter ini —
+     * ini persis penyebab error compile "Argument type mismatch: actual
+     * type is 'AetherXApp', but 'Activity' was expected" kalau dipanggil
+     * dari sana). Aman dipanggil berkali-kali — no-op kalau sudah pernah
+     * berhasil init sebelumnya.
      */
     fun initialize(activity: Activity) {
         if (initialized || GAME_ID.isBlank()) {
