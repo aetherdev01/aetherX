@@ -33,9 +33,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -63,6 +65,13 @@ fun TweakScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Dipakai HANYA untuk parameter transient onKillBackgroundAppsChange di
+    // bawah (interstitial ad setelah aksi selesai) — lihat KDoc fungsi itu
+    // di TweakViewModel untuk alasan kenapa Activity tidak disimpan di
+    // ViewModel sendiri. LocalContext di sini selalu berupa Activity karena
+    // TweakScreen hanya pernah dirender dari MainActivity.
+    val activity = LocalContext.current as? Activity
 
     // Sub-tab "Game Profile" (lihat GameProfileScreen) hanya relevan untuk
     // backend Root — kalau pengguna beralih ke Shizuku sementara sub-tab ini
@@ -261,7 +270,7 @@ fun TweakScreen(
                         label = stringResource(R.string.tweak_kill_background_apps),
                         description = stringResource(R.string.tweak_kill_background_apps_desc),
                         checked = state.killBackgroundApps,
-                        onCheckedChange = viewModel::onKillBackgroundAppsChange,
+                        onCheckedChange = { checked -> viewModel.onKillBackgroundAppsChange(checked, activity) },
                         icon = Icons.Outlined.CleaningServices,
                     )
                 }

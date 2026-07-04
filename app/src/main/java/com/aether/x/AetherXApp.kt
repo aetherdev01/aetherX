@@ -1,7 +1,10 @@
 package com.aether.x
 
 import android.app.Application
+import com.aether.x.core.ads.InterstitialAdGate
+import com.aether.x.core.ads.InterstitialAdManager
 import com.aether.x.core.ads.RewardedAdManager
+import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
@@ -35,6 +38,18 @@ class AetherXApp : Application() {
         val rewardedAdManager: RewardedAdManager by lazy {
             UnityRewardedAdManager(testMode = BuildConfig.DEBUG)
         }
+
+        // Sama alasannya dengan rewardedAdManager di atas: satu instance
+        // dipakai bersama supaya iklan yang sudah di-preload di satu layar
+        // tidak "hilang" saat pindah layar, dan supaya cooldown di
+        // InterstitialAdGate benar-benar global (bukan per-ViewModel).
+        val interstitialAdManager: InterstitialAdManager by lazy {
+            UnityInterstitialAdManager(testMode = BuildConfig.DEBUG)
+        }
+
+        val interstitialAdGate: InterstitialAdGate by lazy {
+            InterstitialAdGate(interstitialAdManager)
+        }
     }
 
     override fun onCreate() {
@@ -64,8 +79,9 @@ class AetherXApp : Application() {
         AppCheckInitializer.init(this)
         PrivilegeManager.init(this)
 
-        // Inisialisasi SDK rewarded ads SENGAJA TIDAK dilakukan di sini.
-        // UnityRewardedAdManager.initialize() butuh parameter bertipe
+        // Inisialisasi SDK ads (rewarded MAUPUN interstitial) SENGAJA TIDAK
+        // dilakukan di sini. UnityRewardedAdManager.initialize() dan
+        // UnityInterstitialAdManager.initialize() butuh parameter bertipe
         // Activity (persyaratan Unity Ads SDK), sedangkan AetherXApp adalah
         // Application — dua tipe berbeda yang tidak bisa saling
         // menggantikan (`this` di sini adalah Application, bukan Activity).

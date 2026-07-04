@@ -78,7 +78,21 @@ data class AppPreferences(
     // terbuka, saat service hidup lagi ia tahu tweak profil mana yang
     // seharusnya sedang aktif dan perlu direset saat game itu ditutup.
     val activeGameProfilePackage: String? = null,
-)
+) {
+    /**
+     * Status membership dari CACHE LOKAL saja (tanpa network call) — sumber
+     * kebenaran sesungguhnya tetap di Firestore lewat [com.aether.x.data.LicenseRepository],
+     * ini murni untuk keputusan cepat/non-kritis seperti "boleh tampilkan
+     * iklan atau tidak" di titik-titik yang tidak sepadan menunggu round-trip
+     * jaringan (mis. [com.aether.x.core.ads.InterstitialAdGate] dipanggil
+     * dari [com.aether.x.ui.tweak.TweakViewModel]). Logika ini SENGAJA sama
+     * dengan yang dipakai [com.aether.x.ui.membership.MembershipViewModel]
+     * untuk menentukan [com.aether.x.ui.membership.MembershipUiStatus.ACTIVE]
+     * (licenseKey ada DAN belum lewat expiresAtMillis).
+     */
+    val isMembershipActive: Boolean
+        get() = licenseKey != null && (licenseExpiresAtMillis ?: 0L) > System.currentTimeMillis()
+}
 
 /**
  * Sumber kebenaran untuk preferensi pengguna: status onboarding, preferensi

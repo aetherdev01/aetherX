@@ -11,15 +11,25 @@ import com.unity3d.ads.UnityAdsShowOptions
 /**
  * Implementasi [RewardedAdManager] memakai Unity Ads (`com.unity3d.ads:unity-ads`).
  *
- * *** WAJIB DIISI SEBELUM DIPAKAI DI BUILD RELEASE ***
- * [GAME_ID] dan [PLACEMENT_ID] di bawah masih placeholder kosong. Isi
- * dengan nilai asli dari Unity Ads Dashboard (unity.com/products/unity-ads
- * -> Monetization -> project AetherX -> Ad Units) sebelum build release:
- * - GAME_ID: satu per platform (Android/iOS berbeda), bukan per placement.
- * - PLACEMENT_ID: id ad unit rewarded yang dibuat khusus untuk fitur ini
- *   (disarankan buat placement TERPISAH dari placement lain kalau nanti
- *   ada lebih dari satu titik reward-gate, supaya statistik fill-rate/eCPM
- *   tiap fitur bisa dipantau terpisah di dashboard Unity Ads).
+ * [GAME_ID] dan [PLACEMENT_ID] di bawah sudah diisi dari Unity Ads
+ * Dashboard (unity.com/products/unity-ads -> Monetization -> project
+ * AetherX -> Ad Units):
+ * - GAME_ID: Game ID Android project ini (satu per platform, bukan per
+ *   placement — JANGAN keliru dengan Game ID iOS kalau project punya dua).
+ * - PLACEMENT_ID: id ad unit rewarded ("Rewarded_Android"). Kalau nanti
+ *   ada titik reward-gate lain yang mau dipantau fill-rate/eCPM-nya
+ *   terpisah, buat placement baru di dashboard dan sesuaikan konstanta ini
+ *   (atau naikkan jadi parameter constructor kalau perlu lebih dari satu
+ *   rewarded placement aktif bersamaan).
+ *
+ * Kalau error muncul saat init/load berupa sesuatu seperti "game id belum
+ * didefinisikan" / ad unit tidak ditemukan padahal GAME_ID & PLACEMENT_ID
+ * di atas sudah benar, itu HAMPIR PASTI bukan bug kode — cek di Unity Ads
+ * Dashboard: (1) GAME_ID ini benar Game ID *Android* project (bukan iOS),
+ * (2) ad unit "Rewarded_Android" statusnya "Live" (bukan draft), (3)
+ * package name Android di dashboard cocok dengan applicationId app ini,
+ * (4) kalau project/ad unit baru dibuat, tunggu propagasi (bisa sampai
+ * beberapa jam) sebelum dicoba lagi.
  *
  * Dependency Gradle yang perlu ditambahkan (SUDAH ditambahkan di
  * `app/build.gradle.kts` via `implementation(libs.unity.ads)` — lihat
@@ -38,11 +48,11 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
     private companion object {
         const val TAG = "UnityRewardedAdManager"
 
-        // TODO: isi dengan Game ID Android asli dari Unity Ads Dashboard sebelum rilis.
-        const val GAME_ID = ""
+        // Game ID Android dari Unity Ads Dashboard (project AetherX).
+        const val GAME_ID = "6091240"
 
-        // TODO: isi dengan Placement ID rewarded ad asli dari Unity Ads Dashboard sebelum rilis.
-        const val PLACEMENT_ID = ""
+        // Placement ID ad unit rewarded dari Unity Ads Dashboard.
+        const val PLACEMENT_ID = "Rewarded_Android"
     }
 
     @Volatile

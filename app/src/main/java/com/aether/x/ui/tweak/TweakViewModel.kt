@@ -1,8 +1,10 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.AetherXApp
 import com.aether.x.R
 import com.aether.x.core.apps.DetectedGame
 import com.aether.x.core.apps.GameLauncher
@@ -204,8 +206,16 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
      * proses aplikasi pihak ketiga yang berjalan di background lalu switch
      * otomatis kembali OFF sesaat kemudian supaya jelas ini bukan status
      * yang "menyala terus", melainkan tombol pembersih RAM instan.
+     *
+     * [activity] dipakai HANYA untuk menampilkan interstitial ad SETELAH
+     * aksi kill background apps selesai (lihat [InterstitialAdGate]) —
+     * tidak disimpan sebagai field ViewModel (menghindari leak), cukup
+     * lewat sebagai parameter transient dari Composable pemanggil (lihat
+     * pemanggilan di TweakScreen). Boleh null (mis. context bukan Activity)
+     * — kalau null, interstitial otomatis dilewati tanpa efek lain; aksi
+     * kill background apps sendiri tetap berjalan normal.
      */
-    fun onKillBackgroundAppsChange(checked: Boolean) {
+    fun onKillBackgroundAppsChange(checked: Boolean, activity: Activity? = null) {
         if (!checked) return
         _state.update { it.copy(killBackgroundApps = true) }
         viewModelScope.launch {
@@ -225,6 +235,16 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             _state.update { it.copy(killBackgroundApps = false) }
+
+            // Interstitial TIDAK PERNAH memblokir aksi di atas — sudah
+            // selesai dijalankan duluan, ini murni transisi sesudahnya.
+            // InterstitialAdGate sendiri sudah skip otomatis untuk member
+            // dan menjaga cooldown 1 menit, jadi tidak perlu dicek ulang
+            // di sini.
+            if (activity != null) {
+                val isMember = preferences.preferences.first().isMembershipActive
+                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+            }
         }
     }
 
