@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.aether.x">
 
-    <!-- Wajib di Android 11+ (API 30) agar getPackageInfo/getLaunchIntentForPackage
-         untuk Free Fire & Free Fire MAX tidak diblokir package visibility filtering. -->
+    <!-- QUERY_ALL_PACKAGES: WAJIB agar GameProfileCatalog (lihat file itu)
+         bisa mencocokkan SEMUA game di assets/gamelist.txt (500+ entri)
+         terhadap aplikasi yang benar-benar terpasang di perangkat lewat
+         PackageManager.getApplicationInfo(). Tanpa ini, Android 11+ (API 30)
+         package visibility filtering membuat PackageManager gagal melihat
+         hampir semua aplikasi lain kecuali yang didaftarkan eksplisit satu-
+         satu di <queries> — tidak praktis untuk daftar 500+ game yang terus
+         bertambah. Alternatif <queries> per-package SENGAJA tidak dipakai
+         di sini (itulah sebabnya sebelumnya hanya Free Fire yang terdeteksi,
+         game lain seperti Clash of Clans selalu gagal walau terpasang).
+         CATATAN Play Store: penggunaan QUERY_ALL_PACKAGES wajib dijustifikasi
+         saat submit ke Play Console (Policy > App content > Permissions
+         declaration) — jelaskan bahwa AetherX perlu mendeteksi & menerapkan
+         profil tweak untuk game yang terpasang dari katalog game yang
+         didukung, bukan untuk tujuan lain. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
     <queries>
-        <package android:name="com.dts.freefireth" />
-        <package android:name="com.dts.freefire.max" />
         <!-- Wajib agar Intent.ACTION_VIEW (buka tautan GitHub/Telegram di Tentang)
              bisa mendeteksi browser/aplikasi yang tersedia di perangkat. -->
         <intent>

@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.aether.x"
-        minSdk        = 26
+        minSdk        = 32
         targetSdk     = 35
         versionCode   = 110
         versionName   = "1.1 Beta"
