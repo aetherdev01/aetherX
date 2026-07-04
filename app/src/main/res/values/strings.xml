@@ -146,6 +146,35 @@
     <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Mendukung GPU Adreno (Snapdragon) maupun Mali/GED (MediaTek, Exynos). Butuh akses root.</string>
     <string name="tweak_io_scheduler_boost">I/O Scheduler: Latensi Rendah</string>
     <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan internal ke mode latensi rendah (kyber/bfq) supaya aset game lebih cepat dibaca dari storage. Butuh akses root.</string>
+
+    <!-- Kernel Manager — section terpisah di bawah Kernel Tuning (Root), baca/tulis nilai kernel mentah per-core -->
+    <string name="kernel_manager_title">Kernel Manager</string>
+    <string name="kernel_manager_version_format">Kernel %1$s</string>
+    <string name="kernel_manager_version_unknown">Versi kernel tidak terbaca</string>
+    <string name="kernel_manager_refresh_cd">Muat ulang</string>
+    <string name="kernel_manager_section_cpu">CPU per-core</string>
+    <string name="kernel_manager_core_label">Core %1$d</string>
+    <string name="kernel_manager_core_unavailable">Core %1$d: tidak tersedia</string>
+    <string name="kernel_manager_governor_label">Governor</string>
+    <string name="kernel_manager_governor_desc_format">Governor CPU untuk core %1$d</string>
+    <string name="kernel_manager_freq_min_label">Frekuensi minimum</string>
+    <string name="kernel_manager_freq_min_desc">Batas bawah clock — dari daftar step yang didukung kernel</string>
+    <string name="kernel_manager_freq_max_label">Frekuensi maksimum</string>
+    <string name="kernel_manager_freq_max_desc">Batas atas clock — dari daftar step yang didukung kernel</string>
+    <string name="kernel_manager_freq_mhz_format">%1$d MHz</string>
+    <string name="kernel_manager_section_gpu">GPU</string>
+    <string name="kernel_manager_gpu_unavailable">GPU tidak terdeteksi di jalur sysfs yang didukung</string>
+    <string name="kernel_manager_gpu_governor_label">Governor GPU</string>
+    <string name="kernel_manager_gpu_governor_desc">Governor devfreq GPU</string>
+    <string name="kernel_manager_section_thermal">Suhu (live)</string>
+    <string name="kernel_manager_thermal_empty">Tidak ada zona termal terbaca</string>
+    <string name="kernel_manager_thermal_zone_format">Zona %1$d</string>
+    <string name="kernel_manager_temp_celsius_format">%1$.1f°C</string>
+    <string name="kernel_manager_error_root_unavailable">Akses root tidak tersedia</string>
+    <string name="kernel_manager_error_core_frequency">Gagal mengubah frekuensi core %1$d</string>
+    <string name="kernel_manager_error_core_governor">Gagal mengubah governor core %1$d</string>
+    <string name="kernel_manager_error_gpu_frequency">Gagal mengubah frekuensi GPU</string>
+    <string name="kernel_manager_error_gpu_governor">Gagal mengubah governor GPU</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
     <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
     <string name="tweak_vm_heap_boost">VM Heap Boost</string>

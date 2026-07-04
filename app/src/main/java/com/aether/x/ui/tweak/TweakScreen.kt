@@ -274,6 +274,15 @@ fun TweakScreen(
                         icon = Icons.Outlined.CleaningServices,
                     )
                 }
+
+                // Section terpisah (bukan digabung ke SectionCard "Root" di
+                // atas) karena KernelManagerSection punya ViewModel sendiri
+                // (KernelManagerViewModel, dengan polling thermal berkala) —
+                // menyatukannya ke TweakViewModel akan mencampur dua siklus
+                // hidup data yang berbeda. Gating akses tetap SAMA PERSIS
+                // (blok if ROOT yang sama), karena baca/tulis sysfs mentah
+                // di sini butuh akses root sungguhan seperti section di atas.
+                KernelManagerSection()
             }
 
             OutlinedButton(
