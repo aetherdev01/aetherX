@@ -152,7 +152,7 @@ class KernelInfoReader {
         val script = """
             for p in /sys/class/kgsl/kgsl-3d0/devfreq /sys/devices/platform/*/kgsl-3d0/devfreq \
                      /sys/class/devfreq/*mali* /sys/devices/platform/*/devfreq/*mali*; do
-              if [ -d "$p" ]; then
+              if [ -d "${'$'}p" ]; then
                 echo "===PATH===${'$'}p"
                 cat "${'$'}p/cur_freq" 2>/dev/null
                 echo ---
