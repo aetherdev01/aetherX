@@ -1,6 +1,8 @@
 package com.aether.x
 
 import android.app.Application
+import com.aether.x.core.ads.RewardedAdManager
+import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
 import com.aether.x.core.security.NativeIntegrityGuard
@@ -17,6 +19,21 @@ class AetherXApp : Application() {
                     .setFlags(Shell.FLAG_REDIRECT_STDERR)
                     .setTimeout(10)
             )
+        }
+
+        // Singleton tunggal untuk seluruh app — SENGAJA satu instance yang
+        // dipakai bersama oleh semua ViewModel yang butuh RewardGate (lihat
+        // core/ads/RewardGate.kt), bukan dibuat baru per ViewModel. Kalau
+        // dibuat baru tiap ViewModel, iklan yang sudah selesai di-preload di
+        // satu layar akan "hilang" (instance manager-nya beda) saat pindah
+        // ke layar lain yang punya reward-gate juga.
+        //
+        // BuildConfig.DEBUG dipakai sebagai testMode Unity Ads — WAJIB true
+        // untuk build debug (supaya tidak menghabiskan/merusak metrik
+        // inventory iklan asli saat development) dan otomatis false di
+        // build release.
+        val rewardedAdManager: RewardedAdManager by lazy {
+            UnityRewardedAdManager(testMode = BuildConfig.DEBUG)
         }
     }
 
@@ -46,5 +63,16 @@ class AetherXApp : Application() {
         // Check. Lihat SECURITY.md dan firestore.rules (fungsi isVerifiedApp()).
         AppCheckInitializer.init(this)
         PrivilegeManager.init(this)
+
+        // Inisialisasi SDK rewarded ads — SENGAJA ditaruh PALING TERAKHIR di
+        // antara semua langkah startup di atas. Berbeda dari App Check/guard
+        // keamanan, ini bukan hal kritis-keamanan; menundanya sedikit tidak
+        // apa-apa, dan preload() di dalamnya butuh initialize() Unity Ads
+        // selesai lebih dulu (lihat UnityRewardedAdManager.initialize).
+        // Kalau GAME_ID belum diisi (lihat TODO di UnityRewardedAdManager),
+        // ini otomatis no-op — RewardGate akan tetap berfungsi (fitur tetap
+        // bisa dipakai via kuota gratis), hanya jalur "tonton iklan untuk
+        // tambahan" yang belum aktif sampai kredensial diisi.
+        (rewardedAdManager as? UnityRewardedAdManager)?.initialize(this)
     }
 }

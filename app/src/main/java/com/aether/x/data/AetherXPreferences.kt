@@ -165,6 +165,13 @@ class AetherXPreferences(private val context: Context) {
         // (lihat GameProfileSerializer) dan package yang sedang aktif dipantau.
         val GAME_PROFILES_JSON = stringPreferencesKey("game_profiles_json")
         val ACTIVE_GAME_PROFILE_PACKAGE = stringPreferencesKey("active_game_profile_package")
+
+        // Reward-gate (rewarded ads): satu string JSON berisi map
+        // featureKey -> RewardQuotaState (lihat RewardQuotaSerializer di
+        // data/RewardQuota.kt dan core/ads/RewardGate.kt). Satu key ini
+        // menampung kuota SEMUA fitur yang nanti dipasangi reward-gate,
+        // supaya menambah fitur baru tidak perlu key DataStore baru.
+        val REWARD_QUOTA_JSON = stringPreferencesKey("reward_quota_json")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -463,5 +470,30 @@ class AetherXPreferences(private val context: Context) {
     suspend fun getGameProfiles(): Map<String, GameProfile> {
         val prefs = context.dataStore.data.first()
         return GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON])
+    }
+
+    /**
+     * Baca state kuota reward-gate untuk SATU [featureKey] saja (bukan Flow
+     * — dipanggil sesaat sebelum aksi dijalankan oleh [com.aether.x.core.ads.RewardGate],
+     * bukan diamati terus-menerus oleh UI). Kalau belum pernah ada entri
+     * untuk featureKey ini, atau [dateKey] tersimpan sudah beda dari hari
+     * ini (hari sudah berganti), kembalikan state kosong untuk [dateKey]
+     * yang diminta — ini yang membuat kuota gratis otomatis reset tiap hari
+     * tanpa job/scheduler terpisah.
+     */
+    suspend fun getRewardQuota(featureKey: String, dateKey: String): RewardQuotaState {
+        val prefs = context.dataStore.data.first()
+        val all = RewardQuotaSerializer.deserialize(prefs[Keys.REWARD_QUOTA_JSON])
+        val stored = all[featureKey] ?: return RewardQuotaState.empty(featureKey, dateKey)
+        return if (stored.dateKey == dateKey) stored else RewardQuotaState.empty(featureKey, dateKey)
+    }
+
+    /** Menyimpan/memperbarui state kuota reward-gate satu [featureKey]. */
+    suspend fun setRewardQuota(state: RewardQuotaState) {
+        context.dataStore.edit { prefs ->
+            val current = RewardQuotaSerializer.deserialize(prefs[Keys.REWARD_QUOTA_JSON]).toMutableMap()
+            current[state.featureKey] = state
+            prefs[Keys.REWARD_QUOTA_JSON] = RewardQuotaSerializer.serialize(current)
+        }
     }
 }
