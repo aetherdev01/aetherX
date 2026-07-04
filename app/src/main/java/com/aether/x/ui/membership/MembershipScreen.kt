@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,7 @@ fun MembershipScreen(
     val keyInput by viewModel.keyInput.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
+    val activationStage by viewModel.activationStage.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier
@@ -195,17 +197,44 @@ fun MembershipScreen(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
                 ) {
-                    if (isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.height(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.membership_activate_button),
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                    // Crossfade dikunci ke pasangan (isSubmitting, stage) supaya
+                    // bukan cuma transisi teks<->spinner yang halus, tapi juga
+                    // perpindahan ANTAR tahap (mis. "Menghubungkan..." ->
+                    // "Memverifikasi...") ikut fade, bukan berganti mendadak.
+                    // Label tahap mengikuti progres NYATA di MembershipViewModel
+                    // (guard lokal -> transaksi Firestore -> evaluasi hasil),
+                    // bukan animasi berbasis delay buatan.
+                    Crossfade(
+                        targetState = isSubmitting to activationStage,
+                        label = "membership_activate_button_state",
+                    ) { (submitting, stage) ->
+                        if (submitting) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp,
+                                )
+                                Text(
+                                    text = stringResource(
+                                        when (stage) {
+                                            ActivationStage.CHECKING_GUARD -> R.string.membership_activate_stage_checking_guard
+                                            ActivationStage.CONNECTING -> R.string.membership_activate_stage_connecting
+                                            ActivationStage.VERIFYING -> R.string.membership_activate_stage_verifying
+                                        },
+                                    ),
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(R.string.membership_activate_button),
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }

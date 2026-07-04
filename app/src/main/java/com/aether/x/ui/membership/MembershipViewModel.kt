@@ -22,6 +22,19 @@ import kotlinx.coroutines.launch
 enum class MembershipUiStatus { CHECKING, INACTIVE, ACTIVE, EXPIRED }
 
 /**
+ * Tahapan aktivasi yang ditampilkan di tombol saat [MembershipViewModel.isSubmitting]
+ * true — masing-masing merepresentasikan langkah NYATA yang sedang terjadi di
+ * [activate], bukan animasi buatan berbasis delay. Urutannya:
+ * 1. [CHECKING_GUARD] — mengecek lockout anti brute-force lokal ([LicenseAttemptGuard])
+ *    sebelum menyentuh jaringan sama sekali.
+ * 2. [CONNECTING] — transaksi Firestore ([LicenseRepository.activate]) sedang
+ *    berjalan: membuka koneksi ke server.
+ * 3. [VERIFYING] — dipakai begitu koneksi tersambung, menunggu hasil evaluasi
+ *    kode (ditemukan/valid/revoked/dsb) dari transaksi yang sama.
+ */
+enum class ActivationStage { CHECKING_GUARD, CONNECTING, VERIFYING }
+
+/**
  * Menampung seluruh state & logika layar Membership — dipisah dari tab
  * Pengaturan (lihat MEMBERSHIP di [com.aether.x.ui.main.MainScreen]) supaya
  * jadi tab tersendiri di bottom navigation, terpisah dari pengaturan umum
@@ -75,6 +88,9 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
+
+    private val _activationStage = MutableStateFlow(ActivationStage.CHECKING_GUARD)
+    val activationStage: StateFlow<ActivationStage> = _activationStage.asStateFlow()
 
     init {
         // Amati licenseKey yang tersimpan di preferences. distinctUntilChanged
@@ -177,6 +193,7 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
         }
         _errorMessage.value = null
         _isSubmitting.value = true
+        _activationStage.value = ActivationStage.CHECKING_GUARD
         viewModelScope.launch {
             // Guard anti brute-force: cek lockout SEBELUM mengirim apa pun ke
             // Firestore. Kalau sedang lockout, tampilkan sisa waktunya dan
@@ -192,8 +209,18 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                 AttemptGuardResult.Allowed -> Unit
             }
 
+            // Guard lolos: sekarang benar-benar menghubungi Firestore. Stage
+            // CONNECTING tetap tampil selama transaksi berjalan (network I/O
+            // nyata, bukan delay buatan) sampai [LicenseRepository.activate]
+            // mengembalikan hasil.
+            _activationStage.value = ActivationStage.CONNECTING
+
             when (val result = licenseRepository.activate(key)) {
                 is LicenseResult.Valid -> {
+                    // Koneksi sudah dapat balasan dari server; tahap terakhir
+                    // sebelum status di-commit ke UI adalah mengevaluasi hasil
+                    // yang baru diterima (cocokkan device, cek kadaluarsa, dsb).
+                    _activationStage.value = ActivationStage.VERIFYING
                     preferences.setLicenseCache(key, result.expiresAtMillis)
                     attemptGuard.recordSuccess()
                     _status.value = MembershipUiStatus.ACTIVE
@@ -201,14 +228,17 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     _keyInput.value = ""
                 }
                 is LicenseResult.Expired -> {
+                    _activationStage.value = ActivationStage.VERIFYING
                     attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_expired)
                 }
                 LicenseResult.Revoked -> {
+                    _activationStage.value = ActivationStage.VERIFYING
                     attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_revoked)
                 }
                 LicenseResult.BoundToOtherDevice -> {
+                    _activationStage.value = ActivationStage.VERIFYING
                     attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_bound)
                 }
@@ -216,6 +246,7 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     // Kode tidak ditemukan adalah sinyal PALING kuat dari
                     // percobaan brute-force (tebakan acak) — selalu dihitung
                     // sebagai kegagalan oleh guard.
+                    _activationStage.value = ActivationStage.VERIFYING
                     attemptGuard.recordFailure()
                     _errorMessage.value = appString(R.string.membership_key_error_not_found)
                 }
