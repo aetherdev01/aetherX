@@ -160,8 +160,8 @@ private fun GameProfileListPane(
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         // Judul besar "Game Profile" TIDAK diulang di sini — sudah jelas
-        // dari TweakSubTabSwitcher di atas mana sub-tab yang sedang aktif,
-        // dan TweakHeader ("Tweak" + pill ID) tetap tampil permanen di
+        // dari drawer navigasi mana sub-tab yang sedang aktif, dan
+        // TweakHeader ("AetherX" + pill ID) tetap tampil permanen di
         // puncak layar terlepas dari sub-tab mana yang dipilih.
         Text(
             text = stringResource(R.string.game_profile_subtitle),
@@ -259,6 +259,16 @@ private fun GameListRow(
                 color = TextPrimary,
                 maxLines = 1,
             )
+            // Nama paket ditampilkan kecil di bawah nama game — identitas
+            // pasti (dua game bisa punya label sama tapi package name selalu
+            // unik) sekaligus memenuhi permintaan rework: package name ikut
+            // tampil di info aplikasi, bukan cuma di panel detail.
+            Text(
+                text = entry.packageName,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                maxLines = 1,
+            )
             if (isActive) {
                 StatusPill(
                     text = stringResource(R.string.game_profile_active_badge),
@@ -279,7 +289,17 @@ private fun GameListRow(
     }
 }
 
-/** Panel kanan/detail: toggle tweak root untuk satu game yang dipilih. */
+/**
+ * Panel kanan/detail (rework total — lihat perintah pengguna): dulu cuma
+ * header ringkas + satu SectionCard datar berisi 6 toggle berurutan tanpa
+ * pengelompokan. Sekarang:
+ * 1. Kartu identitas game (icon besar, badge status/jumlah tweak aktif).
+ * 2. Section "Info Aplikasi" — menampilkan nama paket (package name), yang
+ *    sebelumnya tidak ditampilkan sama sekali di info aplikasi manapun pada
+ *    layar ini.
+ * 3. Toggle tweak dikelompokkan per kategori (CPU, GPU & Termal, Sistem)
+ *    alih-alih satu daftar datar — lebih mudah dipindai sekilas.
+ */
 @Composable
 private fun GameProfileDetailPane(
     state: GameProfileUiState,
@@ -288,6 +308,8 @@ private fun GameProfileDetailPane(
 ) {
     val selectedEntry = state.installedGames.firstOrNull { it.packageName == state.selectedPackage }
     val profile = state.selectedProfile ?: return
+    val activeTweakCount = countEnabledTweaks(profile)
+    val totalTweakCount = 6
 
     Column(
         modifier = Modifier
@@ -304,35 +326,25 @@ private fun GameProfileDetailPane(
                     tint = TextPrimary,
                 )
             }
-            if (selectedEntry != null) {
-                Image(
-                    bitmap = selectedEntry.icon,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .padding(start = 4.dp),
+        }
+
+        if (selectedEntry != null) {
+            GameIdentityCard(
+                entry = selectedEntry,
+                isActive = selectedEntry.packageName == state.activeGameProfilePackage,
+                activeTweakCount = activeTweakCount,
+                totalTweakCount = totalTweakCount,
+            )
+
+            SectionCard(title = stringResource(R.string.game_profile_app_info_title)) {
+                GameInfoRow(
+                    label = stringResource(R.string.game_profile_app_info_package),
+                    value = selectedEntry.packageName,
                 )
-                Column(modifier = Modifier.padding(start = 12.dp)) {
-                    Text(
-                        text = selectedEntry.label,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TextPrimary,
-                    )
-                    if (selectedEntry.packageName == state.activeGameProfilePackage) {
-                        StatusPill(
-                            text = stringResource(R.string.game_profile_active_badge),
-                            containerColor = AccentGreen.copy(alpha = 0.16f),
-                            contentColor = AccentGreen,
-                            dotColor = AccentGreen,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
-                }
             }
         }
 
-        SectionCard(title = stringResource(R.string.tweak_section_root)) {
+        SectionCard(title = stringResource(R.string.game_profile_category_cpu)) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_cpu_performance),
                 description = stringResource(R.string.tweak_cpu_performance_desc),
@@ -347,6 +359,9 @@ private fun GameProfileDetailPane(
                 onCheckedChange = viewModel::onRamPriorityModeChange,
                 icon = Icons.Outlined.Memory,
             )
+        }
+
+        SectionCard(title = stringResource(R.string.game_profile_category_gpu)) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_gpu_performance),
                 description = stringResource(R.string.tweak_gpu_performance_desc),
@@ -361,6 +376,9 @@ private fun GameProfileDetailPane(
                 onCheckedChange = viewModel::onThermalThrottleOverrideChange,
                 icon = Icons.Outlined.Thermostat,
             )
+        }
+
+        SectionCard(title = stringResource(R.string.game_profile_category_system)) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_io_scheduler_boost),
                 description = stringResource(R.string.tweak_io_scheduler_boost_desc),
@@ -391,6 +409,78 @@ private fun GameProfileDetailPane(
                 style = MaterialTheme.typography.labelLarge,
             )
         }
+    }
+}
+
+/**
+ * Kartu identitas game di puncak panel detail: icon besar, nama game, dan
+ * ringkasan status dalam satu pandangan — menggantikan header baris tunggal
+ * yang sebelumnya cuma icon kecil + nama + badge kecil di sampingnya.
+ */
+@Composable
+private fun GameIdentityCard(
+    entry: InstalledGameEntry,
+    isActive: Boolean,
+    activeTweakCount: Int,
+    totalTweakCount: Int,
+) {
+    SectionCard(title = null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                bitmap = entry.icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+            )
+            Column(modifier = Modifier.padding(start = 14.dp)) {
+                Text(
+                    text = entry.label,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = if (activeTweakCount > 0) {
+                        stringResource(R.string.game_profile_summary_active_count, activeTweakCount, totalTweakCount)
+                    } else {
+                        stringResource(R.string.game_profile_summary_inactive)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (activeTweakCount > 0) AccentBlue else TextMuted,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                if (isActive) {
+                    StatusPill(
+                        text = stringResource(R.string.game_profile_active_badge),
+                        containerColor = AccentGreen.copy(alpha = 0.16f),
+                        contentColor = AccentGreen,
+                        dotColor = AccentGreen,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Baris info sederhana label/value — dipakai section "Info Aplikasi" (nama paket). */
+@Composable
+private fun GameInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+        )
     }
 }
 

@@ -44,3 +44,30 @@ fun SectionCard(
         }
     }
 }
+
+/**
+ * Varian [SectionCard] TANPA judul (title = null) — dipakai untuk kartu yang
+ * kontennya sudah punya identitas visual sendiri di baris pertama (mis.
+ * kartu identitas aplikasi di AboutScreen yang barisnya sudah berisi
+ * logo+nama+versi, sehingga label judul kartu tambahan jadi redundan).
+ */
+@Composable
+fun SectionCard(
+    title: Nothing? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            content()
+        }
+    }
+}

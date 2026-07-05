@@ -45,7 +45,7 @@
 
 
     <!-- Bottom navigation -->
-    <string name="nav_tweak">Tweak</string>
+    <string name="nav_dashboard">Dashboard</string>
     <string name="nav_membership">Membership</string>
     <string name="nav_settings">Pengaturan</string>
 
@@ -114,9 +114,25 @@
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>
     <string name="tweak_user_id_pending">Menyambungkan…</string>
-    <string name="tweak_menu_open_cd">Buka menu Tweak</string>
-    <string name="tweak_subtitle">Kontrol parameter sistem &amp; kernel perangkatmu secara langsung. Perubahan aktif seketika.</string>
+    <string name="tweak_menu_open_cd">Buka menu navigasi</string>
     <string name="tweak_section_touch">Input Driver</string>
+
+    <!-- Dashboard: monitor CPU/GPU/Suhu ringkas + Info Device (lihat
+         DashboardViewModel, tidak butuh Shizuku/Root sama sekali). -->
+    <string name="dashboard_monitor_cpu">CPU</string>
+    <string name="dashboard_monitor_gpu">GPU</string>
+    <string name="dashboard_monitor_temp">Suhu</string>
+    <string name="dashboard_section_device_info">Info Device</string>
+    <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
+    <string name="dashboard_device_model">Model</string>
+    <string name="dashboard_device_chipset">Chipset/Board</string>
+    <string name="dashboard_device_android_version">Versi Android</string>
+    <string name="dashboard_device_android_version_format">%1$s (SDK %2$d)</string>
+    <string name="dashboard_device_ram">RAM Terpakai</string>
+    <string name="dashboard_device_ram_format">%1$s / %2$s</string>
+    <string name="dashboard_device_storage">Penyimpanan Terpakai</string>
+    <string name="dashboard_device_storage_format">%1$s / %2$s</string>
+    <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
@@ -269,18 +285,34 @@
     <string name="game_profile_monitor_notification_channel">Pemantau Game Profile</string>
     <string name="game_profile_monitor_notification_title">Game Profile AetherX aktif</string>
     <string name="game_profile_monitor_notification_text">Memantau game untuk menerapkan/mereset tweak otomatis</string>
-    <string name="settings_section_about">Tentang</string>
-    <string name="settings_maintainer_name">Aldi Ahmad Khoirudin</string>
-    <string name="settings_maintainer_handle">@AetherDev22</string>
-    <string name="settings_about">AetherX Kernel Manager</string>
-    <string name="settings_about_tagline">Tweak performa &amp; overlay untuk gaming</string>
-    <string name="settings_version">v%1$s</string>
-    <string name="settings_social_github">GitHub</string>
-    <string name="settings_social_github_handle">github.com/aetherdev01</string>
-    <string name="settings_social_github_url">https://github.com/aetherdev01</string>
-    <string name="settings_social_telegram">Telegram</string>
-    <string name="settings_social_telegram_handle">t.me/get01projects</string>
-    <string name="settings_social_telegram_url">https://t.me/get01projects</string>
+
+    <!-- Rework Game Profile: info aplikasi (package name) + toggle
+         dikelompokkan per kategori, alih-alih satu list panjang datar. -->
+    <string name="game_profile_app_info_title">Info Aplikasi</string>
+    <string name="game_profile_app_info_package">Nama Paket</string>
+    <string name="game_profile_summary_active_count">%1$d dari %2$d tweak aktif</string>
+    <string name="game_profile_summary_inactive">Belum ada tweak yang diaktifkan</string>
+    <string name="game_profile_category_cpu">CPU</string>
+    <string name="game_profile_category_gpu">GPU &amp; Termal</string>
+    <string name="game_profile_category_system">Sistem</string>
+    <!-- Tab About (dulu section "Tentang" di dalam Settings — dipindah total
+         ke tab tersendiri, lihat perintah rework). -->
+    <string name="nav_about">About</string>
+    <string name="about_maintainer_name">Aldi Ahmad Khoirudin</string>
+    <string name="about_maintainer_handle">@AetherDev22</string>
+    <string name="about_app_title">AetherX Kernel Manager</string>
+    <string name="about_app_tagline">Tweak performa &amp; overlay untuk gaming</string>
+    <string name="about_version">v%1$s</string>
+    <string name="about_section_links">Tautan Komunitas</string>
+    <string name="about_link_whatsapp_title">Join Saluran WhatsApp</string>
+    <string name="about_link_whatsapp_desc">Info update &amp; diskusi seputar AetherX</string>
+    <string name="about_link_whatsapp_url">https://chat.whatsapp.com/HtJRW9fDT2eIyBvRTts2Pv</string>
+    <string name="about_link_telegram_title">Join Saluran Telegram</string>
+    <string name="about_link_telegram_desc">Pengumuman rilis &amp; dukungan cepat</string>
+    <string name="about_link_telegram_url">https://t.me/get01projects</string>
+    <string name="about_link_youtube_title">Subscribe YouTube</string>
+    <string name="about_link_youtube_desc">Tutorial, review, &amp; showcase fitur</string>
+    <string name="about_link_youtube_url">https://youtube.com/@aetherdevofficial?si=JrYQSWzKgoKRSydR</string>
 
     <!-- Settings — Umum -->
     <string name="settings_section_general">Umum</string>

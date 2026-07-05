@@ -1,13 +1,17 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -51,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -68,6 +73,9 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
+import com.aether.x.ui.dashboard.DashboardMonitorRow
+import com.aether.x.ui.dashboard.DashboardViewModel
+import com.aether.x.ui.dashboard.DeviceInfoSection
 import kotlinx.coroutines.launch
 
 
@@ -82,6 +90,13 @@ fun TweakScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
+
+    // ViewModel ringkasan CPU/GPU/Suhu/Info Device untuk sub-tab Dashboard
+    // (dulu bernama "Tweak" — lihat perintah rework) — lihat KDoc
+    // DashboardViewModel soal kenapa ini terpisah dari TweakViewModel
+    // (semua datanya tidak butuh Shizuku/Root, beda dari tweak di bawahnya).
+    val dashboardViewModel: DashboardViewModel = viewModel()
+    val dashboardState by dashboardViewModel.state.collectAsStateWithLifecycle()
 
     // Dipakai HANYA untuk parameter transient onKillBackgroundAppsChange di
     // bawah (interstitial ad setelah aksi selesai) — lihat KDoc fungsi itu
@@ -175,12 +190,13 @@ fun TweakScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Header "Tweak" + pill ID pengguna SELALU tampil, baik di
-                // sub-tab Tweak, Game Profile, Kernel Manager, maupun App
-                // Manager — hanya konten di bawahnya yang berganti. Tombol
-                // hamburger (buka
+                // Header "AetherX" (ikon + judul) + pill ID pengguna SELALU
+                // tampil, baik di sub-tab Dashboard, Game Profile, Kernel
+                // Manager, App Manager, maupun Build.prop Editor — hanya
+                // konten di bawahnya yang berganti. Tombol hamburger (buka
                 // drawer) HANYA muncul untuk backend Root, karena tanpa Root
-                // cuma ada satu sub-tab (Tweak) — drawer tidak ada gunanya.
+                // cuma ada satu sub-tab (Dashboard) — drawer tidak ada
+                // gunanya.
                 TweakHeader(
                     userId = state.userId,
                     onRetryUserId = viewModel::retryResolveUserIdIfMissing,
@@ -246,6 +262,21 @@ fun TweakScreen(
                     )
                     return@Column
                 }
+
+                // === Konten tab Dashboard (dulu "Tweak" — lihat perintah
+                // rework) ===
+                // Ringkasan CPU/GPU/Suhu (gauge kecil) + Info Device SELALU
+                // tampil paling atas untuk sub-tab Dashboard, TIDAK butuh
+                // Shizuku/Root sama sekali (lihat KDoc DashboardViewModel) —
+                // baru di bawahnya section-section tweak yang sudah ada
+                // (Input Driver, Refresh Rate, Mode Game, Root) mengikuti
+                // gating akses masing-masing seperti sebelumnya.
+                DashboardMonitorRow(
+                    cpuLoadPercent = dashboardState.cpuLoadPercent,
+                    gpuLoadPercent = dashboardState.gpuLoadPercent,
+                    temperatureCelsius = dashboardState.temperatureCelsius,
+                )
+                DeviceInfoSection(info = dashboardState.deviceInfo)
 
                 // Section Input Driver (pointer speed & touch boost) khusus untuk
                 // backend NON-ROOT (Shizuku) — disembunyikan saat backend aktif
@@ -401,23 +432,24 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
 private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP }
 
 /**
- * Isi drawer navigasi sub-tab Tweak. Dibuka lewat tombol hamburger di
- * [TweakHeader] atau swipe dari tepi kiri (lihat `gesturesEnabled` di
- * [ModalNavigationDrawer] pada [TweakScreen]) — HANYA relevan untuk backend
- * Root, karena tanpa Root cuma ada satu sub-tab (Tweak) jadi drawer ini
- * tidak pernah dibuka (tombol hamburger-nya juga tidak dirender untuk
- * backend selain Root, lihat [TweakHeader]).
+ * Isi drawer navigasi sub-tab Dashboard (dulu disebut "Tweak" — lihat
+ * perintah rework). Dibuka lewat tombol hamburger di [TweakHeader] atau
+ * swipe dari tepi kiri (lihat `gesturesEnabled` di [ModalNavigationDrawer]
+ * pada [TweakScreen]) — HANYA relevan untuk backend Root, karena tanpa Root
+ * cuma ada satu sub-tab (Dashboard) jadi drawer ini tidak pernah dibuka
+ * (tombol hamburger-nya juga tidak dirender untuk backend selain Root,
+ * lihat [TweakHeader]).
  *
  * Item "Kernel Manager" (baca/tulis frekuensi & governor per-core CPU, GPU,
  * dan suhu live), "App Manager" (freeze/unfreeze aplikasi pihak ketiga
  * & bloatware terkurasi), dan "Build.prop Editor" (edit persisten properti
  * sistem lewat file, lihat KDoc [BuildPropScreen] soal bedanya dengan
  * `setprop` runtime) masing-masing sub-tab tersendiri, BUKAN digabung
- * ke dalam section "Kernel Tuning (Root)" di sub-tab Tweak biasa seperti
+ * ke dalam section "Kernel Tuning (Root)" di sub-tab Dashboard biasa seperti
  * percobaan awal Kernel Manager — menumpuk semuanya di satu scroll membuat
- * tab Tweak jadi sangat panjang dan padat. Sebelumnya dicoba sebagai
+ * tab Dashboard jadi sangat panjang dan padat. Sebelumnya dicoba sebagai
  * segmented switcher horizontal di atas konten, tapi drawer dipilih supaya
- * header tab Tweak tetap ringkas (satu tombol hamburger, bukan banyak
+ * header tab Dashboard tetap ringkas (satu tombol hamburger, bukan banyak
  * tombol sub-tab yang selalu makan tempat).
  */
 @Composable
@@ -426,13 +458,13 @@ private fun TweakDrawerContent(
     onSelect: (TweakSubTab) -> Unit,
 ) {
     Text(
-        text = stringResource(R.string.nav_tweak),
+        text = stringResource(R.string.nav_dashboard),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
     )
     NavigationDrawerItem(
-        label = { Text(stringResource(R.string.nav_tweak)) },
+        label = { Text(stringResource(R.string.nav_dashboard)) },
         icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
         selected = selected == TweakSubTab.TWEAK,
         onClick = { onSelect(TweakSubTab.TWEAK) },
@@ -474,9 +506,13 @@ private fun TweakDrawerContent(
 }
 
 /**
- * Header "hero" di puncak halaman Tweak: judul, subjudul singkat, dan pill ID
- * pengguna lokal (mis. "ID-67128") di kanan atas — menggantikan pill status
- * Shizuku/Root yang dipakai sebelumnya.
+ * Header "hero" di puncak halaman (dulu menampilkan judul "Tweak" + subjudul
+ * deskripsi panjang — lihat perintah rework): sekarang menampilkan ikon
+ * logo AetherX di kiri berdampingan dengan judul "AetherX", dan pill ID
+ * pengguna lokal (mis. "ID-67128") rapi di kanan — menggantikan pill status
+ * Shizuku/Root yang dipakai sebelumnya. Header ini SAMA untuk seluruh
+ * sub-tab (Dashboard/Game Profile/Kernel Manager/App Manager/Build.prop),
+ * hanya konten di bawahnya yang berganti.
  *
  * Kalau [userId] masih null (alokasi dari Firestore belum/gagal), pill TIDAK
  * disembunyikan total lagi seperti sebelumnya (yang bikin terkesan "hilang"
@@ -484,7 +520,7 @@ private fun TweakDrawerContent(
  * bisa diketuk untuk mencoba ulang secara manual lewat [onRetryUserId],
  * selain otomatis dicoba ulang tiap kali layar ini kembali aktif.
  *
- * Tombol hamburger (buka drawer sub-tab Tweak/Game Profile/Kernel
+ * Tombol hamburger (buka drawer sub-tab Dashboard/Game Profile/Kernel
  * Manager/App Manager) HANYA muncul kalau [showMenuButton] true (yaitu
  * backend Root) — tanpa Root cuma ada satu sub-tab, jadi tombol menu tidak
  * ada gunanya dan malah membingungkan kalau tetap tampil.
@@ -499,9 +535,12 @@ private fun TweakHeader(
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top) {
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (showMenuButton) {
                 IconButton(onClick = onMenuClick) {
                     Icon(
@@ -510,20 +549,19 @@ private fun TweakHeader(
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
+                Spacer(modifier = Modifier.width(4.dp))
             }
-            Column {
-                Text(
-                    text = stringResource(R.string.nav_tweak),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = stringResource(R.string.tweak_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+            Image(
+                painter = painterResource(id = R.drawable.ic_aetherx_logo),
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+            )
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(start = 12.dp),
+            )
         }
         if (userId != null) {
             StatusPill(
