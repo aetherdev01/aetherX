@@ -189,6 +189,34 @@
     <string name="app_manager_error_root_unavailable">Akses root tidak tersedia</string>
     <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s</string>
     <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s</string>
+
+    <!-- Build.prop Editor — sub-drawer khusus Root, edit PERSISTEN properti sistem lewat file (beda dari setprop runtime) -->
+    <string name="nav_build_prop">Build.prop Editor</string>
+    <string name="buildprop_subtitle">Edit properti sistem secara langsung di file. Perubahan bersifat permanen dan baru aktif penuh setelah reboot. Berisiko menyebabkan bootloop jika salah — backup dibuat otomatis sebelum tulis pertama tiap sesi.</string>
+    <string name="buildprop_search_hint">Cari key…</string>
+    <string name="buildprop_empty">Tidak ada key yang cocok</string>
+    <string name="buildprop_value_empty">(kosong)</string>
+    <string name="buildprop_action_edit">Edit</string>
+    <string name="buildprop_action_save">Simpan</string>
+    <string name="buildprop_action_cancel">Batal</string>
+    <string name="buildprop_action_restore">Pulihkan</string>
+    <string name="buildprop_action_close">Tutup</string>
+    <string name="buildprop_backups_cd">Riwayat backup</string>
+    <string name="buildprop_backups_title">Backup Tersimpan</string>
+    <string name="buildprop_backups_empty">Belum ada backup untuk partisi ini</string>
+    <string name="buildprop_confirm_edit_title">Terapkan Perubahan?</string>
+    <string name="buildprop_confirm_edit_warning">Mengubah properti sistem bisa menyebabkan perangkat gagal boot (bootloop) jika nilai tidak didukung. Backup akan dibuat otomatis sebelum perubahan pertama di sesi ini. Perubahan baru terasa penuh setelah reboot.</string>
+    <string name="buildprop_confirm_edit_diff_format">%1$s\n- %2$s\n+ %3$s</string>
+    <string name="buildprop_confirm_edit_button">Ya, Terapkan</string>
+    <string name="buildprop_confirm_restore_title">Pulihkan dari Backup?</string>
+    <string name="buildprop_confirm_restore_warning">File %1$s akan dikembalikan persis seperti sebelum sesi edit ini dimulai. Perubahan yang sudah diterapkan sejak backup ini dibuat akan hilang.</string>
+    <string name="buildprop_confirm_restore_button">Ya, Pulihkan</string>
+    <string name="buildprop_success_applied">%1$s berhasil diterapkan — reboot untuk efek penuh</string>
+    <string name="buildprop_success_restored">%1$s berhasil dipulihkan dari backup</string>
+    <string name="buildprop_error_root_unavailable">Akses root tidak tersedia</string>
+    <string name="buildprop_error_backup_failed">Gagal membuat backup %1$s — perubahan dibatalkan demi keamanan</string>
+    <string name="buildprop_error_apply_failed">Gagal menerapkan %1$s</string>
+    <string name="buildprop_error_restore_failed">Gagal memulihkan %1$s</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
     <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
     <string name="tweak_vm_heap_boost">VM Heap Boost</string>

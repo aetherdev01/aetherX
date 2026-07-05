@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
@@ -61,6 +62,7 @@ import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.CpuGovernor
 import com.aether.x.ui.appmanager.AppManagerScreen
+// BuildPropScreen ada di package yang sama (com.aether.x.ui.tweak), tidak perlu import terpisah.
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
@@ -161,7 +163,10 @@ fun TweakScreen(
                         // SENDIRI secara internal (LazyColumn sendiri-sendiri)
                         // — verticalScroll ganda di sini akan bentrok dengan
                         // LazyColumn di dalamnya.
-                        if (selectedSubTab == TweakSubTab.GAME_PROFILE || selectedSubTab == TweakSubTab.APP_MANAGER) {
+                        if (selectedSubTab == TweakSubTab.GAME_PROFILE ||
+                            selectedSubTab == TweakSubTab.APP_MANAGER ||
+                            selectedSubTab == TweakSubTab.BUILD_PROP
+                        ) {
                             Modifier
                         } else {
                             Modifier.verticalScroll(rememberScrollState())
@@ -220,6 +225,21 @@ fun TweakScreen(
                     // scroll di atas, APP_MANAGER termasuk yang dikecualikan
                     // sama seperti GAME_PROFILE).
                     AppManagerScreen(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.BUILD_PROP) {
+                    // BuildPropScreen juga punya LazyColumn internal sendiri
+                    // (daftar key bisa ratusan baris) — perlakuan weight(1f)
+                    // yang sama seperti APP_MANAGER, dikecualikan dari
+                    // verticalScroll Column induk (lihat kondisi scroll di
+                    // atas, BUILD_PROP ditambahkan ke daftar pengecualian yang
+                    // sama).
+                    BuildPropScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
@@ -378,7 +398,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER }
+private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP }
 
 /**
  * Isi drawer navigasi sub-tab Tweak. Dibuka lewat tombol hamburger di
@@ -389,8 +409,10 @@ private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGE
  * backend selain Root, lihat [TweakHeader]).
  *
  * Item "Kernel Manager" (baca/tulis frekuensi & governor per-core CPU, GPU,
- * dan suhu live) dan "App Manager" (freeze/unfreeze aplikasi pihak ketiga
- * & bloatware terkurasi) masing-masing sub-tab tersendiri, BUKAN digabung
+ * dan suhu live), "App Manager" (freeze/unfreeze aplikasi pihak ketiga
+ * & bloatware terkurasi), dan "Build.prop Editor" (edit persisten properti
+ * sistem lewat file, lihat KDoc [BuildPropScreen] soal bedanya dengan
+ * `setprop` runtime) masing-masing sub-tab tersendiri, BUKAN digabung
  * ke dalam section "Kernel Tuning (Root)" di sub-tab Tweak biasa seperti
  * percobaan awal Kernel Manager — menumpuk semuanya di satu scroll membuat
  * tab Tweak jadi sangat panjang dan padat. Sebelumnya dicoba sebagai
@@ -438,6 +460,14 @@ private fun TweakDrawerContent(
         icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
         selected = selected == TweakSubTab.APP_MANAGER,
         onClick = { onSelect(TweakSubTab.APP_MANAGER) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.nav_build_prop)) },
+        icon = { Icon(imageVector = Icons.Outlined.Code, contentDescription = null) },
+        selected = selected == TweakSubTab.BUILD_PROP,
+        onClick = { onSelect(TweakSubTab.BUILD_PROP) },
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = 12.dp),
     )
