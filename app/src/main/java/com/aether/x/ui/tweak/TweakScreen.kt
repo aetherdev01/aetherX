@@ -1,6 +1,5 @@
 package com.aether.x.ui.tweak
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,27 +15,38 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DeveloperBoard
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.SdStorage
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -54,6 +64,7 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -65,6 +76,8 @@ fun TweakScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
 
     // Dipakai HANYA untuk parameter transient onKillBackgroundAppsChange di
     // bawah (interstitial ad setelah aksi selesai) — lihat KDoc fungsi itu
@@ -73,16 +86,11 @@ fun TweakScreen(
     // TweakScreen hanya pernah dirender dari MainActivity.
     val activity = LocalContext.current as? Activity
 
-    // Sub-tab "Game Profile" (lihat GameProfileScreen) hanya relevan untuk
-    // backend Root — kalau pengguna beralih ke Shizuku sementara sub-tab ini
-    // sedang dibuka, otomatis kembali ke sub-tab Tweak biasa supaya tidak
-    // menampilkan fitur khusus-root ke pengguna non-root.
+    // Sub-tab "Game Profile" & "Kernel Manager" (lihat GameProfileScreen,
+    // KernelManagerSection) hanya relevan untuk backend Root — direset ke
+    // Tweak biasa otomatis kalau backend berubah non-Root (lihat
+    // LaunchedEffect di bawah, setelah drawerState dideklarasikan).
     var selectedSubTab by remember { mutableStateOf(TweakSubTab.TWEAK) }
-    LaunchedEffect(privilegeStatus.activeBackend) {
-        if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
-            selectedSubTab = TweakSubTab.TWEAK
-        }
-    }
 
     // Deteksi ulang game terpasang setiap kali layar Tweak kembali aktif
     // (mis. setelah pengguna baru saja memasang Free Fire dari luar app).
@@ -108,202 +116,234 @@ fun TweakScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .then(
-                    // Section tweak biasa perlu scroll (banyak kartu), tapi
-                    // GameProfileScreen mengurus scroll-nya SENDIRI secara
-                    // internal (sidebar list + detail pane, masing-masing
-                    // punya area scroll berbeda) — verticalScroll ganda di
-                    // sini akan bentrok dengan LazyColumn di dalamnya.
-                    if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
-                        Modifier
-                    } else {
-                        Modifier.verticalScroll(rememberScrollState())
+    // Drawer otomatis ditutup kalau backend berubah jadi non-Root sementara
+    // sedang terbuka (mis. pengguna cabut akses root dari luar) — mencegah
+    // drawer terbuka menampilkan item Game Profile/Kernel Manager yang
+    // sudah tidak relevan lagi untuk backend baru.
+    LaunchedEffect(privilegeStatus.activeBackend) {
+        if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
+            selectedSubTab = TweakSubTab.TWEAK
+            if (drawerState.isOpen) drawerState.close()
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        // gesturesEnabled hanya untuk backend Root — sub-tab lain (Game
+        // Profile, Kernel Manager) memang cuma relevan untuk Root, jadi
+        // swipe-buka-drawer dimatikan total untuk backend Shizuku/NONE
+        // supaya tidak ada gestur yang membuka drawer kosong/percuma.
+        gesturesEnabled = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
+        drawerContent = {
+            ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
+                TweakDrawerContent(
+                    selected = selectedSubTab,
+                    onSelect = { tab ->
+                        selectedSubTab = tab
+                        coroutineScope.launch { drawerState.close() }
                     },
                 )
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // Header "Tweak" + pill ID pengguna SELALU tampil, baik di
-            // sub-tab Tweak maupun Game Profile — hanya konten di bawahnya
-            // yang berganti.
-            TweakHeader(userId = state.userId, onRetryUserId = viewModel::retryResolveUserIdIfMissing)
-
-            // Sub-tab switcher Tweak/Game Profile — HANYA ditampilkan sama
-            // sekali kalau backend aktif adalah Root, karena Game Profile
-            // sepenuhnya fitur khusus root (lihat perintah pengguna). Untuk
-            // backend Shizuku/belum ada akses, tab ini tidak ada gunanya
-            // jadi tidak perlu memakan tempat di layar.
-            if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
-                TweakSubTabSwitcher(
-                    selected = selectedSubTab,
-                    onSelect = { selectedSubTab = it },
-                    showGameProfileTab = true,
-                )
             }
-
-            if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
-                // GameProfileScreen mengisi SISA ruang di bawah header/switcher
-                // dengan tata letaknya sendiri (sidebar list + panel detail).
-                GameProfileScreen(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    // Padding horizontal/vertical sudah diterapkan Column induk
-                    // di atas, jadi GameProfileScreen tidak perlu padding ganda.
-                )
-                return@Column
-            }
-
-            // Section Input Driver (pointer speed & touch boost) khusus untuk
-            // backend NON-ROOT (Shizuku) — disembunyikan saat backend aktif
-            // adalah Root, sama seperti section "Root" di bawah yang hanya
-            // muncul untuk backend Root. Ini bagian dari pemisahan fitur
-            // root vs non-root: pengguna root diarahkan memakai tweak
-            // kernel-level (governor CPU/GPU, swappiness, dst.) di section
-            // Root, bukan campur dengan tweak Input Driver.
-            if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
-                SectionCard(title = stringResource(R.string.tweak_section_touch)) {
-                    // Nilai diterapkan langsung ke sistem saat slider dilepas (tidak perlu
-                    // tombol "Terapkan" terpisah lagi).
-                    TweakSlider(
-                        label = stringResource(R.string.tweak_pointer_speed),
-                        description = stringResource(R.string.tweak_pointer_speed_desc),
-                        valueText = state.pointerSpeed.toString(),
-                        value = state.pointerSpeed.toFloat(),
-                        range = -7f..7f,
-                        steps = 13,
-                        onValueChange = viewModel::onPointerSpeedChange,
-                        onValueChangeFinished = viewModel::onPointerSpeedChangeFinished,
+        },
+    ) {
+        Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        // Section tweak biasa & Kernel Manager perlu scroll dari
+                        // Column ini (keduanya cuma berisi SectionCard biasa,
+                        // bukan LazyColumn internal). GameProfileScreen beda —
+                        // dia mengurus scroll-nya SENDIRI secara internal (sidebar
+                        // list + detail pane, masing-masing punya area scroll
+                        // berbeda) — verticalScroll ganda di sini akan bentrok
+                        // dengan LazyColumn di dalamnya.
+                        if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+                            Modifier
+                        } else {
+                            Modifier.verticalScroll(rememberScrollState())
+                        },
                     )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_touch_boost),
-                        description = stringResource(R.string.tweak_touch_boost_desc),
-                        checked = state.touchBoost,
-                        onCheckedChange = viewModel::onTouchBoostChange,
-                        icon = Icons.Outlined.TouchApp,
-                    )
-                }
-            }
-
-            SectionCard(title = stringResource(R.string.tweak_section_refresh)) {
-                TweakSwitch(
-                    label = stringResource(R.string.tweak_force_refresh),
-                    description = stringResource(
-                        R.string.tweak_force_refresh_desc,
-                    ) + " (${state.displayInfo.maxRefreshRate.toInt()}Hz)",
-                    checked = state.forceMaxRefreshRate,
-                    onCheckedChange = viewModel::onForceRefreshChange,
-                    icon = Icons.Outlined.Bolt,
-                )
-            }
-
-            SectionCard(title = stringResource(R.string.tweak_section_game_mode)) {
-                TweakSwitch(
-                    label = stringResource(R.string.tweak_game_mode),
-                    description = stringResource(R.string.tweak_game_mode_desc),
-                    checked = state.gameModeEnabled,
-                    onCheckedChange = viewModel::onGameModeChange,
-                )
-            }
-
-            // Tweak kernel-level (CPU governor, swappiness) hanya bisa dijalankan
-            // lewat akses root sungguhan — Shizuku/adb shell biasa tidak punya izin
-            // tulis ke /sys atau /proc/sys, jadi section ini disembunyikan sampai
-            // backend aktifnya benar-benar Root.
-            if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
-                SectionCard(title = stringResource(R.string.tweak_section_root)) {
-                    TweakDropdown(
-                        label = stringResource(R.string.tweak_cpu_governor),
-                        description = stringResource(R.string.tweak_cpu_governor_desc),
-                        options = listOf(
-                            CpuGovernor.SCHEDUTIL,
-                            CpuGovernor.PERFORMANCE,
-                            CpuGovernor.ONDEMAND,
-                            CpuGovernor.POWERSAVE,
-                            CpuGovernor.UNIVERSAL,
-                        ),
-                        selected = state.cpuGovernor,
-                        optionLabel = { governor -> cpuGovernorLabel(governor) },
-                        onOptionSelected = viewModel::onCpuGovernorChange,
-                        icon = Icons.Outlined.Speed,
-                    )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_ram_priority),
-                        description = stringResource(R.string.tweak_ram_priority_desc),
-                        checked = state.ramPriorityMode,
-                        onCheckedChange = viewModel::onRamPriorityModeChange,
-                        icon = Icons.Outlined.Memory,
-                    )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_gpu_performance),
-                        description = stringResource(R.string.tweak_gpu_performance_desc),
-                        checked = state.gpuPerformanceMode,
-                        onCheckedChange = viewModel::onGpuPerformanceModeChange,
-                        icon = Icons.Outlined.DeveloperBoard,
-                    )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_thermal_throttle),
-                        description = stringResource(R.string.tweak_thermal_throttle_desc),
-                        checked = state.thermalThrottleOverride,
-                        onCheckedChange = viewModel::onThermalThrottleOverrideChange,
-                        icon = Icons.Outlined.Thermostat,
-                    )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_io_scheduler_boost),
-                        description = stringResource(R.string.tweak_io_scheduler_boost_desc),
-                        checked = state.ioSchedulerBoost,
-                        onCheckedChange = viewModel::onIoSchedulerBoostChange,
-                        icon = Icons.Outlined.SdStorage,
-                    )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_vm_heap_boost),
-                        description = stringResource(R.string.tweak_vm_heap_boost_desc),
-                        checked = state.vmHeapBoost,
-                        onCheckedChange = viewModel::onVmHeapBoostChange,
-                        icon = Icons.Outlined.Memory,
-                    )
-                    TweakSwitch(
-                        label = stringResource(R.string.tweak_kill_background_apps),
-                        description = stringResource(R.string.tweak_kill_background_apps_desc),
-                        checked = state.killBackgroundApps,
-                        onCheckedChange = { checked -> viewModel.onKillBackgroundAppsChange(checked, activity) },
-                        icon = Icons.Outlined.CleaningServices,
-                    )
-                }
-
-                // Section terpisah (bukan digabung ke SectionCard "Root" di
-                // atas) karena KernelManagerSection punya ViewModel sendiri
-                // (KernelManagerViewModel, dengan polling thermal berkala) —
-                // menyatukannya ke TweakViewModel akan mencampur dua siklus
-                // hidup data yang berbeda. Gating akses tetap SAMA PERSIS
-                // (blok if ROOT yang sama), karena baca/tulis sysfs mentah
-                // di sini butuh akses root sungguhan seperti section di atas.
-                KernelManagerSection()
-            }
-
-            OutlinedButton(
-                onClick = viewModel::resetTweaks,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                ),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.tweak_reset),
-                    style = MaterialTheme.typography.labelLarge,
+                // Header "Tweak" + pill ID pengguna SELALU tampil, baik di
+                // sub-tab Tweak, Game Profile, maupun Kernel Manager — hanya
+                // konten di bawahnya yang berganti. Tombol hamburger (buka
+                // drawer) HANYA muncul untuk backend Root, karena tanpa Root
+                // cuma ada satu sub-tab (Tweak) — drawer tidak ada gunanya.
+                TweakHeader(
+                    userId = state.userId,
+                    onRetryUserId = viewModel::retryResolveUserIdIfMissing,
+                    showMenuButton = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
+                    onMenuClick = { coroutineScope.launch { drawerState.open() } },
                 )
+
+                if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+                    // GameProfileScreen mengisi SISA ruang di bawah header
+                    // dengan tata letaknya sendiri (sidebar list + panel detail).
+                    GameProfileScreen(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        // Padding horizontal/vertical sudah diterapkan Column induk
+                        // di atas, jadi GameProfileScreen tidak perlu padding ganda.
+                    )
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.KERNEL_MANAGER) {
+                    // KernelManagerSection dulu sempat ditumpuk di dalam section
+                    // "Kernel Tuning (Root)" pada sub-tab Tweak biasa — dipindah
+                    // ke sub-tab tersendiri supaya tab Tweak tetap ringkas. Tidak
+                    // perlu Modifier.weight/verticalScroll tambahan di sini —
+                    // KernelManagerSection cuma SectionCard biasa (bukan
+                    // LazyColumn internal seperti GameProfileScreen), jadi cukup
+                    // jadi child biasa dan ikut ter-scroll oleh Column induk yang
+                    // sudah scrollable untuk sub-tab ini (lihat kondisi scroll di
+                    // atas).
+                    KernelManagerSection()
+                    return@Column
+                }
+
+                // Section Input Driver (pointer speed & touch boost) khusus untuk
+                // backend NON-ROOT (Shizuku) — disembunyikan saat backend aktif
+                // adalah Root, sama seperti section "Root" di bawah yang hanya
+                // muncul untuk backend Root. Ini bagian dari pemisahan fitur
+                // root vs non-root: pengguna root diarahkan memakai tweak
+                // kernel-level (governor CPU/GPU, swappiness, dst.) di section
+                // Root, bukan campur dengan tweak Input Driver.
+                if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
+                    SectionCard(title = stringResource(R.string.tweak_section_touch)) {
+                        // Nilai diterapkan langsung ke sistem saat slider dilepas (tidak perlu
+                        // tombol "Terapkan" terpisah lagi).
+                        TweakSlider(
+                            label = stringResource(R.string.tweak_pointer_speed),
+                            description = stringResource(R.string.tweak_pointer_speed_desc),
+                            valueText = state.pointerSpeed.toString(),
+                            value = state.pointerSpeed.toFloat(),
+                            range = -7f..7f,
+                            steps = 13,
+                            onValueChange = viewModel::onPointerSpeedChange,
+                            onValueChangeFinished = viewModel::onPointerSpeedChangeFinished,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_touch_boost),
+                            description = stringResource(R.string.tweak_touch_boost_desc),
+                            checked = state.touchBoost,
+                            onCheckedChange = viewModel::onTouchBoostChange,
+                            icon = Icons.Outlined.TouchApp,
+                        )
+                    }
+                }
+
+                SectionCard(title = stringResource(R.string.tweak_section_refresh)) {
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_force_refresh),
+                        description = stringResource(
+                            R.string.tweak_force_refresh_desc,
+                        ) + " (${state.displayInfo.maxRefreshRate.toInt()}Hz)",
+                        checked = state.forceMaxRefreshRate,
+                        onCheckedChange = viewModel::onForceRefreshChange,
+                        icon = Icons.Outlined.Bolt,
+                    )
+                }
+
+                SectionCard(title = stringResource(R.string.tweak_section_game_mode)) {
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_game_mode),
+                        description = stringResource(R.string.tweak_game_mode_desc),
+                        checked = state.gameModeEnabled,
+                        onCheckedChange = viewModel::onGameModeChange,
+                    )
+                }
+
+                // Tweak kernel-level (CPU governor, swappiness) hanya bisa dijalankan
+                // lewat akses root sungguhan — Shizuku/adb shell biasa tidak punya izin
+                // tulis ke /sys atau /proc/sys, jadi section ini disembunyikan sampai
+                // backend aktifnya benar-benar Root.
+                if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
+                    SectionCard(title = stringResource(R.string.tweak_section_root)) {
+                        TweakDropdown(
+                            label = stringResource(R.string.tweak_cpu_governor),
+                            description = stringResource(R.string.tweak_cpu_governor_desc),
+                            options = listOf(
+                                CpuGovernor.SCHEDUTIL,
+                                CpuGovernor.PERFORMANCE,
+                                CpuGovernor.ONDEMAND,
+                                CpuGovernor.POWERSAVE,
+                                CpuGovernor.UNIVERSAL,
+                            ),
+                            selected = state.cpuGovernor,
+                            optionLabel = { governor -> cpuGovernorLabel(governor) },
+                            onOptionSelected = viewModel::onCpuGovernorChange,
+                            icon = Icons.Outlined.Speed,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_ram_priority),
+                            description = stringResource(R.string.tweak_ram_priority_desc),
+                            checked = state.ramPriorityMode,
+                            onCheckedChange = viewModel::onRamPriorityModeChange,
+                            icon = Icons.Outlined.Memory,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_gpu_performance),
+                            description = stringResource(R.string.tweak_gpu_performance_desc),
+                            checked = state.gpuPerformanceMode,
+                            onCheckedChange = viewModel::onGpuPerformanceModeChange,
+                            icon = Icons.Outlined.DeveloperBoard,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_thermal_throttle),
+                            description = stringResource(R.string.tweak_thermal_throttle_desc),
+                            checked = state.thermalThrottleOverride,
+                            onCheckedChange = viewModel::onThermalThrottleOverrideChange,
+                            icon = Icons.Outlined.Thermostat,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_io_scheduler_boost),
+                            description = stringResource(R.string.tweak_io_scheduler_boost_desc),
+                            checked = state.ioSchedulerBoost,
+                            onCheckedChange = viewModel::onIoSchedulerBoostChange,
+                            icon = Icons.Outlined.SdStorage,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_vm_heap_boost),
+                            description = stringResource(R.string.tweak_vm_heap_boost_desc),
+                            checked = state.vmHeapBoost,
+                            onCheckedChange = viewModel::onVmHeapBoostChange,
+                            icon = Icons.Outlined.Memory,
+                        )
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_kill_background_apps),
+                            description = stringResource(R.string.tweak_kill_background_apps_desc),
+                            checked = state.killBackgroundApps,
+                            onCheckedChange = { checked -> viewModel.onKillBackgroundAppsChange(checked, activity) },
+                            icon = Icons.Outlined.CleaningServices,
+                        )
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = viewModel::resetTweaks,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.tweak_reset),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
+            SnackbarHost(hostState = snackbarHostState)
         }
-        SnackbarHost(hostState = snackbarHostState)
     }
 }
 
@@ -317,66 +357,60 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { TWEAK, GAME_PROFILE }
+private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER }
 
 /**
- * Sub-tab "list kayak sidebar" di sisi... sebenarnya ditampilkan sebagai
- * segmented switcher horizontal di ATAS konten (bukan sidebar vertikal
- * permanen) karena tab Tweak sendiri sudah berupa layar penuh di HP —
- * sidebar SESUNGGUHNYA (daftar game di kiri, detail di kanan) ada DI DALAM
- * [GameProfileScreen] begitu sub-tab "Game Profile" ini dipilih.
+ * Isi drawer navigasi sub-tab Tweak. Dibuka lewat tombol hamburger di
+ * [TweakHeader] atau swipe dari tepi kiri (lihat `gesturesEnabled` di
+ * [ModalNavigationDrawer] pada [TweakScreen]) — HANYA relevan untuk backend
+ * Root, karena tanpa Root cuma ada satu sub-tab (Tweak) jadi drawer ini
+ * tidak pernah dibuka (tombol hamburger-nya juga tidak dirender untuk
+ * backend selain Root, lihat [TweakHeader]).
+ *
+ * Item "Kernel Manager" (baca/tulis frekuensi & governor per-core CPU, GPU,
+ * dan suhu live) SENGAJA dipisah jadi sub-tab tersendiri, BUKAN digabung ke
+ * dalam section "Kernel Tuning (Root)" di sub-tab Tweak biasa seperti
+ * percobaan awal — menumpuk semuanya di satu scroll membuat tab Tweak jadi
+ * sangat panjang dan padat. Sebelumnya dicoba sebagai segmented switcher
+ * horizontal di atas konten, tapi drawer dipilih supaya header tab Tweak
+ * tetap ringkas (satu tombol hamburger, bukan tiga tombol sub-tab yang
+ * selalu makan tempat).
  */
 @Composable
-private fun TweakSubTabSwitcher(
+private fun TweakDrawerContent(
     selected: TweakSubTab,
     onSelect: (TweakSubTab) -> Unit,
-    showGameProfileTab: Boolean,
 ) {
-    if (!showGameProfileTab) return
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        TweakSubTabButton(
-            label = stringResource(R.string.nav_tweak),
-            selected = selected == TweakSubTab.TWEAK,
-            onClick = { onSelect(TweakSubTab.TWEAK) },
-            modifier = Modifier.weight(1f),
-        )
-        TweakSubTabButton(
-            label = stringResource(R.string.nav_game_profile),
-            selected = selected == TweakSubTab.GAME_PROFILE,
-            onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun TweakSubTabButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    Text(
+        text = stringResource(R.string.nav_tweak),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
+    )
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.nav_tweak)) },
+        icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
+        selected = selected == TweakSubTab.TWEAK,
+        onClick = { onSelect(TweakSubTab.TWEAK) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.nav_game_profile)) },
+        icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
+        selected = selected == TweakSubTab.GAME_PROFILE,
+        onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.kernel_manager_title)) },
+        icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
+        selected = selected == TweakSubTab.KERNEL_MANAGER,
+        onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
 }
 
 /**
@@ -389,26 +423,47 @@ private fun TweakSubTabButton(
  * atau error tanpa penjelasan) — sekarang tampil pill "Menyambungkan…" yang
  * bisa diketuk untuk mencoba ulang secara manual lewat [onRetryUserId],
  * selain otomatis dicoba ulang tiap kali layar ini kembali aktif.
+ *
+ * Tombol hamburger (buka drawer sub-tab Tweak/Game Profile/Kernel Manager)
+ * HANYA muncul kalau [showMenuButton] true (yaitu backend Root) — tanpa
+ * Root cuma ada satu sub-tab, jadi tombol menu tidak ada gunanya dan malah
+ * membingungkan kalau tetap tampil.
  */
 @Composable
-private fun TweakHeader(userId: Int?, onRetryUserId: () -> Unit) {
+private fun TweakHeader(
+    userId: Int?,
+    onRetryUserId: () -> Unit,
+    showMenuButton: Boolean,
+    onMenuClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.nav_tweak),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = stringResource(R.string.tweak_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top) {
+            if (showMenuButton) {
+                IconButton(onClick = onMenuClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Menu,
+                        contentDescription = stringResource(R.string.tweak_menu_open_cd),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
+            Column {
+                Text(
+                    text = stringResource(R.string.nav_tweak),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = stringResource(R.string.tweak_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
         if (userId != null) {
             StatusPill(

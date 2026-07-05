@@ -114,6 +114,7 @@
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>
     <string name="tweak_user_id_pending">Menyambungkan…</string>
+    <string name="tweak_menu_open_cd">Buka menu Tweak</string>
     <string name="tweak_subtitle">Kontrol parameter sistem &amp; kernel perangkatmu secara langsung. Perubahan aktif seketika.</string>
     <string name="tweak_section_touch">Input Driver</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>
