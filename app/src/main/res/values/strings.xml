@@ -176,6 +176,19 @@
     <string name="kernel_manager_error_core_governor">Gagal mengubah governor core %1$d</string>
     <string name="kernel_manager_error_gpu_frequency">Gagal mengubah frekuensi GPU</string>
     <string name="kernel_manager_error_gpu_governor">Gagal mengubah governor GPU</string>
+
+    <!-- App Manager — sub-drawer khusus Root, freeze/unfreeze aplikasi pihak ketiga & bloatware terkurasi -->
+    <string name="nav_app_manager">App Manager</string>
+    <string name="app_manager_subtitle">Nonaktifkan sementara aplikasi pihak ketiga atau bloatware bawaan pabrik. Bisa diaktifkan kembali kapan saja.</string>
+    <string name="app_manager_search_hint">Cari aplikasi…</string>
+    <string name="app_manager_section_third_party">Aplikasi Pihak Ketiga</string>
+    <string name="app_manager_section_bloatware">Bloatware Bawaan Pabrik</string>
+    <string name="app_manager_empty">Tidak ada aplikasi yang cocok</string>
+    <string name="app_manager_status_frozen">Dinonaktifkan</string>
+    <string name="app_manager_status_active">Aktif</string>
+    <string name="app_manager_error_root_unavailable">Akses root tidak tersedia</string>
+    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s</string>
+    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
     <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
     <string name="tweak_vm_heap_boost">VM Heap Boost</string>

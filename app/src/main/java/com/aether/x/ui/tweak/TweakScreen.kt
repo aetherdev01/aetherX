@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DeveloperBoard
@@ -59,6 +60,7 @@ import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.CpuGovernor
+import com.aether.x.ui.appmanager.AppManagerScreen
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
@@ -86,8 +88,9 @@ fun TweakScreen(
     // TweakScreen hanya pernah dirender dari MainActivity.
     val activity = LocalContext.current as? Activity
 
-    // Sub-tab "Game Profile" & "Kernel Manager" (lihat GameProfileScreen,
-    // KernelManagerSection) hanya relevan untuk backend Root — direset ke
+    // Sub-tab "Game Profile", "Kernel Manager" & "App Manager" (lihat
+    // GameProfileScreen, KernelManagerSection, AppManagerScreen) hanya
+    // relevan untuk backend Root — direset ke
     // Tweak biasa otomatis kalau backend berubah non-Root (lihat
     // LaunchedEffect di bawah, setelah drawerState dideklarasikan).
     var selectedSubTab by remember { mutableStateOf(TweakSubTab.TWEAK) }
@@ -118,8 +121,8 @@ fun TweakScreen(
 
     // Drawer otomatis ditutup kalau backend berubah jadi non-Root sementara
     // sedang terbuka (mis. pengguna cabut akses root dari luar) — mencegah
-    // drawer terbuka menampilkan item Game Profile/Kernel Manager yang
-    // sudah tidak relevan lagi untuk backend baru.
+    // drawer terbuka menampilkan item Game Profile/Kernel Manager/App
+    // Manager yang sudah tidak relevan lagi untuk backend baru.
     LaunchedEffect(privilegeStatus.activeBackend) {
         if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
             selectedSubTab = TweakSubTab.TWEAK
@@ -153,12 +156,12 @@ fun TweakScreen(
                     .then(
                         // Section tweak biasa & Kernel Manager perlu scroll dari
                         // Column ini (keduanya cuma berisi SectionCard biasa,
-                        // bukan LazyColumn internal). GameProfileScreen beda —
-                        // dia mengurus scroll-nya SENDIRI secara internal (sidebar
-                        // list + detail pane, masing-masing punya area scroll
-                        // berbeda) — verticalScroll ganda di sini akan bentrok
-                        // dengan LazyColumn di dalamnya.
-                        if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+                        // bukan LazyColumn internal). GameProfileScreen & App
+                        // Manager beda — masing-masing mengurus scroll-nya
+                        // SENDIRI secara internal (LazyColumn sendiri-sendiri)
+                        // — verticalScroll ganda di sini akan bentrok dengan
+                        // LazyColumn di dalamnya.
+                        if (selectedSubTab == TweakSubTab.GAME_PROFILE || selectedSubTab == TweakSubTab.APP_MANAGER) {
                             Modifier
                         } else {
                             Modifier.verticalScroll(rememberScrollState())
@@ -168,8 +171,9 @@ fun TweakScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // Header "Tweak" + pill ID pengguna SELALU tampil, baik di
-                // sub-tab Tweak, Game Profile, maupun Kernel Manager — hanya
-                // konten di bawahnya yang berganti. Tombol hamburger (buka
+                // sub-tab Tweak, Game Profile, Kernel Manager, maupun App
+                // Manager — hanya konten di bawahnya yang berganti. Tombol
+                // hamburger (buka
                 // drawer) HANYA muncul untuk backend Root, karena tanpa Root
                 // cuma ada satu sub-tab (Tweak) — drawer tidak ada gunanya.
                 TweakHeader(
@@ -203,6 +207,23 @@ fun TweakScreen(
                     // sudah scrollable untuk sub-tab ini (lihat kondisi scroll di
                     // atas).
                     KernelManagerSection()
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.APP_MANAGER) {
+                    // AppManagerScreen (seperti GameProfileScreen) punya
+                    // LazyColumn internal sendiri untuk daftar aplikasi yang
+                    // bisa sangat panjang — BUTUH Modifier.weight(1f) supaya
+                    // dapat tinggi terbatas dari Column induk, dan TIDAK BOLEH
+                    // ikut di-scroll oleh verticalScroll Column induk (yang
+                    // untuk sub-tab ini memang tidak diterapkan — lihat kondisi
+                    // scroll di atas, APP_MANAGER termasuk yang dikecualikan
+                    // sama seperti GAME_PROFILE).
+                    AppManagerScreen(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
                     return@Column
                 }
 
@@ -357,7 +378,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER }
+private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER }
 
 /**
  * Isi drawer navigasi sub-tab Tweak. Dibuka lewat tombol hamburger di
@@ -368,13 +389,14 @@ private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER }
  * backend selain Root, lihat [TweakHeader]).
  *
  * Item "Kernel Manager" (baca/tulis frekuensi & governor per-core CPU, GPU,
- * dan suhu live) SENGAJA dipisah jadi sub-tab tersendiri, BUKAN digabung ke
- * dalam section "Kernel Tuning (Root)" di sub-tab Tweak biasa seperti
- * percobaan awal — menumpuk semuanya di satu scroll membuat tab Tweak jadi
- * sangat panjang dan padat. Sebelumnya dicoba sebagai segmented switcher
- * horizontal di atas konten, tapi drawer dipilih supaya header tab Tweak
- * tetap ringkas (satu tombol hamburger, bukan tiga tombol sub-tab yang
- * selalu makan tempat).
+ * dan suhu live) dan "App Manager" (freeze/unfreeze aplikasi pihak ketiga
+ * & bloatware terkurasi) masing-masing sub-tab tersendiri, BUKAN digabung
+ * ke dalam section "Kernel Tuning (Root)" di sub-tab Tweak biasa seperti
+ * percobaan awal Kernel Manager — menumpuk semuanya di satu scroll membuat
+ * tab Tweak jadi sangat panjang dan padat. Sebelumnya dicoba sebagai
+ * segmented switcher horizontal di atas konten, tapi drawer dipilih supaya
+ * header tab Tweak tetap ringkas (satu tombol hamburger, bukan banyak
+ * tombol sub-tab yang selalu makan tempat).
  */
 @Composable
 private fun TweakDrawerContent(
@@ -411,6 +433,14 @@ private fun TweakDrawerContent(
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = 12.dp),
     )
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.nav_app_manager)) },
+        icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
+        selected = selected == TweakSubTab.APP_MANAGER,
+        onClick = { onSelect(TweakSubTab.APP_MANAGER) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
 }
 
 /**
@@ -424,10 +454,10 @@ private fun TweakDrawerContent(
  * bisa diketuk untuk mencoba ulang secara manual lewat [onRetryUserId],
  * selain otomatis dicoba ulang tiap kali layar ini kembali aktif.
  *
- * Tombol hamburger (buka drawer sub-tab Tweak/Game Profile/Kernel Manager)
- * HANYA muncul kalau [showMenuButton] true (yaitu backend Root) — tanpa
- * Root cuma ada satu sub-tab, jadi tombol menu tidak ada gunanya dan malah
- * membingungkan kalau tetap tampil.
+ * Tombol hamburger (buka drawer sub-tab Tweak/Game Profile/Kernel
+ * Manager/App Manager) HANYA muncul kalau [showMenuButton] true (yaitu
+ * backend Root) — tanpa Root cuma ada satu sub-tab, jadi tombol menu tidak
+ * ada gunanya dan malah membingungkan kalau tetap tampil.
  */
 @Composable
 private fun TweakHeader(

@@ -1,0 +1,60 @@
+# Daftar package aplikasi sistem/bawaan pabrik yang DIKENAL LUAS aman untuk
+# di-nonaktifkan (freeze) tanpa mengganggu fungsi inti Android — dipakai
+# AppManagerCatalog untuk menyaring app kategori "Bloatware" yang ditampilkan
+# di App Manager (lihat KDoc AppManagerCatalog untuk alasan kenapa TIDAK
+# menampilkan semua app sistem secara bebas).
+#
+# Format: satu package name per baris, '#' untuk komentar/baris kosong
+# diabaikan — SAMA PERSIS dengan format assets/gamelist.txt.
+#
+# HANYA app yang benar-benar TERPASANG di perangkat yang akan tampil —
+# baris yang tidak cocok apa pun di perangkat pengguna otomatis dilewati
+# (lihat AppManagerCatalog.loadBloatwareEntries), jadi daftar ini aman
+# dibuat mencakup banyak vendor sekaligus tanpa masalah di perangkat lain.
+#
+# Referensi pemilihan: daftar ini mengikuti kategori "Aman dihapus/dinonaktifkan"
+# pada proyek Universal Android Debloater (UAD) — bukan tebakan sepihak.
+# TETAP baca deskripsi tiap app di UI App Manager sebelum freeze; kalau
+# ragu, jangan freeze dulu — freeze SELALU reversibel lewat tombol yang sama
+# di App Manager, tapi lebih aman memverifikasi dulu daripada menyesal.
+
+# --- Samsung (One UI) ---
+com.samsung.android.bixby.agent
+com.samsung.android.bixby.service
+com.samsung.android.bixby.wakeup
+com.samsung.android.visionintelligence
+com.samsung.android.app.spage
+com.samsung.android.game.gamehome
+com.samsung.android.game.gametools
+com.samsung.android.spay
+com.samsung.android.samsungpass
+com.samsung.android.oneconnect
+com.samsung.android.app.tips
+
+# --- Xiaomi (MIUI/HyperOS) ---
+com.miui.miservice
+com.miui.msa.global
+com.miui.systemAdSolution
+com.miui.videoplayer
+com.miui.newmidrop
+com.xiaomi.glgm
+com.mi.globalbrowser
+com.mi.global.shop
+com.xiaomi.gamecenter.sdk.service
+
+# --- Oppo / ColorOS ---
+com.coloros.gamespaceui
+com.heytap.market
+com.heytap.browser
+com.oppo.quicksearchbox
+
+# --- Vivo / Funtouch OS ---
+com.vivo.browser
+com.vivo.game
+com.vivo.assistant
+
+# --- Google (opsional, bukan inti sistem) ---
+com.google.android.apps.tachyon
+com.google.android.apps.wellbeing
+com.google.android.videos
+com.google.android.markup
