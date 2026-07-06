@@ -34,7 +34,7 @@ import kotlin.system.exitProcess
 object SignatureGuard {
 
     init {
-        System.loadLibrary("aetherxsig")
+        System.loadLibrary("aetherX")
     }
 
     private external fun nativeVerify(actualHashBytes: ByteArray): Boolean

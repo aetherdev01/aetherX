@@ -7,7 +7,7 @@ import kotlin.system.exitProcess
 
 /**
  * Guard lapis TAMBAHAN untuk [SignatureGuard]: memverifikasi bahwa byte
- * code fungsi-fungsi kritis di dalam `libaetherxsig.so` (nativeVerify /
+ * code fungsi-fungsi kritis di dalam `libaetherX.so` (nativeVerify /
  * nativeVerifyRecheck di sigcheck.cpp) belum dipatch langsung di binary
  * native-nya — lihat integrityguard.cpp untuk penjelasan lengkap kenapa ini
  * perlu (celah yang TIDAK ditutup oleh cek signing certificate saja: orang
@@ -35,8 +35,8 @@ object NativeIntegrityGuard {
 
     init {
         // Sama seperti SignatureGuard — kedua fungsi native ada di .so yang
-        // sama (aetherxsig), jadi load lib yang sama, bukan lib terpisah.
-        System.loadLibrary("aetherxsig")
+        // sama (aetherX), jadi load lib yang sama, bukan lib terpisah.
+        System.loadLibrary("aetherX")
     }
 
     private external fun nativeVerifyIntegrity(): Int
