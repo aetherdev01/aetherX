@@ -22,11 +22,19 @@
 # ── Native signature guard (JNI) ──────────────────────────────────────────────
 # Nama class/method HARUS persis sama dengan yang dicari native code lewat
 # JNI (Java_com_aether_x_core_security_SignatureGuard_...) — kalau R8
-# me-rename/obfuscate class atau method ini, native library tidak akan
-# menemukan method-nya lagi saat runtime (UnsatisfiedLinkError).
+# me-rename/obfuscate class atau method ini, native library (libaetherX.so)
+# tidak akan menemukan method-nya lagi saat runtime (UnsatisfiedLinkError).
 -keep class com.aether.x.core.security.SignatureGuard {
     private native boolean nativeVerify(byte[]);
     private native boolean nativeVerifyRecheck(byte[]);
+}
+
+# ── Native integrity guard (JNI) ──────────────────────────────────────────────
+# Sama alasannya seperti SignatureGuard di atas — method native ini juga ada
+# di libaetherX.so (lihat integrityguard.cpp), jadi harus tetap persis sama
+# namanya supaya JNI binding tidak putus setelah di-obfuscate.
+-keep class com.aether.x.core.security.NativeIntegrityGuard {
+    private native int nativeVerifyIntegrity();
 }
 
 # =============================================================================
