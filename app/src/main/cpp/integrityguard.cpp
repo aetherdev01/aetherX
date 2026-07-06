@@ -1,14 +1,14 @@
 // integrityguard.cpp
 //
 // Guard lapis TAMBAHAN: memverifikasi bahwa fungsi-fungsi kritis di dalam
-// libaetherxsig.so ITU SENDIRI belum dipatch (byte instruksi diubah) sejak
+// libaetherX.so ITU SENDIRI belum dipatch (byte instruksi diubah) sejak
 // APK ini dibuild — melengkapi sigcheck.cpp yang memverifikasi signing cert
 // APK, tapi tidak tahu kalau .so-nya sendiri sudah "disunting" langsung.
 //
 // KENAPA INI PERLU (celah yang ditutup):
 // sigcheck.cpp mencegah APK di-resign dengan kunci lain. TAPI kalau orang
 // tidak perlu resign — cukup patch instruksi `cmp`/branch di dalam
-// libaetherxsig.so memakai lief/radare2/Ghidra (mis. ubah instruksi yang
+// libaetherX.so memakai lief/radare2/Ghidra (mis. ubah instruksi yang
 // membandingkan hash jadi selalu "equal", atau ubah `return match` jadi
 // `return true` tanpa peduli isi match) — signature check sigcheck.cpp bisa
 // dilewati TANPA menyentuh signing cert APK sama sekali (APK tetap

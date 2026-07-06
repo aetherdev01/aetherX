@@ -18,7 +18,7 @@
 // NativeIntegrityGuard.kt tetap dideklarasikan persis seperti sebelumnya).
 //
 // JNI_OnLoad dipanggil OTOMATIS oleh JVM tepat sekali, segera setelah
-// `System.loadLibrary("aetherxsig")` berhasil — tidak perlu dipanggil
+// `System.loadLibrary("aetherX")` berhasil — tidak perlu dipanggil
 // manual dari Kotlin mana pun.
 
 #include <jni.h>

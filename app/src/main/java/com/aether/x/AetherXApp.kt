@@ -66,7 +66,7 @@ class AetherXApp : Application() {
         // Dibungkus try-catch KHUSUS UnsatisfiedLinkError/LinkageError (BUKAN
         // Exception biasa — keduanya adalah Error, kelas terpisah yang tidak
         // ikut tertangkap runCatching biasa di dalam SignatureGuard sendiri)
-        // supaya kalau libaetherxsig.so gagal dimuat sama sekali (mis. APK
+        // supaya kalau libaetherX.so gagal dimuat sama sekali (mis. APK
         // di-build tanpa folder jniLibs/cpp yang lengkap, atau ABI device
         // tidak match dengan .so yang di-bundle), pesan Logcat-nya jelas
         // menyebut MASALAH LINKING NATIVE LIB — bukan force-close misterius
@@ -78,7 +78,7 @@ class AetherXApp : Application() {
         } catch (e: UnsatisfiedLinkError) {
             Log.e(
                 "AetherXApp",
-                "GAGAL memuat libaetherxsig.so (UnsatisfiedLinkError) — app akan " +
+                "GAGAL memuat libaetherX.so (UnsatisfiedLinkError) — app akan " +
                     "ditutup paksa. Ini BUKAN masalah signature/tamper, melainkan " +
                     "native library tidak berhasil di-link. Penyebab umum: (1) APK " +
                     "di-build dari source tanpa folder native/jniLibs lengkap, " +
@@ -92,7 +92,7 @@ class AetherXApp : Application() {
 
         // Guard TAMBAHAN yang melengkapi baris di atas: SignatureGuard hanya
         // tahu kalau APK di-resign dengan kunci lain — tidak tahu kalau
-        // libaetherxsig.so ITU SENDIRI dipatch langsung (byte instruksi
+        // libaetherX.so ITU SENDIRI dipatch langsung (byte instruksi
         // diubah lewat lief/radare2/Ghidra) tanpa perlu resign APK sama
         // sekali. Dipanggil di sini, tepat setelah SignatureGuard, supaya
         // urutan cek tetap: (1) APK resmi? (2) kalau ya, .so-nya belum
@@ -100,7 +100,7 @@ class AetherXApp : Application() {
         try {
             NativeIntegrityGuard.verifyOrDie(this)
         } catch (e: UnsatisfiedLinkError) {
-            Log.e("AetherXApp", "GAGAL memuat libaetherxsig.so di NativeIntegrityGuard — lihat log SignatureGuard untuk penjelasan lengkap.", e)
+            Log.e("AetherXApp", "GAGAL memuat libaetherX.so di NativeIntegrityGuard — lihat log SignatureGuard untuk penjelasan lengkap.", e)
             Process.killProcess(Process.myPid())
             return
         }

@@ -3,7 +3,7 @@
 // Verifikasi signing certificate APK dari sisi native (C++/JNI), bukan
 // Kotlin, dengan tujuan: hash yang diharapkan TIDAK muncul sebagai satu
 // string utuh di dalam binary (baik di kode Kotlin/DEX maupun di .so ini),
-// sehingga tidak bisa langsung ditemukan lewat `strings libaetherxsig.so`
+// sehingga tidak bisa langsung ditemukan lewat `strings libaetherX.so`
 // atau decompiler Java biasa (jadx/apktool). Ini menaikkan biaya untuk
 // orang yang mau patch APK (resign dengan kunci lain lalu hilangkan
 // pengecekan) — TIDAK membuatnya mustahil, tapi jadi jauh lebih ribet

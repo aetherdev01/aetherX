@@ -37,6 +37,11 @@ object SignatureGuard {
     private const val TAG = "AetherX-SignatureGuard"
 
     init {
+        // Nama library HARUS "aetherX" — cocok dengan nama yang dihasilkan
+        // CMakeLists.txt (project("aetherX") -> libaetherX.so). Kalau nama
+        // ini pernah diganti lagi di masa depan, WAJIB diubah bersamaan di
+        // CMakeLists.txt DAN di sini DAN di NativeIntegrityGuard.kt — ketiga
+        // titik ini harus selalu sebut nama library yang persis sama.
         System.loadLibrary("aetherX")
     }
 

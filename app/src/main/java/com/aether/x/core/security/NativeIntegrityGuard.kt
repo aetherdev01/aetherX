@@ -35,7 +35,10 @@ object NativeIntegrityGuard {
 
     init {
         // Sama seperti SignatureGuard — kedua fungsi native ada di .so yang
-        // sama (aetherX), jadi load lib yang sama, bukan lib terpisah.
+        // sama (libaetherX.so), jadi load lib yang sama, bukan lib terpisah.
+        // Nama HARUS persis sama dengan yang dipanggil SignatureGuard.kt dan
+        // yang dihasilkan CMakeLists.txt (project("aetherX")) — lihat catatan
+        // di SignatureGuard.kt.
         System.loadLibrary("aetherX")
     }
 
