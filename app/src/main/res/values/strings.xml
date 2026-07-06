@@ -46,6 +46,7 @@
 
     <!-- Bottom navigation -->
     <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_tweak">Tweak</string>
     <string name="nav_membership">Membership</string>
     <string name="nav_settings">Pengaturan</string>
 
@@ -111,28 +112,50 @@
     <string name="update_download_button">Update Sekarang</string>
     <string name="update_later_button">Nanti</string>
 
+    <!-- Notifikasi sistem (FITUR BARU — lihat perintah rework: "tambahkan
+         notifikasi di semua fitur dari update, maintenance dan lain lain").
+         Setiap jenis notifikasi punya channel Android sendiri lewat
+         AetherXNotifier supaya pengguna bisa mengatur masing-masing secara
+         independen dari Pengaturan sistem. -->
+    <string name="notif_channel_update_name">Pembaruan Aplikasi</string>
+    <string name="notif_channel_update_desc">Pemberitahuan saat versi baru AetherX tersedia untuk diunduh</string>
+    <string name="notif_update_title">Pembaruan AetherX Tersedia</string>
+    <string name="notif_update_text_format">Versi %1$s sudah bisa diunduh. Ketuk untuk lihat detail.</string>
+    <string name="notif_channel_maintenance_name">Pemeliharaan Server</string>
+    <string name="notif_channel_maintenance_desc">Pemberitahuan saat server AetherX sedang dalam pemeliharaan</string>
+    <string name="notif_maintenance_text">Aplikasi sedang dalam pemeliharaan sementara. Ketuk untuk info lebih lanjut.</string>
+    <string name="notif_channel_general_name">Info Umum AetherX</string>
+    <string name="notif_channel_general_desc">Pemberitahuan umum lain dari AetherX (lisensi, akses, dsb.)</string>
+    <string name="notif_license_changed_title">Status Membership Berubah</string>
+    <string name="notif_license_expired_text">Lisensi kamu sudah kedaluwarsa. Ketuk untuk perpanjang di tab Membership.</string>
+    <string name="notif_license_revoked_text">Lisensi kamu tidak lagi aktif di perangkat ini. Ketuk untuk cek status di tab Membership.</string>
+
     <!-- Tweak screen -->
     <string name="tweak_user_id_format">ID-%1$d</string>
     <string name="tweak_user_id_pending">Menyambungkan…</string>
     <string name="tweak_menu_open_cd">Buka menu navigasi</string>
     <string name="tweak_section_touch">Input Driver</string>
 
-    <!-- Dashboard: monitor CPU/GPU/Suhu ringkas + Info Device (lihat
-         DashboardViewModel, tidak butuh Shizuku/Root sama sekali). -->
+    <!-- Dashboard: monitor CPU/GPU/Suhu ringkas + Info Device. CPU/GPU
+         dibaca lewat shell executor (Root/Shizuku) kalau aktif untuk hasil
+         lebih reliable, fallback baca langsung proses app kalau backend
+         belum aktif — lihat KDoc DashboardViewModel. -->
     <string name="dashboard_monitor_cpu">CPU</string>
     <string name="dashboard_monitor_gpu">GPU</string>
     <string name="dashboard_monitor_temp">Suhu</string>
+    <string name="dashboard_gpu_unsupported_short">N/A</string>
+    <string name="dashboard_gpu_unsupported_hint">Chipset ini tidak menyediakan data persentase beban GPU</string>
     <string name="dashboard_section_device_info">Info Device</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
     <string name="dashboard_device_model">Model</string>
     <string name="dashboard_device_chipset">Chipset/Board</string>
     <string name="dashboard_device_android_version">Versi Android</string>
     <string name="dashboard_device_android_version_format">%1$s (SDK %2$d)</string>
-    <string name="dashboard_device_ram">RAM Terpakai</string>
-    <string name="dashboard_device_ram_format">%1$s / %2$s</string>
-    <string name="dashboard_device_storage">Penyimpanan Terpakai</string>
-    <string name="dashboard_device_storage_format">%1$s / %2$s</string>
+    <string name="dashboard_device_ram">RAM</string>
+    <string name="dashboard_device_storage">Penyimpanan</string>
+    <string name="dashboard_device_usage_format">%1$s / %2$s</string>
     <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
+    <string name="drawer_root_only_label">KHUSUS ROOT</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
@@ -300,6 +323,7 @@
     <string name="nav_about">About</string>
     <string name="about_maintainer_name">Aldi Ahmad Khoirudin</string>
     <string name="about_maintainer_handle">@AetherDev22</string>
+    <string name="about_maintainer_role">Developer &amp; Maintainer AetherX</string>
     <string name="about_app_title">AetherX Kernel Manager</string>
     <string name="about_app_tagline">Tweak performa &amp; overlay untuk gaming</string>
     <string name="about_version">v%1$s</string>
@@ -331,7 +355,12 @@
     <string name="crosshair_style_dot">Titik</string>
     <string name="crosshair_style_circle">Lingkaran</string>
     <string name="crosshair_style_circle_dot">Lingkaran + Titik</string>
+    <string name="crosshair_style_cross_dot">Silang + Titik</string>
+    <string name="crosshair_style_t_shape">Bentuk T</string>
     <string name="crosshair_color_label">Warna</string>
+    <string name="crosshair_custom_color_title">Pilih Warna Kustom</string>
+    <string name="crosshair_custom_color_apply">Terapkan</string>
+    <string name="crosshair_custom_color_cancel">Batal</string>
     <string name="crosshair_size_label">Ukuran</string>
     <string name="crosshair_size_desc">Jangkauan garis atau lingkaran crosshair dari titik tengah.</string>
     <string name="crosshair_thickness_label">Ketebalan Garis</string>

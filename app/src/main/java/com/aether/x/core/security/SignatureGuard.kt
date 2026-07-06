@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.content.pm.Signature
 import android.os.Build
 import android.os.Process
+import android.util.Log
 import java.security.MessageDigest
 import kotlin.system.exitProcess
 
@@ -33,6 +34,8 @@ import kotlin.system.exitProcess
  */
 object SignatureGuard {
 
+    private const val TAG = "AetherX-SignatureGuard"
+
     init {
         System.loadLibrary("aetherX")
     }
@@ -57,6 +60,27 @@ object SignatureGuard {
      */
     fun verifyOrDie(context: Context) {
         if (!isSignatureValid(context)) {
+            // Log diagnostik SENGAJA ditambahkan di sini (BARU — sebelumnya
+            // crash total tanpa jejak apa pun di Logcat, menyulitkan
+            // membedakan "APK memang di-tamper" vs "build sendiri pakai
+            // keystore development/debug yang hash-nya belum didaftarkan di
+            // sigcheck.cpp"). Log TIDAK melemahkan proteksi apa pun — hash
+            // yang diharapkan tetap hanya ada di native lib (lihat KDoc
+            // kelas ini), pesan ini hanya bilang "verifikasi gagal", tidak
+            // membocorkan nilai hash yang benar maupun cara melewatinya.
+            // Perilaku fail-closed (force-close) TETAP SAMA seperti
+            // sebelumnya, tidak dilonggarkan.
+            Log.e(
+                TAG,
+                "Verifikasi signature APK GAGAL — aplikasi akan ditutup paksa. " +
+                    "Ini WAJAR terjadi kalau APK ini di-build ulang/di-sign dengan " +
+                    "keystore yang BEDA dari keystore rilis resmi yang hash-nya " +
+                    "terdaftar di sigcheck.cpp (native lib). Kalau ini build " +
+                    "development milikmu sendiri (bukan APK hasil crack orang " +
+                    "lain), tambahkan hash SHA-256 signing cert keystore " +
+                    "development-mu ke daftar hash valid di sigcheck.cpp, lalu " +
+                    "rebuild native lib-nya.",
+            )
             crashImmediately()
         }
     }
@@ -64,11 +88,13 @@ object SignatureGuard {
     /** Titik verifikasi kedua yang independen — lihat KDoc [verifyOrDie]. */
     fun verifyOrDieAgain(context: Context) {
         val hash = computeSigningCertHash(context) ?: run {
+            Log.e(TAG, "Verifikasi ulang signature GAGAL (tidak bisa membaca signing cert). Aplikasi ditutup paksa.")
             crashImmediately()
             return
         }
         val valid = runCatching { nativeVerifyRecheck(hash) }.getOrDefault(false)
         if (!valid) {
+            Log.e(TAG, "Verifikasi ulang signature APK GAGAL — aplikasi akan ditutup paksa. Lihat log verifyOrDie untuk penjelasan lengkap.")
             crashImmediately()
         }
     }

@@ -24,12 +24,14 @@ import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.SdStorage
+import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -105,12 +107,15 @@ fun TweakScreen(
     // TweakScreen hanya pernah dirender dari MainActivity.
     val activity = LocalContext.current as? Activity
 
-    // Sub-tab "Game Profile", "Kernel Manager" & "App Manager" (lihat
-    // GameProfileScreen, KernelManagerSection, AppManagerScreen) hanya
-    // relevan untuk backend Root — direset ke
-    // Tweak biasa otomatis kalau backend berubah non-Root (lihat
-    // LaunchedEffect di bawah, setelah drawerState dideklarasikan).
-    var selectedSubTab by remember { mutableStateOf(TweakSubTab.TWEAK) }
+    // Sub-tab "Game Profile", "Kernel Manager", "App Manager" & "Build.prop
+    // Editor" hanya relevan untuk backend Root — direset ke Dashboard
+    // otomatis kalau backend berubah non-Root (lihat LaunchedEffect di
+    // bawah, setelah drawerState dideklarasikan). "Dashboard" dan "Tweak"
+    // sendiri TERSEDIA UNTUK SEMUA BACKEND (termasuk NONE) — keduanya jadi
+    // pintu masuk default, makanya drawer sekarang selalu bisa dibuka
+    // terlepas dari backend privilese yang aktif (lihat gesturesEnabled di
+    // ModalNavigationDrawer bawah).
+    var selectedSubTab by remember { mutableStateOf(TweakSubTab.DASHBOARD) }
 
     // Deteksi ulang game terpasang setiap kali layar Tweak kembali aktif
     // (mis. setelah pengguna baru saja memasang Free Fire dari luar app).
@@ -136,28 +141,38 @@ fun TweakScreen(
         }
     }
 
-    // Drawer otomatis ditutup kalau backend berubah jadi non-Root sementara
-    // sedang terbuka (mis. pengguna cabut akses root dari luar) — mencegah
-    // drawer terbuka menampilkan item Game Profile/Kernel Manager/App
-    // Manager yang sudah tidak relevan lagi untuk backend baru.
+    // Sub-tab root-only (Game Profile/Kernel Manager/App Manager/Build.prop)
+    // direset ke Dashboard otomatis kalau backend berubah jadi non-Root
+    // sementara salah satunya sedang aktif (mis. pengguna cabut akses root
+    // dari luar) — mencegah layar menampilkan konten yang sudah tidak
+    // relevan lagi untuk backend baru. Dashboard/Tweak sendiri TIDAK
+    // direset karena keduanya tetap relevan untuk backend apa pun.
     LaunchedEffect(privilegeStatus.activeBackend) {
-        if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
-            selectedSubTab = TweakSubTab.TWEAK
+        val isRootOnlySubTab = selectedSubTab == TweakSubTab.GAME_PROFILE ||
+            selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
+            selectedSubTab == TweakSubTab.APP_MANAGER ||
+            selectedSubTab == TweakSubTab.BUILD_PROP
+        if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT && isRootOnlySubTab) {
+            selectedSubTab = TweakSubTab.DASHBOARD
             if (drawerState.isOpen) drawerState.close()
         }
     }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        // gesturesEnabled hanya untuk backend Root — sub-tab lain (Game
-        // Profile, Kernel Manager) memang cuma relevan untuk Root, jadi
-        // swipe-buka-drawer dimatikan total untuk backend Shizuku/NONE
-        // supaya tidak ada gestur yang membuka drawer kosong/percuma.
-        gesturesEnabled = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
+        // Drawer sekarang SELALU bisa dibuka (gestur maupun tombol
+        // hamburger) untuk SEMUA backend — beda dari sebelumnya yang
+        // cuma aktif untuk Root. Alasannya: sekarang drawer minimal berisi
+        // "Dashboard" dan "Tweak" yang relevan untuk backend apa pun (lihat
+        // TweakDrawerContent); item Game Profile/Kernel Manager/App
+        // Manager/Build.prop Editor sendiri yang di-gating Root-only di
+        // dalam drawer (tidak dirender untuk backend selain Root).
+        gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
                 TweakDrawerContent(
                     selected = selectedSubTab,
+                    showRootOnlyItems = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
                     onSelect = { tab ->
                         selectedSubTab = tab
                         coroutineScope.launch { drawerState.close() }
@@ -191,18 +206,34 @@ fun TweakScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // Header "AetherX" (ikon + judul) + pill ID pengguna SELALU
-                // tampil, baik di sub-tab Dashboard, Game Profile, Kernel
-                // Manager, App Manager, maupun Build.prop Editor — hanya
-                // konten di bawahnya yang berganti. Tombol hamburger (buka
-                // drawer) HANYA muncul untuk backend Root, karena tanpa Root
-                // cuma ada satu sub-tab (Dashboard) — drawer tidak ada
-                // gunanya.
+                // tampil, di SEMUA sub-tab (Dashboard/Tweak/Game
+                // Profile/Kernel Manager/App Manager/Build.prop Editor) —
+                // hanya konten di bawahnya yang berganti. Tombol hamburger
+                // (buka drawer) SEKARANG SELALU tampil untuk backend apa
+                // pun (lihat KDoc TweakHeader) karena drawer sekarang selalu
+                // berguna (minimal ada Dashboard + Tweak).
                 TweakHeader(
                     userId = state.userId,
                     onRetryUserId = viewModel::retryResolveUserIdIfMissing,
-                    showMenuButton = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
                     onMenuClick = { coroutineScope.launch { drawerState.open() } },
                 )
+
+                if (selectedSubTab == TweakSubTab.DASHBOARD) {
+                    // === Konten tab "Dashboard" ===
+                    // Ringkasan CPU/GPU/Suhu (gauge kecil) + Info Device —
+                    // TERSEDIA UNTUK SEMUA BACKEND (termasuk NONE), lihat
+                    // KDoc DashboardViewModel soal bagaimana CPU/GPU dibaca
+                    // lebih reliable lewat shell kalau Shizuku/Root aktif,
+                    // dengan fallback baca langsung proses app kalau belum.
+                    DashboardMonitorRow(
+                        cpuLoadPercent = dashboardState.cpuLoadPercent,
+                        gpuLoadPercent = dashboardState.gpuLoadPercent,
+                        temperatureCelsius = dashboardState.temperatureCelsius,
+                        gpuUnsupported = dashboardState.gpuUnsupported,
+                    )
+                    DeviceInfoSection(info = dashboardState.deviceInfo)
+                    return@Column
+                }
 
                 if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
                     // GameProfileScreen mengisi SISA ruang di bawah header
@@ -263,21 +294,9 @@ fun TweakScreen(
                     return@Column
                 }
 
-                // === Konten tab Dashboard (dulu "Tweak" — lihat perintah
-                // rework) ===
-                // Ringkasan CPU/GPU/Suhu (gauge kecil) + Info Device SELALU
-                // tampil paling atas untuk sub-tab Dashboard, TIDAK butuh
-                // Shizuku/Root sama sekali (lihat KDoc DashboardViewModel) —
-                // baru di bawahnya section-section tweak yang sudah ada
-                // (Input Driver, Refresh Rate, Mode Game, Root) mengikuti
-                // gating akses masing-masing seperti sebelumnya.
-                DashboardMonitorRow(
-                    cpuLoadPercent = dashboardState.cpuLoadPercent,
-                    gpuLoadPercent = dashboardState.gpuLoadPercent,
-                    temperatureCelsius = dashboardState.temperatureCelsius,
-                )
-                DeviceInfoSection(info = dashboardState.deviceInfo)
-
+                // === Konten tab "Tweak" (dulu bercampur dengan monitor CPU/GPU
+                // di sub-tab yang sama sebelum Dashboard dipisah — lihat
+                // perintah rework) ===
                 // Section Input Driver (pointer speed & touch boost) khusus untuk
                 // backend NON-ROOT (Shizuku) — disembunyikan saat backend aktif
                 // adalah Root, sama seperti section "Root" di bawah yang hanya
@@ -429,42 +448,53 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP }
+private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP }
 
 /**
- * Isi drawer navigasi sub-tab Dashboard (dulu disebut "Tweak" — lihat
- * perintah rework). Dibuka lewat tombol hamburger di [TweakHeader] atau
- * swipe dari tepi kiri (lihat `gesturesEnabled` di [ModalNavigationDrawer]
- * pada [TweakScreen]) — HANYA relevan untuk backend Root, karena tanpa Root
- * cuma ada satu sub-tab (Dashboard) jadi drawer ini tidak pernah dibuka
- * (tombol hamburger-nya juga tidak dirender untuk backend selain Root,
- * lihat [TweakHeader]).
+ * Isi drawer navigasi. Dibuka lewat tombol hamburger di [TweakHeader] atau
+ * swipe dari tepi kiri (`gesturesEnabled` di [ModalNavigationDrawer] pada
+ * [TweakScreen] SEKARANG SELALU true, lihat KDoc di sana) — drawer ini
+ * SEKARANG RELEVAN UNTUK SEMUA BACKEND (bukan cuma Root lagi seperti
+ * sebelumnya), karena minimal berisi dua item yang tersedia untuk backend
+ * apa pun:
+ * - "Dashboard": ringkasan CPU/GPU/Suhu + Info Device (lihat
+ *   [DashboardViewModel], [DashboardMonitorRow], [DeviceInfoSection]).
+ * - "Tweak": seluruh kontrol tweak (Input Driver untuk Shizuku, Refresh
+ *   Rate, Mode Game, dan Kernel Tuning untuk Root) — konten yang
+ *   SEBELUMNYA bercampur dengan monitor CPU/GPU di satu sub-tab yang sama,
+ *   sekarang dipisah murni jadi kontrol tweak saja.
  *
  * Item "Kernel Manager" (baca/tulis frekuensi & governor per-core CPU, GPU,
  * dan suhu live), "App Manager" (freeze/unfreeze aplikasi pihak ketiga
  * & bloatware terkurasi), dan "Build.prop Editor" (edit persisten properti
  * sistem lewat file, lihat KDoc [BuildPropScreen] soal bedanya dengan
- * `setprop` runtime) masing-masing sub-tab tersendiri, BUKAN digabung
- * ke dalam section "Kernel Tuning (Root)" di sub-tab Dashboard biasa seperti
- * percobaan awal Kernel Manager — menumpuk semuanya di satu scroll membuat
- * tab Dashboard jadi sangat panjang dan padat. Sebelumnya dicoba sebagai
- * segmented switcher horizontal di atas konten, tapi drawer dipilih supaya
- * header tab Dashboard tetap ringkas (satu tombol hamburger, bukan banyak
- * tombol sub-tab yang selalu makan tempat).
+ * `setprop` runtime) HANYA dirender kalau [showRootOnlyItems] true (backend
+ * Root aktif) — dipisah dengan [HorizontalDivider] + label kecil "Khusus
+ * Root" supaya jelas kenapa jumlah item drawer berbeda-beda tergantung
+ * backend yang aktif, bukan terlihat seperti bug/item hilang.
  */
 @Composable
 private fun TweakDrawerContent(
     selected: TweakSubTab,
+    showRootOnlyItems: Boolean,
     onSelect: (TweakSubTab) -> Unit,
 ) {
     Text(
-        text = stringResource(R.string.nav_dashboard),
+        text = stringResource(R.string.app_name),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
     )
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.nav_dashboard)) },
+        icon = { Icon(imageVector = Icons.Outlined.SpaceDashboard, contentDescription = null) },
+        selected = selected == TweakSubTab.DASHBOARD,
+        onClick = { onSelect(TweakSubTab.DASHBOARD) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.nav_tweak)) },
         icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
         selected = selected == TweakSubTab.TWEAK,
         onClick = { onSelect(TweakSubTab.TWEAK) },
@@ -479,30 +509,43 @@ private fun TweakDrawerContent(
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = 12.dp),
     )
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.kernel_manager_title)) },
-        icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
-        selected = selected == TweakSubTab.KERNEL_MANAGER,
-        onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
-    )
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.nav_app_manager)) },
-        icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
-        selected = selected == TweakSubTab.APP_MANAGER,
-        onClick = { onSelect(TweakSubTab.APP_MANAGER) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
-    )
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.nav_build_prop)) },
-        icon = { Icon(imageVector = Icons.Outlined.Code, contentDescription = null) },
-        selected = selected == TweakSubTab.BUILD_PROP,
-        onClick = { onSelect(TweakSubTab.BUILD_PROP) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
-    )
+
+    if (showRootOnlyItems) {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+        )
+        Text(
+            text = stringResource(R.string.drawer_root_only_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.kernel_manager_title)) },
+            icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
+            selected = selected == TweakSubTab.KERNEL_MANAGER,
+            onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_app_manager)) },
+            icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
+            selected = selected == TweakSubTab.APP_MANAGER,
+            onClick = { onSelect(TweakSubTab.APP_MANAGER) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_build_prop)) },
+            icon = { Icon(imageVector = Icons.Outlined.Code, contentDescription = null) },
+            selected = selected == TweakSubTab.BUILD_PROP,
+            onClick = { onSelect(TweakSubTab.BUILD_PROP) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+        )
+    }
 }
 
 /**
@@ -511,7 +554,7 @@ private fun TweakDrawerContent(
  * logo AetherX di kiri berdampingan dengan judul "AetherX", dan pill ID
  * pengguna lokal (mis. "ID-67128") rapi di kanan — menggantikan pill status
  * Shizuku/Root yang dipakai sebelumnya. Header ini SAMA untuk seluruh
- * sub-tab (Dashboard/Game Profile/Kernel Manager/App Manager/Build.prop),
+ * sub-tab (Dashboard/Tweak/Game Profile/Kernel Manager/App Manager/Build.prop),
  * hanya konten di bawahnya yang berganti.
  *
  * Kalau [userId] masih null (alokasi dari Firestore belum/gagal), pill TIDAK
@@ -520,16 +563,15 @@ private fun TweakDrawerContent(
  * bisa diketuk untuk mencoba ulang secara manual lewat [onRetryUserId],
  * selain otomatis dicoba ulang tiap kali layar ini kembali aktif.
  *
- * Tombol hamburger (buka drawer sub-tab Dashboard/Game Profile/Kernel
- * Manager/App Manager) HANYA muncul kalau [showMenuButton] true (yaitu
- * backend Root) — tanpa Root cuma ada satu sub-tab, jadi tombol menu tidak
- * ada gunanya dan malah membingungkan kalau tetap tampil.
+ * Tombol hamburger (buka drawer navigasi Dashboard/Tweak/Game Profile/Kernel
+ * Manager/App Manager/Build.prop Editor) SEKARANG SELALU tampil untuk
+ * backend apa pun (dulu hanya untuk Root — lihat perintah rework: drawer
+ * sekarang minimal berisi Dashboard+Tweak yang relevan untuk semua orang).
  */
 @Composable
 private fun TweakHeader(
     userId: Int?,
     onRetryUserId: () -> Unit,
-    showMenuButton: Boolean,
     onMenuClick: () -> Unit,
 ) {
     Row(
@@ -541,16 +583,14 @@ private fun TweakHeader(
             modifier = Modifier.weight(1f, fill = false),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showMenuButton) {
-                IconButton(onClick = onMenuClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.Menu,
-                        contentDescription = stringResource(R.string.tweak_menu_open_cd),
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    imageVector = Icons.Outlined.Menu,
+                    contentDescription = stringResource(R.string.tweak_menu_open_cd),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
             }
+            Spacer(modifier = Modifier.width(4.dp))
             Image(
                 painter = painterResource(id = R.drawable.ic_aetherx_logo),
                 contentDescription = null,

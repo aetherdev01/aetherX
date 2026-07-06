@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aether.x.R
+import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.core.security.AttemptGuardResult
 import com.aether.x.core.security.LicenseAttemptGuard
 import com.aether.x.data.AetherXPreferences
@@ -124,6 +125,14 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
 
         _status.value = MembershipUiStatus.CHECKING
         licenseRepository.observe(key).collectLatest { result ->
+            // Status SEBELUM update ini diproses — dipakai untuk mendeteksi
+            // TRANSISI dari ACTIVE ke Expired/Revoked/dsb, bukan status awal
+            // pertama kali observe (yang belum tentu berarti "baru saja
+            // dicabut", bisa jadi memang sudah lama tidak aktif). Notifikasi
+            // sistem HANYA relevan untuk transisi, supaya tidak mengagetkan
+            // pengguna dengan notif "lisensi dicabut" padahal itu memang
+            // status lamanya sejak awal.
+            val previousStatus = _status.value
             when (result) {
                 is LicenseResult.Valid -> {
                     preferences.setLicenseCache(key, result.expiresAtMillis)
@@ -134,11 +143,17 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     preferences.clearLicenseCache()
                     _status.value = MembershipUiStatus.EXPIRED
                     _expiresAtMillis.value = result.expiredAtMillis
+                    if (previousStatus == MembershipUiStatus.ACTIVE) {
+                        notifyLicenseChanged(R.string.notif_license_expired_text)
+                    }
                 }
                 LicenseResult.Revoked, LicenseResult.BoundToOtherDevice, LicenseResult.NotFound -> {
                     preferences.clearLicenseCache()
                     _status.value = MembershipUiStatus.INACTIVE
                     _expiresAtMillis.value = null
+                    if (previousStatus == MembershipUiStatus.ACTIVE) {
+                        notifyLicenseChanged(R.string.notif_license_revoked_text)
+                    }
                 }
                 LicenseResult.NetworkError -> {
                     // Offline/listener sempat error: percaya cache lokal
@@ -156,6 +171,22 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                 }
             }
         }
+    }
+
+    /**
+     * Kirim notifikasi sistem (channel [AetherXNotifier.NotificationKind.GENERAL]
+     * — lihat perintah rework: "tambahkan notifikasi di semua fitur ... dan
+     * lain lain") saat lisensi berubah dari ACTIVE ke tidak aktif lagi,
+     * supaya pengguna tetap tahu meski sedang tidak membuka tab Membership.
+     */
+    private fun notifyLicenseChanged(textRes: Int) {
+        val app = getApplication<Application>()
+        AetherXNotifier.notify(
+            context = app,
+            kind = AetherXNotifier.NotificationKind.GENERAL,
+            title = app.getString(R.string.notif_license_changed_title),
+            text = app.getString(textRes),
+        )
     }
 
     /**

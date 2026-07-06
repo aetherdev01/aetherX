@@ -71,6 +71,14 @@ object NativeIntegrityGuard {
                 )
             }
             else -> {
+                Log.e(
+                    TAG,
+                    "Verifikasi integritas native GAGAL (byte code libaetherX.so " +
+                        "tidak cocok dengan checksum resmi) — aplikasi akan ditutup paksa. " +
+                        "Kalau kamu baru saja mengubah/rebuild native lib ini sendiri " +
+                        "(bukan hasil tamper), regenerasi checksum-nya — lihat catatan " +
+                        "REGENERASI CHECKSUM di integrityguard.cpp.",
+                )
                 crashImmediately()
             }
         }

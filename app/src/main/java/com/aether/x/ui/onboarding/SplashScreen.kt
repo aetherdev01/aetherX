@@ -1,21 +1,14 @@
 package com.aether.x.ui.onboarding
 
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOutBack
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -29,9 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -41,7 +32,6 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.DeviceId
 import com.aether.x.data.UserIdRepository
-import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentBlueSoft
 import com.aether.x.ui.theme.BgVoid
 import com.aether.x.ui.theme.TextMuted
@@ -116,12 +106,13 @@ fun SplashScreen(
 }
 
 /**
- * Konten visual splash: logo [R.drawable.ic_aetherx_logo] muncul dengan
- * animasi scale+fade "pop in" (overshoot halus lewat [EaseOutBack]), lalu
- * glow lembut di belakangnya berdenyut pelan tanpa henti selama splash
- * tampil — memberi kesan "menyala" alih-alih statis. Judul & status
- * loading muncul menyusul dengan fade-in supaya urutan animasi terasa
- * bertahap (logo dulu, baru teks), bukan semua elemen muncul sekaligus.
+ * Konten visual splash: logo [R.drawable.ic_aetherx_logo] (ikon AetherX
+ * terbaru) muncul dengan animasi scale+fade "pop in" sederhana (overshoot
+ * halus lewat [EaseOutBack]) — TANPA efek glow/cahaya tambahan di
+ * belakangnya (dihapus atas permintaan: splash cukup ikon + teks polos,
+ * tidak perlu efek visual tambahan). Judul & status loading muncul
+ * menyusul dengan fade-in supaya urutan animasi terasa bertahap (logo
+ * dulu, baru teks), bukan semua elemen muncul sekaligus.
  */
 @Composable
 private fun SplashScreenContent(statusLabel: String) {
@@ -143,26 +134,6 @@ private fun SplashScreenContent(statusLabel: String) {
         textAlpha.animateTo(targetValue = 1f, animationSpec = tween(durationMillis = 400))
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "splash_glow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "glow_alpha",
-    )
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "glow_scale",
-    )
-
     Scaffold(containerColor = BgVoid) { padding ->
         Column(
             modifier = Modifier
@@ -171,32 +142,14 @@ private fun SplashScreenContent(statusLabel: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                // Glow lingkaran berdenyut di belakang logo — dibuat dengan
-                // radial gradient blur, bukan Image, supaya warnanya ikut
-                // AccentBlue tema tanpa perlu aset gambar tambahan.
-                Box(
-                    modifier = Modifier
-                        .size(160.dp)
-                        .scale(glowScale)
-                        .alpha(glowAlpha)
-                        .blur(40.dp)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(AccentBlue, AccentBlue.copy(alpha = 0f)),
-                            ),
-                            shape = CircleShape,
-                        ),
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.ic_aetherx_logo),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier
-                        .size(120.dp)
-                        .scale(logoScale.value)
-                        .alpha(logoAlpha.value),
-                )
-            }
+            Image(
+                painter = painterResource(id = R.drawable.ic_aetherx_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier
+                    .size(120.dp)
+                    .scale(logoScale.value)
+                    .alpha(logoAlpha.value),
+            )
 
             Text(
                 text = stringResource(R.string.app_name),

@@ -65,7 +65,7 @@ fun AboutScreen(
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        AppIdentityCard(versionName = BuildConfig.VERSION_NAME)
+        MaintainerHeroCard(versionName = BuildConfig.VERSION_NAME)
 
         SectionCard(title = stringResource(R.string.about_section_links)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -95,27 +95,66 @@ fun AboutScreen(
 }
 
 /**
- * Kartu identitas: logo AetherX, nama + tagline aplikasi, lencana versi, dan
- * info maintainer — dikumpulkan jadi satu kartu ringkas di puncak tab About
- * (dulu bercampur dengan tautan sosial dalam satu SectionCard yang sama).
+ * Kartu HERO paling atas tab About (REWORK — sebelumnya fokus utamanya
+ * identitas aplikasi dengan foto maintainer cuma jadi baris kecil kedua;
+ * sekarang dibalik total): foto besar Maintainer ([R.drawable.logo], BUKAN
+ * [R.drawable.ic_aetherx_logo] — logo.png ini secara khusus adalah foto
+ * yang mewakili Aldi Ahmad Khoirudin selaku maintainer, dipakai di sini
+ * SEBAGAI FOTO PROFIL utama, bukan sebagai logo brand aplikasi) jadi
+ * elemen pertama yang dilihat, dengan nama & handle di bawahnya sebagai
+ * judul utama kartu. Identitas aplikasi (judul, tagline, versi) dipindah
+ * jadi info SEKUNDER di baris bawah, dipisah divider.
  */
 @Composable
-private fun AppIdentityCard(versionName: String) {
+private fun MaintainerHeroCard(versionName: String) {
     SectionCard(title = null) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_aetherx_logo),
-                contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.size(52.dp),
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = stringResource(R.string.about_maintainer_name),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.about_app_title),
+                    text = stringResource(R.string.about_maintainer_name),
                     style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.about_maintainer_handle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = stringResource(R.string.about_maintainer_role),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            modifier = Modifier.padding(vertical = 14.dp),
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.about_app_title),
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
                     text = stringResource(R.string.about_app_tagline),
@@ -133,38 +172,6 @@ private fun AppIdentityCard(versionName: String) {
                     text = stringResource(R.string.about_version, versionName),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        }
-
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.padding(vertical = 14.dp),
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = stringResource(R.string.about_maintainer_name),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-            )
-            Column {
-                Text(
-                    text = stringResource(R.string.about_maintainer_name),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = stringResource(R.string.about_maintainer_handle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }

@@ -15,15 +15,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -51,6 +57,8 @@ private val styleOptions = listOf(
     StyleOption(CrosshairStyle.DOT, R.string.crosshair_style_dot),
     StyleOption(CrosshairStyle.CIRCLE, R.string.crosshair_style_circle),
     StyleOption(CrosshairStyle.CIRCLE_DOT, R.string.crosshair_style_circle_dot),
+    StyleOption(CrosshairStyle.CROSS_DOT, R.string.crosshair_style_cross_dot),
+    StyleOption(CrosshairStyle.T_SHAPE, R.string.crosshair_style_t_shape),
 )
 
 @Composable
@@ -109,6 +117,12 @@ fun CrosshairSettingsSection(
                     text = stringResource(R.string.crosshair_color_label),
                     style = MaterialTheme.typography.bodyLarge,
                 )
+                var showCustomColorPicker by remember { mutableStateOf(false) }
+                // isCustomColor: true kalau warna aktif TIDAK ada di 6 preset
+                // — dipakai untuk menandai swatch "Custom" sebagai terpilih
+                // (ring accent) alih-alih tidak ada satu pun swatch yang
+                // ter-highlight, yang akan terlihat seperti bug/warna hilang.
+                val isCustomColor = crosshairColorPalette.none { it == colorArgb }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -122,6 +136,26 @@ fun CrosshairSettingsSection(
                             onClick = { onColorChange(swatch) },
                         )
                     }
+                    // Swatch "Custom" (FITUR BARU — lihat perintah rework:
+                    // "opsi warna untuk sesuai selera sendiri pakai picker"):
+                    // lingkaran roda-warna sebagai afforadance visual "pilih
+                    // warna apa saja", membuka CrosshairColorPickerDialog
+                    // (HSV picker penuh) saat diketuk.
+                    CustomColorSwatch(
+                        selected = isCustomColor,
+                        currentColor = if (isCustomColor) Color(colorArgb.toInt()) else null,
+                        onClick = { showCustomColorPicker = true },
+                    )
+                }
+                if (showCustomColorPicker) {
+                    CrosshairColorPickerDialog(
+                        initialColorArgb = colorArgb,
+                        onDismiss = { showCustomColorPicker = false },
+                        onColorConfirmed = { newColor ->
+                            onColorChange(newColor)
+                            showCustomColorPicker = false
+                        },
+                    )
                 }
             }
 
@@ -295,6 +329,64 @@ private fun ColorSwatch(color: Long, selected: Boolean, onClick: () -> Unit) {
                 imageVector = Icons.Outlined.Check,
                 contentDescription = null,
                 tint = if (color == 0xFFFFFFFFL) Color.Black else Color.White,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Swatch "Custom" (FITUR BARU) di ujung baris warna preset — lingkaran
+ * roda-warna (hue wheel sederhana lewat sweepGradient) sebagai affordance
+ * "pilih warna apa saja", membuka [CrosshairColorPickerDialog] saat diketuk.
+ * Kalau warna aktif saat ini adalah hasil custom picker (bukan salah satu
+ * dari 6 preset), swatch ini menampilkan warna tersebut dan ring accent
+ * terpilih — swatch preset lain otomatis tidak ada yang ter-highlight.
+ */
+@Composable
+private fun CustomColorSwatch(
+    selected: Boolean,
+    currentColor: Color?,
+    onClick: () -> Unit,
+) {
+    val wheelBrush = remember {
+        Brush.sweepGradient(
+            listOf(
+                Color.Red, Color.Yellow, Color.Green,
+                Color.Cyan, Color.Blue, Color.Magenta, Color.Red,
+            ),
+        )
+    }
+    val baseModifier = Modifier
+        .size(36.dp)
+        .clip(CircleShape)
+    val coloredModifier = if (currentColor != null) {
+        baseModifier.background(currentColor)
+    } else {
+        baseModifier.background(wheelBrush)
+    }
+    Box(
+        modifier = coloredModifier
+            .border(
+                width = if (selected) 3.dp else 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                shape = CircleShape,
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (currentColor == null) {
+            Icon(
+                imageVector = Icons.Outlined.Palette,
+                contentDescription = stringResource(R.string.crosshair_custom_color_title),
+                tint = Color.White,
+                modifier = Modifier.size(16.dp),
+            )
+        } else if (selected) {
+            Icon(
+                imageVector = Icons.Outlined.Check,
+                contentDescription = null,
+                tint = Color.White,
                 modifier = Modifier.size(18.dp),
             )
         }

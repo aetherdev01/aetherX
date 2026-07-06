@@ -3,7 +3,7 @@ package com.aether.x.ui.main
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.SpaceDashboard
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,13 +28,13 @@ import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 
-private enum class MainTab { DASHBOARD, MEMBERSHIP, ABOUT, SETTINGS }
+private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 
 @Composable
 fun MainScreen(
     onManageAccess: () -> Unit,
 ) {
-    var selectedTab by remember { mutableStateOf(MainTab.DASHBOARD) }
+    var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
 
     val tweakViewModel: TweakViewModel = viewModel()
 
@@ -47,10 +47,10 @@ fun MainScreen(
                 tonalElevation = 0.dp,
             ) {
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.DASHBOARD,
-                    onClick = { selectedTab = MainTab.DASHBOARD },
-                    icon = { Icon(Icons.Outlined.SpaceDashboard, contentDescription = null) },
-                    label = { Text(stringResource(R.string.nav_dashboard)) },
+                    selected = selectedTab == MainTab.TWEAK,
+                    onClick = { selectedTab = MainTab.TWEAK },
+                    icon = { Icon(Icons.Outlined.Tune, contentDescription = null) },
+                    label = { Text(stringResource(R.string.nav_tweak)) },
                     colors = aetherNavColors(),
                 )
                 NavigationBarItem(
@@ -78,7 +78,7 @@ fun MainScreen(
         },
     ) { padding ->
         when (selectedTab) {
-            MainTab.DASHBOARD -> TweakScreen(
+            MainTab.TWEAK -> TweakScreen(
                 modifier = Modifier,
                 contentPadding = padding,
                 viewModel = tweakViewModel,

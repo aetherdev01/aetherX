@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.DeveloperBoard
@@ -16,11 +18,13 @@ import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
@@ -35,44 +39,64 @@ import kotlin.math.roundToInt
  * Baris tiga monitor ringkas (CPU, GPU, Suhu) sebagai gauge lingkaran kecil
  * berdampingan — ringkasan cepat "sekilas lihat" di puncak tab Dashboard,
  * SEBELUM detail Kernel Manager (khusus Root) yang lebih rinci di bawahnya.
- * Nilai null (mis. GPU load tidak didukung chipset ini) ditampilkan sebagai
- * "-" alih-alih angka palsu — sama seperti perlakuan null di KernelManagerSection.
+ * Nilai null pada CPU/Suhu ditampilkan sebagai "-" (belum sempat terbaca).
+ * Untuk GPU, [gpuUnsupported] membedakan dua kondisi null yang PENYEBABNYA
+ * beda (lihat KDoc [DashboardViewModel]): "-" polos kalau belum sempat
+ * terbaca (akan terisi di polling berikutnya), vs label
+ * [R.string.dashboard_gpu_unsupported_hint] kalau chipset perangkat ini memang
+ * tidak punya node persentase GPU (Mali/PowerVR umumnya) — supaya
+ * pengguna tidak mengira ini bug yang harus dilaporkan berulang-ulang.
  */
 @Composable
 fun DashboardMonitorRow(
     cpuLoadPercent: Int?,
     gpuLoadPercent: Int?,
     temperatureCelsius: Float?,
+    gpuUnsupported: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        MonitorGaugeCard(
-            modifier = Modifier.weight(1f),
-            label = stringResource(R.string.dashboard_monitor_cpu),
-            valueText = cpuLoadPercent?.let { "$it%" } ?: "-",
-            progress = (cpuLoadPercent ?: 0) / 100f,
-            icon = Icons.Outlined.Memory,
-            gaugeColor = MaterialTheme.colorScheme.primary,
-        )
-        MonitorGaugeCard(
-            modifier = Modifier.weight(1f),
-            label = stringResource(R.string.dashboard_monitor_gpu),
-            valueText = gpuLoadPercent?.let { "$it%" } ?: "-",
-            progress = (gpuLoadPercent ?: 0) / 100f,
-            icon = Icons.Outlined.DeveloperBoard,
-            gaugeColor = MaterialTheme.colorScheme.tertiary,
-        )
-        MonitorGaugeCard(
-            modifier = Modifier.weight(1f),
-            label = stringResource(R.string.dashboard_monitor_temp),
-            valueText = temperatureCelsius?.let { "${it.roundToInt()}°" } ?: "-",
-            progress = ((temperatureCelsius ?: 0f) / 100f).coerceIn(0f, 1f),
-            icon = Icons.Outlined.Thermostat,
-            gaugeColor = thermalGaugeColor(temperatureCelsius),
-        )
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MonitorGaugeCard(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.dashboard_monitor_cpu),
+                valueText = cpuLoadPercent?.let { "$it%" } ?: "-",
+                progress = (cpuLoadPercent ?: 0) / 100f,
+                icon = Icons.Outlined.Memory,
+                gaugeColor = MaterialTheme.colorScheme.primary,
+            )
+            MonitorGaugeCard(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.dashboard_monitor_gpu),
+                valueText = when {
+                    gpuLoadPercent != null -> "$gpuLoadPercent%"
+                    gpuUnsupported -> stringResource(R.string.dashboard_gpu_unsupported_short)
+                    else -> "-"
+                },
+                progress = (gpuLoadPercent ?: 0) / 100f,
+                icon = Icons.Outlined.DeveloperBoard,
+                gaugeColor = MaterialTheme.colorScheme.tertiary,
+            )
+            MonitorGaugeCard(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.dashboard_monitor_temp),
+                valueText = temperatureCelsius?.let { "${it.roundToInt()}°" } ?: "-",
+                progress = ((temperatureCelsius ?: 0f) / 100f).coerceIn(0f, 1f),
+                icon = Icons.Outlined.Thermostat,
+                gaugeColor = thermalGaugeColor(temperatureCelsius),
+            )
+        }
+        if (gpuUnsupported) {
+            Text(
+                text = stringResource(R.string.dashboard_gpu_unsupported_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+            )
+        }
     }
 }
 
@@ -174,26 +198,87 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
         )
         DeviceInfoRow(
             icon = Icons.Outlined.Memory,
-            label = stringResource(R.string.dashboard_device_ram),
-            value = stringResource(
-                R.string.dashboard_device_ram_format,
-                (info.totalRamBytes - info.availableRamBytes).toGbLabel(),
-                info.totalRamBytes.toGbLabel(),
-            ),
-        )
-        DeviceInfoRow(
-            icon = Icons.Outlined.SdStorage,
-            label = stringResource(R.string.dashboard_device_storage),
-            value = stringResource(
-                R.string.dashboard_device_storage_format,
-                (info.totalStorageBytes - info.availableStorageBytes).toGbLabel(),
-                info.totalStorageBytes.toGbLabel(),
-            ),
-        )
-        DeviceInfoRow(
-            icon = Icons.Outlined.Memory,
             label = stringResource(R.string.dashboard_device_cpu_abi),
             value = info.cpuAbi.ifBlank { "-" },
+        )
+
+        // Fitur baru: RAM & penyimpanan ditampilkan sebagai progress bar
+        // visual (bukan cuma teks "4.2 GB / 8.0 GB" seperti sebelumnya) —
+        // sekilas pandang langsung terlihat seberapa penuh, tanpa perlu
+        // menghitung sendiri dari dua angka.
+        val usedRam = info.totalRamBytes - info.availableRamBytes
+        UsageBarRow(
+            icon = Icons.Outlined.Memory,
+            label = stringResource(R.string.dashboard_device_ram),
+            usedLabel = usedRam.toGbLabel(),
+            totalLabel = info.totalRamBytes.toGbLabel(),
+            progress = if (info.totalRamBytes > 0) usedRam.toFloat() / info.totalRamBytes.toFloat() else 0f,
+        )
+        val usedStorage = info.totalStorageBytes - info.availableStorageBytes
+        UsageBarRow(
+            icon = Icons.Outlined.SdStorage,
+            label = stringResource(R.string.dashboard_device_storage),
+            usedLabel = usedStorage.toGbLabel(),
+            totalLabel = info.totalStorageBytes.toGbLabel(),
+            progress = if (info.totalStorageBytes > 0) usedStorage.toFloat() / info.totalStorageBytes.toFloat() else 0f,
+        )
+    }
+}
+
+/**
+ * Baris progress bar penggunaan (RAM/Storage) — fitur baru Dashboard:
+ * label + angka "terpakai / total" di baris atas, progress bar warna
+ * berjenjang (hijau→kuning→merah mengikuti seberapa penuh) di bawahnya.
+ */
+@Composable
+private fun UsageBarRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    usedLabel: String,
+    totalLabel: String,
+    progress: Float,
+) {
+    val clampedProgress = progress.coerceIn(0f, 1f)
+    val barColor = when {
+        clampedProgress < 0.7f -> MaterialTheme.colorScheme.primary
+        clampedProgress < 0.9f -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
+            Text(
+                text = stringResource(R.string.dashboard_device_usage_format, usedLabel, totalLabel),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { clampedProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .height(6.dp)
+                .clip(RoundedCornerShape(999.dp)),
+            color = barColor,
+            trackColor = barColor.copy(alpha = 0.16f),
         )
     }
 }

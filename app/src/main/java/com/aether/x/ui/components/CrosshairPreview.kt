@@ -67,6 +67,24 @@ fun CrosshairPreview(
                 drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = stroke)
                 drawCircle(drawColor, radius = thickness * 1.6f, center = Offset(cx, cy))
             }
+            CrosshairStyle.CROSS_DOT -> {
+                // Model baru: silang dengan gap + titik solid di tengah —
+                // lihat KDoc implementasi identik di CrosshairView.onDraw
+                // (WYSIWYG, gambar preview ini HARUS sama persis dengan
+                // overlay sungguhan).
+                val gap = r * 0.35f
+                drawLine(drawColor, Offset(cx - r, cy), Offset(cx - gap, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - gap), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy + gap), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                drawCircle(drawColor, radius = thickness * 1.4f, center = Offset(cx, cy))
+            }
+            CrosshairStyle.T_SHAPE -> {
+                // Model baru: bentuk "T" terbalik — lihat KDoc implementasi
+                // identik di CrosshairView.onDraw.
+                drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
         }
     }
 }

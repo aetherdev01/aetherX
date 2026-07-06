@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -39,6 +40,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
+import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.ui.theme.AccentAmber
 import com.aether.x.ui.theme.AccentAmberContainer
 
@@ -67,6 +69,32 @@ fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
     val status by viewModel.status.collectAsState()
     val context = LocalContext.current
     val telegramUrl = stringResource(R.string.maintenance_telegram_url)
+    val defaultTitle = stringResource(R.string.maintenance_default_title)
+    val notifText = stringResource(R.string.notif_maintenance_text)
+
+    // Notifikasi SISTEM (tray Android — FITUR BARU, lihat perintah rework)
+    // dipicu setiap kali `enabled` BERUBAH jadi true (key = status.enabled),
+    // bukan tiap recomposition — supaya pengguna yang sedang di background
+    // atau di layar lain tetap tahu maintenance dimulai, bukan cuma yang
+    // sedang membuka aplikasi saat itu juga. Ongoing = true karena
+    // maintenance adalah kondisi berkelanjutan (bukan kejadian sekali lewat
+    // seperti update tersedia), jadi notifikasi tidak bisa di-swipe hilang
+    // sendiri, konsisten dengan dialog blocking-nya yang juga tidak bisa
+    // di-dismiss. Notifikasi dibatalkan otomatis begitu admin mematikan
+    // status maintenance dari Firestore.
+    LaunchedEffect(status.enabled) {
+        if (status.enabled) {
+            AetherXNotifier.notify(
+                context = context,
+                kind = AetherXNotifier.NotificationKind.MAINTENANCE,
+                title = status.title.ifBlank { defaultTitle },
+                text = notifText,
+                ongoing = true,
+            )
+        } else {
+            AetherXNotifier.cancel(context, AetherXNotifier.NotificationKind.MAINTENANCE)
+        }
+    }
 
     if (!status.enabled) return
 

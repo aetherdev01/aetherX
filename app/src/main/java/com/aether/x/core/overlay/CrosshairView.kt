@@ -94,6 +94,25 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawCircle(cx, cy, r, paint)
                 canvas.drawCircle(cx, cy, thicknessPx * 1.6f, fillPaint)
             }
+            CrosshairStyle.CROSS_DOT -> {
+                // Model baru: silang dengan gap (mirip PLUS_GAP) + titik solid
+                // di tengah — populer di game FPS mobile karena titik tengah
+                // membantu akurasi bidik tanpa menutupi target kecil.
+                val gap = r * 0.35f
+                canvas.drawLine(cx - r, cy, cx - gap, cy, paint)
+                canvas.drawLine(cx + gap, cy, cx + r, cy, paint)
+                canvas.drawLine(cx, cy - r, cx, cy - gap, paint)
+                canvas.drawLine(cx, cy + gap, cx, cy + r, paint)
+                canvas.drawCircle(cx, cy, thicknessPx * 1.4f, fillPaint)
+            }
+            CrosshairStyle.T_SHAPE -> {
+                // Model baru: bentuk "T" terbalik (garis horizontal penuh +
+                // satu garis vertikal ke bawah saja, TANPA garis ke atas) —
+                // umum dipakai di game battle royale supaya area di atas
+                // titik bidik tidak tertutup crosshair.
+                canvas.drawLine(cx - r, cy, cx + r, cy, paint)
+                canvas.drawLine(cx, cy, cx, cy + r, paint)
+            }
         }
     }
 }

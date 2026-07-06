@@ -1,6 +1,7 @@
 package com.aether.x.core.kernel
 
 import com.aether.x.core.shell.ShellExecutor
+import kotlin.math.roundToInt
 
 /**
  * Membaca (read-only) state kernel mentah langsung dari sysfs/procfs lewat
@@ -237,11 +238,86 @@ class KernelInfoReader {
         }.sortedBy { it.zoneIndex }
     }
 
-    /** Versi kernel dari `uname -r` — murni informasi, tidak dipakai logika apa pun. */
+    /**
+     * Baca ulang versi kernel dari `uname -r` — murni informasi, tidak dipakai logika apa pun.
+     */
     suspend fun readKernelVersion(executor: ShellExecutor): String? {
         val result = executor.exec("uname -r")
         return result.output.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
     }
+
+    /**
+     * Load CPU rata-rata seluruh core dalam persen (0-100), dibaca DUA KALI
+     * berturut-turut dengan jeda singkat DALAM SATU panggilan shell (bukan
+     * dua panggilan `exec()` terpisah — lihat KDoc kelas ini soal kenapa
+     * satu panggilan shell per fungsi baca) supaya bisa dihitung delta
+     * busy/idle tanpa bergantung pada state instance dipanggil berkali-kali
+     * dari luar (beda dari [com.aether.x.core.monitor.SystemStatsProvider.readCpuLoadPercent]
+     * yang butuh method itu sendiri dipanggil berkali-kali untuk simpan
+     * sampel sebelumnya). Dibaca lewat [executor] (root/Shizuku), BUKAN
+     * langsung `File("/proc/stat").readText()` dari proses AetherX — di
+     * sebagian ROM, `/proc/stat` per-app dibatasi SELinux sehingga baca
+     * langsung dari proses app bisa gagal walau sebenarnya datanya publik;
+     * lewat shell (terutama root) baris ini nyaris selalu berhasil.
+     */
+    suspend fun readCpuLoadPercent(executor: ShellExecutor): Int? {
+        val script = """
+            cat /proc/stat | head -1
+            sleep 0.3
+            cat /proc/stat | head -1
+        """.trimIndent()
+        val result = executor.exec(script)
+        val lines = result.output.map { it.trim() }.filter { it.startsWith("cpu ") || it.startsWith("cpu\t") }
+        if (lines.size < 2) return null
+
+        fun parse(line: String): Pair<Long, Long>? {
+            val parts = line.trim().split(Regex("\\s+"))
+            if (parts.isEmpty() || parts[0] != "cpu") return null
+            val values = parts.drop(1).mapNotNull { it.toLongOrNull() }
+            if (values.size < 4) return null
+            val idle = values[3] + (values.getOrNull(4) ?: 0L)
+            val total = values.sum()
+            return total to idle
+        }
+
+        val (total1, idle1) = parse(lines[0]) ?: return null
+        val (total2, idle2) = parse(lines[1]) ?: return null
+        val totalDelta = total2 - total1
+        val idleDelta = idle2 - idle1
+        if (totalDelta <= 0) return null
+        val busyPercent = ((totalDelta - idleDelta).toFloat() / totalDelta.toFloat()) * 100f
+        return busyPercent.roundToIntClamped()
+    }
+
+    /**
+     * Load GPU dalam persen, dibaca lewat [executor] (root/Shizuku) — node
+     * `gpu_busy_percentage` di kebanyakan perangkat Adreno HANYA bisa dibaca
+     * shell dengan privilese, `File.canRead()` dari proses app biasa hampir
+     * selalu gagal (`Permission denied`) walau file itu ada, itulah kenapa
+     * pembacaan ini TIDAK dilakukan langsung dari
+     * [com.aether.x.core.monitor.SystemStatsProvider] untuk device dengan
+     * Shizuku/Root aktif. Kembalikan null kalau semua jalur tidak terbaca —
+     * UI akan menampilkan "-" alih-alih angka palsu (chipset non-Adreno,
+     * mis. Mali/PowerVR, umumnya tidak punya node persentase langsung).
+     */
+    suspend fun readGpuBusyPercent(executor: ShellExecutor): Int? {
+        val script = """
+            for p in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage \
+                     /sys/kernel/gpu/gpu_busy \
+                     /sys/class/devfreq/gpufreq/gpu_busy; do
+              if [ -r "${'$'}p" ]; then
+                cat "${'$'}p"
+                break
+              fi
+            done
+        """.trimIndent()
+        val result = executor.exec(script)
+        val text = result.outputText.trim()
+        val numeric = Regex("\\d+").find(text)?.value?.toIntOrNull() ?: return null
+        return numeric.coerceIn(0, 100)
+    }
+
+    private fun Float.roundToIntClamped(): Int = this.roundToInt().coerceIn(0, 100)
 
     suspend fun readSnapshot(executor: ShellExecutor): KernelSnapshot = KernelSnapshot(
         cpuCores = readCpuCores(executor),

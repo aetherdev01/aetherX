@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -43,6 +44,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
+import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.StrokeSubtle
@@ -64,6 +66,22 @@ import com.aether.x.ui.theme.TextMuted
 fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+
+    // Notifikasi SISTEM (tray Android, terpisah dari dialog in-app di bawah
+    // — FITUR BARU, lihat perintah rework) dipicu setiap kali versi terbaru
+    // yang terdeteksi BERUBAH (key = latestVersionCode), bukan setiap kali
+    // recomposition biasa — supaya tidak spam notifikasi berulang selama
+    // pengguna berada di layar yang sama dengan versi yang sama.
+    LaunchedEffect(state.info.latestVersionCode) {
+        if (state.visible && state.info.latestVersionCode > state.currentVersionCode) {
+            AetherXNotifier.notify(
+                context = context,
+                kind = AetherXNotifier.NotificationKind.UPDATE,
+                title = context.getString(R.string.notif_update_title),
+                text = context.getString(R.string.notif_update_text_format, state.info.latestVersionName),
+            )
+        }
+    }
 
     if (!state.visible) return
 
