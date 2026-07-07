@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    REWORK (lihat perintah rework — "splash screen sistem masih jelek"):
+    ic_aetherx_mark.xml ASLI mengisi hampir SELURUH viewport 108x108 (logo
+    "X" AetherX penuh, dirancang untuk jadi status bar icon & app icon).
+    Splash Screen API Android 12+ menerapkan circular mask ketat pada
+    windowSplashScreenAnimatedIcon (area aman efektif ~2/3 dari total
+    viewport, mirip adaptive icon safe zone) — ikon yang mengisi penuh
+    viewport seperti ic_aetherx_mark akan terlihat gepeng/terpotong tajam
+    di tepi lingkaran splash sistem.
+
+    Drawable ini membungkus ic_aetherx_mark dengan inset ~22% di semua sisi
+    (mengecilkan area gambar efektif dari 108dp jadi ~64dp, terpusat di
+    tengah viewport 108dp yang sama) SUPAYA logo utuh selalu berada dalam
+    area aman lingkaran splash, tidak terpotong di tepi.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:drawable="@drawable/ic_aetherx_mark"
+        android:top="24dp"
+        android:bottom="24dp"
+        android:left="24dp"
+        android:right="24dp" />
+</layer-list>

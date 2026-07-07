@@ -1,5 +1,6 @@
 package com.aether.x.ui.dashboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,11 +32,92 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
+import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.ui.components.SectionCard
 import kotlin.math.roundToInt
+
+/**
+ * FITUR BARU (lihat perintah rework — "dibawah header itu dibikin card
+ * berisi info dari aplikasi aetherX lengkap, status mode Root/No Root"):
+ * kartu paling atas di tab Dashboard, di bawah header, SEBELUM
+ * [DashboardMonitorRow]. Menampilkan identitas aplikasi (nama + versi dari
+ * [BuildConfig.VERSION_NAME]) dan status mode akses aktif saat ini
+ * (Root/Shizuku/No Root) sebagai badge berwarna berbeda per status —
+ * hijau untuk Root (privilese penuh), biru untuk Shizuku (privilese
+ * terbatas), abu-abu untuk No Root (tanpa privilese, sebagian besar tweak
+ * tidak akan tersedia).
+ */
+@Composable
+fun AetherXInfoCard(
+    activeBackend: PrivilegeBackend,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Shield,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 14.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        PrivilegeBackendBadge(activeBackend)
+    }
+}
+
+@Composable
+private fun PrivilegeBackendBadge(backend: PrivilegeBackend) {
+    val (label, color) = when (backend) {
+        PrivilegeBackend.ROOT -> stringResource(R.string.dashboard_privilege_root) to MaterialTheme.colorScheme.primary
+        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.tertiary
+        PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(color.copy(alpha = 0.14f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+        )
+    }
+}
 
 /**
  * Baris tiga monitor ringkas (CPU, GPU, Suhu) sebagai gauge lingkaran kecil
@@ -168,6 +252,15 @@ private fun MonitorGaugeCard(
  * penyimpanan — SEMUA tersedia tanpa Shizuku/Root (lihat KDoc
  * [com.aether.x.core.device.DeviceInfoProvider]), jadi section ini selalu
  * tampil terlepas dari backend akses yang aktif.
+ *
+ * REWORK TOTAL TAMPILAN (lihat perintah rework — "rework tampilan Info
+ * Device"): sebelumnya SEMUA baris (identitas + penggunaan resource)
+ * ditumpuk datar dalam satu Column tanpa pemisah visual. Sekarang dipecah
+ * jadi 2 sub-grup dengan label kecil di masing-masing ("Identitas
+ * Perangkat" untuk model/chipset/Android/CPU ABI, "Penggunaan Resource"
+ * untuk RAM/storage) dipisahkan HorizontalDivider — lebih mudah dipindai
+ * sekilas, dan progress bar RAM/storage jadi lebih menonjol sebagai
+ * kelompok tersendiri alih-alih menyatu dengan baris teks identitas.
  */
 @Composable
 fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) {
@@ -181,6 +274,12 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
             return@SectionCard
         }
 
+        Text(
+            text = stringResource(R.string.dashboard_device_info_group_identity),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
         DeviceInfoRow(
             icon = Icons.Outlined.PhoneAndroid,
             label = stringResource(R.string.dashboard_device_model),
@@ -202,10 +301,20 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
             value = info.cpuAbi.ifBlank { "-" },
         )
 
-        // Fitur baru: RAM & penyimpanan ditampilkan sebagai progress bar
-        // visual (bukan cuma teks "4.2 GB / 8.0 GB" seperti sebelumnya) —
-        // sekilas pandang langsung terlihat seberapa penuh, tanpa perlu
-        // menghitung sendiri dari dua angka.
+        androidx.compose.material3.HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            modifier = Modifier.padding(vertical = 12.dp),
+        )
+
+        Text(
+            text = stringResource(R.string.dashboard_device_info_group_usage),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        // RAM & penyimpanan ditampilkan sebagai progress bar visual (bukan
+        // cuma teks "4.2 GB / 8.0 GB") — sekilas pandang langsung terlihat
+        // seberapa penuh, tanpa perlu menghitung sendiri dari dua angka.
         val usedRam = info.totalRamBytes - info.availableRamBytes
         UsageBarRow(
             icon = Icons.Outlined.Memory,

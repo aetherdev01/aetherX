@@ -7,6 +7,8 @@ import com.aether.x.R
 import com.aether.x.core.apps.GameProfileCatalog
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.data.AetherXPreferences
+import com.aether.x.data.GameMode
+import com.aether.x.ui.components.showAetherToast
 import com.aether.x.data.GameProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,6 +100,17 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { preferences.saveGameProfile(updated) }
     }
 
+    /**
+     * Terapkan preset Game Mode (FITUR BARU — lihat perintah rework:
+     * "tambahkan fitur baru Game Mode : Low, Mid, Boost"). Mengganti ke-6
+     * toggle sekaligus sesuai kombinasi [mode] (lihat KDoc
+     * [GameProfile.withGameMode]) — pengguna tetap bisa mengubah toggle
+     * manual setelahnya, memilih mode lain lagi akan menimpa ulang semua
+     * toggle sesuai kombinasi mode yang baru dipilih.
+     */
+    fun onGameModeChange(mode: GameMode) =
+        updateSelectedProfile { GameProfile.withGameMode(it, mode) }
+
     fun onCpuPerformanceModeChange(checked: Boolean) =
         updateSelectedProfile { it.copy(cpuPerformanceMode = checked) }
 
@@ -139,5 +152,10 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(message = null) }
     }
 
-    private fun appString(resId: Int): String = getApplication<Application>().getString(resId)
+    /** FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur"): lihat KDoc appString di TweakViewModel. */
+    private fun appString(resId: Int): String {
+        val text = getApplication<Application>().getString(resId)
+        getApplication<Application>().showAetherToast(text)
+        return text
+    }
 }

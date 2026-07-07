@@ -242,6 +242,22 @@ class TweakRepository {
     }
 
     /**
+     * FITUR BARU (lihat perintah rework — "tambahkan fitur baru yang
+     * berguna khusus root" di section Root layar Tweak): nonaktifkan Doze /
+     * App Standby sistem selama sesi bermain, supaya OS tidak membekukan
+     * proses game atau service background-nya (mis. voice chat, download
+     * assets) saat layar diredupkan sesaat atau perangkat dianggap idle.
+     * `dumpsys deviceidle disable` butuh permission `DEVICE_POWER` yang di
+     * mayoritas perangkat cuma diberikan ke shell UID root (Shizuku/adb
+     * shell biasa akan ditolak), konsisten dengan tweak root lain di file
+     * ini. Dikembalikan ke default sistem (`enable`) saat toggle dimatikan.
+     */
+    suspend fun applyDozeDisable(executor: ShellExecutor, enabled: Boolean): ShellResult {
+        val mode = if (enabled) "disable" else "enable"
+        return executor.exec("dumpsys deviceidle $mode")
+    }
+
+    /**
      * Khusus root: ganti I/O scheduler storage internal ke "kyber" (kalau
      * tersedia di kernel) yang dioptimalkan untuk latensi baca rendah —
      * cocok untuk baca aset game besar. Kalau kyber tidak didukung kernel,
@@ -319,6 +335,7 @@ class TweakRepository {
         applyGpuPerformanceMode(executor, enabled = false),
         applyIoSchedulerBoost(executor, enabled = false),
         applyVmHeapBoost(executor, enabled = false),
+        applyDozeDisable(executor, enabled = false),
     )
 
     /**

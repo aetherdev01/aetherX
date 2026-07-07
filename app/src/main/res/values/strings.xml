@@ -45,8 +45,15 @@
 
 
     <!-- Bottom navigation -->
-    <string name="nav_dashboard">Dashboard</string>
-    <string name="nav_tweak">Tweak</string>
+    <!-- REWORK (lihat perintah rework — "ui di tab Tweak itu namanya
+         dashboard bukan Tweak"): label BOTTOM NAV utama diganti jadi
+         "Dashboard". Item DRAWER yang sebelumnya juga bernama "Dashboard"
+         (sub-tab pertama, berisi monitor CPU/GPU + Info Device) di-rename
+         jadi "Ringkasan" supaya kedua label tidak bentrok/ambigu maknanya
+         — drawer tetap menu navigasi internal tab ini, bottom nav adalah
+         nama tab-nya sendiri. -->
+    <string name="nav_dashboard">Ringkasan</string>
+    <string name="nav_tweak">Dashboard</string>
     <string name="nav_membership">Membership</string>
     <string name="nav_settings">Pengaturan</string>
 
@@ -145,8 +152,15 @@
     <string name="dashboard_monitor_temp">Suhu</string>
     <string name="dashboard_gpu_unsupported_short">N/A</string>
     <string name="dashboard_gpu_unsupported_hint">Chipset ini tidak menyediakan data persentase beban GPU</string>
+    <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
+    <string name="dashboard_app_version_format">Versi %1$s</string>
+    <string name="dashboard_privilege_root">Root</string>
+    <string name="dashboard_privilege_shizuku">Shizuku</string>
+    <string name="dashboard_privilege_none">No Root</string>
     <string name="dashboard_section_device_info">Info Device</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
+    <string name="dashboard_device_info_group_identity">Identitas Perangkat</string>
+    <string name="dashboard_device_info_group_usage">Penggunaan Resource</string>
     <string name="dashboard_device_model">Model</string>
     <string name="dashboard_device_chipset">Chipset/Board</string>
     <string name="dashboard_device_android_version">Versi Android</string>
@@ -168,7 +182,8 @@
     <string name="tweak_game_mode_desc">Nyalakan Jangan Ganggu (DND) otomatis supaya notifikasi tidak muncul saat main.</string>
 
     <!-- Tweak khusus root -->
-    <string name="tweak_section_root">Kernel Tuning (Root)</string>
+    <string name="tweak_section_root_cpu">CPU &amp; Performa (Root)</string>
+    <string name="tweak_section_root_system">Memori &amp; Sistem (Root)</string>
     <string name="tweak_cpu_governor">Governor CPU</string>
     <string name="tweak_cpu_governor_desc">Pilih governor clock CPU: Performance untuk clock maksimum terus-menerus, Ondemand/Schedutil untuk seimbang, Battery untuk hemat daya, atau Universal untuk otomatis sesuai dukungan chipset (Snapdragon, MediaTek, Exynos). Butuh akses root.</string>
     <string name="tweak_cpu_governor_schedutil">Schedutil</string>
@@ -206,10 +221,6 @@
     <string name="kernel_manager_gpu_unavailable">GPU tidak terdeteksi di jalur sysfs yang didukung</string>
     <string name="kernel_manager_gpu_governor_label">Governor GPU</string>
     <string name="kernel_manager_gpu_governor_desc">Governor devfreq GPU</string>
-    <string name="kernel_manager_section_thermal">Suhu (live)</string>
-    <string name="kernel_manager_thermal_empty">Tidak ada zona termal terbaca</string>
-    <string name="kernel_manager_thermal_zone_format">Zona %1$d</string>
-    <string name="kernel_manager_temp_celsius_format">%1$.1f°C</string>
     <string name="kernel_manager_error_root_unavailable">Akses root tidak tersedia</string>
     <string name="kernel_manager_error_core_frequency">Gagal mengubah frekuensi core %1$d</string>
     <string name="kernel_manager_error_core_governor">Gagal mengubah governor core %1$d</string>
@@ -228,6 +239,16 @@
     <string name="app_manager_error_root_unavailable">Akses root tidak tersedia</string>
     <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s</string>
     <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s</string>
+    <string name="app_manager_more_options_cd">Opsi lainnya</string>
+    <string name="app_manager_action_force_stop">Force Stop</string>
+    <string name="app_manager_action_clear_cache">Bersihkan Cache</string>
+    <string name="app_manager_force_stop_success">%1$s dihentikan</string>
+    <string name="app_manager_force_stop_error">Gagal menghentikan %1$s</string>
+    <string name="app_manager_clear_cache_success">Cache %1$s dibersihkan</string>
+    <string name="app_manager_clear_cache_error">Gagal membersihkan cache %1$s</string>
+    <string name="app_manager_clear_cache_confirm_title">Bersihkan Cache?</string>
+    <string name="app_manager_clear_cache_confirm_desc">Hanya file cache sementara %1$s yang akan dihapus. Data dan pengaturan aplikasi tetap aman.</string>
+    <string name="app_manager_clear_cache_confirm_action">Bersihkan</string>
 
     <!-- Build.prop Editor — sub-drawer khusus Root, edit PERSISTEN properti sistem lewat file (beda dari setprop runtime) -->
     <string name="nav_build_prop">Build.prop Editor</string>
@@ -260,6 +281,8 @@
     <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
     <string name="tweak_vm_heap_boost">VM Heap Boost</string>
     <string name="tweak_vm_heap_boost_desc">Perbesar batas heap Dalvik/ART supaya garbage collector lebih jarang menyebabkan jeda saat bermain. Berlaku untuk proses yang baru dimulai. Butuh akses root.</string>
+    <string name="tweak_doze_disabled">Nonaktifkan Doze/App Standby</string>
+    <string name="tweak_doze_disabled_desc">Cegah sistem membekukan proses game atau service background (voice chat, download aset) saat perangkat idle sesaat. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
     <string name="tweak_no_access_toast">Aktifkan Shizuku atau Root dulu di menu Pengaturan</string>
@@ -315,6 +338,11 @@
     <string name="game_profile_app_info_package">Nama Paket</string>
     <string name="game_profile_summary_active_count">%1$d dari %2$d tweak aktif</string>
     <string name="game_profile_summary_inactive">Belum ada tweak yang diaktifkan</string>
+    <!-- FITUR BARU: preset Game Mode (Low/Mid/Boost) — lihat GameMode.kt di GameProfile.kt -->
+    <string name="game_profile_mode_label">Mode Permainan</string>
+    <string name="game_profile_mode_low">Low</string>
+    <string name="game_profile_mode_mid">Mid</string>
+    <string name="game_profile_mode_boost">Boost</string>
     <string name="game_profile_category_cpu">CPU</string>
     <string name="game_profile_category_gpu">GPU &amp; Termal</string>
     <string name="game_profile_category_system">Sistem</string>
@@ -361,6 +389,7 @@
     <string name="crosshair_custom_color_title">Pilih Warna Kustom</string>
     <string name="crosshair_custom_color_apply">Terapkan</string>
     <string name="crosshair_custom_color_cancel">Batal</string>
+    <string name="crosshair_dimension_group_label">Ukuran &amp; Ketebalan</string>
     <string name="crosshair_size_label">Ukuran</string>
     <string name="crosshair_size_desc">Jangkauan garis atau lingkaran crosshair dari titik tengah.</string>
     <string name="crosshair_thickness_label">Ketebalan Garis</string>

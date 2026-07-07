@@ -61,6 +61,17 @@ private val styleOptions = listOf(
     StyleOption(CrosshairStyle.T_SHAPE, R.string.crosshair_style_t_shape),
 )
 
+/**
+ * REWORK TAMPILAN (lihat perintah rework — "rework tampilan section
+ * Crosshair"): sebelumnya semua kategori (style, warna, size/thickness/
+ * opacity, posisi) ditumpuk datar dalam satu Column tanpa pemisah visual
+ * yang jelas selain spacing. Sekarang tiap kategori dibungkus
+ * [CrosshairSubGroup] — sub-card berlatar `surfaceVariant` tipis dengan
+ * judul + ikon kecil di puncaknya — supaya batas antar kategori terlihat
+ * jelas sekilas pandang tanpa perlu menambah SectionCard baru bertumpuk
+ * (composable ini SUDAH dibungkus satu SectionCard besar di
+ * SettingsScreen, lihat pemanggilnya).
+ */
 @Composable
 fun CrosshairSettingsSection(
     enabled: Boolean,
@@ -81,7 +92,7 @@ fun CrosshairSettingsSection(
     onToggleDragMode: (Boolean) -> Unit,
     onResetPosition: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         TweakSwitch(
             label = stringResource(R.string.crosshair_enable),
             description = stringResource(R.string.crosshair_enable_desc),
@@ -104,19 +115,11 @@ fun CrosshairSettingsSection(
         }
 
         if (enabled) {
-            Column {
-                Text(
-                    text = stringResource(R.string.crosshair_style_label),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+            CrosshairSubGroup(title = stringResource(R.string.crosshair_style_label)) {
                 StyleGrid(selected = style, onSelect = onStyleChange)
             }
 
-            Column {
-                Text(
-                    text = stringResource(R.string.crosshair_color_label),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+            CrosshairSubGroup(title = stringResource(R.string.crosshair_color_label)) {
                 var showCustomColorPicker by remember { mutableStateOf(false) }
                 // isCustomColor: true kalau warna aktif TIDAK ada di 6 preset
                 // — dipakai untuk menandai swatch "Custom" sebagai terpilih
@@ -124,9 +127,7 @@ fun CrosshairSettingsSection(
                 // ter-highlight, yang akan terlihat seperti bug/warna hilang.
                 val isCustomColor = crosshairColorPalette.none { it == colorArgb }
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     crosshairColorPalette.forEach { swatch ->
@@ -159,46 +160,42 @@ fun CrosshairSettingsSection(
                 }
             }
 
-            TweakSlider(
-                label = stringResource(R.string.crosshair_size_label),
-                description = stringResource(R.string.crosshair_size_desc),
-                valueText = "${sizeDp}dp",
-                value = sizeDp.toFloat(),
-                range = 12f..80f,
-                steps = 16,
-                onValueChange = { onSizeChange(it.toInt()) },
-            )
-
-            TweakSlider(
-                label = stringResource(R.string.crosshair_thickness_label),
-                description = stringResource(R.string.crosshair_thickness_desc),
-                valueText = "${thicknessDp}dp",
-                value = thicknessDp.toFloat(),
-                range = 1f..12f,
-                steps = 10,
-                onValueChange = { onThicknessChange(it.toInt()) },
-            )
-
-            TweakSlider(
-                label = stringResource(R.string.crosshair_opacity_label),
-                description = stringResource(R.string.crosshair_opacity_desc),
-                valueText = "$opacityPercent%",
-                value = opacityPercent.toFloat(),
-                range = 20f..100f,
-                steps = 7,
-                onValueChange = { onOpacityChange(it.toInt()) },
-            )
-
-            Column {
-                Text(
-                    text = stringResource(R.string.crosshair_position_label),
-                    style = MaterialTheme.typography.bodyLarge,
+            CrosshairSubGroup(title = stringResource(R.string.crosshair_dimension_group_label)) {
+                TweakSlider(
+                    label = stringResource(R.string.crosshair_size_label),
+                    description = stringResource(R.string.crosshair_size_desc),
+                    valueText = "${sizeDp}dp",
+                    value = sizeDp.toFloat(),
+                    range = 12f..80f,
+                    steps = 16,
+                    onValueChange = { onSizeChange(it.toInt()) },
                 )
+                TweakSlider(
+                    label = stringResource(R.string.crosshair_thickness_label),
+                    description = stringResource(R.string.crosshair_thickness_desc),
+                    valueText = "${thicknessDp}dp",
+                    value = thicknessDp.toFloat(),
+                    range = 1f..12f,
+                    steps = 10,
+                    onValueChange = { onThicknessChange(it.toInt()) },
+                )
+                TweakSlider(
+                    label = stringResource(R.string.crosshair_opacity_label),
+                    description = stringResource(R.string.crosshair_opacity_desc),
+                    valueText = "$opacityPercent%",
+                    value = opacityPercent.toFloat(),
+                    range = 20f..100f,
+                    steps = 7,
+                    onValueChange = { onOpacityChange(it.toInt()) },
+                )
+            }
+
+            CrosshairSubGroup(title = stringResource(R.string.crosshair_position_label)) {
                 Text(
                     text = stringResource(R.string.crosshair_position_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp, top = 2.dp),
+                    modifier = Modifier.padding(bottom = 4.dp),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -239,6 +236,35 @@ fun CrosshairSettingsSection(
                 }
             }
         }
+    }
+}
+
+/**
+ * Sub-card kategori di dalam section Crosshair: judul kecil + latar
+ * `surfaceVariant` tipis membedakan tiap kelompok (Bentuk, Warna, Ukuran &
+ * Ketebalan, Posisi) secara visual — REWORK dari sebelumnya yang cuma
+ * `Text` judul + `Column`/`Row` konten langsung tanpa pembungkus, membuat
+ * batas antar kategori kurang terlihat pada layar penuh toggle/slider.
+ */
+@Composable
+private fun CrosshairSubGroup(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        content()
     }
 }
 
@@ -328,11 +354,29 @@ private fun ColorSwatch(color: Long, selected: Boolean, onClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Outlined.Check,
                 contentDescription = null,
-                tint = if (color == 0xFFFFFFFFL) Color.Black else Color.White,
+                tint = contrastingCheckTint(Color(color)),
                 modifier = Modifier.size(18.dp),
             )
         }
     }
+}
+
+/**
+ * BUG FIX (lihat perintah rework — "warna custom yang penanda warna nya
+ * bug"): ikon check di swatch custom SEBELUMNYA selalu `tint = Color.White`
+ * — kalau pengguna memilih warna custom yang terang (kuning, putih, cyan
+ * muda, dst.), ikon check jadi nyaris tak terlihat karena kontrasnya
+ * rendah. Fungsi ini menghitung luminance relatif warna latar (rumus
+ * standar ITU-R BT.709) dan memilih tint hitam untuk latar terang, putih
+ * untuk latar gelap — dipakai konsisten di [ColorSwatch] (6 preset) maupun
+ * [CustomColorSwatch] (hasil color picker), menggantikan pengecekan
+ * `color == 0xFFFFFFFFL` yang sebelumnya HANYA menangani kasus putih murni,
+ * bukan warna terang lain seperti kuning (`0xFFFFD60A`) atau cyan
+ * (`0xFF00E5FF`) yang sama-sama butuh check mark gelap supaya terlihat.
+ */
+private fun contrastingCheckTint(background: Color): Color {
+    val luminance = 0.299f * background.red + 0.587f * background.green + 0.114f * background.blue
+    return if (luminance > 0.6f) Color.Black else Color.White
 }
 
 /**
@@ -376,6 +420,10 @@ private fun CustomColorSwatch(
         contentAlignment = Alignment.Center,
     ) {
         if (currentColor == null) {
+            // Latar masih wheelBrush (belum pernah pilih warna custom) —
+            // tint putih di sini AMAN karena hue wheel selalu campuran warna
+            // gelap-terang yang cukup kontras terhadap putih di titik mana
+            // pun ikon Palette diletakkan (di tengah lingkaran).
             Icon(
                 imageVector = Icons.Outlined.Palette,
                 contentDescription = stringResource(R.string.crosshair_custom_color_title),
@@ -386,7 +434,7 @@ private fun CustomColorSwatch(
             Icon(
                 imageVector = Icons.Outlined.Check,
                 contentDescription = null,
-                tint = Color.White,
+                tint = contrastingCheckTint(currentColor),
                 modifier = Modifier.size(18.dp),
             )
         }

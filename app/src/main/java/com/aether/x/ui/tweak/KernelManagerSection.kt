@@ -1,15 +1,18 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeveloperBoard
-import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -24,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,7 +35,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.kernel.CpuCoreInfo
 import com.aether.x.core.kernel.GpuInfo
-import com.aether.x.core.kernel.ThermalZoneInfo
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
@@ -39,20 +42,34 @@ import kotlinx.coroutines.delay
 
 /**
  * Section "Kernel Manager": baca-tulis nilai kernel MENTAH (frekuensi
- * per-core CPU, governor per-core, frekuensi & governor GPU, suhu semua
- * zona termal live). BEDA dari section "Root" yang sudah ada di
- * TweakScreen (toggle bernama dengan mode terbatas) — lihat KDoc
- * [KernelManagerViewModel] untuk perbandingan lengkap.
+ * per-core CPU, governor per-core, frekuensi & governor GPU). BEDA dari
+ * section "Root" yang sudah ada di TweakScreen (toggle bernama dengan mode
+ * terbatas) — lihat KDoc [KernelManagerViewModel] untuk perbandingan
+ * lengkap.
  *
- * DIPASANG DI TweakScreen dengan gating IDENTIK dengan section "Root"
- * yang sudah ada: hanya tampil kalau `privilegeStatus.activeBackend ==
+ * REWORK TOTAL TAMPILAN (lihat perintah rework):
+ * 1. Section suhu (live)/thermal zones DIHAPUS SEPENUHNYA dari sini — suhu
+ *    perangkat sudah ditampilkan di tab Dashboard
+ *    ([com.aether.x.ui.dashboard.DashboardMonitorRow]), jadi section ini
+ *    dulu duplikat murni. [KernelManagerViewModel] juga sudah tidak lagi
+ *    melakukan polling thermal sama sekali.
+ * 2. CPU dan GPU sekarang masing-masing SectionCard TERPISAH (dulu satu
+ *    Column panjang dengan HorizontalDivider sebagai pemisah semua
+ *    kategori) — lebih mudah dipindai sekilas, konsisten secara visual
+ *    dengan pengelompokan kategori yang sudah dipakai di GameProfileScreen.
+ * 3. Kartu info kernel (versi + tombol refresh) sekarang jadi strip
+ *    ringkas tersendiri di puncak, terpisah dari card CPU/GPU di
+ *    bawahnya — bukan menyatu jadi header dalam satu SectionCard besar.
+ * 4. Tiap core CPU ditampilkan dalam sub-card berlatar sedikit beda
+ *    (`surfaceVariant` tipis) dengan badge nomor core, supaya batas
+ *    antar-core jelas tanpa harus mengandalkan HorizontalDivider tipis
+ *    yang mudah terlewat.
+ *
+ * DIPASANG DI TweakScreen dengan gating IDENTIK dengan section "Root" yang
+ * sudah ada: hanya tampil kalau `privilegeStatus.activeBackend ==
  * PrivilegeBackend.ROOT`, karena baca/tulis sysfs mentah di sini butuh
  * akses root sungguhan (Shizuku/adb shell tidak diberi izin tulis ke
  * /sys/devices/system/cpu maupun /sys/class/devfreq).
- *
- * Semua teks memakai `stringResource(R.string.kernel_manager_*)` —
- * resource-nya ada di strings.xml, section "Kernel Manager" tepat di
- * bawah `tweak_io_scheduler_boost_desc`.
  */
 @Composable
 fun KernelManagerSection(
@@ -61,19 +78,31 @@ fun KernelManagerSection(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    SectionCard(title = stringResource(R.string.kernel_manager_title), modifier = modifier) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // Strip info kernel + refresh — ringkas, bukan bagian dari card CPU/GPU.
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = state.kernelVersion?.let {
-                    stringResource(R.string.kernel_manager_version_format, it)
-                } ?: stringResource(R.string.kernel_manager_version_unknown),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column {
+                Text(
+                    text = stringResource(R.string.kernel_manager_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = state.kernelVersion?.let {
+                        stringResource(R.string.kernel_manager_version_format, it)
+                    } ?: stringResource(R.string.kernel_manager_version_unknown),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             IconButton(onClick = viewModel::refresh) {
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
@@ -85,65 +114,46 @@ fun KernelManagerSection(
 
         if (state.loading) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                 horizontalArrangement = Arrangement.Center,
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
-            return@SectionCard
+            return@Column
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Text(
-            text = stringResource(R.string.kernel_manager_section_cpu),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        state.cpuCores.forEach { core ->
-            CpuCoreRow(
-                core = core,
-                onFrequencyChange = { minKhz, maxKhz -> viewModel.applyCoreFrequency(core.coreIndex, minKhz, maxKhz) },
-                onGovernorChange = { governor -> viewModel.applyCoreGovernor(core.coreIndex, governor) },
-            )
+        // Card CPU — terpisah dari GPU (dulu satu Column sama dengan divider tipis).
+        SectionCard(title = stringResource(R.string.kernel_manager_section_cpu)) {
+            state.cpuCores.forEachIndexed { index, core ->
+                CpuCoreCard(
+                    core = core,
+                    onFrequencyChange = { minKhz, maxKhz -> viewModel.applyCoreFrequency(core.coreIndex, minKhz, maxKhz) },
+                    onGovernorChange = { governor -> viewModel.applyCoreGovernor(core.coreIndex, governor) },
+                )
+                if (index != state.cpuCores.lastIndex) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
         }
 
+        // Card GPU — hanya dirender kalau data GPU tersedia (chipset tanpa
+        // devfreq GPU yang bisa dibaca akan membuat state.gpu tetap null).
         state.gpu?.let { gpu ->
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text(
-                text = stringResource(R.string.kernel_manager_section_gpu),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            GpuRow(
-                gpu = gpu,
-                onFrequencyChange = { minKhz, maxKhz -> viewModel.applyGpuFrequency(minKhz, maxKhz) },
-                onGovernorChange = { governor -> viewModel.applyGpuGovernor(governor) },
-            )
+            SectionCard(title = stringResource(R.string.kernel_manager_section_gpu)) {
+                GpuRow(
+                    gpu = gpu,
+                    onFrequencyChange = { minKhz, maxKhz -> viewModel.applyGpuFrequency(minKhz, maxKhz) },
+                    onGovernorChange = { governor -> viewModel.applyGpuGovernor(governor) },
+                )
+            }
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Text(
-            text = stringResource(R.string.kernel_manager_section_thermal),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        if (state.thermalZones.isEmpty()) {
-            Text(
-                text = stringResource(R.string.kernel_manager_thermal_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            state.thermalZones.forEach { zone -> ThermalZoneRow(zone) }
-        }
-
-        // Pesan error ditampilkan INLINE di dalam section ini (bukan lewat
-        // SnackbarHost milik TweakScreen) supaya KernelManagerSection tetap
-        // independen dari TweakScreen/TweakViewModel — lihat KDoc
-        // KernelManagerViewModel soal alasan kedua ViewModel ini terpisah.
-        // state.message sendiri SUDAH berupa string jadi (di-resolve di
-        // ViewModel lewat appString/getString), bukan resource ID, jadi
-        // langsung ditampilkan tanpa stringResource() di sini.
+        // Pesan error ditampilkan INLINE (bukan lewat SnackbarHost milik
+        // TweakScreen) supaya KernelManagerSection tetap independen dari
+        // TweakScreen/TweakViewModel — lihat KDoc KernelManagerViewModel.
         state.message?.let { message ->
             LaunchedEffect(message) {
                 delay(3000)
@@ -153,33 +163,47 @@ fun KernelManagerSection(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
     }
 }
 
+/**
+ * Sub-card satu core CPU: badge index core (lingkaran kecil bernomor) +
+ * frekuensi saat ini di kanan, lalu slider rentang frekuensi & dropdown
+ * governor di bawahnya kalau tersedia. Latar sedikit beda dari card
+ * induknya (`surfaceVariant` tipis) supaya batas antar-core terlihat jelas
+ * tanpa mengandalkan garis divider tipis saja.
+ */
 @Composable
-private fun CpuCoreRow(
+private fun CpuCoreCard(
     core: CpuCoreInfo,
     onFrequencyChange: (minKhz: Int?, maxKhz: Int?) -> Unit,
     onGovernorChange: (governor: String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Memory,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = stringResource(R.string.kernel_manager_core_label, core.coreIndex),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CoreIndexBadge(index = core.coreIndex)
+                Text(
+                    text = stringResource(R.string.kernel_manager_core_label, core.coreIndex),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
             Text(
                 text = core.currentFreqKhz?.let { freqMhzLabel(it) } ?: "—",
                 style = MaterialTheme.typography.labelLarge,
@@ -219,13 +243,31 @@ private fun CpuCoreRow(
     }
 }
 
+/** Badge lingkaran kecil berisi nomor index core — pengganti ikon Memory generik supaya tiap core mudah dibedakan sekilas. */
+@Composable
+private fun CoreIndexBadge(index: Int) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = index.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
 @Composable
 private fun GpuRow(
     gpu: GpuInfo,
     onFrequencyChange: (minKhz: Int?, maxKhz: Int?) -> Unit,
     onGovernorChange: (governor: String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (gpu.isUnavailable) {
             Text(
                 text = stringResource(R.string.kernel_manager_gpu_unavailable),
@@ -238,6 +280,7 @@ private fun GpuRow(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.Outlined.DeveloperBoard,
@@ -272,32 +315,6 @@ private fun GpuRow(
                 onOptionSelected = onGovernorChange,
             )
         }
-    }
-}
-
-@Composable
-private fun ThermalZoneRow(zone: ThermalZoneInfo) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Thermostat,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = zone.type.ifBlank { stringResource(R.string.kernel_manager_thermal_zone_format, zone.zoneIndex) },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = stringResource(R.string.kernel_manager_temp_celsius_format, zone.temperatureCelsius),
-            style = MaterialTheme.typography.labelLarge,
-            color = thermalColorFor(zone.temperatureCelsius),
-        )
     }
 }
 
@@ -361,11 +378,3 @@ private fun FrequencyRangeSlider(
 @Composable
 private fun freqMhzLabel(khz: Int): String =
     stringResource(R.string.kernel_manager_freq_mhz_format, khz / 1000)
-
-/** Hijau di bawah 45°C, kuning 45-65°C, merah di atas 65°C — ambang kasar umum, bukan standar resmi vendor tertentu. */
-@Composable
-private fun thermalColorFor(celsius: Float) = when {
-    celsius < 45f -> MaterialTheme.colorScheme.primary
-    celsius < 65f -> MaterialTheme.colorScheme.tertiary
-    else -> MaterialTheme.colorScheme.error
-}

@@ -8,6 +8,7 @@ import com.aether.x.core.appmanager.AppManagerCatalog
 import com.aether.x.core.appmanager.InstalledAppEntry
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AppManagerRepository
+import com.aether.x.ui.components.showAetherToast
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -123,10 +124,71 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * Force stop satu app — reversibel/tidak destruktif (lihat KDoc
+     * [AppManagerRepository.forceStop]), jadi TIDAK butuh dialog konfirmasi
+     * di UI, beda dari [clearCacheApp] di bawah.
+     */
+    fun forceStopApp(entry: InstalledAppEntry) {
+        viewModelScope.launch {
+            _state.update { it.copy(pendingPackageName = entry.packageName) }
+            val executor = PrivilegeManager.getExecutor()
+            if (executor == null) {
+                _state.update {
+                    it.copy(pendingPackageName = null, message = appString(R.string.app_manager_error_root_unavailable))
+                }
+                return@launch
+            }
+            val result = repository.forceStop(executor, entry.packageName)
+            _state.update {
+                it.copy(
+                    pendingPackageName = null,
+                    message = appString(
+                        if (result.success) R.string.app_manager_force_stop_success else R.string.app_manager_force_stop_error,
+                        entry.label,
+                    ),
+                )
+            }
+        }
+    }
+
+    /**
+     * Bersihkan cache satu app. UI (AppManagerScreen) WAJIB memanggil ini
+     * HANYA SETELAH pengguna mengonfirmasi lewat dialog — lihat KDoc
+     * [AppManagerRepository.clearCache] soal kenapa aksi ini tetap dianggap
+     * "sedikit destruktif" walau jauh lebih aman daripada `pm clear` biasa.
+     */
+    fun clearCacheApp(entry: InstalledAppEntry) {
+        viewModelScope.launch {
+            _state.update { it.copy(pendingPackageName = entry.packageName) }
+            val executor = PrivilegeManager.getExecutor()
+            if (executor == null) {
+                _state.update {
+                    it.copy(pendingPackageName = null, message = appString(R.string.app_manager_error_root_unavailable))
+                }
+                return@launch
+            }
+            val result = repository.clearCache(executor, entry.packageName)
+            _state.update {
+                it.copy(
+                    pendingPackageName = null,
+                    message = appString(
+                        if (result.success) R.string.app_manager_clear_cache_success else R.string.app_manager_clear_cache_error,
+                        entry.label,
+                    ),
+                )
+            }
+        }
+    }
+
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
     }
 
-    private fun appString(resId: Int, vararg args: Any): String =
-        getApplication<Application>().getString(resId, *args)
+    /** FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur"): lihat KDoc appString di TweakViewModel. */
+    private fun appString(resId: Int, vararg args: Any): String {
+        val text = getApplication<Application>().getString(resId, *args)
+        getApplication<Application>().showAetherToast(text)
+        return text
+    }
 }

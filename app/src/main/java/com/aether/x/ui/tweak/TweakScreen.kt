@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Code
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,9 +77,11 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
+import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.DashboardMonitorRow
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
+import com.aether.x.ui.theme.AccentAmber
 import kotlinx.coroutines.launch
 
 
@@ -214,12 +218,20 @@ fun TweakScreen(
                 // berguna (minimal ada Dashboard + Tweak).
                 TweakHeader(
                     userId = state.userId,
+                    isMembershipActive = state.isMembershipActive,
                     onRetryUserId = viewModel::retryResolveUserIdIfMissing,
                     onMenuClick = { coroutineScope.launch { drawerState.open() } },
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
                     // === Konten tab "Dashboard" ===
+                    // FITUR BARU (lihat perintah rework — "dibawah header
+                    // itu dibikin card berisi info dari aplikasi aetherX
+                    // lengkap, status mode Root/No Root"): kartu identitas
+                    // app + status privilege aktif, SEBELUM monitor CPU/GPU/
+                    // Suhu yang sudah ada.
+                    AetherXInfoCard(activeBackend = privilegeStatus.activeBackend)
+
                     // Ringkasan CPU/GPU/Suhu (gauge kecil) + Info Device —
                     // TERSEDIA UNTUK SEMUA BACKEND (termasuk NONE), lihat
                     // KDoc DashboardViewModel soal bagaimana CPU/GPU dibaca
@@ -353,8 +365,18 @@ fun TweakScreen(
                 // lewat akses root sungguhan — Shizuku/adb shell biasa tidak punya izin
                 // tulis ke /sys atau /proc/sys, jadi section ini disembunyikan sampai
                 // backend aktifnya benar-benar Root.
+                //
+                // REWORK LAYOUT (lihat perintah rework — "layout tata letak
+                // lebih rapi"): sebelumnya SEMUA 6+ tweak root ditumpuk datar
+                // dalam satu SectionCard tunggal ("tweak_section_root").
+                // Sekarang dipecah jadi 2 SectionCard kategori — "CPU &
+                // Performa" (governor, RAM priority, GPU performance,
+                // thermal override) dan "Memori & Sistem" (I/O scheduler, VM
+                // heap, kill background apps, doze) — konsisten secara
+                // visual dengan pengelompokan kategori yang sudah dipakai di
+                // GameProfileScreen (CPU / GPU & Termal / Sistem).
                 if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
-                    SectionCard(title = stringResource(R.string.tweak_section_root)) {
+                    SectionCard(title = stringResource(R.string.tweak_section_root_cpu)) {
                         TweakDropdown(
                             label = stringResource(R.string.tweak_cpu_governor),
                             description = stringResource(R.string.tweak_cpu_governor_desc),
@@ -391,6 +413,9 @@ fun TweakScreen(
                             onCheckedChange = viewModel::onThermalThrottleOverrideChange,
                             icon = Icons.Outlined.Thermostat,
                         )
+                    }
+
+                    SectionCard(title = stringResource(R.string.tweak_section_root_system)) {
                         TweakSwitch(
                             label = stringResource(R.string.tweak_io_scheduler_boost),
                             description = stringResource(R.string.tweak_io_scheduler_boost_desc),
@@ -404,6 +429,18 @@ fun TweakScreen(
                             checked = state.vmHeapBoost,
                             onCheckedChange = viewModel::onVmHeapBoostChange,
                             icon = Icons.Outlined.Memory,
+                        )
+                        // FITUR BARU (lihat perintah rework — "tambahkan
+                        // fitur baru yang berguna khusus root"): cegah OS
+                        // membekukan proses game/service background saat
+                        // perangkat idle sesaat — lihat KDoc
+                        // TweakRepository.applyDozeDisable.
+                        TweakSwitch(
+                            label = stringResource(R.string.tweak_doze_disabled),
+                            description = stringResource(R.string.tweak_doze_disabled_desc),
+                            checked = state.dozeDisabled,
+                            onCheckedChange = viewModel::onDozeDisabledChange,
+                            icon = Icons.Outlined.BatteryChargingFull,
                         )
                         TweakSwitch(
                             label = stringResource(R.string.tweak_kill_background_apps),
@@ -568,9 +605,26 @@ private fun TweakDrawerContent(
  * backend apa pun (dulu hanya untuk Root — lihat perintah rework: drawer
  * sekarang minimal berisi Dashboard+Tweak yang relevan untuk semua orang).
  */
+/**
+ * REWORK (lihat perintah rework):
+ * 1. "untuk badge ID jangan ada • nya" — [dotColor] TIDAK LAGI diteruskan
+ *    ke [StatusPill] untuk badge ID pengguna (dulu selalu diisi warna
+ *    primary/onSurfaceVariant, yang menampilkan lingkaran kecil di kiri
+ *    teks menyerupai bullet). Badge sekarang hanya berisi ikon (kalau
+ *    member VIP) + teks ID.
+ * 2. "untuk badge user Membership ada Logo VIP di sisi kiri badge ID dan
+ *    itu real icon" — [isMembershipActive] SEKARANG dialirkan dari
+ *    [TweakViewModel] (baca [com.aether.x.data.AetherXPreferences.isMembershipActive],
+ *    status yang SAMA dipakai [com.aether.x.ui.membership.MembershipViewModel]
+ *    untuk [com.aether.x.ui.membership.MembershipUiStatus.ACTIVE]) — kalau
+ *    true, badge ID menampilkan ikon mahkota nyata (`Icons.Filled.WorkspacePremium`,
+ *    ikon Material yang SAMA dipakai tab Membership di bottom nav, BUKAN
+ *    placeholder shape) di ujung kiri, sebelum teks ID.
+ */
 @Composable
 private fun TweakHeader(
     userId: Int?,
+    isMembershipActive: Boolean,
     onRetryUserId: () -> Unit,
     onMenuClick: () -> Unit,
 ) {
@@ -608,14 +662,14 @@ private fun TweakHeader(
                 text = stringResource(R.string.tweak_user_id_format, userId),
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
-                dotColor = MaterialTheme.colorScheme.primary,
+                leadingIcon = if (isMembershipActive) Icons.Outlined.WorkspacePremium else null,
+                leadingIconTint = AccentAmber,
             )
         } else {
             StatusPill(
                 text = stringResource(R.string.tweak_user_id_pending),
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.clickable(onClick = onRetryUserId),
             )
         }

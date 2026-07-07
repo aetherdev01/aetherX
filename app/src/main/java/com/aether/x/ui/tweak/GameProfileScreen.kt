@@ -2,6 +2,7 @@ package com.aether.x.ui.tweak
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.data.GameMode
 import com.aether.x.data.GameProfile
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
@@ -344,6 +346,17 @@ private fun GameProfileDetailPane(
             }
         }
 
+        // FITUR BARU (lihat perintah rework — "tambahkan fitur baru Game
+        // Mode : Low, Mid, Boost"): preset yang mengisi ke-6 toggle di
+        // bawahnya sekaligus, tapi tetap membiarkan tiap toggle diubah
+        // manual sesudahnya — lihat KDoc GameMode/GameProfile.withGameMode.
+        SectionCard(title = stringResource(R.string.game_profile_mode_label)) {
+            GameModeSelector(
+                selected = profile.gameMode,
+                onSelect = viewModel::onGameModeChange,
+            )
+        }
+
         SectionCard(title = stringResource(R.string.game_profile_category_cpu)) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_cpu_performance),
@@ -464,6 +477,70 @@ private fun GameIdentityCard(
 }
 
 /** Baris info sederhana label/value — dipakai section "Info Aplikasi" (nama paket). */
+/**
+ * Segmented chip 3-opsi (Low/Mid/Boost) untuk memilih [GameMode] preset —
+ * memakai pola visual yang mirip [StatusPill] (chip dengan border accent
+ * saat terpilih) yang sudah dipakai di layar ini, supaya konsisten secara
+ * visual alih-alih memakai komponen baru yang berbeda gaya.
+ */
+@Composable
+private fun GameModeSelector(
+    selected: GameMode,
+    onSelect: (GameMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GameModeChip(
+            label = stringResource(R.string.game_profile_mode_low),
+            isSelected = selected == GameMode.LOW,
+            onClick = { onSelect(GameMode.LOW) },
+            modifier = Modifier.weight(1f),
+        )
+        GameModeChip(
+            label = stringResource(R.string.game_profile_mode_mid),
+            isSelected = selected == GameMode.MID,
+            onClick = { onSelect(GameMode.MID) },
+            modifier = Modifier.weight(1f),
+        )
+        GameModeChip(
+            label = stringResource(R.string.game_profile_mode_boost),
+            isSelected = selected == GameMode.BOOST,
+            onClick = { onSelect(GameMode.BOOST) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun GameModeChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) AccentBlue.copy(alpha = 0.18f) else SurfaceCardAlt)
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) AccentBlue else StrokeSubtle,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isSelected) AccentBlue else TextSecondary,
+        )
+    }
+}
+
 @Composable
 private fun GameInfoRow(label: String, value: String) {
     Row(

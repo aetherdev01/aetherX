@@ -127,6 +127,18 @@ fun CrosshairColorPickerDialog(
  * Area persegi saturation (kiri→kanan: putih→hue murni) x value (atas→bawah:
  * terang→gelap) untuk hue yang sedang dipilih di [HueSlider]. Ketuk atau
  * seret di mana pun pada area untuk memilih titik saturation/value.
+ *
+ * BUG FIX (lihat perintah rework — "warna custom yang penanda warna nya
+ * bug"): sebelumnya indikator posisi dihitung dengan
+ * `offsetX = panelSizeDp * saturation`, memakai `panelSizeDp` (220.dp, nilai
+ * TINGGI panel) untuk KEDUA sumbu X dan Y. Padahal panel ini
+ * `.fillMaxWidth()` — lebar sebenarnya HAMPIR PASTI BUKAN 220dp (biasanya
+ * jauh lebih lebar dari layar ponsel), jadi posisi horizontal indikator
+ * selalu meleset dari titik yang benar-benar diketuk/digeser pengguna.
+ * Sekarang dibungkus [BoxWithConstraints] supaya lebar & tinggi AKTUAL
+ * panel diukur langsung dari `maxWidth`/`maxHeight`, dipakai konsisten baik
+ * untuk kalkulasi drag (`pointerInput`) maupun posisi indikator — kedua
+ * arah dijamin sinkron dengan ukuran box yang sesungguhnya dirender.
  */
 @Composable
 private fun SaturationValuePanel(
@@ -135,13 +147,13 @@ private fun SaturationValuePanel(
     value: Float,
     onSaturationValueChange: (saturation: Float, value: Float) -> Unit,
 ) {
-    val panelSizeDp = 220.dp
+    val panelHeight = 220.dp
     val hueColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, 1f)))
 
-    Box(
+    androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(panelSizeDp)
+            .height(panelHeight)
             .clip(RoundedCornerShape(12.dp))
             .background(hueColor)
             .background(Brush.horizontalGradient(listOf(Color.White, Color.Transparent)))
@@ -164,12 +176,14 @@ private fun SaturationValuePanel(
             },
     ) {
         // Indikator posisi saturation/value saat ini — lingkaran kecil
-        // dengan border putih supaya terlihat di atas warna apa pun. Posisi
-        // dihitung langsung sebagai Dp * fraksi (Compose mendukung operator
-        // ini secara native), tidak perlu konversi px manual.
+        // dengan border putih supaya terlihat di atas warna apa pun.
+        // offsetX memakai maxWidth (lebar AKTUAL box, dari
+        // BoxWithConstraints), offsetY memakai maxHeight — masing-masing
+        // sumbu memakai ukuran sungguhan miliknya sendiri, bukan satu nilai
+        // konstan yang dipakai untuk keduanya seperti sebelumnya.
         val indicatorColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value)))
-        val offsetX = panelSizeDp * saturation
-        val offsetY = panelSizeDp * (1f - value)
+        val offsetX = maxWidth * saturation
+        val offsetY = maxHeight * (1f - value)
         Box(
             modifier = Modifier
                 .offset(x = offsetX - 10.dp, y = offsetY - 10.dp)

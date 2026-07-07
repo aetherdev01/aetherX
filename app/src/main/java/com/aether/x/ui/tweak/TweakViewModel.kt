@@ -10,6 +10,7 @@ import com.aether.x.core.apps.DetectedGame
 import com.aether.x.core.apps.GameLauncher
 import com.aether.x.core.display.DisplayInfo
 import com.aether.x.core.display.DisplayInfoProvider
+import com.aether.x.ui.components.showAetherToast
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.core.shell.ShellResult
@@ -38,9 +39,11 @@ data class TweakUiState(
     val ioSchedulerBoost: Boolean = false,
     val killBackgroundApps: Boolean = false,
     val vmHeapBoost: Boolean = false,
+    val dozeDisabled: Boolean = false,
     val message: String? = null,
     val detectedGames: List<DetectedGame> = emptyList(),
     val userId: Int? = null,
+    val isMembershipActive: Boolean = false,
 )
 
 /**
@@ -82,6 +85,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     ioSchedulerBoost = saved.ioSchedulerBoost,
                     killBackgroundApps = saved.killBackgroundApps,
                     vmHeapBoost = saved.vmHeapBoost,
+                    dozeDisabled = saved.dozeDisabled,
                 )
             }
         }
@@ -101,6 +105,18 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         // terpisah yang berisiko: kalau langkah kedua gagal, counter global
         // sudah kadung naik tapi device tidak pernah tercatat).
         resolveAndRecordUserId()
+
+        // Status membership (FITUR BARU — lihat perintah rework: "badge
+        // user Membership ada Logo VIP di sisi kiri badge ID") DI-COLLECT
+        // BERKELANJUTAN (bukan cuma .first() sekali) supaya badge VIP di
+        // header langsung update begitu pengguna aktivasi/logout lisensi di
+        // tab Membership lalu kembali ke tab ini, tanpa perlu restart
+        // ViewModel.
+        viewModelScope.launch {
+            preferences.preferences.collect { prefs ->
+                _state.update { it.copy(isMembershipActive = prefs.isMembershipActive) }
+            }
+        }
     }
 
     private fun resolveAndRecordUserId() {
@@ -254,6 +270,18 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         applyAndPersist { executor -> repository.applyVmHeapBoost(executor, checked) }
     }
 
+    /**
+     * FITUR BARU — khusus root: nonaktifkan Doze/App Standby sistem supaya
+     * game & service background-nya (voice chat, download aset) tidak
+     * dibekukan OS saat perangkat idle sesaat. Lihat KDoc
+     * [TweakRepository.applyDozeDisable] untuk detail kenapa ini butuh
+     * root sungguhan.
+     */
+    fun onDozeDisabledChange(checked: Boolean) {
+        _state.update { it.copy(dozeDisabled = checked) }
+        applyAndPersist { executor -> repository.applyDozeDisable(executor, checked) }
+    }
+
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
     }
@@ -272,6 +300,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 repository.applyGpuPerformanceMode(executor, false)
                 repository.applyIoSchedulerBoost(executor, false)
                 repository.applyVmHeapBoost(executor, false)
+                repository.applyDozeDisable(executor, false)
             }
             preferences.clearTweakState()
             _state.update {
@@ -287,6 +316,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     ioSchedulerBoost = false,
                     killBackgroundApps = false,
                     vmHeapBoost = false,
+                    dozeDisabled = false,
                     message = appString(R.string.tweak_reset_toast),
                 )
             }
@@ -323,9 +353,23 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 ioSchedulerBoost = s.ioSchedulerBoost,
                 killBackgroundApps = s.killBackgroundApps,
                 vmHeapBoost = s.vmHeapBoost,
+                dozeDisabled = s.dozeDisabled,
             )
         }
     }
 
-    private fun appString(resId: Int): String = getApplication<Application>().getString(resId)
+    /**
+     * FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur
+     * supaya lebih gampang"): SETIAP pemanggilan [appString] di file ini
+     * dipakai untuk mengisi `state.message` (dibaca SnackbarHost di
+     * TweakScreen) — sekarang SEKALIGUS memicu toast native lewat
+     * [com.aether.x.ui.components.showAetherToast], supaya hasil aksi
+     * (reset berhasil, command gagal, dst.) terasa instan bahkan kalau
+     * pengguna sedang tidak melihat area Snackbar.
+     */
+    private fun appString(resId: Int): String {
+        val text = getApplication<Application>().getString(resId)
+        getApplication<Application>().showAetherToast(text)
+        return text
+    }
 }

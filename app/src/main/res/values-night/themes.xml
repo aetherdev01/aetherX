@@ -9,9 +9,13 @@
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
     </style>
 
+    <!-- REWORK (lihat perintah rework — "splash screen sistem masih
+         jelek"): pakai ic_aetherx_mark_splash (versi inset aman), sama
+         seperti values/themes.xml — lihat komentar di sana untuk alasan
+         lengkap. -->
     <style name="Theme.AetherX.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/aetherx_brand_dark</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_aetherx_mark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_aetherx_mark_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.AetherX</item>
     </style>
 

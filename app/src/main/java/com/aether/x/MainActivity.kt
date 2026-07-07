@@ -110,14 +110,30 @@ private fun AetherXRoot(
     // diaktivasi dari tab Membership tersendiri (lihat MembershipViewModel),
     // semua fitur
     // tetap terbuka sebelum/tanpa lisensi aktif.
-    val startDestination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.SETUP_ONBOARDING
+    //
+    // REWORK (lihat perintah rework — "kenapa splash screen yang ada logo
+    // dan loading nya hanya saat awal setup, setelah setup splash screen
+    // nya ga muncul"): startDestination SEKARANG SELALU [AetherXRoutes.SPLASH_MAIN]
+    // di SETIAP cold start, terlepas dari status [onboardingCompleted] —
+    // sebelumnya splash HANYA ada di alur onboarding awal (jadi hanya
+    // pernah dilihat sekali seumur hidup app, saat setup awal). SplashScreen
+    // composable sendiri TIDAK PERNAH mengubah status onboarding (lihat
+    // KDoc SplashScreen) — ia murni loading singkat (refresh status
+    // privilese + resolve user ID), jadi aman dipanggil berulang setiap
+    // kali app dibuka. Tujuan SETELAH splash selesai (onDone) ditentukan
+    // dari [onboardingCompleted]: ke [AetherXRoutes.PERMISSION_ONBOARDING]
+    // kalau belum, atau langsung [AetherXRoutes.MAIN] kalau sudah.
+    val startDestination = AetherXRoutes.SPLASH_MAIN
 
-    // Setelah onboarding selesai, app tidak lagi lewat SplashScreen (yang
-    // sebelumnya satu-satunya tempat status Shizuku/root dicek ulang secara
-    // akurat). Tanpa ini, status privilese jadi "basi" tiap app dibuka ulang
-    // (mis. root terlihat hilang padahal masih diizinkan) karena tidak pernah
-    // dicek lagi setelah proses app dimulai. Observer ini memastikan status
-    // selalu di-refresh setiap kali app kembali ke foreground, di halaman manapun.
+    // Observer ON_RESUME ini melengkapi (BUKAN menggantikan) refresh yang
+    // sudah dilakukan SplashScreen di cold start: SplashScreen hanya
+    // berjalan sekali per proses app (saat NavHost pertama kali menampilkan
+    // SPLASH_MAIN), sedangkan observer ini menangani kasus app di-RESUME
+    // dari background (mis. pengguna sempat pindah ke app lain lalu kembali)
+    // tanpa proses AetherX ikut mati — status privilese tetap perlu
+    // di-refresh di titik itu juga, di halaman manapun pengguna sedang
+    // berada, supaya tidak "basi" (mis. root terlihat hilang padahal masih
+    // diizinkan).
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -152,21 +168,34 @@ private fun AetherXRoot(
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
-        composable(AetherXRoutes.SETUP_ONBOARDING) {
+        composable(AetherXRoutes.SPLASH_MAIN) {
             // Splash sekarang hanya loading singkat (cek status yang sudah
-            // ada + koneksi database), tidak lagi memicu dialog izin apapun.
-            // Guide dihapus sepenuhnya dari alur onboarding — dari Splash
-            // langsung ke layar Izin Akses (wajib).
+            // ada + koneksi database), tidak lagi memicu dialog izin apapun
+            // — lihat KDoc SplashScreen. Tujuan setelahnya bergantung pada
+            // onboardingCompleted: pengguna BARU (belum pernah setup) lanjut
+            // ke Izin Akses; pengguna LAMA (sudah pernah setup, ini cold
+            // start biasa) langsung ke MAIN — TAPI tetap melihat splash
+            // logo+loading yang sama setiap kali, bukan hanya sekali di
+            // awal seperti sebelumnya.
             SplashScreen(
-                onDone = { navController.navigate(AetherXRoutes.PERMISSION_ONBOARDING) },
+                onDone = {
+                    val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
+                    navController.navigate(destination) {
+                        popUpTo(AetherXRoutes.SPLASH_MAIN) { inclusive = true }
+                    }
+                },
             )
         }
         composable(AetherXRoutes.PERMISSION_ONBOARDING) {
             PermissionSetupScreen(
                 onContinue = {
                     scope.launch { preferences.setOnboardingCompleted(true) }
+                    // popUpTo merujuk PERMISSION_ONBOARDING sendiri (bukan
+                    // SPLASH_MAIN) karena SPLASH_MAIN sudah di-pop inclusive
+                    // saat splash pindah ke sini — SPLASH_MAIN tidak lagi
+                    // ada di back stack di titik ini.
                     navController.navigate(AetherXRoutes.MAIN) {
-                        popUpTo(AetherXRoutes.SETUP_ONBOARDING) { inclusive = true }
+                        popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
                     }
                 },
                 requireAccessToContinue = true,

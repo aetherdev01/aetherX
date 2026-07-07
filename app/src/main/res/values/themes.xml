@@ -14,10 +14,17 @@
     </style>
 
     <!-- Cold-start splash screen, shown via androidx.core.splashscreen
-         before MainActivity's setContent() is called. -->
+         before MainActivity's setContent() is called.
+
+         REWORK (lihat perintah rework — "splash screen sistem masih
+         jelek"): windowSplashScreenAnimatedIcon SEKARANG memakai
+         ic_aetherx_mark_splash (bukan ic_aetherx_mark langsung) — versi
+         dengan inset/padding aman supaya logo tidak terlihat
+         terpotong/gepeng akibat circular mask yang diterapkan Splash
+         Screen API Android 12+. -->
     <style name="Theme.AetherX.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/aetherx_black</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_aetherx_mark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_aetherx_mark_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.AetherX</item>
     </style>
 

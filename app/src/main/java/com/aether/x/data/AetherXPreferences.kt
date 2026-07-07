@@ -46,6 +46,7 @@ data class AppPreferences(
     val ioSchedulerBoost: Boolean = false,
     val killBackgroundApps: Boolean = false,
     val vmHeapBoost: Boolean = false,
+    val dozeDisabled: Boolean = false,
     val crosshairEnabled: Boolean = false,
     val crosshairStyle: CrosshairStyle = CrosshairStyle.CROSS,
     val crosshairColor: Long = 0xFF00FF66,
@@ -123,6 +124,7 @@ class AetherXPreferences(private val context: Context) {
         val IO_SCHEDULER_BOOST = booleanPreferencesKey("io_scheduler_boost")
         val KILL_BACKGROUND_APPS = booleanPreferencesKey("kill_background_apps")
         val VM_HEAP_BOOST = booleanPreferencesKey("vm_heap_boost")
+        val DOZE_DISABLED = booleanPreferencesKey("doze_disabled")
         // Disimpan agar bisa dipulihkan walau aplikasi sempat ditutup,
         // meski nilainya berupa Float (refresh rate target dalam Hz).
         val REFRESH_TARGET = floatPreferencesKey("refresh_target_hz")
@@ -216,6 +218,7 @@ class AetherXPreferences(private val context: Context) {
             ioSchedulerBoost = prefs[Keys.IO_SCHEDULER_BOOST] ?: false,
             killBackgroundApps = prefs[Keys.KILL_BACKGROUND_APPS] ?: false,
             vmHeapBoost = prefs[Keys.VM_HEAP_BOOST] ?: false,
+            dozeDisabled = prefs[Keys.DOZE_DISABLED] ?: false,
             crosshairEnabled = prefs[Keys.CROSSHAIR_ENABLED] ?: false,
             crosshairStyle = prefs[Keys.CROSSHAIR_STYLE]
                 ?.let { runCatching { CrosshairStyle.valueOf(it) }.getOrNull() }
@@ -260,6 +263,7 @@ class AetherXPreferences(private val context: Context) {
         ioSchedulerBoost: Boolean = false,
         killBackgroundApps: Boolean = false,
         vmHeapBoost: Boolean = false,
+        dozeDisabled: Boolean = false,
     ) {
         context.dataStore.edit { prefs ->
             prefs[Keys.POINTER_SPEED] = pointerSpeed
@@ -273,6 +277,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.IO_SCHEDULER_BOOST] = ioSchedulerBoost
             prefs[Keys.KILL_BACKGROUND_APPS] = killBackgroundApps
             prefs[Keys.VM_HEAP_BOOST] = vmHeapBoost
+            prefs[Keys.DOZE_DISABLED] = dozeDisabled
         }
     }
 
@@ -291,6 +296,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.IO_SCHEDULER_BOOST] = false
             prefs[Keys.KILL_BACKGROUND_APPS] = false
             prefs[Keys.VM_HEAP_BOOST] = false
+            prefs[Keys.DOZE_DISABLED] = false
         }
     }
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,11 +16,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
  * Pill kecil gaya AetherX (mis. "ID-76957", "Disconnected"): latar gelap,
  * sudut penuh, teks bold kecil, dengan titik indikator warna opsional.
+ *
+ * [leadingIcon] (FITUR BARU — lihat perintah rework: "untuk badge user
+ * Membership ada Logo VIP di sisi kiri badge ID dan itu real icon"):
+ * ikon nyata (bukan bentuk/placeholder) yang digambar di ujung kiri pill,
+ * SEBELUM dot (kalau ada) dan teks. Dipakai badge ID pengguna di
+ * [com.aether.x.ui.tweak.TweakHeader.TweakHeader] untuk menampilkan logo
+ * mahkota/VIP saat status membership pengguna aktif. `null` (default)
+ * berarti tidak ada ikon sama sekali — perilaku lama tidak berubah untuk
+ * semua pemanggilan StatusPill lain yang sudah ada (mis. status Game
+ * Profile aktif/nonaktif).
  */
 @Composable
 fun StatusPill(
@@ -28,6 +40,8 @@ fun StatusPill(
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     dotColor: Color? = null,
+    leadingIcon: ImageVector? = null,
+    leadingIconTint: Color = contentColor,
 ) {
     Row(
         modifier = modifier
@@ -36,6 +50,15 @@ fun StatusPill(
             .padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = leadingIconTint,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
         if (dotColor != null) {
             Box(
                 modifier = Modifier

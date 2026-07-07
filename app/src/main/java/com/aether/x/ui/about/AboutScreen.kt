@@ -210,13 +210,26 @@ private fun CommunityLinkRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Image(
-            painter = painterResource(id = iconRes),
-            contentDescription = title,
+        // REWORK: ikon dibungkus Box putih dengan sedikit inset (padding
+        // 6dp) sebelum digambar, alih-alih Image di-crop CircleShape secara
+        // langsung menempel tepi lingkaran — kalau ada asset vector yang
+        // bounding box-nya tidak sempurna simetris (mis. ic_social_whatsapp),
+        // inset ini menyerap sedikit ketidaksempurnaan itu sehingga logo
+        // tetap terlihat center secara visual, bukan mepet/terpotong ke
+        // salah satu sisi.
+        Box(
             modifier = Modifier
                 .size(36.dp)
-                .clip(CircleShape),
-        )
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = title,
+                modifier = Modifier.size(30.dp),
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, style = MaterialTheme.typography.bodyMedium)
             Text(

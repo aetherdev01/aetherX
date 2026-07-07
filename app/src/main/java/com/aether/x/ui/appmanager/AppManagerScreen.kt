@@ -13,18 +13,29 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +69,15 @@ import kotlinx.coroutines.delay
  * Struktur visual (search field + LazyColumn item row dengan ikon 44dp)
  * SENGAJA meniru [com.aether.x.ui.tweak.GameProfileScreen] persis supaya
  * konsisten secara visual dengan sub-halaman Root lain di drawer yang sama.
+ *
+ * FITUR BARU (lihat perintah rework — "tambahkan opsi baru selain
+ * Nonaktifkan Aplikasi"): tiap [AppManagerRow] sekarang punya tombol menu
+ * overflow (titik tiga vertikal) berisi "Force Stop" dan "Bersihkan Cache",
+ * selain Switch freeze/unfreeze yang sudah ada. Force Stop langsung
+ * dieksekusi (tidak destruktif — lihat KDoc [AppManagerRepository.forceStop]),
+ * sedangkan Bersihkan Cache WAJIB lewat dialog konfirmasi terlebih dahulu
+ * (lihat [ClearCacheConfirmDialog]) karena tetap menghapus data walau
+ * dampaknya minor.
  */
 @Composable
 fun AppManagerScreen(
@@ -65,6 +85,12 @@ fun AppManagerScreen(
     viewModel: AppManagerViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // Entry yang sedang menunggu konfirmasi "Bersihkan Cache" — null berarti
+    // dialog konfirmasi tidak tampil. Disimpan di level layar (bukan di
+    // dalam AppManagerRow) supaya dialog tetap satu instance walau row-nya
+    // di dalam LazyColumn yang bisa di-recompose/di-recycle.
+    var pendingClearCacheEntry by remember { mutableStateOf<InstalledAppEntry?>(null) }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -125,6 +151,8 @@ fun AppManagerScreen(
                                     entry = entry,
                                     isPending = entry.packageName == state.pendingPackageName,
                                     onToggle = { viewModel.toggleFreeze(entry) },
+                                    onForceStop = { viewModel.forceStopApp(entry) },
+                                    onRequestClearCache = { pendingClearCacheEntry = entry },
                                 )
                             }
                         }
@@ -137,6 +165,8 @@ fun AppManagerScreen(
                                     entry = entry,
                                     isPending = entry.packageName == state.pendingPackageName,
                                     onToggle = { viewModel.toggleFreeze(entry) },
+                                    onForceStop = { viewModel.forceStopApp(entry) },
+                                    onRequestClearCache = { pendingClearCacheEntry = entry },
                                 )
                             }
                         }
@@ -145,6 +175,46 @@ fun AppManagerScreen(
             }
         }
     }
+
+    pendingClearCacheEntry?.let { entry ->
+        ClearCacheConfirmDialog(
+            appLabel = entry.label,
+            onConfirm = {
+                viewModel.clearCacheApp(entry)
+                pendingClearCacheEntry = null
+            },
+            onDismiss = { pendingClearCacheEntry = null },
+        )
+    }
+}
+
+/**
+ * Dialog konfirmasi WAJIB sebelum "Bersihkan Cache" dieksekusi — aksi ini
+ * tetap menghapus data (walau cuma cache, bukan seluruh data app seperti
+ * `pm clear`), jadi tidak boleh langsung dieksekusi dari satu tap saja
+ * (beda dari Force Stop yang tidak destruktif dan aman tanpa konfirmasi).
+ */
+@Composable
+private fun ClearCacheConfirmDialog(
+    appLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.app_manager_clear_cache_confirm_title)) },
+        text = { Text(stringResource(R.string.app_manager_clear_cache_confirm_desc, appLabel)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.app_manager_clear_cache_confirm_action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.crosshair_custom_color_cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -162,7 +232,11 @@ private fun AppManagerRow(
     entry: InstalledAppEntry,
     isPending: Boolean,
     onToggle: () -> Unit,
+    onForceStop: () -> Unit,
+    onRequestClearCache: () -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -198,6 +272,40 @@ private fun AppManagerRow(
                 color = if (entry.isFrozen) TextMuted else TextSecondary,
             )
         }
+
+        // Menu overflow (FITUR BARU): Force Stop & Bersihkan Cache, selain
+        // Switch freeze/unfreeze yang sudah ada di ujung kanan. Dinonaktifkan
+        // bersamaan dengan Switch selama aksi lain sedang berjalan
+        // (isPending) supaya tidak ada dua aksi shell tumpang tindih untuk
+        // app yang sama.
+        Box {
+            IconButton(onClick = { menuExpanded = true }, enabled = !isPending) {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    contentDescription = stringResource(R.string.app_manager_more_options_cd),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.app_manager_action_force_stop)) },
+                    leadingIcon = { Icon(Icons.Outlined.PowerSettingsNew, contentDescription = null) },
+                    onClick = {
+                        menuExpanded = false
+                        onForceStop()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.app_manager_action_clear_cache)) },
+                    leadingIcon = { Icon(Icons.Outlined.CleaningServices, contentDescription = null) },
+                    onClick = {
+                        menuExpanded = false
+                        onRequestClearCache()
+                    },
+                )
+            }
+        }
+
         // isFrozen == true berarti Switch OFF (app dinonaktifkan), isFrozen
         // == false berarti Switch ON (app aktif normal) — arah switch
         // mengikuti makna "aktif", bukan makna "frozen", supaya lebih

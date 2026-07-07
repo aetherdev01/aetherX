@@ -7,23 +7,20 @@ import com.aether.x.R
 import com.aether.x.core.kernel.CpuCoreInfo
 import com.aether.x.core.kernel.GpuInfo
 import com.aether.x.core.kernel.KernelInfoReader
-import com.aether.x.core.kernel.ThermalZoneInfo
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.data.KernelManagerRepository
-import kotlinx.coroutines.delay
+import com.aether.x.ui.components.showAetherToast
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class KernelManagerUiState(
     val loading: Boolean = true,
     val cpuCores: List<CpuCoreInfo> = emptyList(),
     val gpu: GpuInfo? = null,
-    val thermalZones: List<ThermalZoneInfo> = emptyList(),
     val kernelVersion: String? = null,
     val message: String? = null,
 )
@@ -40,15 +37,16 @@ data class KernelManagerUiState(
  * daftar governor lengkap yang didukung) — dua sistem independen yang
  * boleh dipakai bersamaan (lihat KDoc [KernelManagerRepository]).
  *
- * THERMAL DI-POLL BERKALA setiap [THERMAL_POLL_INTERVAL_MS] SELAMA
- * ViewModel ini hidup (mis. selama Composable section-nya berada di
- * composition) — otomatis berhenti sendiri saat ViewModel di-clear karena
- * `viewModelScope` dibatalkan (loop memeriksa `isActive`). CPU/GPU TIDAK
- * di-poll otomatis (hanya dibaca ulang manual lewat [refresh] atau setelah
+ * REWORK: section suhu (live) DIHAPUS dari Kernel Manager — dulu di sini
+ * ada polling thermal zone berkala, tapi itu duplikat dengan suhu yang
+ * sudah ditampilkan di tab Dashboard ([com.aether.x.ui.dashboard.DashboardViewModel]),
+ * yang justru sumber datanya lebih ringan (tidak perlu baca semua zona
+ * termal mentah). CPU/GPU di sini TIDAK di-poll otomatis (hanya dibaca
+ * ulang manual lewat [refresh] atau setelah
  * [applyCoreFrequency]/[applyCoreGovernor]/[applyGpuFrequency]/[applyGpuGovernor]
  * berhasil) karena frekuensi CPU/GPU berubah sangat cepat (tiap beberapa
  * milidetik mengikuti beban) — menampilkannya live akan membuat angka
- * "bergetar" terus dan sulit dibaca, beda dari suhu yang berubah lambat.
+ * "bergetar" terus dan sulit dibaca.
  */
 class KernelManagerViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -60,7 +58,6 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
 
     init {
         refresh()
-        startThermalPolling()
     }
 
     /** Baca ulang snapshot CPU + GPU + versi kernel. Dipanggil saat pertama dibuka dan lewat tombol refresh manual di UI. */
@@ -82,27 +79,6 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
                     gpu = gpu,
                     kernelVersion = version,
                 )
-            }
-        }
-    }
-
-    /**
-     * Poll suhu termal setiap [THERMAL_POLL_INTERVAL_MS] selama ViewModel
-     * ini hidup. `isActive` di kondisi loop otomatis menjadi false begitu
-     * `viewModelScope` dibatalkan (ViewModel.onCleared), jadi loop ini
-     * TIDAK PERNAH perlu dihentikan manual dari UI — cukup biarkan
-     * ViewModel ini di-scope ke lifecycle Composable section-nya seperti
-     * ViewModel Compose lain di app ini.
-     */
-    private fun startThermalPolling() {
-        viewModelScope.launch {
-            while (isActive) {
-                val executor = PrivilegeManager.getExecutor()
-                if (executor != null) {
-                    val zones = reader.readThermalZones(executor)
-                    _state.update { it.copy(thermalZones = zones) }
-                }
-                delay(THERMAL_POLL_INTERVAL_MS)
             }
         }
     }
@@ -165,14 +141,14 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    private fun appString(resId: Int, vararg args: Any): String =
-        getApplication<Application>().getString(resId, *args)
+    /** FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur"): lihat KDoc appString di TweakViewModel. */
+    private fun appString(resId: Int, vararg args: Any): String {
+        val text = getApplication<Application>().getString(resId, *args)
+        getApplication<Application>().showAetherToast(text)
+        return text
+    }
 
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
-    }
-
-    private companion object {
-        const val THERMAL_POLL_INTERVAL_MS = 2500L
     }
 }
