@@ -31,8 +31,9 @@ import com.aether.x.core.shell.ShellResult
  * - [forceStop]: `am force-stop` menghentikan proses app yang sedang
  *   berjalan — TIDAK PUNYA efek permanen apa pun (app akan mulai lagi
  *   normal begitu dibuka ulang), aman dipakai tanpa dialog konfirmasi.
- * - [clearCache]: HANYA menghapus ISI DIREKTORI CACHE app (`.../cache/*`)
- *   lewat akses shell root langsung — SENGAJA TIDAK memakai `pm clear`
+ * - [clearCache]: HANYA menghapus ISI DIREKTORI CACHE app (folder
+ *   "cache" milik app, bukan foldernya sendiri) — lewat akses shell root
+ *   langsung — SENGAJA TIDAK memakai `pm clear`
  *   (yang menghapus SELURUH data app termasuk save/preferensi, terlalu
  *   destruktif untuk fitur "bersihkan cache" yang pengguna harapkan cuma
  *   membebaskan storage, bukan reset total aplikasi). Karena tetap
