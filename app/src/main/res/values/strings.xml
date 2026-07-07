@@ -45,15 +45,16 @@
 
 
     <!-- Bottom navigation -->
-    <!-- REWORK (lihat perintah rework — "ui di tab Tweak itu namanya
-         dashboard bukan Tweak"): label BOTTOM NAV utama diganti jadi
-         "Dashboard". Item DRAWER yang sebelumnya juga bernama "Dashboard"
-         (sub-tab pertama, berisi monitor CPU/GPU + Info Device) di-rename
-         jadi "Ringkasan" supaya kedua label tidak bentrok/ambigu maknanya
-         — drawer tetap menu navigasi internal tab ini, bottom nav adalah
-         nama tab-nya sendiri. -->
-    <string name="nav_dashboard">Ringkasan</string>
-    <string name="nav_tweak">Dashboard</string>
+    <!-- KOREKSI (lihat perintah rework terbaru — "Di drawer Dashboard ya
+         screen Dashboard, bukan screen tweak, terus Drawer Ringkasan itu
+         Dashboard"): nama "Dashboard" adalah ITEM DRAWER (sub-tab pertama,
+         berisi kartu info app + monitor CPU/GPU/Suhu + Info Device) — BUKAN
+         label bottom nav utama. Percobaan rename sebelumnya (bottom nav
+         jadi "Dashboard", drawer item jadi "Ringkasan") DIBATALKAN karena
+         salah interpretasi. Bottom nav dikembalikan ke "Tweak" (nama
+         section umum drawer-nya), drawer item dikembalikan ke "Dashboard". -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_tweak">Tweak</string>
     <string name="nav_membership">Membership</string>
     <string name="nav_settings">Pengaturan</string>
 
@@ -153,6 +154,8 @@
     <string name="dashboard_gpu_unsupported_short">N/A</string>
     <string name="dashboard_gpu_unsupported_hint">Chipset ini tidak menyediakan data persentase beban GPU</string>
     <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
+    <string name="dashboard_hero_kicker">AETHERX</string>
+    <string name="dashboard_privilege_label">Mode Akses</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
     <string name="dashboard_privilege_root">Root</string>
     <string name="dashboard_privilege_shizuku">Shizuku</string>
@@ -373,6 +376,9 @@
     <string name="settings_temperature_unit_fahrenheit">Fahrenheit (°F)</string>
 
     <!-- Crosshair overlay -->
+    <!-- FITUR BARU (lihat perintah rework — "Samakan Section Crosshair Persis seperti foto ke dua dari UI") -->
+    <string name="crosshair_card_title">Crosshair</string>
+    <string name="crosshair_card_subtitle">Titik referensi di layar untuk penyelarasan tampilan</string>
     <string name="crosshair_enable">Tampilkan Crosshair</string>
     <string name="crosshair_enable_desc">Overlay bidik di tengah layar, mirip fitur Game Booster atau PUBG.</string>
     <string name="crosshair_permission_needed">Butuh izin "Tampil di atas aplikasi lain". Ketuk saklar di atas untuk membuka pengaturan izin.</string>

@@ -98,30 +98,37 @@ fun SettingsScreen(
             }
         }
 
-        SectionCard(title = stringResource(R.string.settings_section_crosshair)) {
-            CrosshairSettingsSection(
-                enabled = prefs.crosshairEnabled,
-                style = prefs.crosshairStyle,
-                colorArgb = prefs.crosshairColor,
-                sizeDp = prefs.crosshairSize,
-                thicknessDp = prefs.crosshairThickness,
-                opacityPercent = prefs.crosshairOpacity,
-                overlayPermissionGranted = overlayGranted,
-                dragModeActive = dragModeActive,
-                onEnabledChange = viewModel::setCrosshairEnabled,
-                onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
-                onStyleChange = viewModel::setCrosshairStyle,
-                onColorChange = viewModel::setCrosshairColor,
-                onSizeChange = viewModel::setCrosshairSize,
-                onThicknessChange = viewModel::setCrosshairThickness,
-                onOpacityChange = viewModel::setCrosshairOpacity,
-                onToggleDragMode = { active ->
-                    dragModeActive = active
-                    viewModel.setDragMode(active)
-                },
-                onResetPosition = viewModel::resetCrosshairPosition,
-            )
-        }
+        // REWORK TOTAL (lihat perintah rework terbaru — "Samakan Section
+        // Crosshair Persis seperti foto ke dua dari UI"): CrosshairSettingsSection
+        // SEKARANG menggambar kartu besarnya SENDIRI (watermark logo,
+        // toggle besar di pojok kanan atas, dst. — lihat KDoc di
+        // CrosshairSettingsSection.kt), BUKAN lagi konten polos di dalam
+        // SectionCard generik seperti section lain di layar ini.
+        CrosshairSettingsSection(
+            enabled = prefs.crosshairEnabled,
+            style = prefs.crosshairStyle,
+            colorArgb = prefs.crosshairColor,
+            sizeDp = prefs.crosshairSize,
+            thicknessDp = prefs.crosshairThickness,
+            opacityPercent = prefs.crosshairOpacity,
+            offsetX = prefs.crosshairOffsetX,
+            offsetY = prefs.crosshairOffsetY,
+            overlayPermissionGranted = overlayGranted,
+            dragModeActive = dragModeActive,
+            onEnabledChange = viewModel::setCrosshairEnabled,
+            onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
+            onStyleChange = viewModel::setCrosshairStyle,
+            onColorChange = viewModel::setCrosshairColor,
+            onSizeChange = viewModel::setCrosshairSize,
+            onThicknessChange = viewModel::setCrosshairThickness,
+            onOpacityChange = viewModel::setCrosshairOpacity,
+            onToggleDragMode = { active ->
+                dragModeActive = active
+                viewModel.setDragMode(active)
+            },
+            onResetPosition = viewModel::resetCrosshairPosition,
+            onOffsetChange = viewModel::setCrosshairOffset,
+        )
 
         SectionCard(title = stringResource(R.string.settings_section_fps_monitor)) {
             FpsMonitorSettingsSection(

@@ -74,6 +74,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.setCrosshairOffset(0, 0) }
     }
 
+    /**
+     * FITUR BARU (lihat perintah rework — "Samakan Section Crosshair
+     * Persis seperti foto ke dua dari UI"): dipanggil dari [PositionJoystick]
+     * di CrosshairSettingsSection saat pengguna menyeret handle joystick —
+     * update posisi X/Y secara langsung (bukan lewat drag-mode overlay di
+     * layar lain seperti sebelumnya).
+     */
+    fun setCrosshairOffset(x: Int, y: Int) {
+        viewModelScope.launch { preferences.setCrosshairOffset(x, y) }
+    }
+
     fun setFpsMonitorEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferences.setFpsMonitorEnabled(enabled)

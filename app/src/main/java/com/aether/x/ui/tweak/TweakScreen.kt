@@ -78,10 +78,11 @@ import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.dashboard.AetherXInfoCard
+import com.aether.x.ui.dashboard.DashboardStatusRow
 import com.aether.x.ui.dashboard.DashboardMonitorRow
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
-import com.aether.x.ui.theme.AccentAmber
+import com.aether.x.ui.theme.DashboardAccentOrange
 import kotlinx.coroutines.launch
 
 
@@ -225,12 +226,15 @@ fun TweakScreen(
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
                     // === Konten tab "Dashboard" ===
-                    // FITUR BARU (lihat perintah rework — "dibawah header
-                    // itu dibikin card berisi info dari aplikasi aetherX
-                    // lengkap, status mode Root/No Root"): kartu identitas
-                    // app + status privilege aktif, SEBELUM monitor CPU/GPU/
-                    // Suhu yang sudah ada.
+                    // REWORK TOTAL (lihat perintah rework terbaru —
+                    // "Samakan UI Dashboard Seperti Foto ke 1 dari Gaya"):
+                    // kartu hero besar (identitas app) diikuti kartu status
+                    // mode akses terpisah — meniru struktur "Game Corner"
+                    // hero card + kartu metric "Batas Koleksi/Energi" di
+                    // referensi, BUKAN lagi satu kartu datar kecil.
                     AetherXInfoCard(activeBackend = privilegeStatus.activeBackend)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DashboardStatusRow(activeBackend = privilegeStatus.activeBackend)
 
                     // Ringkasan CPU/GPU/Suhu (gauge kecil) + Info Device —
                     // TERSEDIA UNTUK SEMUA BACKEND (termasuk NONE), lihat
@@ -658,12 +662,15 @@ private fun TweakHeader(
             )
         }
         if (userId != null) {
+            // Warna teks badge ID diganti DashboardAccentOrange (bukan
+            // MaterialTheme.colorScheme.primary/biru tema lama) — meniru
+            // warna oranye pada teks "ID 9590cb92" di referensi Dashboard.
             StatusPill(
                 text = stringResource(R.string.tweak_user_id_format, userId),
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
+                contentColor = DashboardAccentOrange,
                 leadingIcon = if (isMembershipActive) Icons.Outlined.WorkspacePremium else null,
-                leadingIconTint = AccentAmber,
+                leadingIconTint = DashboardAccentOrange,
             )
         } else {
             StatusPill(

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
@@ -28,8 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
@@ -38,83 +39,136 @@ import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.theme.DashboardAccentOrange
+import com.aether.x.ui.theme.DashboardHeroEnd
+import com.aether.x.ui.theme.DashboardHeroStart
+import com.aether.x.ui.theme.DashboardPillBrown
 import kotlin.math.roundToInt
 
 /**
- * FITUR BARU (lihat perintah rework — "dibawah header itu dibikin card
- * berisi info dari aplikasi aetherX lengkap, status mode Root/No Root"):
- * kartu paling atas di tab Dashboard, di bawah header, SEBELUM
- * [DashboardMonitorRow]. Menampilkan identitas aplikasi (nama + versi dari
- * [BuildConfig.VERSION_NAME]) dan status mode akses aktif saat ini
- * (Root/Shizuku/No Root) sebagai badge berwarna berbeda per status —
- * hijau untuk Root (privilese penuh), biru untuk Shizuku (privilese
- * terbatas), abu-abu untuk No Root (tanpa privilese, sebagian besar tweak
- * tidak akan tersedia).
+ * REWORK TOTAL (lihat perintah rework terbaru — "Samakan UI Dashboard
+ * Seperti Foto ke 1 dari Gaya, Dll"): kartu hero besar di puncak tab
+ * Dashboard, meniru gaya referensi persis — gradient coklat gelap ke
+ * hampir-hitam, judul besar bold, versi kecil di bawahnya, dan ikon
+ * dekoratif AetherX transparan besar di sisi kanan (bukan lagi kartu datar
+ * kecil dengan ikon lingkaran seperti versi sebelumnya).
+ *
+ * Status Root/Shizuku/No Root SEKARANG jadi pill solid warna
+ * [DashboardPillBrown] di kartu KEDUA (lihat [DashboardStatusRow]),
+ * meniru pill "Game Space" di referensi — bukan lagi badge kecil di ujung
+ * kanan kartu hero.
  */
 @Composable
 fun AetherXInfoCard(
     activeBackend: PrivilegeBackend,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(DashboardHeroStart, DashboardHeroEnd),
+                ),
+            ),
     ) {
-        Box(
+        // Ikon dekoratif besar transparan di sisi kanan, meniru siluet
+        // logo besar di referensi — sengaja diperbesar melebihi tinggi
+        // kartu dan di-offset supaya sebagian terpotong tepi (efek "logo
+        // besar mengintip"), sama seperti referensi.
+        Icon(
+            painter = painterResource(id = com.aether.x.R.drawable.ic_aetherx_mark),
+            contentDescription = null,
+            tint = DashboardAccentOrange.copy(alpha = 0.22f),
             modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Shield,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp),
+                .align(Alignment.CenterEnd)
+                .padding(end = (-16).dp)
+                .size(140.dp),
+        )
+
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.dashboard_hero_kicker),
+                style = MaterialTheme.typography.labelLarge,
+                color = DashboardAccentOrange.copy(alpha = 0.8f),
             )
-        }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 14.dp),
-        ) {
             Text(
                 text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.displaySmall,
+                color = Color.White,
             )
             Text(
                 text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.padding(top = 6.dp),
             )
         }
-        PrivilegeBackendBadge(activeBackend)
     }
 }
 
+/**
+ * FITUR BARU: baris kartu kedua di bawah hero card — meniru kartu metric
+ * ("Batas Koleksi | Energi" + pill "Game Space") di referensi. Di sini
+ * berisi status mode akses aktif (Root/Shizuku/No Root) sebagai pill solid
+ * di kanan, dengan label deskriptif di kiri.
+ */
 @Composable
-private fun PrivilegeBackendBadge(backend: PrivilegeBackend) {
-    val (label, color) = when (backend) {
-        PrivilegeBackend.ROOT -> stringResource(R.string.dashboard_privilege_root) to MaterialTheme.colorScheme.primary
-        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.tertiary
-        PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.onSurfaceVariant
+fun DashboardStatusRow(
+    activeBackend: PrivilegeBackend,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.dashboard_privilege_label),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PrivilegeBackendPill(activeBackend)
     }
-    Box(
+}
+
+/**
+ * Pill status solid — meniru pill "Game Space" (warna solid coklat-oranye
+ * + ikon di kanan) di referensi, MENGGANTIKAN badge transparan kecil
+ * ([PrivilegeBackendBadge] versi lama, sekarang dihapus). Warna pill tetap
+ * berbeda per status supaya tetap mudah dibedakan sekilas: coklat-oranye
+ * solid untuk Root (privilese penuh), abu gelap untuk Shizuku/No Root
+ * (privilese terbatas/tidak ada).
+ */
+@Composable
+private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
+    val (label, bgColor, icon) = when (backend) {
+        PrivilegeBackend.ROOT -> Triple(stringResource(R.string.dashboard_privilege_root), DashboardPillBrown, Icons.Outlined.Shield)
+        PrivilegeBackend.SHIZUKU -> Triple(stringResource(R.string.dashboard_privilege_shizuku), MaterialTheme.colorScheme.surfaceVariant, Icons.Outlined.Shield)
+        PrivilegeBackend.NONE -> Triple(stringResource(R.string.dashboard_privilege_none), MaterialTheme.colorScheme.surfaceVariant, Icons.Outlined.Shield)
+    }
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(color.copy(alpha = 0.14f))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .background(bgColor)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = color,
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.padding(start = 8.dp).size(18.dp),
         )
     }
 }

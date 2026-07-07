@@ -38,3 +38,27 @@ val TextPrimary = Color(0xFFF2F3F7)       // putih pudar untuk judul besar
 val TextSecondary = Color(0xFFB9BAC6)     // abu terang untuk body text
 val TextMuted = Color(0xFF7A7B87)         // abu redup untuk caption/disabled
 val TextOnCard = Color(0xFFE7E8EE)
+
+// Aksen terracotta/oranye (FITUR BARU — lihat perintah rework: "Samakan
+// Section Crosshair Persis seperti foto ke dua dari UI"): dipakai KHUSUS
+// section Crosshair di Settings, terpisah dari AccentBlue yang jadi warna
+// utama identitas app di layar lain — referensi visual yang diberikan
+// memakai palet coklat/terracotta hangat yang berbeda total dari tema
+// biru-abu "tactical" existing, jadi disimpan sebagai token warna
+// tersendiri (bukan mengganti AccentBlue global) supaya tidak mengubah
+// tampilan layar lain di luar scope permintaan ini.
+val CrosshairAccent = Color(0xFFE8804A)          // oranye terracotta utama (slider thumb, ikon aktif, joystick)
+val CrosshairAccentDim = Color(0xFF3A2418)        // coklat gelap untuk track/latar tidak aktif
+val CrosshairCardBg = Color(0xFF1A1310)           // latar card Crosshair (coklat sangat gelap, bukan abu netral)
+val CrosshairCardBgAlt = Color(0xFF221812)        // latar sub-elemen di atas card (tombol style tidak terpilih)
+
+// Hero card Dashboard (FITUR BARU — lihat perintah rework: "Samakan UI
+// Dashboard Seperti Foto ke 1 dari Gaya"): gradient coklat gelap ke hitam
+// dipakai khusus kartu hero AetherXInfoCard, warna terpisah dari
+// CrosshairAccent supaya kedua kartu (Dashboard vs Crosshair) punya
+// identitas warna sedikit berbeda meski sama-sama keluarga coklat/oranye
+// hangat, mengikuti dua referensi yang diberikan.
+val DashboardHeroStart = Color(0xFF4A2A1E)        // coklat kemerahan (kiri-atas gradient)
+val DashboardHeroEnd = Color(0xFF1A1310)          // hampir hitam (kanan-bawah gradient)
+val DashboardAccentOrange = Color(0xFFD98A5E)     // oranye pucat untuk badge ID, ikon dekoratif
+val DashboardPillBrown = Color(0xFFA85A3A)        // pill solid coklat-oranye (mis. badge status privilege)
