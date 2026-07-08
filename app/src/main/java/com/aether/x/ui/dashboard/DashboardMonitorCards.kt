@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,7 +84,7 @@ fun AetherXInfoCard(
             tint = DashboardAccentOrange.copy(alpha = 0.22f),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = (-16).dp)
+                .offset(x = 16.dp)
                 .size(140.dp),
         )
 
