@@ -39,6 +39,17 @@ enum class GameMode {
  * default ke-6 toggle di bawah (semua false, sama seperti kombinasi MID
  * MINUS cpu/gpu performance — lihat [GameMode.applyTo] untuk kombinasi
  * pasti tiap preset).
+ *
+ * [gpuRenderingPriority] (FITUR BARU — tweak ke-7, lihat perintah rework:
+ * "Untuk tweak baru di Game Profile — GPU Rendering Priority
+ * (SurfaceFlinger)"): menaikkan prioritas real-time proses `surfaceflinger`
+ * (compositor sistem yang menggabungkan seluruh layer render jadi satu
+ * frame ke layar) DAN thread render game itu sendiri (`RenderThread`),
+ * lewat `chrt` — mengurangi jitter/frame drop akibat proses lain merebut
+ * jatah CPU tepat saat SurfaceFlinger/RenderThread perlu jalan, TERUTAMA
+ * terasa di device dengan CPU governor non-performance atau saat banyak
+ * app background aktif. Lihat [com.aether.x.data.TweakRepository.applyGpuRenderingPriority]
+ * untuk implementasi shell-nya.
  */
 data class GameProfile(
     val packageName: String,
@@ -49,11 +60,12 @@ data class GameProfile(
     val gpuPerformanceMode: Boolean = false,
     val ioSchedulerBoost: Boolean = false,
     val vmHeapBoost: Boolean = false,
+    val gpuRenderingPriority: Boolean = false,
 ) {
     /** Apakah profil ini punya minimal satu tweak yang diaktifkan. */
     val hasAnyTweakEnabled: Boolean
         get() = cpuPerformanceMode || ramPriorityMode || thermalThrottleOverride ||
-            gpuPerformanceMode || ioSchedulerBoost || vmHeapBoost
+            gpuPerformanceMode || ioSchedulerBoost || vmHeapBoost || gpuRenderingPriority
 
     fun toJson(): JSONObject = JSONObject().apply {
         put(KEY_PACKAGE, packageName)
@@ -64,6 +76,7 @@ data class GameProfile(
         put(KEY_GPU, gpuPerformanceMode)
         put(KEY_IO, ioSchedulerBoost)
         put(KEY_VM_HEAP, vmHeapBoost)
+        put(KEY_GPU_RENDER_PRIORITY, gpuRenderingPriority)
     }
 
     companion object {
@@ -75,6 +88,7 @@ data class GameProfile(
         private const val KEY_GPU = "gpuPerformanceMode"
         private const val KEY_IO = "ioSchedulerBoost"
         private const val KEY_VM_HEAP = "vmHeapBoost"
+        private const val KEY_GPU_RENDER_PRIORITY = "gpuRenderingPriority"
 
         fun default(packageName: String) = GameProfile(packageName = packageName)
 
@@ -92,6 +106,7 @@ data class GameProfile(
                 gpuPerformanceMode = false,
                 ioSchedulerBoost = false,
                 vmHeapBoost = false,
+                gpuRenderingPriority = false,
             )
             GameMode.MID -> base.copy(
                 gameMode = mode,
@@ -101,6 +116,7 @@ data class GameProfile(
                 gpuPerformanceMode = true,
                 ioSchedulerBoost = false,
                 vmHeapBoost = false,
+                gpuRenderingPriority = false,
             )
             GameMode.BOOST -> base.copy(
                 gameMode = mode,
@@ -110,6 +126,7 @@ data class GameProfile(
                 gpuPerformanceMode = true,
                 ioSchedulerBoost = true,
                 vmHeapBoost = true,
+                gpuRenderingPriority = true,
             )
         }
 
@@ -122,6 +139,7 @@ data class GameProfile(
             gpuPerformanceMode = json.optBoolean(KEY_GPU, false),
             ioSchedulerBoost = json.optBoolean(KEY_IO, false),
             vmHeapBoost = json.optBoolean(KEY_VM_HEAP, false),
+            gpuRenderingPriority = json.optBoolean(KEY_GPU_RENDER_PRIORITY, false),
         )
     }
 }

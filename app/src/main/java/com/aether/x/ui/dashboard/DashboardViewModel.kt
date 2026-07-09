@@ -5,121 +5,107 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aether.x.core.device.DeviceInfoProvider
 import com.aether.x.core.device.DeviceInfoSnapshot
-import com.aether.x.core.kernel.KernelInfoReader
-import com.aether.x.core.monitor.SystemStatsProvider
-import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.core.apps.GameProfileCatalog
+import com.aether.x.core.apps.InstalledGameEntry
+import com.aether.x.data.AetherXPreferences
+import com.aether.x.ui.booster.GameBoosterSplashActivity
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class DashboardUiState(
-    val cpuLoadPercent: Int? = null,
-    val gpuLoadPercent: Int? = null,
-    val temperatureCelsius: Float? = null,
     val deviceInfo: DeviceInfoSnapshot? = null,
-    // true kalau backend Shizuku/Root aktif TAPI node GPU busy % tetap
-    // tidak terbaca (chipset non-Adreno seperti Mali/PowerVR umumnya tidak
-    // punya node persentase) — dipakai UI untuk membedakan "belum sempat
-    // terbaca" vs "memang tidak didukung chipset ini".
-    val gpuUnsupported: Boolean = false,
+    // FITUR BARU — section "Aktivitas Game": daftar game terpasang (dari
+    // katalog 500+ game yang sama dipakai GameProfileScreen — lihat
+    // GameProfileCatalog), diurutkan dengan game TERAKHIR DIPAKAI di
+    // posisi pertama (kalau ada & masih terpasang), sisanya alfabet.
+    val installedGames: List<InstalledGameEntry> = emptyList(),
+    val loadingGames: Boolean = true,
+    val lastPlayedPackage: String? = null,
 )
 
 /**
- * ViewModel tab Dashboard: ringkasan CPU load, GPU load, suhu perangkat,
- * dan info device dasar (model, chipset, RAM, penyimpanan, versi Android).
+ * ViewModel tab Dashboard.
  *
- * SUMBER DATA CPU/GPU/SUHU (REWORK — sebelumnya baca langsung dari proses
- * app lewat [SystemStatsProvider] tanpa shell, yang membuat CPU/GPU sering
- * tampil "-" karena sebagian node sysfs, terutama `gpu_busy_percentage`,
- * DIBATASI PERMISSION untuk proses biasa di banyak ROM walau datanya
- * publik lewat shell):
- * 1. Kalau backend Shizuku/Root aktif ([PrivilegeManager.getExecutor] tidak
- *    null): baca lewat [KernelInfoReader.readCpuLoadPercent] dan
- *    [KernelInfoReader.readGpuBusyPercent] — keduanya jalan lewat shell,
- *    jauh lebih reliable karena tidak kena batasan permission per-app.
- * 2. Kalau backend NONE (belum aktifkan Shizuku/Root): fallback ke
- *    [SystemStatsProvider] (baca langsung dari proses app) — tetap
- *    berfungsi untuk CPU/suhu (yang memang publik), GPU load kemungkinan
- *    besar tetap "-" di kondisi ini karena keterbatasan izin bawaan
- *    Android, BUKAN bug Dashboard ini.
- *
- * Info device (model, RAM, storage, dst.) SELALU lewat [DeviceInfoProvider]
- * (API publik Android biasa) terlepas dari backend privilese apa pun.
+ * REWORK TOTAL (lihat perintah rework — "rework total tampilan Dashboard
+ * hapus section CPU, GPU, SUHU"): monitor CPU/GPU/Suhu (polling shell/sysfs
+ * tiap 2.5 detik lewat [com.aether.x.core.kernel.KernelInfoReader] /
+ * [com.aether.x.core.monitor.SystemStatsProvider]) DIHAPUS TOTAL dari
+ * Dashboard — monitoring performa real-time sekarang jadi domain KHUSUS
+ * [com.aether.x.ui.booster.GameBoosterScreen] (Game Booster), yang memang
+ * dipakai SELAMA sesi bermain, bukan di layar ringkasan Dashboard yang
+ * dilihat sebentar-sebentar. Dashboard sekarang murni: identitas app (hero
+ * card ramping) + Info Device (statis, tidak perlu polling) + daftar game
+ * terpasang ("Aktivitas Game").
  */
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val fallbackStatsProvider = SystemStatsProvider()
-    private val kernelInfoReader = KernelInfoReader()
+    private val preferences = AetherXPreferences(application)
 
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state.asStateFlow()
 
     init {
         _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(application)) }
-        startPolling()
+        loadGames()
+        observeLastPlayed()
     }
 
-    private fun startPolling() {
+    private fun loadGames() {
         viewModelScope.launch {
-            while (isActive) {
-                val executor = PrivilegeManager.getExecutor()
-                if (executor != null) {
-                    // Jalur Shizuku/Root: satu panggilan shell per metrik,
-                    // dijalankan di Dispatchers.IO karena ShellExecutor.exec
-                    // adalah operasi blocking (proses shell).
-                    val cpu = withContext(Dispatchers.IO) {
-                        runCatching { kernelInfoReader.readCpuLoadPercent(executor) }.getOrNull()
-                    }
-                    val gpu = withContext(Dispatchers.IO) {
-                        runCatching { kernelInfoReader.readGpuBusyPercent(executor) }.getOrNull()
-                    }
-                    val temp = withContext(Dispatchers.IO) {
-                        fallbackStatsProvider.readTemperatureCelsius(getApplication())
-                    }
-                    _state.update {
-                        it.copy(
-                            cpuLoadPercent = cpu ?: it.cpuLoadPercent,
-                            gpuLoadPercent = gpu,
-                            gpuUnsupported = gpu == null,
-                            temperatureCelsius = temp ?: it.temperatureCelsius,
-                        )
-                    }
-                } else {
-                    // Jalur fallback (backend NONE): baca langsung dari proses
-                    // app tanpa shell — cukup untuk CPU load & suhu, GPU load
-                    // kemungkinan besar tetap null karena permission (lihat KDoc
-                    // kelas ini).
-                    val app = getApplication<Application>()
-                    val cpu = withContext(Dispatchers.IO) { fallbackStatsProvider.readCpuLoadPercent() }
-                    val gpu = withContext(Dispatchers.IO) { fallbackStatsProvider.readGpuLoadPercent() }
-                    val temp = withContext(Dispatchers.IO) { fallbackStatsProvider.readTemperatureCelsius(app) }
-                    _state.update {
-                        it.copy(
-                            cpuLoadPercent = cpu ?: it.cpuLoadPercent,
-                            gpuLoadPercent = gpu,
-                            gpuUnsupported = gpu == null,
-                            temperatureCelsius = temp ?: it.temperatureCelsius,
-                        )
-                    }
-                }
-                delay(POLL_INTERVAL_MS)
+            val games = withContext(Dispatchers.IO) {
+                GameProfileCatalog.loadInstalledGames(getApplication())
             }
+            _state.update { it.copy(installedGames = reorderByLastPlayed(games, it.lastPlayedPackage), loadingGames = false) }
         }
+    }
+
+    /**
+     * Mengamati [AetherXPreferences.lastPlayedGamePackage] secara terus-menerus
+     * (bukan sekali baca) supaya begitu pengguna membuka sebuah game lewat
+     * [onGameClick] lalu kembali ke AetherX, urutan "Terakhir dipakai" di
+     * daftar langsung ter-refresh tanpa perlu keluar-masuk tab Dashboard.
+     */
+    private fun observeLastPlayed() {
+        preferences.preferences.onEach { prefs ->
+            _state.update {
+                it.copy(
+                    lastPlayedPackage = prefs.lastPlayedGamePackage,
+                    installedGames = reorderByLastPlayed(it.installedGames, prefs.lastPlayedGamePackage),
+                )
+            }
+        }.launchIn(viewModelScope)
+    }
+
+    private fun reorderByLastPlayed(games: List<InstalledGameEntry>, lastPlayed: String?): List<InstalledGameEntry> {
+        if (lastPlayed == null) return games
+        val (last, rest) = games.partition { it.packageName == lastPlayed }
+        return last + rest
+    }
+
+    /**
+     * Buka [packageName] — MENAMPILKAN SPLASH Game Booster dulu (lihat
+     * perintah rework: "saat buka gamenya ada animasi splash dari game
+     * boosternya"), yang lalu otomatis membuka game & memulai
+     * [com.aether.x.core.overlay.GameBoosterOverlayService]. Konsisten
+     * dengan [com.aether.x.ui.booster.GameBoosterScreenViewModel.onGameSelected] —
+     * SATU alur "buka game" dipakai baik dari Dashboard maupun Game
+     * Booster, bukan dua jalur berbeda.
+     */
+    fun onGameClick(packageName: String) {
+        val label = state.value.installedGames.firstOrNull { it.packageName == packageName }?.label ?: packageName
+        GameBoosterSplashActivity.launch(getApplication(), packageName, label)
     }
 
     /** Baca ulang info device (mis. setelah storage berubah signifikan). Dipanggil manual lewat tombol refresh. */
     fun refreshDeviceInfo() {
         val app = getApplication<Application>()
         _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(app)) }
-    }
-
-    private companion object {
-        const val POLL_INTERVAL_MS = 2500L
     }
 }

@@ -6,6 +6,8 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.R
+import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.core.overlay.CrosshairOverlayService
 import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AetherXPreferences
@@ -50,8 +52,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val app = getApplication<Application>()
             if (enabled && canDrawOverlays()) {
                 CrosshairOverlayService.start(app)
+                // FITUR BARU (lihat perintah rework — "perbaiki notifikasi
+                // ... setiap aktifkan fitur"): notifikasi heads-up HANYA
+                // dikirim kalau service BENAR-BENAR jadi start (permission
+                // overlay sudah ada) — mencegah notifikasi "diaktifkan" yang
+                // menyesatkan padahal servicenya sendiri gagal jalan.
+                AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = true)
             } else {
                 CrosshairOverlayService.stop(app)
+                if (!enabled) {
+                    AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = false)
+                }
             }
         }
     }
@@ -91,8 +102,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val app = getApplication<Application>()
             if (enabled && canDrawOverlays()) {
                 FpsMonitorOverlayService.start(app)
+                AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_fps_monitor), enabled = true)
             } else {
                 FpsMonitorOverlayService.stop(app)
+                if (!enabled) {
+                    AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_fps_monitor), enabled = false)
+                }
             }
         }
     }

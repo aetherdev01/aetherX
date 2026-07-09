@@ -58,7 +58,9 @@ val CrosshairCardBgAlt = Color(0xFF221812)        // latar sub-elemen di atas ca
 // CrosshairAccent supaya kedua kartu (Dashboard vs Crosshair) punya
 // identitas warna sedikit berbeda meski sama-sama keluarga coklat/oranye
 // hangat, mengikuti dua referensi yang diberikan.
-val DashboardHeroStart = Color(0xFF4A2A1E)        // coklat kemerahan (kiri-atas gradient)
-val DashboardHeroEnd = Color(0xFF1A1310)          // hampir hitam (kanan-bawah gradient)
-val DashboardAccentOrange = Color(0xFFD98A5E)     // oranye pucat untuk badge ID, ikon dekoratif
-val DashboardPillBrown = Color(0xFFA85A3A)        // pill solid coklat-oranye (mis. badge status privilege)
+// REWORK (lihat perintah rework — "warna card ... default mengikuti warna
+// tema bawaan"): DashboardHeroStart/DashboardHeroEnd/DashboardAccentOrange/
+// DashboardPillBrown (gradient & aksen coklat-oranye custom, sebelumnya
+// dipakai kartu hero Dashboard & badge ID) DIHAPUS — seluruh app sekarang
+// konsisten memakai AccentBlue/MaterialTheme.colorScheme sebagai satu
+// identitas warna, bukan token warna terpisah khusus satu-dua tempat.

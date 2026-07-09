@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
@@ -388,6 +389,15 @@ private fun GameProfileDetailPane(
                 checked = profile.thermalThrottleOverride,
                 onCheckedChange = viewModel::onThermalThrottleOverrideChange,
                 icon = Icons.Outlined.Thermostat,
+            )
+            // FITUR BARU — tweak ke-7 Game Profile: GPU Rendering Priority
+            // (SurfaceFlinger) — lihat KDoc TweakRepository.applyGpuRenderingPriority.
+            TweakSwitch(
+                label = stringResource(R.string.tweak_gpu_rendering_priority),
+                description = stringResource(R.string.tweak_gpu_rendering_priority_desc),
+                checked = profile.gpuRenderingPriority,
+                onCheckedChange = viewModel::onGpuRenderingPriorityChange,
+                icon = Icons.Outlined.Bolt,
             )
         }
 

@@ -129,6 +129,10 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
     fun onVmHeapBoostChange(checked: Boolean) =
         updateSelectedProfile { it.copy(vmHeapBoost = checked) }
 
+    /** FITUR BARU — tweak ke-7: GPU Rendering Priority (SurfaceFlinger). */
+    fun onGpuRenderingPriorityChange(checked: Boolean) =
+        updateSelectedProfile { it.copy(gpuRenderingPriority = checked) }
+
     /**
      * Menghapus seluruh tweak profil game yang sedang dipilih. Kalau game
      * ini kebetulan sedang jadi profil AKTIF (dipantau

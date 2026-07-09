@@ -116,6 +116,15 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 
+    // ── SavedState (FITUR BARU — Game Booster) ───────────────────────────────
+    // Dideklarasikan eksplisit (bukan hanya transitive lewat lifecycle-runtime-
+    // ktx) karena dipakai LANGSUNG oleh ComposeOverlayLifecycleOwner
+    // (SavedStateRegistryController, setViewTreeSavedStateRegistryOwner) untuk
+    // menjalankan ComposeView floating sidebar Game Booster yang di-attach
+    // manual ke WindowManager dari Service, bukan dari Activity/Fragment biasa
+    // yang sudah otomatis menyediakan owner ini.
+    implementation(libs.androidx.savedstate)
+
     // ── Compose ───────────────────────────────────────────────────────────────
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)

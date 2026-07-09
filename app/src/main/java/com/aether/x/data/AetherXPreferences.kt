@@ -79,6 +79,42 @@ data class AppPreferences(
     // terbuka, saat service hidup lagi ia tahu tweak profil mana yang
     // seharusnya sedang aktif dan perlu direset saat game itu ditutup.
     val activeGameProfilePackage: String? = null,
+    // FITUR BARU (section "Aktivitas Game" di Dashboard): package name game
+    // TERAKHIR yang dibuka lewat AetherX (Dashboard atau Game Booster),
+    // beserta kapan (epoch millis) — dipakai untuk urutkan & tandai chip
+    // "Terakhir dipakai" di daftar game horizontal Dashboard. Ini BERBEDA
+    // dari activeGameProfilePackage di atas (yang khusus root/tweak-aktif);
+    // ini murni riwayat pemakaian, tercatat terlepas dari backend privilese
+    // atau ada/tidaknya Game Profile untuk game itu.
+    val lastPlayedGamePackage: String? = null,
+    val lastPlayedGameAtMillis: Long? = null,
+
+    // FITUR BARU — Game Booster (lihat perintah rework: "buatkan game
+    // booster screen ... ada pilihan menu banyak, dari tampilkan fps, mode
+    // game, jangan ganggu, screenshot, mode boost, mode hemat"):
+    //
+    // [gameBoosterMode]: preset performa TERAKHIR dipilih pengguna di Game
+    // Booster — reuse GameMode (LOW/MID/BOOST) yang sama dipakai Game
+    // Profile per-game, supaya "Mode Hemat"=LOW, "Mode Normal"=MID, "Mode
+    // Boost"=BOOST konsisten satu sistem preset di seluruh app (bukan enum
+    // terpisah yang searti tapi nama beda).
+    val gameBoosterMode: GameMode = GameMode.MID,
+    // [gameBoosterDndEnabled]: toggle "Jangan Ganggu" KHUSUS di dalam Game
+    // Booster — TERPISAH dari gameModeEnabled (toggle DND global di layar
+    // Tweak) karena keduanya punya UMUR HIDUP berbeda: gameModeEnabled
+    // persisten sampai pengguna matikan manual di Tweak, sedangkan
+    // gameBoosterDndEnabled BERLAKU HANYA SELAMA sesi Game Booster aktif
+    // (floating sidebar terbuka) dan otomatis kembali OFF saat sidebar
+    // ditutup/game keluar dari foreground — lihat GameBoosterOverlayService.
+    val gameBoosterDndEnabled: Boolean = false,
+    // [gameBoosterFpsOverlayEnabled]: toggle FPS overlay KHUSUS di dalam
+    // Game Booster (ditampilkan sebagai bagian floating sidebar) —
+    // TERPISAH dari fpsMonitorEnabled (fitur FPS Monitor mandiri di
+    // Settings, overlay sendiri) supaya pengguna bisa mengaktifkan salah
+    // satu tanpa memengaruhi yang lain (mis. FPS Monitor mandiri tetap
+    // nyala terus-menerus di semua app, sementara FPS overlay Game Booster
+    // hanya relevan selama sidebar terbuka).
+    val gameBoosterFpsOverlayEnabled: Boolean = true,
 ) {
     /**
      * Status membership dari CACHE LOKAL saja (tanpa network call) — sumber
@@ -188,6 +224,17 @@ class AetherXPreferences(private val context: Context) {
         // menampung kuota SEMUA fitur yang nanti dipasangi reward-gate,
         // supaya menambah fitur baru tidak perlu key DataStore baru.
         val REWARD_QUOTA_JSON = stringPreferencesKey("reward_quota_json")
+
+        // Riwayat game terakhir dibuka lewat AetherX — lihat
+        // AppPreferences.lastPlayedGamePackage di atas.
+        val LAST_PLAYED_GAME_PACKAGE = stringPreferencesKey("last_played_game_package")
+        val LAST_PLAYED_GAME_AT_MILLIS = longPreferencesKey("last_played_game_at_millis")
+
+        // Game Booster — lihat AppPreferences.gameBoosterMode/gameBoosterDndEnabled/
+        // gameBoosterFpsOverlayEnabled di atas.
+        val GAME_BOOSTER_MODE = stringPreferencesKey("game_booster_mode")
+        val GAME_BOOSTER_DND_ENABLED = booleanPreferencesKey("game_booster_dnd_enabled")
+        val GAME_BOOSTER_FPS_OVERLAY_ENABLED = booleanPreferencesKey("game_booster_fps_overlay_enabled")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -240,6 +287,11 @@ class AetherXPreferences(private val context: Context) {
             preferredPrivilegeBackend = prefs[Keys.PREFERRED_PRIVILEGE_BACKEND],
             gameProfiles = GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON]),
             activeGameProfilePackage = prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE],
+            lastPlayedGamePackage = prefs[Keys.LAST_PLAYED_GAME_PACKAGE],
+            lastPlayedGameAtMillis = prefs[Keys.LAST_PLAYED_GAME_AT_MILLIS],
+            gameBoosterMode = runCatching { GameMode.valueOf(prefs[Keys.GAME_BOOSTER_MODE] ?: "") }.getOrDefault(GameMode.MID),
+            gameBoosterDndEnabled = prefs[Keys.GAME_BOOSTER_DND_ENABLED] ?: false,
+            gameBoosterFpsOverlayEnabled = prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] ?: true,
         )
     }
 
@@ -490,6 +542,35 @@ class AetherXPreferences(private val context: Context) {
     suspend fun getGameProfiles(): Map<String, GameProfile> {
         val prefs = context.dataStore.data.first()
         return GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON])
+    }
+
+    /**
+     * Catat [packageName] sebagai game TERAKHIR yang dibuka lewat AetherX
+     * (Dashboard "Aktivitas Game" atau Game Booster) beserta waktu sekarang
+     * — dipakai untuk urutan & chip "Terakhir dipakai" di Dashboard. Dipanggil
+     * setiap kali [com.aether.x.core.apps.GameLaunchTracker.launchAndTrack]
+     * berhasil membuka sebuah game.
+     */
+    suspend fun recordGameLaunched(packageName: String) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LAST_PLAYED_GAME_PACKAGE] = packageName
+            prefs[Keys.LAST_PLAYED_GAME_AT_MILLIS] = System.currentTimeMillis()
+        }
+    }
+
+    /** Simpan preset performa TERAKHIR dipilih pengguna di Game Booster. */
+    suspend fun setGameBoosterMode(mode: GameMode) {
+        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_MODE] = mode.name }
+    }
+
+    /** Toggle "Jangan Ganggu" khusus di dalam Game Booster — lihat KDoc AppPreferences.gameBoosterDndEnabled. */
+    suspend fun setGameBoosterDndEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_DND_ENABLED] = enabled }
+    }
+
+    /** Toggle FPS overlay khusus di dalam Game Booster — lihat KDoc AppPreferences.gameBoosterFpsOverlayEnabled. */
+    suspend fun setGameBoosterFpsOverlayEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] = enabled }
     }
 
     /**

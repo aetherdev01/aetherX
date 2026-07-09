@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -245,6 +247,7 @@ fun MembershipScreen(
                 BenefitRow(text = stringResource(R.string.membership_benefit_1))
                 BenefitRow(text = stringResource(R.string.membership_benefit_2))
                 BenefitRow(text = stringResource(R.string.membership_benefit_3))
+                BenefitRow(text = stringResource(R.string.membership_benefit_4))
             }
         }
 
@@ -262,33 +265,56 @@ fun MembershipScreen(
 }
 
 /**
- * Kartu promo "Langganan Membership Pro": harga tetap Rp10.000 dan tombol
- * yang membuka chat Telegram admin (bukan pembelian/aktivasi otomatis di
- * dalam app — kode lisensi tetap diberikan manual oleh admin lewat bot
- * setelah pembeli menghubungi lewat tautan ini, sesuai alur yang sudah ada
- * di README bot Telegram).
+ * Dua paket berlangganan yang bisa dipilih pengguna sebelum menghubungi
+ * admin Telegram (lihat perintah rework — "tambahkan opsi harga Rp10.000 /
+ * 1 Minggu, 60.000 / 1 bulan"). Murni untuk tampilan/pesan prefill — tidak
+ * ada logic aktivasi otomatis yang bergantung pada pilihan ini karena
+ * pembelian tetap manual lewat admin (lihat KDoc [MembershipProCard]).
+ */
+private enum class MembershipPlan(
+    val labelRes: Int,
+    val priceRes: Int,
+) {
+    WEEKLY(R.string.membership_pro_plan_weekly_label, R.string.membership_pro_plan_weekly_price),
+    MONTHLY(R.string.membership_pro_plan_monthly_label, R.string.membership_pro_plan_monthly_price),
+}
+
+/**
+ * Kartu promo "Langganan Membership Pro": SEKARANG menampilkan DUA paket
+ * pilihan (Mingguan Rp10.000 / Bulanan Rp60.000 — lihat [MembershipPlan])
+ * yang bisa dipilih pengguna sebelum menekan tombol, dan tombol yang
+ * membuka chat Telegram admin (bukan pembelian/aktivasi otomatis di dalam
+ * app — kode lisensi tetap diberikan manual oleh admin lewat bot setelah
+ * pembeli menghubungi lewat tautan ini, sesuai alur yang sudah ada di
+ * README bot Telegram). Pesan chat Telegram OTOMATIS TERISI (prefill)
+ * menyebutkan paket yang dipilih, supaya admin langsung tahu tanpa
+ * pengguna perlu mengetik ulang secara manual.
  */
 @Composable
 private fun MembershipProCard() {
     val context = LocalContext.current
     val telegramUrl = stringResource(R.string.membership_pro_telegram_url)
+    var selectedPlan by remember { mutableStateOf(MembershipPlan.MONTHLY) }
+    val selectedLabel = stringResource(selectedPlan.labelRes)
+    val selectedPrice = stringResource(selectedPlan.priceRes)
 
     SectionCard(title = stringResource(R.string.membership_pro_title)) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.membership_pro_price),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = AccentBlue,
+                MembershipPlanOption(
+                    plan = MembershipPlan.WEEKLY,
+                    selected = selectedPlan == MembershipPlan.WEEKLY,
+                    onClick = { selectedPlan = MembershipPlan.WEEKLY },
+                    modifier = Modifier.weight(1f),
                 )
-                Text(
-                    text = stringResource(R.string.membership_pro_price_period),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                MembershipPlanOption(
+                    plan = MembershipPlan.MONTHLY,
+                    selected = selectedPlan == MembershipPlan.MONTHLY,
+                    onClick = { selectedPlan = MembershipPlan.MONTHLY },
+                    modifier = Modifier.weight(1f),
                 )
             }
 
@@ -300,7 +326,20 @@ private fun MembershipProCard() {
 
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
+                    val prefillMessage = context.getString(
+                        R.string.membership_pro_telegram_prefill,
+                        selectedLabel,
+                        selectedPrice,
+                    )
+                    // Telegram membaca parameter query "text" pada deep-link
+                    // t.me sebagai isi kolom chat yang sudah terisi otomatis
+                    // (belum terkirim, pengguna tetap bisa edit sebelum
+                    // kirim) — encode dulu supaya spasi/tanda baca pesan
+                    // tidak merusak parsing URL.
+                    val uri = Uri.parse(telegramUrl).buildUpon()
+                        .appendQueryParameter("text", prefillMessage)
+                        .build()
+                    val intent = Intent(Intent.ACTION_VIEW, uri)
                     try {
                         context.startActivity(intent)
                     } catch (e: ActivityNotFoundException) {
@@ -337,6 +376,66 @@ private fun MembershipProCard() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Satu kartu pilihan paket (mis. "1 Minggu — Rp10.000") di dalam
+ * [MembershipProCard] — border & warna teks berubah [AccentBlue] saat
+ * [selected], badge "Lebih Hemat" ditampilkan khusus untuk
+ * [MembershipPlan.MONTHLY] supaya pengguna condong memilih paket bulanan
+ * (harga per-hari jauh lebih murah: Rp2.000/hari vs Rp1.428/hari — TAPI
+ * secara nominal total Rp60.000 vs Rp10.000, badge ini membantu konteks
+ * kenapa paket bulanan tetap lebih hemat meski angkanya lebih besar).
+ */
+@Composable
+private fun MembershipPlanOption(
+    plan: MembershipPlan,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val borderColor = if (selected) AccentBlue else MaterialTheme.colorScheme.outlineVariant
+    val backgroundColor = if (selected) AccentBlue.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(backgroundColor)
+            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(plan.labelRes),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (plan == MembershipPlan.MONTHLY) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(AccentBlue),
+                ) {
+                    Text(
+                        text = stringResource(R.string.membership_pro_plan_monthly_badge),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
+                }
+            }
+        }
+        Text(
+            text = stringResource(plan.priceRes),
+            style = MaterialTheme.typography.titleLarge,
+            color = if (selected) AccentBlue else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 

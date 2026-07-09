@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,8 +46,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
@@ -54,7 +60,6 @@ import com.aether.x.ui.theme.CrosshairAccent
 import com.aether.x.ui.theme.CrosshairAccentDim
 import com.aether.x.ui.theme.CrosshairCardBg
 import com.aether.x.ui.theme.CrosshairCardBgAlt
-import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 private val crosshairColorPalette = listOf(
@@ -242,20 +247,8 @@ fun CrosshairSettingsSection(
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.End,
                         ) {
-                            Column {
-                                Text(
-                                    text = "X: $offsetX",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.6f),
-                                )
-                                Text(
-                                    text = "Y: $offsetY",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.6f),
-                                )
-                            }
                             IconButton(onClick = onResetPosition) {
                                 Icon(
                                     imageVector = Icons.Outlined.Refresh,
@@ -264,9 +257,23 @@ fun CrosshairSettingsSection(
                                 )
                             }
                         }
+                        // screenBoundsPx: dimensi layar ASLI device (dalam
+                        // px) — dipakai PositionJoystick untuk memetakan
+                        // posisi drag (0..1 dari kotak trackpad) ke rentang
+                        // offset penuh layar, MENGGANTIKAN batas hardcode
+                        // ±200 yang lama. Lihat KDoc PositionJoystick.
+                        val configuration = LocalConfiguration.current
+                        val density = LocalDensity.current
+                        val screenBoundsPx = remember(configuration, density) {
+                            IntSize(
+                                width = with(density) { configuration.screenWidthDp.dp.roundToPx() },
+                                height = with(density) { configuration.screenHeightDp.dp.roundToPx() },
+                            )
+                        }
                         PositionJoystick(
                             offsetX = offsetX,
                             offsetY = offsetY,
+                            screenBoundsPx = screenBoundsPx,
                             onOffsetChange = onOffsetChange,
                             modifier = Modifier.padding(top = 8.dp),
                         )
@@ -412,75 +419,149 @@ private fun StyleIconButton(
 }
 
 /**
- * Joystick radial untuk atur posisi X/Y crosshair — lingkaran besar dengan
- * handle segitiga di 4 arah + lingkaran tengah menampilkan derajat (murni
- * dekoratif, mengikuti referensi — bukan rotasi crosshair sungguhan, hanya
- * representasi visual arah geser terakhir). Menyeret di dalam area
- * lingkaran memicu [onOffsetChange] dengan delta X/Y baru.
+ * "Trackpad" posisi X/Y crosshair — kotak persegi yang merepresentasikan
+ * SELURUH layar device secara proporsional (rasio lebar:tinggi kotak ini
+ * mengikuti rasio lebar:tinggi layar asli, lewat [LocalConfiguration]).
+ *
+ * REWORK TOTAL (lihat perintah rework — "perbaiki sistem ubah posisi
+ * crosshair yang kurang pas karena cuman geser' doang dan tidak
+ * memposisikan crosshair sesuka hati, dan itu segitiga bisa ditahan untuk
+ * ubah posisi XY"). Implementasi SEBELUMNYA (masih ada di riwayat git kalau
+ * perlu dibandingkan) punya DUA masalah:
+ * 1. Posisi diubah lewat DELTA per-gerakan jari (`offsetX + dragAmount.x`)
+ *    yang di-`coerceIn(-200, 200)` — batas ini SANGAT KECIL dibanding lebar
+ *    layar sungguhan (yang bisa >1000px), jadi crosshair mentok di area
+ *    sempit di tengah layar dan TIDAK BISA diposisikan ke pojok/tepi mana
+ *    pun — persis keluhan "cuma geser doang".
+ * 2. Handle visual (lingkaran "derajat") DIAM di tengah — cuma anak panah
+ *    dekoratif 4 arah yang tidak benar-benar merepresentasikan posisi X/Y
+ *    saat ini, jadi tidak ada umpan balik visual "sekarang crosshair ada di
+ *    mana persis".
+ *
+ * SEKARANG: menyeret jari di MANA PUN dalam kotak ini langsung memindahkan
+ * handle (titik terang kecil) ke posisi persis di bawah jari (absolute
+ * positioning, bukan delta), dan [onOffsetChange] dipanggil dengan offset
+ * piksel LAYAR ASLI yang sesuai — didapat dari memetakan posisi relatif
+ * dalam kotak (0..1 dari kiri, 0..1 dari atas) ke rentang penuh lebar/tinggi
+ * layar (lihat [screenBoundsPx] yang dihitung dari [LocalConfiguration] di
+ * pemanggil [CrosshairSettingsSection]). Ini juga otomatis membuang batas
+ * ±200 lama — batas baru adalah SETENGAH lebar/tinggi layar (crosshair bisa
+ * digeser sampai tepat di tepi layar, tidak bisa hilang total ke luar layar
+ * supaya pengguna tidak "kehilangan" crosshairnya sendiri).
+ *
+ * 4 segitiga di tepi ([DirectionArrow]) DIPERTAHANKAN sebagai penanda arah
+ * (sesuai referensi visual asli — "itu segitiga") — tapi sekarang PURA-PURA
+ * TIDAK LAGI jadi satu-satunya cara geser (dulu areanya sendiri yang
+ * di-drag); segitiga sekarang murni dekorasi statis di tepi trackpad,
+ * sedangkan drag-nya berlaku di SELURUH luas kotak, dan segitiga tetap bisa
+ * DITAHAN (ditekan+tahan) karena keduanya ada dalam Box yang sama dan
+ * pointerInput trackpad menangkap gesture di seluruh area termasuk di atas
+ * segitiga.
  */
 @Composable
 private fun PositionJoystick(
     offsetX: Int,
     offsetY: Int,
+    screenBoundsPx: IntSize,
     onOffsetChange: (x: Int, y: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var angleDeg by remember { mutableStateOf(0) }
-    Box(
-        modifier = modifier.size(160.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
-            drawCircle(
-                color = CrosshairCardBgAlt,
-                radius = size.minDimension / 2f,
-                style = Stroke(width = 2.dp.toPx()),
-            )
-        }
-        // 4 handle panah arah, murni dekoratif (menandakan arah geser bisa
-        // ke 4 sisi) — sesuai referensi yang menampilkan 4 segitiga oranye.
+    val trackpadSize = 220.dp
+    // Batas offset SEKARANG dinamis (setengah lebar/tinggi layar asli),
+    // BUKAN hardcode ±200 seperti sebelumnya — lihat KDoc di atas.
+    val maxOffsetX = (screenBoundsPx.width / 2).coerceAtLeast(1)
+    val maxOffsetY = (screenBoundsPx.height / 2).coerceAtLeast(1)
+
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .size(140.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        val newX = (offsetX + dragAmount.x.roundToInt()).coerceIn(-200, 200)
-                        val newY = (offsetY + dragAmount.y.roundToInt()).coerceIn(-200, 200)
-                        angleDeg = (Math.toDegrees(atan2(dragAmount.y.toDouble(), dragAmount.x.toDouble())).roundToInt() + 360) % 360
+                .size(trackpadSize)
+                .clip(RoundedCornerShape(20.dp))
+                .background(CrosshairCardBgAlt.copy(alpha = 0.4f))
+                .border(1.dp, CrosshairAccentDim, RoundedCornerShape(20.dp))
+                .pointerInput(maxOffsetX, maxOffsetY) {
+                    // fractionX/Y: posisi jari relatif dalam kotak, 0f = tepi
+                    // kiri/atas, 1f = tepi kanan/bawah, 0.5f = tengah persis
+                    // (posisi default crosshair, offset 0,0).
+                    fun applyAbsolutePosition(pointerX: Float, pointerY: Float) {
+                        val fractionX = (pointerX / size.width).coerceIn(0f, 1f)
+                        val fractionY = (pointerY / size.height).coerceIn(0f, 1f)
+                        val newX = (((fractionX - 0.5f) * 2f) * maxOffsetX).roundToInt()
+                        val newY = (((fractionY - 0.5f) * 2f) * maxOffsetY).roundToInt()
                         onOffsetChange(newX, newY)
+                    }
+                    detectDragGestures(
+                        onDragStart = { start -> applyAbsolutePosition(start.x, start.y) },
+                    ) { change, _ ->
+                        change.consume()
+                        applyAbsolutePosition(change.position.x, change.position.y)
                     }
                 },
         ) {
+            // 4 segitiga penanda arah di tepi trackpad — dekoratif, TETAP
+            // ADA sesuai referensi visual asli ("segitiga"), lihat KDoc di
+            // atas soal kenapa drag TIDAK LAGI eksklusif di area segitiga.
             DirectionArrow(Alignment.TopCenter, rotationDeg = 0f)
             DirectionArrow(Alignment.BottomCenter, rotationDeg = 180f)
             DirectionArrow(Alignment.CenterStart, rotationDeg = 270f)
             DirectionArrow(Alignment.CenterEnd, rotationDeg = 90f)
 
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .align(Alignment.Center)
-                    .clip(CircleShape)
-                    .background(CrosshairCardBg)
-                    .border(1.dp, CrosshairAccentDim, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "$angleDeg°",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = CrosshairAccent,
+            // Garis silang tipis di tengah trackpad menandai posisi (0,0) —
+            // titik tengah layar asli, referensi visual "di mana posisi
+            // default" untuk pengguna.
+            Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+                drawLine(
+                    color = CrosshairAccentDim.copy(alpha = 0.4f),
+                    start = Offset(size.width / 2f, size.height / 2f - 6.dp.toPx()),
+                    end = Offset(size.width / 2f, size.height / 2f + 6.dp.toPx()),
+                    strokeWidth = 1.5.dp.toPx(),
+                )
+                drawLine(
+                    color = CrosshairAccentDim.copy(alpha = 0.4f),
+                    start = Offset(size.width / 2f - 6.dp.toPx(), size.height / 2f),
+                    end = Offset(size.width / 2f + 6.dp.toPx(), size.height / 2f),
+                    strokeWidth = 1.5.dp.toPx(),
                 )
             }
+
+            // Handle: titik terang yang POSISINYA MENGIKUTI offsetX/offsetY
+            // saat ini (bukan diam di tengah seperti implementasi lama) —
+            // inilah umpan balik visual "sekarang crosshair ada di mana
+            // persis" yang sebelumnya tidak ada.
+            val handleFractionX = 0.5f + (offsetX.toFloat() / maxOffsetX.toFloat()) * 0.5f
+            val handleFractionY = 0.5f + (offsetY.toFloat() / maxOffsetY.toFloat()) * 0.5f
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = (handleFractionX.coerceIn(0f, 1f) * trackpadSize.toPx() - HANDLE_SIZE_DP.dp.toPx() / 2f).roundToInt(),
+                            y = (handleFractionY.coerceIn(0f, 1f) * trackpadSize.toPx() - HANDLE_SIZE_DP.dp.toPx() / 2f).roundToInt(),
+                        )
+                    }
+                    .size(HANDLE_SIZE_DP.dp)
+                    .clip(CircleShape)
+                    .background(CrosshairAccent)
+                    .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+            )
         }
+
+        Text(
+            text = stringResource(R.string.crosshair_position_offset_format, offsetX, offsetY),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = 10.dp),
+        )
     }
 }
 
+private const val HANDLE_SIZE_DP = 22
+
 @Composable
 private fun DirectionArrow(alignment: Alignment, rotationDeg: Float) {
-    Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = alignment) {
+    Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(), contentAlignment = alignment) {
         Box(
             modifier = Modifier
+                .padding(6.dp)
                 .size(20.dp)
                 .rotate(rotationDeg),
             contentAlignment = Alignment.Center,
@@ -492,7 +573,7 @@ private fun DirectionArrow(alignment: Alignment, rotationDeg: Float) {
                     lineTo(0f, size.height)
                     close()
                 }
-                drawPath(path, color = CrosshairAccent)
+                drawPath(path, color = CrosshairAccentDim)
             }
         }
     }

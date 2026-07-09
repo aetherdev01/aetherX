@@ -204,6 +204,7 @@ private fun AetherXRoot(
         composable(AetherXRoutes.MAIN) {
             MainScreen(
                 onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
+                onNavigateToGameBooster = { navController.navigate(AetherXRoutes.GAME_BOOSTER) },
             )
         }
         composable(AetherXRoutes.MANAGE_ACCESS) {
@@ -211,6 +212,9 @@ private fun AetherXRoot(
                 onContinue = { navController.popBackStack() },
                 requireAccessToContinue = false,
             )
+        }
+        composable(AetherXRoutes.GAME_BOOSTER) {
+            com.aether.x.ui.booster.GameBoosterScreen()
         }
     }
 

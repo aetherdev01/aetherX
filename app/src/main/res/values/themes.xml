@@ -28,4 +28,16 @@
         <item name="postSplashScreenTheme">@style/Theme.AetherX</item>
     </style>
 
+    <!-- FITUR BARU: dipakai GameBoosterSplashActivity — activity yang
+         HANYA menampilkan animasi logo AetherX di atas latar tembus
+         pandang sebelum sebuah game dibuka (lihat perintah rework: "saat
+         buka gamenya ada animasi splash dari game boosternya"). -->
+    <style name="Theme.AetherX.Transparent" parent="Theme.AetherX">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
 </resources>

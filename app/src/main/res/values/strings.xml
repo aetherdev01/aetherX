@@ -93,11 +93,26 @@
     <string name="membership_benefit_1">Akses penuh ke semua tweak kernel-level (Root)</string>
     <string name="membership_benefit_2">Update fitur lebih awal dibanding versi gratis</string>
     <string name="membership_benefit_3">Dukungan prioritas lewat Telegram</string>
+    <!-- FITUR BARU (lihat perintah rework — "untuk keuntungan membership
+         tambahkan Bebas Iklan") -->
+    <string name="membership_benefit_4">Bebas iklan di seluruh aplikasi</string>
     <string name="membership_pro_title">Langganan Membership Pro</string>
-    <string name="membership_pro_price">Rp10.000</string>
-    <string name="membership_pro_price_period">/ bulan</string>
-    <string name="membership_pro_description">Hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi Membership Pro.</string>
+    <!-- FITUR BARU (lihat perintah rework — "tambahkan opsi harga Rp10.000
+         / 1 Minggu, 60.000 / 1 bulan"): dua paket berlangganan, pengguna
+         pilih salah satu lewat MembershipPlanSelector sebelum menghubungi
+         admin Telegram — bukan lagi satu harga tetap tanpa pilihan. -->
+    <string name="membership_pro_plan_weekly_label">1 Minggu</string>
+    <string name="membership_pro_plan_weekly_price">Rp10.000</string>
+    <string name="membership_pro_plan_monthly_label">1 Bulan</string>
+    <string name="membership_pro_plan_monthly_price">Rp60.000</string>
+    <string name="membership_pro_plan_monthly_badge">Lebih Hemat</string>
+    <string name="membership_pro_description">Pilih paket, lalu hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi Membership Pro.</string>
     <string name="membership_pro_cta">Langganan Sekarang</string>
+    <!-- %1$s diisi label paket terpilih (mis. "1 Minggu") dan %2$s harganya
+         (mis. "Rp10.000") — pesan ini otomatis terisi di kolom chat
+         Telegram supaya admin langsung tahu paket yang diinginkan
+         pengguna tanpa pengguna perlu mengetik ulang manual. -->
+    <string name="membership_pro_telegram_prefill">Halo admin AetherX, saya ingin berlangganan Membership Pro paket %1$s (%2$s).</string>
     <string name="membership_pro_telegram_url">https://t.me/AetherDev22</string>
     <string name="membership_pro_telegram_error">Tidak ada aplikasi yang bisa membuka tautan Telegram ini.</string>
     <string name="membership_device_section_title">Perangkat Ini</string>
@@ -136,6 +151,15 @@
     <string name="notif_channel_general_desc">Pemberitahuan umum lain dari AetherX (lisensi, akses, dsb.)</string>
     <string name="notif_license_changed_title">Status Membership Berubah</string>
     <string name="notif_license_expired_text">Lisensi kamu sudah kedaluwarsa. Ketuk untuk perpanjang di tab Membership.</string>
+    <!-- FITUR BARU (lihat perintah rework — "perbaiki notifikasi ... setiap
+         aktifkan fitur, monitor dll") -->
+    <string name="notif_channel_feature_toggle_name">Status Fitur</string>
+    <string name="notif_channel_feature_toggle_desc">Konfirmasi singkat setiap kali sebuah fitur diaktifkan atau dinonaktifkan</string>
+    <string name="notif_feature_toggle_enabled">Diaktifkan</string>
+    <string name="notif_feature_toggle_disabled">Dinonaktifkan</string>
+    <string name="feature_name_crosshair">Crosshair Overlay</string>
+    <string name="feature_name_fps_monitor">FPS Monitor</string>
+    <string name="feature_name_game_profile_monitor">Game Profile Monitor</string>
     <string name="notif_license_revoked_text">Lisensi kamu tidak lagi aktif di perangkat ini. Ketuk untuk cek status di tab Membership.</string>
 
     <!-- Tweak screen -->
@@ -148,11 +172,14 @@
          dibaca lewat shell executor (Root/Shizuku) kalau aktif untuk hasil
          lebih reliable, fallback baca langsung proses app kalau backend
          belum aktif — lihat KDoc DashboardViewModel. -->
-    <string name="dashboard_monitor_cpu">CPU</string>
-    <string name="dashboard_monitor_gpu">GPU</string>
-    <string name="dashboard_monitor_temp">Suhu</string>
-    <string name="dashboard_gpu_unsupported_short">N/A</string>
-    <string name="dashboard_gpu_unsupported_hint">Chipset ini tidak menyediakan data persentase beban GPU</string>
+    <!-- FITUR BARU (rework total Dashboard): section "Aktivitas Game" —
+         daftar game terpasang yang bisa di-scroll horizontal, game
+         terakhir dipakai ditandai chip khusus. Monitor CPU/GPU/Suhu
+         (dashboard_monitor_*) DIHAPUS dari Dashboard, dipindah jadi
+         domain khusus Game Booster. -->
+    <string name="dashboard_section_game_activity">Aktivitas Game</string>
+    <string name="dashboard_game_activity_last_used">Terakhir dipakai</string>
+    <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
     <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
     <string name="dashboard_hero_kicker">AETHERX</string>
     <string name="dashboard_privilege_label">Mode Akses</string>
@@ -202,6 +229,9 @@
     <string name="tweak_thermal_throttle_desc">Naikkan batas suhu trip point kernel sebelum sistem menurunkan clock CPU/GPU (throttling). Berguna untuk sesi main lama, tapi tingkatkan suhu perangkat — pakai dengan hati-hati. Butuh akses root.</string>
     <string name="tweak_gpu_performance">GPU Governor: Performance</string>
     <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Mendukung GPU Adreno (Snapdragon) maupun Mali/GED (MediaTek, Exynos). Butuh akses root.</string>
+    <!-- FITUR BARU — tweak ke-7 Game Profile: GPU Rendering Priority (SurfaceFlinger) -->
+    <string name="tweak_gpu_rendering_priority">GPU Rendering Priority</string>
+    <string name="tweak_gpu_rendering_priority_desc">Naikkan prioritas real-time SurfaceFlinger (compositor sistem) dan RenderThread game ke SCHED_FIFO, mengurangi jitter/frame drop akibat proses lain merebut jatah CPU tepat saat rendering perlu jalan. Butuh akses root.</string>
     <string name="tweak_io_scheduler_boost">I/O Scheduler: Latensi Rendah</string>
     <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan internal ke mode latensi rendah (kyber/bfq) supaya aset game lebih cepat dibaca dari storage. Butuh akses root.</string>
 
@@ -408,7 +438,50 @@
     <string name="crosshair_position_done">Selesai Mengatur</string>
     <string name="crosshair_position_reset_center">Ke Tengah Layar</string>
     <string name="crosshair_position_drag_hint">Mode atur posisi aktif — tahan dan geser crosshair di layar untuk memindahkannya.</string>
+    <!-- FITUR BARU: label offset X/Y di bawah trackpad posisi (PositionJoystick) -->
+    <string name="crosshair_position_offset_format">X: %1$d · Y: %2$d</string>
     <string name="crosshair_notification_channel">Overlay Crosshair</string>
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>
+
+    <!-- ================= FITUR BARU: Game Booster ================= -->
+    <!-- lihat perintah rework: "buatkan game booster screen dengan layar
+         lanskap serta ada list game discroll atau gaya rog, ada pilihan
+         menu banyak, dari tampilkan fps, mode game, jangan ganggu,
+         screenshot, mode boost, mode hemat, ada monitoring seperti
+         grafik, saat buka gamenya ada animasi splash dari game
+         boosternya, lalu saat buka game game booster jadi side
+         bar/floating dan gampang diakses serta smooth" -->
+    <string name="game_booster_title">Game Booster</string>
+    <string name="game_booster_subtitle">Pilih game untuk mulai boost performa</string>
+    <string name="game_booster_launch_cta">Boost &amp; Main</string>
+    <string name="game_booster_empty_games">Belum ada game terpasang yang dikenali</string>
+
+    <string name="game_booster_menu_fps">Tampilkan FPS</string>
+    <string name="game_booster_menu_game_mode">Mode Game</string>
+    <string name="game_booster_menu_dnd">Jangan Ganggu</string>
+    <string name="game_booster_menu_screenshot">Screenshot</string>
+    <string name="game_booster_mode_hemat">Hemat</string>
+    <string name="game_booster_mode_normal">Normal</string>
+    <string name="game_booster_mode_boost">Boost</string>
+
+    <string name="game_booster_metrics_title">Monitoring</string>
+    <string name="game_booster_metrics_fps">FPS</string>
+    <string name="game_booster_metrics_cpu">CPU</string>
+    <string name="game_booster_metrics_gpu">GPU</string>
+    <string name="game_booster_metrics_temp">Suhu</string>
+    <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root/Shizuku di tab Tweak untuk FPS real-time</string>
+
+    <string name="game_booster_screenshot_success">Screenshot tersimpan di galeri</string>
+    <string name="game_booster_screenshot_failed">Gagal mengambil screenshot — pastikan Root/Shizuku aktif</string>
+
+    <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
+    <string name="game_booster_sidebar_close">Tutup</string>
+    <string name="game_booster_sidebar_end_session">Akhiri Sesi Boost</string>
+
+    <string name="game_booster_notification_channel">Game Booster Aktif</string>
+    <string name="game_booster_notification_title_format">Game Booster — %1$s</string>
+    <string name="game_booster_notification_text">Ketuk untuk membuka sidebar</string>
+
+    <string name="game_booster_splash_preparing">Menyiapkan boost performa…</string>
 </resources>

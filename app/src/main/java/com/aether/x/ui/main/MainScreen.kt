@@ -33,6 +33,7 @@ private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 @Composable
 fun MainScreen(
     onManageAccess: () -> Unit,
+    onNavigateToGameBooster: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
 
@@ -82,6 +83,7 @@ fun MainScreen(
                 modifier = Modifier,
                 contentPadding = padding,
                 viewModel = tweakViewModel,
+                onNavigateToGameBooster = onNavigateToGameBooster,
             )
             MainTab.MEMBERSHIP -> MembershipScreen(
                 modifier = Modifier,

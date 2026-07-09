@@ -48,11 +48,16 @@ import kotlinx.coroutines.delay
  * lengkap.
  *
  * REWORK TOTAL TAMPILAN (lihat perintah rework):
- * 1. Section suhu (live)/thermal zones DIHAPUS SEPENUHNYA dari sini — suhu
- *    perangkat sudah ditampilkan di tab Dashboard
- *    ([com.aether.x.ui.dashboard.DashboardMonitorRow]), jadi section ini
- *    dulu duplikat murni. [KernelManagerViewModel] juga sudah tidak lagi
- *    melakukan polling thermal sama sekali.
+ * 1. Section suhu (live)/thermal zones DIHAPUS SEPENUHNYA dari sini — sejak
+ *    rework total Dashboard, monitor suhu/CPU/GPU real-time TIDAK LAGI
+ *    ditampilkan di tab Dashboard sama sekali (Dashboard sekarang murni
+ *    identitas app + Aktivitas Game + Info Device statis, lihat
+ *    [com.aether.x.ui.dashboard.DashboardMonitorCards]) — monitoring
+ *    performa real-time sekarang jadi domain KHUSUS
+ *    [com.aether.x.ui.booster.GameBoosterScreen] (Game Booster), dipakai
+ *    SELAMA sesi bermain. Section ini pun sudah tidak relevan lagi
+ *    menampilkannya sendiri di sini; [KernelManagerViewModel] juga sudah
+ *    tidak lagi melakukan polling thermal sama sekali.
  * 2. CPU dan GPU sekarang masing-masing SectionCard TERPISAH (dulu satu
  *    Column panjang dengan HorizontalDivider sebagai pemisah semua
  *    kategori) — lebih mudah dipindai sekilas, konsisten secara visual

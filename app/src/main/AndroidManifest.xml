@@ -110,5 +110,31 @@
                 android:value="game_profile_monitor" />
         </service>
 
+        <!-- FITUR BARU: floating sidebar Game Booster — foreground service
+             "specialUse" (sama pola dengan overlay lain di atas) yang
+             menampilkan bubble/sidebar mengambang di atas game yang sedang
+             dimainkan. -->
+        <service
+            android:name=".core.overlay.GameBoosterOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_booster_overlay" />
+        </service>
+
+        <!-- FITUR BARU: splash singkat Game Booster sebelum game dibuka —
+             tema transparan (Theme.AetherX.Transparent) karena activity ini
+             HANYA menampilkan animasi logo di atas latar tembus pandang,
+             bukan layar penuh biasa. excludeFromRecents supaya tidak
+             muncul sebagai entri terpisah di recent apps (splash ini hidup
+             sangat singkat, menampilkannya di recents hanya membingungkan). -->
+        <activity
+            android:name=".ui.booster.GameBoosterSplashActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AetherX.Transparent"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
+
     </application>
 </manifest>

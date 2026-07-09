@@ -12,6 +12,8 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.aether.x.MainActivity
 import com.aether.x.R
+import com.aether.x.core.apps.GameProfileCatalog
+import com.aether.x.core.overlay.GameBoosterOverlayService
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
@@ -76,6 +78,9 @@ class GameProfileMonitorService : Service() {
 
     /** Package yang profilnya sedang diterapkan saat ini, atau null kalau tidak ada. */
     private var activeProfilePackage: String? = null
+    // FITUR BARU — dilacak TERPISAH dari activeProfilePackage, lihat KDoc
+    // handleGameBoosterAutoTrigger soal kenapa keduanya independen.
+    private var activeBoosterPackage: String? = null
     private var pollLoopStarted = false
 
     override fun onCreate() {
@@ -154,7 +159,10 @@ class GameProfileMonitorService : Service() {
         // kalau backend aktif bukan Root (mis. pengguna beralih ke Shizuku
         // atau belum ada akses sama sekali), hentikan diri sendiri daripada
         // terus polling tanpa guna, dan pastikan tweak profil yang mungkin
-        // masih aktif direset dulu.
+        // masih aktif direset dulu. Game Booster (yang JUGA di-trigger dari
+        // sini, lihat di bawah) tetap bisa diakses MANUAL dari drawer tanpa
+        // root — hanya AUTO-TRIGGER-nya yang ikut terhenti bersama service
+        // khusus-root ini.
         if (PrivilegeManager.status.value.activeBackend != PrivilegeBackend.ROOT) {
             resetActiveProfileIfAny()
             stopSelf()
@@ -162,17 +170,29 @@ class GameProfileMonitorService : Service() {
         }
 
         val executor = PrivilegeManager.getExecutor() ?: return
+
+        // REWORK (lihat perintah rework — "saat buka game game booster jadi
+        // side bar/floating"): foreground package SEKARANG SELALU dibaca di
+        // awal (bukan lagi di-skip kalau profiles.isEmpty()) karena
+        // sekarang dipakai DUA keperluan independen: Game Profile (di bawah,
+        // HANYA untuk game yang profilnya sudah dikustomisasi) dan Game
+        // Booster auto-trigger (untuk SEMUA game yang dikenal gamelist.txt,
+        // terlepas dari ada/tidaknya Game Profile).
+        val foregroundPackage = foregroundAppReader.readForegroundPackage(executor)
+
+        handleGameBoosterAutoTrigger(foregroundPackage)
+
         val profiles = preferences.getGameProfiles()
         if (profiles.isEmpty()) {
             // Tidak ada profil tersimpan sama sekali — tidak ada yang perlu
-            // dipantau. Biarkan service tetap hidup (murah secara resource,
-            // cukup satu dumpsys tiap 2.5 detik) supaya begitu pengguna
-            // menyimpan profil baru dari layar Game Profile, deteksi
-            // langsung berjalan tanpa perlu restart service manual.
+            // dipantau UNTUK GAME PROFILE (Game Booster di atas tetap jalan
+            // terlepas dari ini). Biarkan service tetap hidup (murah secara
+            // resource, cukup satu dumpsys tiap 2.5 detik) supaya begitu
+            // pengguna menyimpan profil baru dari layar Game Profile,
+            // deteksi langsung berjalan tanpa perlu restart service manual.
             return
         }
 
-        val foregroundPackage = foregroundAppReader.readForegroundPackage(executor)
         val current = activeProfilePackage
 
         when {
@@ -185,7 +205,7 @@ class GameProfileMonitorService : Service() {
                 // reset dulu profil lama sebelum menerapkan yang baru supaya
                 // tweak tidak tercampur antar game.
                 if (current != null) {
-                    repository.resetRootTweaksOnly(executor)
+                    repository.resetRootTweaksOnly(executor, packageName = current)
                 }
                 profiles[foregroundPackage]?.let { profile ->
                     repository.applyGameProfile(executor, profile)
@@ -200,7 +220,7 @@ class GameProfileMonitorService : Service() {
             current != null && foregroundPackage != current -> {
                 val stillInRecents = recentTasksReader.isPackageInRecentTasks(executor, current)
                 if (stillInRecents == false) {
-                    repository.resetRootTweaksOnly(executor)
+                    repository.resetRootTweaksOnly(executor, packageName = current)
                     activeProfilePackage = null
                     preferences.setActiveGameProfilePackage(null)
                 }
@@ -212,11 +232,60 @@ class GameProfileMonitorService : Service() {
         }
     }
 
+    /**
+     * FITUR BARU — auto-trigger Game Booster (lihat perintah rework: "saat
+     * buka game game booster jadi side bar/floating dan gampang diakses"):
+     * dipanggil SETIAP siklus poll (independen dari logic Game Profile di
+     * atas). Menyalakan [GameBoosterOverlayService] otomatis begitu SEMBARANG
+     * game yang dikenal `gamelist.txt` ([GameProfileCatalog.isKnownGamePackage])
+     * terdeteksi di foreground, dan menghentikannya begitu game itu benar-
+     * benar ditutup dari recent apps (BUKAN sekadar di-minimize sebentar —
+     * pola cek yang SAMA seperti Kasus 2 Game Profile di atas, lewat
+     * [RecentTasksReader], supaya sidebar tidak nyala-mati tiap kali
+     * pengguna melirik notifikasi sebentar).
+     *
+     * [activeBoosterPackage] sengaja dilacak TERPISAH dari [activeProfilePackage]
+     * (variabel Game Profile) karena keduanya independen — sebuah game bisa
+     * saja punya sesi Game Booster aktif TANPA punya Game Profile
+     * tersimpan sama sekali, atau sebaliknya jarang terjadi tapi mestinya
+     * tetap tidak saling mengganggu satu sama lain.
+     */
+    private suspend fun handleGameBoosterAutoTrigger(foregroundPackage: String?) {
+        val executor = PrivilegeManager.getExecutor() ?: return
+        val current = activeBoosterPackage
+
+        when {
+            foregroundPackage != null &&
+                foregroundPackage != current &&
+                GameProfileCatalog.isKnownGamePackage(applicationContext, foregroundPackage) -> {
+                val label = runCatching {
+                    applicationContext.packageManager
+                        .getApplicationLabel(applicationContext.packageManager.getApplicationInfo(foregroundPackage, 0))
+                        .toString()
+                }.getOrDefault(foregroundPackage)
+                GameBoosterOverlayService.start(applicationContext, foregroundPackage, label)
+                activeBoosterPackage = foregroundPackage
+            }
+
+            current != null && foregroundPackage != current -> {
+                val stillInRecents = recentTasksReader.isPackageInRecentTasks(executor, current)
+                if (stillInRecents == false) {
+                    GameBoosterOverlayService.stop(applicationContext)
+                    activeBoosterPackage = null
+                }
+            }
+        }
+    }
+
     /** Reset tweak profil yang sedang aktif (kalau ada) — dipakai saat service dihentikan. */
     private suspend fun resetActiveProfileIfAny() {
+        if (activeBoosterPackage != null) {
+            GameBoosterOverlayService.stop(applicationContext)
+            activeBoosterPackage = null
+        }
         val current = activeProfilePackage ?: preferences.getActiveGameProfilePackage() ?: return
         val executor: ShellExecutor = PrivilegeManager.getExecutor() ?: return
-        repository.resetRootTweaksOnly(executor)
+        repository.resetRootTweaksOnly(executor, packageName = current)
         activeProfilePackage = null
         preferences.setActiveGameProfilePackage(null)
         // current sengaja tidak dipakai lagi di sini selain sebagai penanda

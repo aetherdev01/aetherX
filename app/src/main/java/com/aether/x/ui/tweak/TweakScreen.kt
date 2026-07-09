@@ -79,11 +79,9 @@ import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.dashboard.AetherXInfoCard
-import com.aether.x.ui.dashboard.DashboardStatusRow
-import com.aether.x.ui.dashboard.DashboardMonitorRow
+import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
-import com.aether.x.ui.theme.DashboardAccentOrange
 import kotlinx.coroutines.launch
 
 
@@ -92,6 +90,7 @@ fun TweakScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: TweakViewModel = viewModel(),
+    onNavigateToGameBooster: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
@@ -183,6 +182,10 @@ fun TweakScreen(
                         selectedSubTab = tab
                         coroutineScope.launch { drawerState.close() }
                     },
+                    onNavigateToGameBooster = {
+                        coroutineScope.launch { drawerState.close() }
+                        onNavigateToGameBooster()
+                    },
                 )
             }
         },
@@ -227,27 +230,31 @@ fun TweakScreen(
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
                     // === Konten tab "Dashboard" ===
-                    // REWORK TOTAL (lihat perintah rework terbaru —
-                    // "Samakan UI Dashboard Seperti Foto ke 1 dari Gaya"):
-                    // kartu hero besar (identitas app) diikuti kartu status
-                    // mode akses terpisah — meniru struktur "Game Corner"
-                    // hero card + kartu metric "Batas Koleksi/Energi" di
-                    // referensi, BUKAN lagi satu kartu datar kecil.
+                    // REWORK TOTAL (lihat perintah rework — "rework total
+                    // tampilan Dashboard hapus section CPU, GPU, SUHU..."):
+                    // hero card sekarang ramping satu baris (logo+versi+pill
+                    // mode akses, lihat KDoc AetherXInfoCard) — kartu status
+                    // mode akses terpisah (DashboardStatusRow) DIHAPUS karena
+                    // pill-nya sudah pindah ke dalam hero card ini, tidak
+                    // perlu diulang di kartu kedua.
                     AetherXInfoCard(activeBackend = privilegeStatus.activeBackend)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DashboardStatusRow(activeBackend = privilegeStatus.activeBackend)
 
-                    // Ringkasan CPU/GPU/Suhu (gauge kecil) + Info Device —
-                    // TERSEDIA UNTUK SEMUA BACKEND (termasuk NONE), lihat
-                    // KDoc DashboardViewModel soal bagaimana CPU/GPU dibaca
-                    // lebih reliable lewat shell kalau Shizuku/Root aktif,
-                    // dengan fallback baca langsung proses app kalau belum.
-                    DashboardMonitorRow(
-                        cpuLoadPercent = dashboardState.cpuLoadPercent,
-                        gpuLoadPercent = dashboardState.gpuLoadPercent,
-                        temperatureCelsius = dashboardState.temperatureCelsius,
-                        gpuUnsupported = dashboardState.gpuUnsupported,
+                    // Monitor CPU/GPU/Suhu (gauge kecil) DIHAPUS TOTAL dari
+                    // Dashboard — domain itu sekarang murni milik Game
+                    // Booster (lihat GameBoosterScreen), yang memang dipakai
+                    // SELAMA sesi bermain, bukan di layar ringkasan yang
+                    // dilihat sebentar-sebentar.
+
+                    // FITUR BARU: "Aktivitas Game" — daftar game terpasang
+                    // yang bisa di-scroll horizontal, game terakhir dipakai
+                    // di posisi pertama, tap untuk buka langsung.
+                    GameActivitySection(
+                        games = dashboardState.installedGames,
+                        loading = dashboardState.loadingGames,
+                        lastPlayedPackage = dashboardState.lastPlayedPackage,
+                        onGameClick = dashboardViewModel::onGameClick,
                     )
+
                     DeviceInfoSection(info = dashboardState.deviceInfo)
                     return@Column
                 }
@@ -499,8 +506,16 @@ private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER,
  * SEKARANG RELEVAN UNTUK SEMUA BACKEND (bukan cuma Root lagi seperti
  * sebelumnya), karena minimal berisi dua item yang tersedia untuk backend
  * apa pun:
- * - "Dashboard": ringkasan CPU/GPU/Suhu + Info Device (lihat
- *   [DashboardViewModel], [DashboardMonitorRow], [DeviceInfoSection]).
+ * - "Dashboard": kartu identitas app + Aktivitas Game (daftar game
+ *   terpasang, scroll horizontal) + Info Device (lihat
+ *   [DashboardViewModel], [GameActivitySection], [DeviceInfoSection]) — CPU/
+ *   GPU/Suhu SUDAH TIDAK ADA di sini sejak rework total, lihat KDoc
+ *   [DashboardViewModel].
+ * - "Game Booster": layar landscape khusus untuk dipakai SELAMA sesi
+ *   bermain — FPS overlay, mode game, jangan ganggu, screenshot, mode
+ *   boost/hemat, dan grafik monitoring CPU/GPU/Suhu real-time (lihat
+ *   [com.aether.x.ui.booster.GameBoosterScreen]) — tersedia untuk SEMUA
+ *   backend seperti "Dashboard" & "Tweak".
  * - "Tweak": seluruh kontrol tweak (Input Driver untuk Shizuku, Refresh
  *   Rate, Mode Game, dan Kernel Tuning untuk Root) — konten yang
  *   SEBELUMNYA bercampur dengan monitor CPU/GPU di satu sub-tab yang sama,
@@ -520,6 +535,7 @@ private fun TweakDrawerContent(
     selected: TweakSubTab,
     showRootOnlyItems: Boolean,
     onSelect: (TweakSubTab) -> Unit,
+    onNavigateToGameBooster: () -> Unit,
 ) {
     Text(
         text = stringResource(R.string.app_name),
@@ -548,6 +564,22 @@ private fun TweakDrawerContent(
         icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
         selected = selected == TweakSubTab.GAME_PROFILE,
         onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
+    // FITUR BARU — lihat KDoc lengkap di atas kelas ini soal Game Booster:
+    // TERSEDIA UNTUK SEMUA BACKEND (bukan di-gate showRootOnlyItems) karena
+    // mode Boost/Hemat/DND tetap berguna walau sebagian aksi (FPS real-time,
+    // CPU governor) memerlukan root — bukan destination TweakSubTab
+    // internal seperti item lain di atas, tapi NAVIGASI KELUAR sepenuhnya
+    // (lihat AetherXRoutes.GAME_BOOSTER) karena butuh memaksa orientasi
+    // landscape yang berbeda dari seluruh scaffold TweakScreen ini yang
+    // portrait.
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.game_booster_title)) },
+        icon = { Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null) },
+        selected = false,
+        onClick = onNavigateToGameBooster,
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = 12.dp),
     )
@@ -663,15 +695,19 @@ private fun TweakHeader(
             )
         }
         if (userId != null) {
-            // Warna teks badge ID diganti DashboardAccentOrange (bukan
-            // MaterialTheme.colorScheme.primary/biru tema lama) — meniru
-            // warna oranye pada teks "ID 9590cb92" di referensi Dashboard.
+            // REWORK (lihat perintah rework — "warna card ... default
+            // mengikuti warna tema bawaan"): badge ID SEKARANG memakai
+            // MaterialTheme.colorScheme.primary (biru [AccentBlue], warna
+            // aksen utama app) — bukan lagi DashboardAccentOrange (bekas token
+            // oranye custom yang sebelumnya hanya dipakai di sini & kartu
+            // Dashboard, sekarang dihapus supaya seluruh app konsisten satu
+            // identitas warna).
             StatusPill(
                 text = stringResource(R.string.tweak_user_id_format, userId),
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = DashboardAccentOrange,
+                contentColor = MaterialTheme.colorScheme.primary,
                 leadingIcon = if (isMembershipActive) Icons.Outlined.WorkspacePremium else null,
-                leadingIconTint = DashboardAccentOrange,
+                leadingIconTint = MaterialTheme.colorScheme.primary,
             )
         } else {
             StatusPill(

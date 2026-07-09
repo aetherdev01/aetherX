@@ -1,16 +1,21 @@
 package com.aether.x.ui.dashboard
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
@@ -18,8 +23,8 @@ import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -30,292 +35,227 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
 import com.aether.x.R
+import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.ui.components.SectionCard
-import com.aether.x.ui.theme.DashboardAccentOrange
-import com.aether.x.ui.theme.DashboardHeroEnd
-import com.aether.x.ui.theme.DashboardHeroStart
-import com.aether.x.ui.theme.DashboardPillBrown
-import kotlin.math.roundToInt
+import com.aether.x.ui.components.StatusPill
 
 /**
- * REWORK TOTAL (lihat perintah rework terbaru — "Samakan UI Dashboard
- * Seperti Foto ke 1 dari Gaya, Dll"): kartu hero besar di puncak tab
- * Dashboard, meniru gaya referensi persis — gradient coklat gelap ke
- * hampir-hitam, judul besar bold, versi kecil di bawahnya, dan ikon
- * dekoratif AetherX transparan besar di sisi kanan (bukan lagi kartu datar
- * kecil dengan ikon lingkaran seperti versi sebelumnya).
+ * REWORK TOTAL (lihat perintah rework — "rework total tampilan Dashboard...
+ * karena text AetherX terlalu banyak"): kartu hero SEBELUMNYA menampilkan
+ * kicker "AETHERX" + judul besar "AetherX" LAGI — redundan dengan
+ * [com.aether.x.ui.tweak.TweakHeader] yang SUDAH menampilkan logo + "AetherX"
+ * secara permanen tepat di atas kartu ini (untuk SEMUA sub-tab). Sekarang
+ * hero card ini HANYA menampilkan logo bulat kecil + versi + pill mode akses
+ * dalam SATU baris ramping — tidak lagi mengulang nama aplikasi sama sekali.
  *
- * Status Root/Shizuku/No Root SEKARANG jadi pill solid warna
- * [DashboardPillBrown] di kartu KEDUA (lihat [DashboardStatusRow]),
- * meniru pill "Game Space" di referensi — bukan lagi badge kecil di ujung
- * kanan kartu hero.
+ * Logo SEKARANG memakai [R.drawable.ic_aetherx_logo] (PNG logo resmi
+ * lengkap, bulat) mengikuti permintaan eksplisit — BUKAN lagi
+ * [R.drawable.ic_aetherx_mark] (vector mark "X" dekoratif transparan besar
+ * yang dipakai versi sebelumnya).
+ *
+ * WARNA SEKARANG MENGIKUTI TEMA DEFAULT (lihat perintah rework — "warna
+ * card ... default mengikuti warna tema bawaan"): gradient
+ * DashboardHeroStart/DashboardHeroEnd (coklat-terracotta custom, terpisah
+ * dari identitas warna app) DIHAPUS — kartu ini sekarang memakai
+ * `MaterialTheme.colorScheme.surfaceVariant`/`primary` (biru [AccentBlue],
+ * warna aksen utama app di seluruh layar lain), konsisten dengan kartu
+ * Membership/Game Profile/dll yang semuanya sudah biru.
  */
 @Composable
 fun AetherXInfoCard(
     activeBackend: PrivilegeBackend,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(DashboardHeroStart, DashboardHeroEnd),
-                ),
-            ),
-    ) {
-        // Ikon dekoratif besar transparan di sisi kanan, meniru siluet
-        // logo besar di referensi — sengaja diperbesar melebihi tinggi
-        // kartu dan di-offset supaya sebagian terpotong tepi (efek "logo
-        // besar mengintip"), sama seperti referensi.
-        Icon(
-            painter = painterResource(id = com.aether.x.R.drawable.ic_aetherx_mark),
-            contentDescription = null,
-            tint = DashboardAccentOrange.copy(alpha = 0.22f),
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 16.dp)
-                .size(140.dp),
-        )
-
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = stringResource(R.string.dashboard_hero_kicker),
-                style = MaterialTheme.typography.labelLarge,
-                color = DashboardAccentOrange.copy(alpha = 0.8f),
-            )
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displaySmall,
-                color = Color.White,
-            )
-            Text(
-                text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-    }
-}
-
-/**
- * FITUR BARU: baris kartu kedua di bawah hero card — meniru kartu metric
- * ("Batas Koleksi | Energi" + pill "Game Space") di referensi. Di sini
- * berisi status mode akses aktif (Root/Shizuku/No Root) sebagai pill solid
- * di kanan, dengan label deskriptif di kiri.
- */
-@Composable
-fun DashboardStatusRow(
-    activeBackend: PrivilegeBackend,
-    modifier: Modifier = Modifier,
-) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(R.string.dashboard_privilege_label),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Image(
+            painter = painterResource(id = R.drawable.ic_aetherx_logo),
+            contentDescription = null,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape),
         )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 14.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.dashboard_hero_kicker),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         PrivilegeBackendPill(activeBackend)
     }
 }
 
 /**
- * Pill status solid — meniru pill "Game Space" (warna solid coklat-oranye
- * + ikon di kanan) di referensi, MENGGANTIKAN badge transparan kecil
- * ([PrivilegeBackendBadge] versi lama, sekarang dihapus). Warna pill tetap
- * berbeda per status supaya tetap mudah dibedakan sekilas: coklat-oranye
- * solid untuk Root (privilese penuh), abu gelap untuk Shizuku/No Root
- * (privilese terbatas/tidak ada).
+ * Pill status mode akses — SEKARANG memakai `MaterialTheme.colorScheme.primary`
+ * (biru tema default) untuk Root, bukan lagi DashboardPillBrown custom —
+ * lihat KDoc [AetherXInfoCard] soal alasan warna mengikuti tema bawaan.
  */
 @Composable
 private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
-    val (label, bgColor, icon) = when (backend) {
-        PrivilegeBackend.ROOT -> Triple(stringResource(R.string.dashboard_privilege_root), DashboardPillBrown, Icons.Outlined.Shield)
-        PrivilegeBackend.SHIZUKU -> Triple(stringResource(R.string.dashboard_privilege_shizuku), MaterialTheme.colorScheme.surfaceVariant, Icons.Outlined.Shield)
-        PrivilegeBackend.NONE -> Triple(stringResource(R.string.dashboard_privilege_none), MaterialTheme.colorScheme.surfaceVariant, Icons.Outlined.Shield)
+    val (label, bgColor) = when (backend) {
+        PrivilegeBackend.ROOT -> stringResource(R.string.dashboard_privilege_root) to MaterialTheme.colorScheme.primary
+        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.surface
+        PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.surface
     }
-    Row(
+    val textColor = if (backend == PrivilegeBackend.ROOT) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(bgColor)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.titleSmall,
-            color = Color.White,
-        )
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.padding(start = 8.dp).size(18.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = textColor,
         )
     }
 }
 
 /**
- * Baris tiga monitor ringkas (CPU, GPU, Suhu) sebagai gauge lingkaran kecil
- * berdampingan — ringkasan cepat "sekilas lihat" di puncak tab Dashboard,
- * SEBELUM detail Kernel Manager (khusus Root) yang lebih rinci di bawahnya.
- * Nilai null pada CPU/Suhu ditampilkan sebagai "-" (belum sempat terbaca).
- * Untuk GPU, [gpuUnsupported] membedakan dua kondisi null yang PENYEBABNYA
- * beda (lihat KDoc [DashboardViewModel]): "-" polos kalau belum sempat
- * terbaca (akan terisi di polling berikutnya), vs label
- * [R.string.dashboard_gpu_unsupported_hint] kalau chipset perangkat ini memang
- * tidak punya node persentase GPU (Mali/PowerVR umumnya) — supaya
- * pengguna tidak mengira ini bug yang harus dilaporkan berulang-ulang.
+ * FITUR BARU — section "Aktivitas Game" di Dashboard (lihat perintah rework):
+ * daftar game terpasang sebagai kartu vertikal (ikon besar + nama) yang
+ * bisa di-scroll horizontal kiri-kanan ([LazyRow]). Game yang TERAKHIR
+ * dipakai ditampilkan PALING KIRI dengan chip "Terakhir dipakai" di bawah
+ * ikonnya (lihat [DashboardViewModel.reorderByLastPlayed]) — sisanya
+ * alfabet seperti urutan asli [com.aether.x.core.apps.GameProfileCatalog].
+ * Mengetuk kartu manapun langsung membuka game itu lewat
+ * [com.aether.x.core.apps.GameLaunchTracker].
  */
 @Composable
-fun DashboardMonitorRow(
-    cpuLoadPercent: Int?,
-    gpuLoadPercent: Int?,
-    temperatureCelsius: Float?,
-    gpuUnsupported: Boolean,
+fun GameActivitySection(
+    games: List<InstalledGameEntry>,
+    loading: Boolean,
+    lastPlayedPackage: String?,
+    onGameClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            MonitorGaugeCard(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.dashboard_monitor_cpu),
-                valueText = cpuLoadPercent?.let { "$it%" } ?: "-",
-                progress = (cpuLoadPercent ?: 0) / 100f,
-                icon = Icons.Outlined.Memory,
-                gaugeColor = MaterialTheme.colorScheme.primary,
+            Icon(
+                imageVector = Icons.Outlined.SportsEsports,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
             )
-            MonitorGaugeCard(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.dashboard_monitor_gpu),
-                valueText = when {
-                    gpuLoadPercent != null -> "$gpuLoadPercent%"
-                    gpuUnsupported -> stringResource(R.string.dashboard_gpu_unsupported_short)
-                    else -> "-"
-                },
-                progress = (gpuLoadPercent ?: 0) / 100f,
-                icon = Icons.Outlined.DeveloperBoard,
-                gaugeColor = MaterialTheme.colorScheme.tertiary,
-            )
-            MonitorGaugeCard(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.dashboard_monitor_temp),
-                valueText = temperatureCelsius?.let { "${it.roundToInt()}°" } ?: "-",
-                progress = ((temperatureCelsius ?: 0f) / 100f).coerceIn(0f, 1f),
-                icon = Icons.Outlined.Thermostat,
-                gaugeColor = thermalGaugeColor(temperatureCelsius),
+            Text(
+                text = stringResource(R.string.dashboard_section_game_activity),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
-        if (gpuUnsupported) {
-            Text(
-                text = stringResource(R.string.dashboard_gpu_unsupported_hint),
-                style = MaterialTheme.typography.bodySmall,
+
+        when {
+            loading -> Box(
+                modifier = Modifier.fillMaxWidth().height(112.dp).padding(top = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+            }
+            games.isEmpty() -> Text(
+                text = stringResource(R.string.dashboard_game_activity_empty),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+                modifier = Modifier.padding(top = 12.dp),
             )
+            else -> LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(games, key = { it.packageName }) { game ->
+                    GameActivityCard(
+                        entry = game,
+                        isLastPlayed = game.packageName == lastPlayedPackage,
+                        onClick = { onGameClick(game.packageName) },
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun thermalGaugeColor(celsius: Float?): Color = when {
-    celsius == null -> MaterialTheme.colorScheme.onSurfaceVariant
-    celsius < 45f -> MaterialTheme.colorScheme.primary
-    celsius < 65f -> MaterialTheme.colorScheme.tertiary
-    else -> MaterialTheme.colorScheme.error
-}
-
-@Composable
-private fun MonitorGaugeCard(
-    label: String,
-    valueText: String,
-    progress: Float,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    gaugeColor: Color,
-    modifier: Modifier = Modifier,
+private fun GameActivityCard(
+    entry: InstalledGameEntry,
+    isLastPlayed: Boolean,
+    onClick: () -> Unit,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 18.dp, horizontal = 8.dp),
+        modifier = Modifier
+            .width(84.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.size(64.dp)) {
-                val strokeWidth = 6.dp.toPx()
-                drawArc(
-                    color = gaugeColor.copy(alpha = 0.18f),
-                    startAngle = -90f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-                )
-                drawArc(
-                    color = gaugeColor,
-                    startAngle = -90f,
-                    sweepAngle = 360f * progress.coerceIn(0f, 1f),
-                    useCenter = false,
-                    style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-                )
-            }
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = gaugeColor,
-                modifier = Modifier.size(20.dp),
+        Image(
+            bitmap = entry.icon,
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(16.dp)),
+        )
+        Text(
+            text = entry.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp).wrapContentWidth(),
+        )
+        if (isLastPlayed) {
+            Text(
+                text = stringResource(R.string.dashboard_game_activity_last_used),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
-        Text(
-            text = valueText,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 10.dp),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp),
-        )
     }
 }
 
 /**
  * Section "Info Device": model, chipset/board, versi Android, RAM, dan
- * penyimpanan — SEMUA tersedia tanpa Shizuku/Root (lihat KDoc
- * [com.aether.x.core.device.DeviceInfoProvider]), jadi section ini selalu
- * tampil terlepas dari backend akses yang aktif.
- *
- * REWORK TOTAL TAMPILAN (lihat perintah rework — "rework tampilan Info
- * Device"): sebelumnya SEMUA baris (identitas + penggunaan resource)
- * ditumpuk datar dalam satu Column tanpa pemisah visual. Sekarang dipecah
- * jadi 2 sub-grup dengan label kecil di masing-masing ("Identitas
- * Perangkat" untuk model/chipset/Android/CPU ABI, "Penggunaan Resource"
- * untuk RAM/storage) dipisahkan HorizontalDivider — lebih mudah dipindai
- * sekilas, dan progress bar RAM/storage jadi lebih menonjol sebagai
- * kelompok tersendiri alih-alih menyatu dengan baris teks identitas.
+ * penyimpanan — SEMUA tersedia tanpa Shizuku/Root, jadi section ini selalu
+ * tampil terlepas dari backend akses yang aktif. Tidak berubah dari versi
+ * sebelumnya (statis, tidak butuh polling — lihat KDoc [DashboardViewModel]
+ * soal kenapa monitor CPU/GPU/Suhu dihapus dari Dashboard, bukan section ini).
  */
 @Composable
 fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) {
@@ -367,9 +307,6 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 6.dp),
         )
-        // RAM & penyimpanan ditampilkan sebagai progress bar visual (bukan
-        // cuma teks "4.2 GB / 8.0 GB") — sekilas pandang langsung terlihat
-        // seberapa penuh, tanpa perlu menghitung sendiri dari dua angka.
         val usedRam = info.totalRamBytes - info.availableRamBytes
         UsageBarRow(
             icon = Icons.Outlined.Memory,
@@ -389,11 +326,6 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
     }
 }
 
-/**
- * Baris progress bar penggunaan (RAM/Storage) — fitur baru Dashboard:
- * label + angka "terpakai / total" di baris atas, progress bar warna
- * berjenjang (hijau→kuning→merah mengikuti seberapa penuh) di bawahnya.
- */
 @Composable
 private fun UsageBarRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,

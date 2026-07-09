@@ -88,6 +88,22 @@ object GameProfileCatalog {
                 .sortedBy { it.label.lowercase() }
         }
 
+    /**
+     * FITUR BARU (Game Booster — lihat perintah rework: "saat buka game
+     * game booster jadi side bar/floating"): cek CEPAT apakah [packageName]
+     * termasuk game yang dikenal `gamelist.txt`, TANPA scan
+     * [PackageManager] (yang mahal untuk dipanggil tiap siklus poll
+     * beberapa detik sekali) — cukup cek keberadaan di
+     * [readCatalogPackageNames] yang SUDAH di-cache in-memory. Dipakai
+     * [com.aether.x.core.monitor.GameProfileMonitorService] untuk memutuskan
+     * kapan floating sidebar Game Booster perlu di-trigger otomatis,
+     * TERLEPAS dari apakah game itu punya [com.aether.x.data.GameProfile]
+     * tersimpan atau tidak (beda dari trigger Game Profile yang HANYA
+     * berlaku untuk game yang profilnya sudah dikustomisasi pengguna).
+     */
+    suspend fun isKnownGamePackage(context: Context, packageName: String): Boolean =
+        readCatalogPackageNames(context).contains(packageName)
+
     private fun loadEntryIfInstalled(pm: PackageManager, packageName: String): InstalledGameEntry? {
         val appInfo = try {
             pm.getApplicationInfo(packageName, 0)

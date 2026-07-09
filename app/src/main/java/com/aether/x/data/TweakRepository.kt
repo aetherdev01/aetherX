@@ -242,6 +242,83 @@ class TweakRepository {
     }
 
     /**
+     * FITUR BARU — tweak ke-7 Game Profile (lihat perintah rework: "Untuk
+     * tweak baru di Game Profile — GPU Rendering Priority (SurfaceFlinger)"):
+     * menaikkan prioritas REAL-TIME (SCHED_FIFO, lewat `chrt -f`) untuk:
+     * 1. Proses sistem `surfaceflinger` itu sendiri (compositor yang
+     *    menggabungkan seluruh layer render app jadi satu frame ke layar —
+     *    proses ini SATU untuk seluruh sistem, bukan per-game).
+     * 2. Thread `RenderThread` milik [packageName] — thread khusus yang
+     *    dipakai Android untuk render Compose/Views/OpenGL/Vulkan di luar
+     *    main thread sejak Android 5.0 (Lollipop); menaikkan prioritas
+     *    thread ini spesifik untuk PROSES GAME YANG SEDANG PROFIL INI AKTIF,
+     *    dicari lewat `pgrep` nama packagenya lalu `grep RenderThread` di
+     *    /proc/<pid>/task/*/comm untuk dapat TID-nya.
+     *
+     * SCHED_FIFO (`chrt -f`) dipilih (bukan sekadar `renice`/nice value)
+     * karena prioritas real-time TIDAK BISA "kalah" preempt oleh proses
+     * SCHED_OTHER (proses normal) manapun sampai proses itu sendiri
+     * yield/blocking — inilah yang mengurangi jitter/frame drop akibat
+     * proses lain merebut jatah CPU tepat saat SurfaceFlinger/RenderThread
+     * perlu jalan. Level prioritas 50 (dari rentang 1-99) dipilih sebagai
+     * titik tengah aman: cukup tinggi untuk diprioritaskan di atas hampir
+     * semua proses SCHED_OTHER, tapi TIDAK di level tertinggi yang berisiko
+     * membuat proses sistem kritis lain (mis. input dispatcher) starvation.
+     *
+     * Saat [enabled] = false: SurfaceFlinger & RenderThread dikembalikan ke
+     * SCHED_OTHER (`chrt -o -p 0 <pid>`) — nilai `0` diabaikan untuk
+     * SCHED_OTHER (tidak dipakai kernel), ini murni cara `chrt` melepas
+     * kembali proses dari real-time scheduling ke normal.
+     *
+     * Butuh root PENUH (bukan Shizuku) karena `chrt` pada PID proses lain
+     * (bukan proses sendiri) memerlukan `CAP_SYS_NICE` yang di mayoritas ROM
+     * cuma diberikan ke shell UID root — konsisten dengan tweak root lain
+     * di file ini (lihat [applyDozeDisable]).
+     */
+    suspend fun applyGpuRenderingPriority(
+        executor: ShellExecutor,
+        packageName: String,
+        enabled: Boolean,
+    ): ShellResult {
+        val script = if (enabled) {
+            """
+            # 1) SurfaceFlinger (compositor sistem, satu proses untuk seluruh sistem)
+            sf_pid="${'$'}(pgrep -x surfaceflinger 2>/dev/null | head -n1)"
+            [ -n "${'$'}sf_pid" ] && chrt -f -p 50 ${'$'}sf_pid 2>/dev/null
+
+            # 2) RenderThread milik game (dicari lewat TID, bukan PID utama)
+            game_pid="${'$'}(pgrep -x $packageName 2>/dev/null | head -n1)"
+            if [ -n "${'$'}game_pid" ]; then
+              for t in /proc/${'$'}game_pid/task/*; do
+                tid="${'$'}(basename ${'$'}t)"
+                name="${'$'}(cat ${'$'}t/comm 2>/dev/null)"
+                if [ "${'$'}name" = "RenderThread" ]; then
+                  chrt -f -p 50 ${'$'}tid 2>/dev/null
+                fi
+              done
+            fi
+            """.trimIndent()
+        } else {
+            """
+            sf_pid="${'$'}(pgrep -x surfaceflinger 2>/dev/null | head -n1)"
+            [ -n "${'$'}sf_pid" ] && chrt -o -p 0 ${'$'}sf_pid 2>/dev/null
+
+            game_pid="${'$'}(pgrep -x $packageName 2>/dev/null | head -n1)"
+            if [ -n "${'$'}game_pid" ]; then
+              for t in /proc/${'$'}game_pid/task/*; do
+                tid="${'$'}(basename ${'$'}t)"
+                name="${'$'}(cat ${'$'}t/comm 2>/dev/null)"
+                if [ "${'$'}name" = "RenderThread" ]; then
+                  chrt -o -p 0 ${'$'}tid 2>/dev/null
+                fi
+              done
+            fi
+            """.trimIndent()
+        }
+        return executor.exec(script)
+    }
+
+    /**
      * FITUR BARU (lihat perintah rework — "tambahkan fitur baru yang
      * berguna khusus root" di section Root layar Tweak): nonaktifkan Doze /
      * App Standby sistem selama sesi bermain, supaya OS tidak membekukan
@@ -359,21 +436,34 @@ class TweakRepository {
         applyGpuPerformanceMode(executor, profile.gpuPerformanceMode),
         applyIoSchedulerBoost(executor, profile.ioSchedulerBoost),
         applyVmHeapBoost(executor, profile.vmHeapBoost),
+        applyGpuRenderingPriority(executor, profile.packageName, profile.gpuRenderingPriority),
     )
 
     /**
      * Mengembalikan HANYA tweak root ("kernel-level": CPU/RAM/GPU/thermal/IO/
-     * VM heap) ke kondisi OFF/default, TANPA menyentuh tweak lain (Input
-     * Driver, refresh rate, game mode/DND) — dipakai saat game yang punya
-     * Game Profile aktif ditutup dari recent apps, supaya tweak global lain
-     * yang pengguna set manual di section non-root tidak ikut ter-reset.
+     * VM heap/GPU Rendering Priority) ke kondisi OFF/default, TANPA
+     * menyentuh tweak lain (Input Driver, refresh rate, game mode/DND) —
+     * dipakai saat game yang punya Game Profile aktif ditutup dari recent
+     * apps, supaya tweak global lain yang pengguna set manual di section
+     * non-root tidak ikut ter-reset.
+     *
+     * [packageName] (FITUR BARU, opsional): package game yang PROFILNYA
+     * baru saja dinonaktifkan — dipakai HANYA untuk reset prioritas
+     * `RenderThread` game itu spesifik lewat [applyGpuRenderingPriority].
+     * Kalau null (pemanggil tidak tahu/tidak relevan package mana), reset
+     * SurfaceFlinger tetap jalan seperti biasa, hanya bagian RenderThread
+     * yang dilewati — aman karena RenderThread proses yang sudah exit toh
+     * sudah tidak ada lagi untuk di-reset.
      */
-    suspend fun resetRootTweaksOnly(executor: ShellExecutor): List<ShellResult> = listOf(
-        applyCpuGovernor(executor, CpuGovernor.UNIVERSAL),
-        applyRamPriority(executor, enabled = false),
-        applyThermalThrottleOverride(executor, enabled = false),
-        applyGpuPerformanceMode(executor, enabled = false),
-        applyIoSchedulerBoost(executor, enabled = false),
-        applyVmHeapBoost(executor, enabled = false),
-    )
+    suspend fun resetRootTweaksOnly(executor: ShellExecutor, packageName: String? = null): List<ShellResult> = buildList {
+        add(applyCpuGovernor(executor, CpuGovernor.UNIVERSAL))
+        add(applyRamPriority(executor, enabled = false))
+        add(applyThermalThrottleOverride(executor, enabled = false))
+        add(applyGpuPerformanceMode(executor, enabled = false))
+        add(applyIoSchedulerBoost(executor, enabled = false))
+        add(applyVmHeapBoost(executor, enabled = false))
+        if (packageName != null) {
+            add(applyGpuRenderingPriority(executor, packageName, enabled = false))
+        }
+    }
 }
