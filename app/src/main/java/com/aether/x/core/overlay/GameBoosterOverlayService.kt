@@ -83,6 +83,9 @@ class GameBoosterOverlayService : Service() {
 
         private const val NOTIFICATION_CHANNEL_ID = "aetherx_game_booster_overlay"
         private const val NOTIFICATION_ID = 4103
+        private const val BUBBLE_SIZE_DP = 56
+        private const val SIDEBAR_WIDTH_DP = 260
+        private const val DRAG_THRESHOLD_PX_SQUARED = 400f
 
         fun start(context: Context, packageName: String, gameLabel: String) {
             val intent = Intent(context, GameBoosterOverlayService::class.java)
@@ -449,10 +452,4 @@ class GameBoosterOverlayService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private companion object {
-        const val BUBBLE_SIZE_DP = 56
-        const val SIDEBAR_WIDTH_DP = 260
-        const val DRAG_THRESHOLD_PX_SQUARED = 400f
-    }
 }

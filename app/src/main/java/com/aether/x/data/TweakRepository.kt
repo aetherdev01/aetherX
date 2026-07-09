@@ -253,7 +253,7 @@ class TweakRepository {
      *    main thread sejak Android 5.0 (Lollipop); menaikkan prioritas
      *    thread ini spesifik untuk PROSES GAME YANG SEDANG PROFIL INI AKTIF,
      *    dicari lewat `pgrep` nama packagenya lalu `grep RenderThread` di
-     *    /proc/<pid>/task/*/comm untuk dapat TID-nya.
+     *    /proc/&lt;pid&gt;/task/(star)/comm untuk dapat TID-nya.
      *
      * SCHED_FIFO (`chrt -f`) dipilih (bukan sekadar `renice`/nice value)
      * karena prioritas real-time TIDAK BISA "kalah" preempt oleh proses
