@@ -104,6 +104,28 @@ object GameProfileCatalog {
     suspend fun isKnownGamePackage(context: Context, packageName: String): Boolean =
         readCatalogPackageNames(context).contains(packageName)
 
+    /**
+     * FITUR BARU (Game Booster — lihat perintah rework floating booster:
+     * card game di floating booster menampilkan ikon ASLI game, bukan
+     * ikon generik): memuat [ImageBitmap] langsung dari [packageName],
+     * TANPA perlu [InstalledGameEntry] lengkap atau cek keanggotaan
+     * `gamelist.txt` — dipakai oleh
+     * [com.aether.x.core.overlay.GameBoosterOverlayService] yang cuma
+     * punya packageName dari sesi Game Booster aktif (lihat
+     * [com.aether.x.core.booster.GameBoosterSession.icon]). Null kalau
+     * package sudah di-uninstall atau iconnya gagal dibaca.
+     */
+    suspend fun loadIconForPackage(context: Context, packageName: String): ImageBitmap? =
+        withContext(Dispatchers.IO) {
+            try {
+                val pm = context.packageManager
+                val appInfo = pm.getApplicationInfo(packageName, 0)
+                drawableToImageBitmap(pm.getApplicationIcon(appInfo))
+            } catch (t: Throwable) {
+                null
+            }
+        }
+
     private fun loadEntryIfInstalled(pm: PackageManager, packageName: String): InstalledGameEntry? {
         val appInfo = try {
             pm.getApplicationInfo(packageName, 0)
@@ -129,8 +151,13 @@ object GameProfileCatalog {
      * aplikasi yang sudah tersedia langsung dari [PackageManager]. Ikon
      * aplikasi biasanya berupa [android.graphics.drawable.AdaptiveIconDrawable]
      * atau bitmap sederhana; `draw(canvas)` generik ini menangani keduanya.
+     *
+     * DIUBAH dari `private` menjadi `internal` (lihat perintah rework
+     * floating booster) supaya bisa dipakai ulang oleh
+     * [loadIconForPackage] di atas TANPA duplikasi logic konversi
+     * Drawable->ImageBitmap yang sama persis.
      */
-    private fun drawableToImageBitmap(drawable: Drawable): ImageBitmap {
+    internal fun drawableToImageBitmap(drawable: Drawable): ImageBitmap {
         val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 108
         val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 108
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)

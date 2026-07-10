@@ -1,6 +1,7 @@
 package com.aether.x.ui.booster
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -33,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
@@ -70,14 +73,36 @@ data class GameBoosterActions(
     // (layar penuh dari drawer) yang memang tidak punya konsep "collapse ke
     // bubble" karena dia bukan floating overlay.
     val onClose: (() -> Unit)? = null,
+    // FITUR BARU (lihat perintah rework floating booster foto 2): tombol
+    // "LUNCURKAN" di card game membawa pengguna kembali ke game yang
+    // sedang di-boost (mis. kalau pengguna sempat berpindah ke AetherX
+    // tanpa menutup game). Null berarti tombol tidak ditampilkan —
+    // GameBoosterScreen (layar penuh) tidak memerlukan aksi ini karena
+    // sudah punya cara sendiri untuk membuka game dari daftar.
+    val onLaunchGame: (() -> Unit)? = null,
 )
 
 /**
- * Isi menu + monitoring Game Booster (lihat perintah rework: "ada pilihan
- * menu banyak, dari tampilkan fps, mode game, jangan ganggu, screenshot,
- * mode boost, mode hemat, ada monitoring seperti grafik") — Composable
- * MURNI (tidak tahu apakah dirinya dirender di floating sidebar atau layar
- * penuh), supaya SATU implementasi dipakai konsisten di kedua tempat.
+ * REWORK TOTAL (lihat perintah rework — "rework total juga untuk floating
+ * game booster nya seperti foto ke 2"): SEBELUMNYA Column vertikal berisi
+ * daftar menu panjang (mode selector, toggle FPS/DND, tombol screenshot,
+ * panel metrics, tombol akhiri sesi) dalam satu panel sempit mepet-kanan.
+ *
+ * SEKARANG mengikuti referensi foto 2 — card KOMPAK LEBAR HORIZONTAL:
+ * - Baris header: judul "Game Corner" kiri, indikator baterai kanan.
+ * - Baris utama TIGA KOLOM: suhu CPU (kiri) — card game dengan ikon asli +
+ *   tombol Luncurkan (tengah, lebih menonjol) — beban GPU (kanan). Kolom
+ *   kanan SENGAJA memakai beban GPU (bukan "ping/interval" seperti pada
+ *   referensi foto) karena model data Game Booster saat ini
+ *   ([GameBoosterMetrics]) tidak memiliki data ping jaringan — menambah
+ *   field ping dummy akan menyesatkan, jadi kolom ini diisi metric yang
+ *   BENAR-BENAR tersedia datanya.
+ * - Baris footer: tombol akhiri sesi (kiri) dan mode/menu toggle ringkas
+ *   (kanan) — mode selector & panel grafik FPS lengkap TETAP dipertahankan
+ *   di bawahnya untuk pengguna yang ingin detail lebih (composable ini
+ *   masih Composable MURNI yang sama, dipakai baik oleh floating overlay
+ *   MAUPUN GameBoosterScreen, supaya satu implementasi tetap konsisten di
+ *   kedua tempat — lihat KDoc [GameBoosterActions] di atas).
  */
 @Composable
 fun GameBoosterSidebarContent(
@@ -87,45 +112,72 @@ fun GameBoosterSidebarContent(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(SurfaceCard)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        // Header: nama game aktif + tombol tutup (kembali ke bubble)
+        // Header: "Game Corner" kiri, baterai + tombol tutup kanan.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            Text(
+                text = stringResource(R.string.game_booster_sidebar_header),
+                style = MaterialTheme.typography.labelLarge,
+                color = TextSecondary,
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.SportsEsports,
+                    imageVector = Icons.Outlined.BatteryChargingFull,
                     contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(22.dp),
+                    tint = AccentGreen,
+                    modifier = Modifier.size(16.dp),
                 )
-                Text(
-                    text = session.gameLabel,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            actions.onClose?.let { onClose ->
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = stringResource(R.string.game_booster_sidebar_close),
-                    tint = TextMuted,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable(onClick = onClose),
-                )
+                actions.onClose?.let { onClose ->
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = stringResource(R.string.game_booster_sidebar_close),
+                        tint = TextMuted,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable(onClick = onClose),
+                    )
+                }
             }
         }
 
-        // Preset mode: Hemat / Normal / Boost
+        // Baris utama tiga-kolom: suhu CPU — card game — beban GPU.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            SidebarSideMetric(
+                icon = Icons.Outlined.Thermostat,
+                value = session.metrics.temperatureCelsius?.let { "%.1f°".format(it) } ?: "-",
+                label = stringResource(R.string.game_booster_metrics_temp),
+                tint = AccentAmber,
+                modifier = Modifier.weight(0.75f),
+            )
+            GameLaunchCard(
+                session = session,
+                onLaunchGame = actions.onLaunchGame,
+                modifier = Modifier.weight(1.5f),
+            )
+            SidebarSideMetric(
+                icon = Icons.Outlined.Speed,
+                value = session.metrics.gpuLoadPercent?.let { "$it%" } ?: "-",
+                label = stringResource(R.string.game_booster_metrics_gpu),
+                tint = severityColor(session.metrics.gpuLoadPercent),
+                modifier = Modifier.weight(0.75f),
+            )
+        }
+
+        // Preset mode: Hemat / Normal / Boost (dipertahankan, referensi
+        // foto 2 tidak menampilkannya tapi menu ini tetap penting untuk
+        // kontrol cepat dan tidak diminta untuk dihapus).
         ModeSelector(currentMode = session.mode, onModeChange = actions.onModeChange)
 
         // Menu toggle: FPS overlay, DND
@@ -149,7 +201,9 @@ fun GameBoosterSidebarContent(
             onClick = actions.onScreenshot,
         )
 
-        // Monitoring: FPS/CPU/GPU/Suhu + grafik
+        // Monitoring: FPS/CPU/GPU/Suhu + grafik (dipertahankan penuh, ini
+        // fitur "ada monitoring seperti grafik" dari rework sebelumnya dan
+        // tidak diminta untuk dihapus/diubah oleh perintah rework ini).
         GameBoosterMetricsPanel(metrics = session.metrics)
 
         GameBoosterActionRow(
@@ -158,6 +212,120 @@ fun GameBoosterSidebarContent(
             onClick = actions.onEndSession,
             tint = AccentRed,
         )
+    }
+}
+
+/**
+ * Kolom kiri/kanan compact di baris utama card floating (suhu CPU / beban
+ * GPU) — meniru "36,6°C / Kecepatan CPU" dan "44,2 / Interval Ping" pada
+ * referensi foto 2, disusun ikon kecil + angka besar + label kecil.
+ */
+@Composable
+private fun SidebarSideMetric(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * Card game tengah pada baris utama — ikon ASLI game (lihat
+ * [GameBoosterSession.icon], dimuat dari PackageManager oleh
+ * [com.aether.x.core.overlay.GameBoosterOverlayService]) + nama game +
+ * tombol "Luncurkan", meniru card "Among Us" pada referensi foto 2. Kalau
+ * [icon] masih null (belum selesai dimuat, atau package sudah
+ * di-uninstall), fallback ke ikon generik [Icons.Outlined.SportsEsports]
+ * supaya card tidak pernah tampil dengan area kosong.
+ */
+@Composable
+private fun GameLaunchCard(
+    session: GameBoosterSession,
+    onLaunchGame: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(SurfaceRaised)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SurfaceCard),
+                contentAlignment = Alignment.Center,
+            ) {
+                val icon = session.icon
+                if (icon != null) {
+                    Image(
+                        bitmap = icon,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(6.dp)),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.SportsEsports,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+            Text(
+                text = session.gameLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (onLaunchGame != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AccentBlue)
+                    .clickable(onClick = onLaunchGame)
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.game_booster_sidebar_launch),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
+        }
     }
 }
 

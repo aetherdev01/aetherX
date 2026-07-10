@@ -465,10 +465,36 @@
     <string name="game_booster_mode_normal">Normal</string>
     <string name="game_booster_mode_boost">Boost</string>
 
+    <!-- FITUR BARU (lihat perintah rework — "rework total tampilan game
+         booster seperti di foto pertama"): label menu grid radial
+         GameBoosterScreen, meniru teks persis pada foto referensi 1
+         ("Refresh Rate", "Information Monitor", "Jangan Ganggu",
+         "Crosshair", "Boost Cepat", "Kalibrasi Gyro" [tidak diimplementasi
+         — lihat KDoc GameBoosterScreen], "Preset Cepat", "Kunci Rotasi",
+         "Akselerasi Sentuhan", "Tangkapan Layar", "WhatsApp"). Beberapa
+         me-reuse LOGIC yang sama dengan sidebar (mis. Tangkapan Layar ->
+         viewModel.onScreenshot yang sama dengan onScreenshot sidebar)
+         tapi teks tampilan sengaja dibuat string terpisah supaya bisa
+         match persis literal foto referensi tanpa memengaruhi teks
+         sidebar yang sudah ada. -->
+    <string name="game_booster_radial_refresh_rate">Refresh Rate</string>
+    <string name="game_booster_radial_information_monitor">Information\nMonitor</string>
+    <string name="game_booster_radial_dnd">Jangan\nGanggu</string>
+    <string name="game_booster_radial_crosshair">Crosshair</string>
+    <string name="game_booster_radial_quick_boost">Boost Cepat</string>
+    <string name="game_booster_radial_quick_preset">Preset Cepat</string>
+    <string name="game_booster_radial_rotation_lock">Kunci Rotasi</string>
+    <string name="game_booster_radial_touch_boost">Akselerasi\nSentuhan</string>
+    <string name="game_booster_radial_screenshot">Tangkapan\nLayar</string>
+    <string name="game_booster_radial_whatsapp">WhatsApp</string>
+    <string name="game_booster_radial_ax_mode">AX-MODE</string>
+    <string name="game_booster_radial_quick_preset_applied_format">Preset %1$s diterapkan</string>
+
     <string name="game_booster_metrics_title">Monitoring</string>
     <string name="game_booster_metrics_fps">FPS</string>
     <string name="game_booster_metrics_cpu">CPU</string>
     <string name="game_booster_metrics_gpu">GPU</string>
+    <string name="game_booster_metrics_ram">RAM</string>
     <string name="game_booster_metrics_temp">Suhu</string>
     <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root/Shizuku di tab Tweak untuk FPS real-time</string>
 
@@ -478,6 +504,14 @@
     <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
     <string name="game_booster_sidebar_close">Tutup</string>
     <string name="game_booster_sidebar_end_session">Akhiri Sesi Boost</string>
+
+    <!-- FITUR BARU (lihat perintah rework — "rework total juga untuk
+         floating game booster nya seperti foto ke 2"): label header &
+         tombol khusus card floating compact, beda konteks dari
+         game_booster_launch_cta (yang untuk layar PEMILIHAN game sebelum
+         sesi dimulai) — string ini untuk saat sesi SUDAH aktif. -->
+    <string name="game_booster_sidebar_header">Game Corner</string>
+    <string name="game_booster_sidebar_launch">Luncurkan</string>
 
     <string name="game_booster_notification_channel">Game Booster Aktif</string>
     <string name="game_booster_notification_title_format">Game Booster — %1$s</string>

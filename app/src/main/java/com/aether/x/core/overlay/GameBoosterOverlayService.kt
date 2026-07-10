@@ -84,7 +84,11 @@ class GameBoosterOverlayService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "aetherx_game_booster_overlay"
         private const val NOTIFICATION_ID = 4103
         private const val BUBBLE_SIZE_DP = 56
-        private const val SIDEBAR_WIDTH_DP = 260
+        // FITUR BARU (lihat perintah rework floating booster foto 2):
+        // diperbesar dari 260 -> 320 karena layout baru GameBoosterSidebarContent
+        // sekarang berbentuk card lebar horizontal (suhu CPU kiri — card
+        // game tengah — ping kanan), bukan lagi panel sempit vertikal.
+        private const val SIDEBAR_WIDTH_DP = 320
         private const val DRAG_THRESHOLD_PX_SQUARED = 400f
 
         fun start(context: Context, packageName: String, gameLabel: String) {
@@ -159,6 +163,8 @@ class GameBoosterOverlayService : Service() {
                     mode = initial.gameBoosterMode,
                     dndEnabled = initial.gameBoosterDndEnabled,
                     fpsOverlayEnabled = initial.gameBoosterFpsOverlayEnabled,
+                    rotationLocked = initial.gameBoosterRotationLocked,
+                    touchBoostEnabled = initial.gameBoosterTouchBoostEnabled,
                 ),
             )
 
@@ -166,10 +172,24 @@ class GameBoosterOverlayService : Service() {
             if (executor != null) {
                 actionHandler.applyMode(executor, initial.gameBoosterMode)
                 if (initial.gameBoosterDndEnabled) actionHandler.applyDnd(executor, true)
+                if (initial.gameBoosterRotationLocked) actionHandler.applyRotationLock(executor, true)
+                if (initial.gameBoosterTouchBoostEnabled) actionHandler.applyTouchBoost(executor, true)
             }
 
             showBubble()
             startMonitor(packageName)
+
+            // FITUR BARU (lihat perintah rework floating booster foto 2 —
+            // card game menampilkan ikon ASLI): dimuat SETELAH session
+            // awal di-start (bukan sebelum) supaya bubble/sidebar tampil
+            // secepatnya tanpa menunggu I/O baca PackageManager; begitu
+            // icon siap, GameBoosterSessionHolder.update menyisipkannya ke
+            // session yang sudah berjalan — GameBoosterSidebarContent yang
+            // mengamati StateFlow ini otomatis recompose menampilkannya.
+            val icon = com.aether.x.core.apps.GameProfileCatalog.loadIconForPackage(applicationContext, packageName)
+            if (icon != null) {
+                GameBoosterSessionHolder.update { it.copy(icon = icon) }
+            }
         }
     }
 
@@ -327,9 +347,14 @@ class GameBoosterOverlayService : Service() {
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.TOP or Gravity.END
-            x = 16
-            y = 200
+            // FITUR BARU (lihat perintah rework floating booster foto 2):
+            // gravity diubah dari TOP|END (cocok untuk panel sempit
+            // mepet-kanan sebelumnya) ke TOP|CENTER_HORIZONTAL, karena
+            // layout baru berbentuk card lebar yang di referensi tampil
+            // rata-tengah horizontal, bukan menempel di tepi kanan layar.
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            x = 0
+            y = 120
         }
 
         val view = ComposeView(this).apply {
@@ -349,6 +374,16 @@ class GameBoosterOverlayService : Service() {
                                     stopSelf()
                                 },
                                 onClose = { collapseSidebar() },
+                                // FITUR BARU (lihat perintah rework floating
+                                // booster foto 2 — tombol "Luncurkan" di
+                                // card game): reuse GameLauncher.launch yang
+                                // sudah menangani FLAG_ACTIVITY_NEW_TASK
+                                // (wajib karena dipanggil dari Service,
+                                // bukan Activity) — bukan menulis logic
+                                // Intent baru yang terpisah.
+                                onLaunchGame = {
+                                    com.aether.x.core.apps.GameLauncher.launch(applicationContext, activeSession.packageName)
+                                },
                             ),
                             modifier = Modifier.width(SIDEBAR_WIDTH_DP.dp),
                         )

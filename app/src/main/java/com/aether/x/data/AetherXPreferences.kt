@@ -115,6 +115,13 @@ data class AppPreferences(
     // nyala terus-menerus di semua app, sementara FPS overlay Game Booster
     // hanya relevan selama sidebar terbuka).
     val gameBoosterFpsOverlayEnabled: Boolean = true,
+    // FITUR BARU (Game Booster — lihat perintah rework foto referensi 1,
+    // menu "Kunci Rotasi" & "Akselerasi Sentuhan"): dua toggle baru dengan
+    // pola umur-hidup SAMA seperti gameBoosterDndEnabled di atas — berlaku
+    // hanya selama sesi Game Booster aktif, kembali OFF otomatis saat sesi
+    // berakhir (lihat GameBoosterOverlayService.stop).
+    val gameBoosterRotationLocked: Boolean = false,
+    val gameBoosterTouchBoostEnabled: Boolean = false,
 ) {
     /**
      * Status membership dari CACHE LOKAL saja (tanpa network call) — sumber
@@ -231,10 +238,13 @@ class AetherXPreferences(private val context: Context) {
         val LAST_PLAYED_GAME_AT_MILLIS = longPreferencesKey("last_played_game_at_millis")
 
         // Game Booster — lihat AppPreferences.gameBoosterMode/gameBoosterDndEnabled/
-        // gameBoosterFpsOverlayEnabled di atas.
+        // gameBoosterFpsOverlayEnabled/gameBoosterRotationLocked/
+        // gameBoosterTouchBoostEnabled di atas.
         val GAME_BOOSTER_MODE = stringPreferencesKey("game_booster_mode")
         val GAME_BOOSTER_DND_ENABLED = booleanPreferencesKey("game_booster_dnd_enabled")
         val GAME_BOOSTER_FPS_OVERLAY_ENABLED = booleanPreferencesKey("game_booster_fps_overlay_enabled")
+        val GAME_BOOSTER_ROTATION_LOCKED = booleanPreferencesKey("game_booster_rotation_locked")
+        val GAME_BOOSTER_TOUCH_BOOST_ENABLED = booleanPreferencesKey("game_booster_touch_boost_enabled")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -292,6 +302,8 @@ class AetherXPreferences(private val context: Context) {
             gameBoosterMode = runCatching { GameMode.valueOf(prefs[Keys.GAME_BOOSTER_MODE] ?: "") }.getOrDefault(GameMode.MID),
             gameBoosterDndEnabled = prefs[Keys.GAME_BOOSTER_DND_ENABLED] ?: false,
             gameBoosterFpsOverlayEnabled = prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] ?: true,
+            gameBoosterRotationLocked = prefs[Keys.GAME_BOOSTER_ROTATION_LOCKED] ?: false,
+            gameBoosterTouchBoostEnabled = prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] ?: false,
         )
     }
 
@@ -571,6 +583,16 @@ class AetherXPreferences(private val context: Context) {
     /** Toggle FPS overlay khusus di dalam Game Booster — lihat KDoc AppPreferences.gameBoosterFpsOverlayEnabled. */
     suspend fun setGameBoosterFpsOverlayEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] = enabled }
+    }
+
+    /** Toggle Kunci Rotasi khusus di dalam Game Booster — lihat KDoc AppPreferences.gameBoosterRotationLocked. */
+    suspend fun setGameBoosterRotationLocked(locked: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_ROTATION_LOCKED] = locked }
+    }
+
+    /** Toggle Akselerasi Sentuhan khusus di dalam Game Booster — lihat KDoc AppPreferences.gameBoosterTouchBoostEnabled. */
+    suspend fun setGameBoosterTouchBoostEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] = enabled }
     }
 
     /**

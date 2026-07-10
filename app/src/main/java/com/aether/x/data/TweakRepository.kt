@@ -62,6 +62,20 @@ class TweakRepository {
     }
 
     /**
+     * FITUR BARU (Game Booster — lihat perintah rework foto referensi 1,
+     * menu "Kunci Rotasi"): mengunci/melepas auto-rotate layar lewat key
+     * sistem `accelerometer_rotation` standar Android (0 = terkunci ke
+     * orientasi saat ini, 1 = auto-rotate mengikuti sensor) — key yang
+     * SAMA PERSIS dengan yang diubah tombol Quick Settings rotasi bawaan
+     * Android, jadi berlaku konsisten dan langsung terlihat di status bar
+     * juga (ikon kunci rotasi akan berubah).
+     */
+    suspend fun applyRotationLock(executor: ShellExecutor, locked: Boolean): ShellResult {
+        val value = if (locked) 0 else 1
+        return executor.exec("settings put system accelerometer_rotation $value")
+    }
+
+    /**
      * Mode Game: mengaktifkan Do Not Disturb sistem supaya notifikasi tidak mengganggu
      * saat bermain.
      *

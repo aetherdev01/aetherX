@@ -10,7 +10,6 @@ import com.aether.x.core.apps.DetectedGame
 import com.aether.x.core.apps.GameLauncher
 import com.aether.x.core.display.DisplayInfo
 import com.aether.x.core.display.DisplayInfoProvider
-import com.aether.x.ui.components.showAetherToast
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.core.shell.ShellResult
@@ -359,17 +358,23 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur
-     * supaya lebih gampang"): SETIAP pemanggilan [appString] di file ini
-     * dipakai untuk mengisi `state.message` (dibaca SnackbarHost di
-     * TweakScreen) — sekarang SEKALIGUS memicu toast native lewat
-     * [com.aether.x.ui.components.showAetherToast], supaya hasil aksi
-     * (reset berhasil, command gagal, dst.) terasa instan bahkan kalau
-     * pengguna sedang tidak melihat area Snackbar.
+     * BUG FIX (lihat perintah rework — "fix toast di tweak dobel"): toast
+     * native sebelumnya dipicu DI SINI, di dalam fungsi yang sama yang
+     * juga mengisi `state.message` (dibaca SnackbarHost di TweakScreen) —
+     * akibatnya SETIAP aksi (reset berhasil, command gagal, dst.)
+     * menampilkan Snackbar Compose DAN Toast native sekaligus untuk pesan
+     * yang identik, terlihat seperti notifikasi dobel.
+     *
+     * Panggilan [com.aether.x.ui.components.showAetherToast] DIHAPUS dari
+     * sini — Snackbar (lewat `state.message`, sudah terintegrasi rapi
+     * dengan SnackbarHost di TweakScreen) dipertahankan sebagai SATU-
+     * SATUNYA channel feedback aksi, karena sudah konsisten dengan layar
+     * lain di app ini. `showAetherToast` sendiri TIDAK dihapus dari
+     * ToastHelper.kt (masih dipakai layar lain seperti MembershipScreen)
+     * — perbaikan ini hanya menghapus pemakaian ganda di TweakViewModel.
      */
     private fun appString(resId: Int): String {
         val text = getApplication<Application>().getString(resId)
-        getApplication<Application>().showAetherToast(text)
         return text
     }
 }

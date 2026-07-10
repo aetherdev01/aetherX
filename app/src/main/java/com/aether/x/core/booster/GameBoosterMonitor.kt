@@ -66,6 +66,22 @@ class GameBoosterMonitor(private val packageName: String) {
                 gpu = withContext(Dispatchers.IO) { fallbackStatsProvider.readGpuLoadPercent() }
                 temp = withContext(Dispatchers.IO) { fallbackStatsProvider.readTemperatureCelsius(context) }
             }
+            // RAM SELALU lewat ActivityManager.getMemoryInfo standar,
+            // TIDAK LEWAT executor Root/Shizuku sama sekali — API publik
+            // Android biasa ini tersedia terlepas dari status backend
+            // privilege, beda dari cpu/gpu/temp di atas.
+            val ram = withContext(Dispatchers.IO) {
+                runCatching {
+                    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+                    val memInfo = android.app.ActivityManager.MemoryInfo()
+                    am?.getMemoryInfo(memInfo)
+                    if (memInfo.totalMem > 0) {
+                        (((memInfo.totalMem - memInfo.availMem).toDouble() / memInfo.totalMem.toDouble()) * 100).toInt()
+                    } else {
+                        null
+                    }
+                }.getOrNull()
+            }
 
             if (fps != null) {
                 if (fpsHistory.size >= MAX_HISTORY_SIZE) fpsHistory.removeFirst()
@@ -78,6 +94,7 @@ class GameBoosterMonitor(private val packageName: String) {
                     cpuLoadPercent = cpu,
                     gpuLoadPercent = gpu,
                     temperatureCelsius = temp,
+                    ramLoadPercent = ram,
                     fpsHistory = fpsHistory.toList(),
                 ),
             )

@@ -18,6 +18,14 @@ data class GameBoosterMetrics(
     val cpuLoadPercent: Int? = null,
     val gpuLoadPercent: Int? = null,
     val temperatureCelsius: Float? = null,
+    // FITUR BARU (lihat perintah rework — "rework total tampilan game
+    // booster seperti di foto pertama": gauge RAM di sisi kanan layar):
+    // dibaca via ActivityManager.getMemoryInfo standar (BUKAN lewat
+    // shell/root seperti cpuLoadPercent/gpuLoadPercent) — API publik
+    // biasa yang selalu tersedia terlepas dari status Root/Shizuku,
+    // sehingga TIDAK PERNAH null (beda dari cpuLoadPercent/gpuLoadPercent
+    // yang bisa null tanpa Root — lihat GameBoosterMonitor).
+    val ramLoadPercent: Int? = null,
     // Riwayat FPS 60 sampel terakhir (kira-kira 1 menit pada interval baca
     // 1 detik) — dipakai untuk gambar grafik garis di sidebar/layar penuh,
     // BUKAN untuk kalkulasi lain. Selalu diurutkan lama->baru (index 0 =
@@ -42,9 +50,26 @@ data class GameBoosterSession(
     val dndEnabled: Boolean,
     val fpsOverlayEnabled: Boolean,
     val metrics: GameBoosterMetrics = GameBoosterMetrics(),
+    // FITUR BARU (lihat perintah rework floating booster — card game
+    // menampilkan ikon ASLI, bukan ikon generik SportsEsports seperti
+    // sebelumnya): dimuat SEKALI saat sesi dimulai lewat
+    // com.aether.x.core.apps.GameProfileCatalog.loadIconForPackage, bukan
+    // di-load ulang tiap recomposition. Null selama masih dimuat ATAU
+    // kalau package sudah di-uninstall / iconnya gagal dibaca — UI harus
+    // fallback ke ikon generik pada kasus null, BUKAN menampilkan area
+    // kosong.
+    val icon: androidx.compose.ui.graphics.ImageBitmap? = null,
     // true selama animasi splash Game Booster berjalan (lihat
     // GameBoosterSplashActivity) — floating sidebar SENGAJA tidak
     // ditampilkan sampai splash ini selesai supaya tidak tumpang tindih
     // secara visual dengan animasinya sendiri.
     val showingSplash: Boolean = false,
+    // FITUR BARU (lihat perintah rework — "rework total tampilan game
+    // booster seperti di foto pertama", menu "Kunci Rotasi" & "Akselerasi
+    // Sentuhan"): pola umur-hidup SAMA seperti dndEnabled/fpsOverlayEnabled
+    // di atas — berlaku selama sesi ini, disinkronkan ke
+    // AetherXPreferences.gameBoosterRotationLocked/gameBoosterTouchBoostEnabled
+    // oleh GameBoosterScreenViewModel setiap kali diubah dari UI.
+    val rotationLocked: Boolean = false,
+    val touchBoostEnabled: Boolean = false,
 )

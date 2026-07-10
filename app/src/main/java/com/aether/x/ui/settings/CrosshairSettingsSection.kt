@@ -55,10 +55,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
-import com.aether.x.ui.components.CrosshairPreview
 import com.aether.x.ui.theme.CrosshairAccent
 import com.aether.x.ui.theme.CrosshairAccentDim
-import com.aether.x.ui.theme.CrosshairCardBg
 import com.aether.x.ui.theme.CrosshairCardBgAlt
 import kotlin.math.roundToInt
 
@@ -90,12 +88,14 @@ private val styleOptions = listOf(
  * Lainnya semirip mungkin"): tampilan diganti total mengikuti referensi
  * visual yang diberikan pengguna, BUKAN lagi mengikuti gaya SectionCard
  * generik app ini:
- * - Kartu besar berlatar [CrosshairCardBg] (coklat sangat gelap, BUKAN
- *   `MaterialTheme.colorScheme.surface` netral) dengan watermark logo
- *   AetherX transparan di pojok kiri-atas, dan Switch besar oranye
- *   ([CrosshairAccent]) di pojok kanan-atas untuk enable/disable.
- * - Preview mini crosshair kecil di tengah-atas (sama seperti sebelumnya,
- *   tapi posisi & ukurannya disesuaikan meniru referensi).
+ * - Kartu besar berlatar `MaterialTheme.colorScheme.surface` (BUG FIX —
+ *   lihat perintah rework "perbaiki warna card coklat harusnya default
+ *   tema": sebelumnya CrosshairCardBg, coklat gelap custom yang tidak
+ *   ikut tema) dengan watermark logo AetherX transparan di pojok
+ *   kiri-atas, dan Switch besar oranye ([CrosshairAccent]) di pojok
+ *   kanan-atas untuk enable/disable.
+ * - Preview mini crosshair DIHAPUS (lihat perintah rework — "hapus
+ *   preview crosshair"; sebelumnya ada preview kecil di tengah-atas).
  * - List style DI KIRI sekarang berupa tombol persegi ICON-ONLY (bukan
  *   chip lebar berlabel teks) — [StyleIconButton] menggambar bentuk
  *   crosshair-nya sendiri lewat Canvas kecil, scrollable vertikal untuk
@@ -149,16 +149,26 @@ fun CrosshairSettingsSection(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(CrosshairCardBg),
+            // BUG FIX (lihat perintah rework — "perbaiki warna card coklat
+            // harusnya default tema"): sebelumnya CrosshairCardBg (coklat
+            // gelap custom, lihat KDoc di atas). Diganti ke
+            // MaterialTheme.colorScheme.surface supaya kartu ini mengikuti
+            // token tema aktif seperti SectionCard di layar lain — otomatis
+            // benar juga di light theme, bukan hanya dark theme.
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         // Watermark logo transparan di pojok kiri-atas, meniru referensi —
         // ikon vector AetherX yang sudah ada, di-tint semi-transparan dan
         // diperbesar melebihi batas kartu (clipToBounds bawaan Box induk
         // yang membungkus ini menyembunyikan kelebihannya secara otomatis).
+        // Alpha diturunkan dari 0.10 ke 0.08 (menyamai SectionCardWatermark
+        // di SectionCard.kt) karena latar sekarang MaterialTheme.colorScheme.surface
+        // yang lebih terang dari CrosshairCardBg lama — alpha lama akan
+        // terlihat terlalu mencolok di latar yang lebih terang ini.
         Icon(
             painter = painterResource(id = com.aether.x.R.drawable.ic_aetherx_mark),
             contentDescription = null,
-            tint = CrosshairAccent.copy(alpha = 0.10f),
+            tint = CrosshairAccent.copy(alpha = 0.08f),
             modifier = Modifier
                 .padding(top = 8.dp, start = 8.dp)
                 .size(96.dp),
@@ -175,12 +185,17 @@ fun CrosshairSettingsSection(
                     Text(
                         text = stringResource(R.string.crosshair_card_title),
                         style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
+                        // BUG FIX: Color.White hardcode diganti ke
+                        // MaterialTheme.colorScheme.onSurface — di light
+                        // theme, teks putih di atas card putih (surface
+                        // terang) akan hilang; onSurface otomatis kontras
+                        // benar di kedua tema.
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = stringResource(R.string.crosshair_card_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
@@ -194,7 +209,7 @@ fun CrosshairSettingsSection(
                         }
                     },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = CrosshairAccent,
                         uncheckedThumbColor = CrosshairAccentDim,
                         uncheckedTrackColor = CrosshairCardBgAlt,
@@ -212,17 +227,9 @@ fun CrosshairSettingsSection(
             }
 
             if (enabled) {
-                // Preview mini crosshair, tengah-atas.
-                Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
-                    CrosshairPreview(
-                        style = style,
-                        color = Color(colorArgb.toInt()),
-                        sizeDp = 18f,
-                        thicknessDp = thicknessDp.toFloat().coerceAtMost(4f),
-                        opacityPercent = opacityPercent,
-                        modifier = Modifier.size(48.dp),
-                    )
-                }
+                // Preview mini DIHAPUS (lihat perintah rework — "hapus
+                // preview crosshair") — sebelumnya ada CrosshairPreview()
+                // kecil di tengah-atas kartu di sini.
 
                 // Baris utama: list style (kiri) — joystick posisi (tengah)
                 // — slider Size vertikal (kanan). Tinggi tetap 260dp supaya
@@ -597,12 +604,23 @@ private fun VerticalAccentSlider(
         Text(text = valueText, style = MaterialTheme.typography.labelSmall, color = CrosshairAccent)
         Spacer(modifier = Modifier.height(8.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+        // BUG FIX (lihat perintah rework — "fix total slider crosshair
+        // yang tidak sesuai dan terlalu licin"): SEBELUMNYA pointerInput
+        // dipasang LANGSUNG di Box track yang lebarnya cuma 4.dp — jari
+        // harus presisi kena strip sesempit itu untuk mulai drag, dan
+        // change.position dihitung relatif terhadap size Box 4dp itu
+        // sendiri, jadi geser sedikit saja ke luar strip langsung
+        // ter-coerceIn ke 0f/1f (terasa "lompat"/licin).
+        //
+        // FIX: pointerInput sekarang dipasang di Box PEMBUNGKUS terpisah
+        // selebar 40.dp (hit-area nyaman untuk jari), sementara track
+        // visual tipis (4.dp) digambar sebagai child di tengahnya lewat
+        // Modifier.align — tampilan tetap ramping seperti referensi, tapi
+        // area sentuh jauh lebih toleran sehingga tidak licin.
         Box(
             modifier = Modifier
                 .weight(1f)
-                .width(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(CrosshairCardBgAlt)
+                .width(40.dp)
                 .pointerInput(range) {
                     detectDragGestures { change, _ ->
                         change.consume()
@@ -613,20 +631,29 @@ private fun VerticalAccentSlider(
         ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height((fraction * 200).dp.coerceAtMost(200.dp))
+                    .align(Alignment.Center)
+                    .fillMaxHeight()
+                    .width(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(CrosshairAccent),
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = (fraction * 200).dp.coerceAtMost(196.dp))
-                    .size(width = 20.dp, height = 10.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(CrosshairAccent),
-            )
+                    .background(CrosshairCardBgAlt),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height((fraction * 200).dp.coerceAtMost(200.dp))
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(CrosshairAccent),
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = (fraction * 200).dp.coerceAtMost(196.dp))
+                        .size(width = 20.dp, height = 10.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(CrosshairAccent),
+                )
+            }
         }
     }
 }
@@ -648,12 +675,15 @@ private fun HorizontalAccentSlider(
         }
         Spacer(modifier = Modifier.height(10.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+        // BUG FIX (lihat perintah rework — "fix total slider crosshair
+        // yang tidak sesuai dan terlalu licin"): pola sama seperti
+        // VerticalAccentSlider di atas — pointerInput dipindah ke Box
+        // pembungkus setinggi 40.dp (hit-area nyaman), track visual tetap
+        // tipis 4.dp sebagai child di tengahnya.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(CrosshairCardBgAlt)
+                .height(40.dp)
                 .pointerInput(range) {
                     detectDragGestures { change, _ ->
                         change.consume()
@@ -664,19 +694,28 @@ private fun HorizontalAccentSlider(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(fraction)
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(CrosshairAccent),
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = (fraction * 280).dp.coerceAtMost(276.dp))
-                    .size(14.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(CrosshairAccent),
-            )
+                    .background(CrosshairCardBgAlt),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(CrosshairAccent),
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = (fraction * 280).dp.coerceAtMost(276.dp))
+                        .size(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(CrosshairAccent),
+                )
+            }
         }
     }
 }

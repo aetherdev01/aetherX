@@ -47,6 +47,34 @@ class GameBoosterActionHandler(private val repository: TweakRepository = TweakRe
     }
 
     /**
+     * FITUR BARU (Game Booster — lihat perintah rework foto referensi 1,
+     * menu "Kunci Rotasi" & "Akselerasi Sentuhan"): wrapper tipis, reuse
+     * [TweakRepository.applyRotationLock]/[TweakRepository.applyTouchBoost]
+     * langsung — tidak ada logic tambahan di sini, mengikuti pola
+     * [applyDnd] di atas supaya Game Booster tetap konsisten dengan
+     * perilaku toggle yang sama persis di layar Tweak biasa.
+     */
+    suspend fun applyRotationLock(executor: ShellExecutor, locked: Boolean) {
+        repository.applyRotationLock(executor, locked)
+    }
+
+    suspend fun applyTouchBoost(executor: ShellExecutor, enabled: Boolean) {
+        repository.applyTouchBoost(executor, enabled)
+    }
+
+    /**
+     * FITUR BARU (Game Booster — lihat perintah rework foto referensi 1,
+     * menu "Refresh Rate"): wrapper tipis, reuse
+     * [TweakRepository.applyRefreshRate] langsung dengan `enabled = true`
+     * SELALU (menu ini fire-and-forget, bukan toggle — lihat KDoc
+     * [com.aether.x.ui.booster.GameBoosterScreenViewModel.onForceMaxRefreshRate]
+     * untuk penjelasan lengkap kenapa tidak ada varian "matikan" di sini).
+     */
+    suspend fun applyMaxRefreshRate(executor: ShellExecutor, maxHz: Float) {
+        repository.applyRefreshRate(executor, enabled = true, maxHz = maxHz)
+    }
+
+    /**
      * Ambil screenshot lewat `screencap` shell (butuh root/Shizuku — TIDAK
      * memakai [android.media.projection.MediaProjection] supaya tidak perlu
      * meminta izin capture layar terpisah setiap sesi, yang akan
