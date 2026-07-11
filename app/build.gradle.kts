@@ -17,12 +17,12 @@ val localProperties = rootProject.file("local.properties")
 
 android {
     namespace   = "com.aether.x"
-    compileSdk  = 35
+    compileSdk  = 37
 
     defaultConfig {
         applicationId = "com.aether.x"
-        minSdk        = 32
-        targetSdk     = 35
+        minSdk        = 31
+        targetSdk     = 37
         versionCode   = 200
         versionName   = "2.0"
 

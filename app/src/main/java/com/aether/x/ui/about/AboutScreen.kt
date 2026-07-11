@@ -116,7 +116,7 @@ private fun MaintainerHeroCard(versionName: String) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo),
+                painter = painterResource(id = R.drawable.dev),
                 contentDescription = stringResource(R.string.about_maintainer_name),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
