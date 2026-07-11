@@ -54,7 +54,19 @@
          salah interpretasi. Bottom nav dikembalikan ke "Tweak" (nama
          section umum drawer-nya), drawer item dikembalikan ke "Dashboard". -->
     <string name="nav_dashboard">Dashboard</string>
+    <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) — string ini
+         DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
+         kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah
+         nilainya akan ikut mengubah label drawer itu juga. Label BOTTOM NAV
+         yang terlihat pengguna sekarang pakai nav_bottom_dashboard (baru) di
+         bawah, BUKAN string ini lagi — lihat MainScreen.kt untuk detail. -->
     <string name="nav_tweak">Tweak</string>
+    <!-- RILIS v2.0 (lihat perintah rework — "di tab Tweak itu harusnya
+         Textnya Dashboard Bukan Tweak, ganti beserta ikonnya"): label tab
+         bottom-nav paling kiri, string TERPISAH dari nav_tweak/nav_dashboard
+         di atas supaya tidak ikut mengubah label drawer manapun (lihat
+         komentar nav_tweak). -->
+    <string name="nav_bottom_dashboard">Dashboard</string>
     <string name="nav_membership">Membership</string>
     <string name="nav_settings">Pengaturan</string>
 
@@ -456,6 +468,11 @@
     <string name="game_booster_subtitle">Pilih game untuk mulai boost performa</string>
     <string name="game_booster_launch_cta">Boost &amp; Main</string>
     <string name="game_booster_empty_games">Belum ada game terpasang yang dikenali</string>
+    <!-- RILIS v2.0 (lihat perintah rework — "jadikan opsi drawer game
+         booster sementara tidak bisa diakses"): badge singkat di item
+         drawer yang dikunci, lihat GAME_BOOSTER_DRAWER_LOCKED di
+         TweakScreen.kt. -->
+    <string name="game_booster_drawer_locked_badge">Segera Hadir</string>
 
     <string name="game_booster_menu_fps">Tampilkan FPS</string>
     <string name="game_booster_menu_game_mode">Mode Game</string>

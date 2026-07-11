@@ -22,8 +22,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,16 +49,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
-import com.aether.x.ui.theme.CrosshairAccent
-import com.aether.x.ui.theme.CrosshairAccentDim
-import com.aether.x.ui.theme.CrosshairCardBgAlt
+import com.aether.x.ui.theme.AccentBlue
+import com.aether.x.ui.theme.AccentBlueDim
+import com.aether.x.ui.theme.SurfaceRaised
 import kotlin.math.roundToInt
 
 private val crosshairColorPalette = listOf(
@@ -92,8 +92,12 @@ private val styleOptions = listOf(
  *   lihat perintah rework "perbaiki warna card coklat harusnya default
  *   tema": sebelumnya CrosshairCardBg, coklat gelap custom yang tidak
  *   ikut tema) dengan watermark logo AetherX transparan di pojok
- *   kiri-atas, dan Switch besar oranye ([CrosshairAccent]) di pojok
- *   kanan-atas untuk enable/disable.
+ *   kiri-atas, dan Switch besar biru ([AccentBlue] — BUG FIX RILIS v2.0,
+ *   lihat perintah rework "fix warna Accent pada fitur crosshair itu
+ *   harusnya mengikuti warna default sistem bukan coklat": SEBELUMNYA
+ *   CrosshairAccent, oranye terracotta custom terpisah dari identitas
+ *   warna app, lihat riwayat lengkap di Color.kt) di pojok kanan-atas
+ *   untuk enable/disable.
  * - Preview mini crosshair DIHAPUS (lihat perintah rework — "hapus
  *   preview crosshair"; sebelumnya ada preview kecil di tengah-atas).
  * - List style DI KIRI sekarang berupa tombol persegi ICON-ONLY (bukan
@@ -158,17 +162,29 @@ fun CrosshairSettingsSection(
             .background(MaterialTheme.colorScheme.surface),
     ) {
         // Watermark logo transparan di pojok kiri-atas, meniru referensi —
-        // ikon vector AetherX yang sudah ada, di-tint semi-transparan dan
         // diperbesar melebihi batas kartu (clipToBounds bawaan Box induk
         // yang membungkus ini menyembunyikan kelebihannya secara otomatis).
         // Alpha diturunkan dari 0.10 ke 0.08 (menyamai SectionCardWatermark
         // di SectionCard.kt) karena latar sekarang MaterialTheme.colorScheme.surface
         // yang lebih terang dari CrosshairCardBg lama — alpha lama akan
         // terlihat terlalu mencolok di latar yang lebih terang ini.
+        //
+        // BUG FIX RILIS v2.0 (lihat perintah rework — "untuk logo di card
+        // seperti di foto itu harusnya berbeda' tiap fitur"): SEBELUMNYA
+        // ikon di sini R.drawable.ic_aetherx_mark (logo "X" AetherX generik)
+        // — PERSIS SAMA dengan watermark kartu "Monitor FPS (Beta)" di
+        // bawahnya (lihat SettingsScreen -> SectionCard, watermarkIcon
+        // Icons.Outlined.Speed) meski dua fitur ini sama sekali berbeda,
+        // itulah keluhan "berbeda tiap fitur" di foto referensi. Diganti
+        // Icons.Outlined.CenterFocusStrong — SAMA PERSIS dengan ikon yang
+        // dipakai tombol quick-toggle "Crosshair" di menu radial Game
+        // Booster (GameBoosterScreen.kt), supaya SATU konsep "Crosshair" di
+        // seluruh app konsisten pakai SATU ikon yang sama, sekaligus jelas
+        // berbeda dari kartu-kartu fitur lain.
         Icon(
-            painter = painterResource(id = com.aether.x.R.drawable.ic_aetherx_mark),
+            imageVector = Icons.Outlined.CenterFocusStrong,
             contentDescription = null,
-            tint = CrosshairAccent.copy(alpha = 0.08f),
+            tint = AccentBlue.copy(alpha = 0.08f),
             modifier = Modifier
                 .padding(top = 8.dp, start = 8.dp)
                 .size(96.dp),
@@ -210,9 +226,9 @@ fun CrosshairSettingsSection(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = CrosshairAccent,
-                        uncheckedThumbColor = CrosshairAccentDim,
-                        uncheckedTrackColor = CrosshairCardBgAlt,
+                        checkedTrackColor = AccentBlue,
+                        uncheckedThumbColor = AccentBlueDim,
+                        uncheckedTrackColor = SurfaceRaised,
                     ),
                 )
             }
@@ -370,10 +386,10 @@ private fun StyleIconButton(
         modifier = Modifier
             .size(56.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isSelected) CrosshairAccentDim else CrosshairCardBgAlt)
+            .background(if (isSelected) AccentBlueDim else SurfaceRaised)
             .border(
                 width = if (isSelected) 1.5.dp else 0.dp,
-                color = if (isSelected) CrosshairAccent else Color.Transparent,
+                color = if (isSelected) AccentBlue else Color.Transparent,
                 shape = RoundedCornerShape(16.dp),
             )
             .clickable(onClick = onClick),
@@ -384,7 +400,7 @@ private fun StyleIconButton(
             val cy = size.height / 2f
             val r = size.minDimension / 2.6f
             val thickness = 2.2f
-            val drawColor = if (isSelected) CrosshairAccent else Color.White.copy(alpha = 0.6f)
+            val drawColor = if (isSelected) AccentBlue else Color.White.copy(alpha = 0.6f)
             when (style) {
                 CrosshairStyle.CROSS -> {
                     drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
@@ -445,16 +461,41 @@ private fun StyleIconButton(
  *    saat ini, jadi tidak ada umpan balik visual "sekarang crosshair ada di
  *    mana persis".
  *
- * SEKARANG: menyeret jari di MANA PUN dalam kotak ini langsung memindahkan
- * handle (titik terang kecil) ke posisi persis di bawah jari (absolute
- * positioning, bukan delta), dan [onOffsetChange] dipanggil dengan offset
- * piksel LAYAR ASLI yang sesuai — didapat dari memetakan posisi relatif
- * dalam kotak (0..1 dari kiri, 0..1 dari atas) ke rentang penuh lebar/tinggi
- * layar (lihat [screenBoundsPx] yang dihitung dari [LocalConfiguration] di
- * pemanggil [CrosshairSettingsSection]). Ini juga otomatis membuang batas
- * ±200 lama — batas baru adalah SETENGAH lebar/tinggi layar (crosshair bisa
- * digeser sampai tepat di tepi layar, tidak bisa hilang total ke luar layar
- * supaya pengguna tidak "kehilangan" crosshairnya sendiri).
+ * SEBELUMNYA (rework di atas): menyeret jari di MANA PUN dalam kotak ini
+ * langsung memindahkan handle (titik terang kecil) ke posisi persis di
+ * bawah jari (absolute positioning, bukan delta), dan [onOffsetChange]
+ * dipanggil dengan offset piksel LAYAR ASLI yang sesuai — didapat dari
+ * memetakan posisi relatif dalam kotak (0..1 dari kiri, 0..1 dari atas) ke
+ * rentang penuh lebar/tinggi layar (lihat [screenBoundsPx] yang dihitung
+ * dari [LocalConfiguration] di pemanggil [CrosshairSettingsSection]). Ini
+ * juga otomatis membuang batas ±200 lama — batas baru adalah SETENGAH
+ * lebar/tinggi layar (crosshair bisa digeser sampai tepat di tepi layar,
+ * tidak bisa hilang total ke luar layar supaya pengguna tidak "kehilangan"
+ * crosshairnya sendiri).
+ *
+ * BUG FIX RILIS v2.0 (lihat perintah rework — "jadikan atur posisi
+ * crosshair lebih mudah bukan sekali drag langsung pindah jauh"):
+ * ABSOLUTE POSITIONING di atas TERNYATA memunculkan masalah baru — trackpad
+ * ini cuma 220dp sedangkan direpresentasikannya adalah SETENGAH lebar/tinggi
+ * layar asli (bisa >500px sungguhan), jadi SENTUHAN PERTAMA di mana pun
+ * dalam kotak (bahkan sedikit meleset dari posisi crosshair saat ini)
+ * langsung MELOMPATKAN crosshair jauh secara instan ke titik yang dipetakan
+ * proporsional — persis keluhan "sekali drag langsung pindah jauh".
+ *
+ * SEKARANG: kembali ke DELTA per-gerakan jari (BUKAN balik ke bug lama poin
+ * 1 di atas!) — bedanya, skala delta ini memakai rasio (SETENGAH lebar/
+ * tinggi layar asli) / (lebar/tinggi trackpad 220dp) yang SAMA PERSIS
+ * dengan rework absolute-positioning di atas, jadi satu drag PENUH dari
+ * sisi ke sisi trackpad tetap bisa memindahkan crosshair dari ujung ke
+ * ujung layar (TIDAK reproduksi masalah ±200 hardcode yang lama) — hanya
+ * saja sekarang [onDragStart] TIDAK melompat ke posisi jari, melainkan
+ * "menggenggam" crosshair dari posisi [offsetX]/[offsetY] TERKINI (dibaca
+ * lewat [rememberUpdatedState] supaya selalu segar tanpa perlu me-restart
+ * gesture-detection loop [pointerInput] setiap kali offset berubah), lalu
+ * gerakan jari SELANJUTNYA menggeser posisi itu secara relatif. Efeknya:
+ * sentuhan pertama di mana pun dalam trackpad tidak lagi memindahkan
+ * crosshair sama sekali — geseran jari-lah yang memindahkannya, terasa
+ * halus dan dapat diprediksi.
  *
  * 4 segitiga di tepi ([DirectionArrow]) DIPERTAHANKAN sebagai penanda arah
  * (sesuai referensi visual asli — "itu segitiga") — tapi sekarang PURA-PURA
@@ -479,29 +520,54 @@ private fun PositionJoystick(
     val maxOffsetX = (screenBoundsPx.width / 2).coerceAtLeast(1)
     val maxOffsetY = (screenBoundsPx.height / 2).coerceAtLeast(1)
 
+    // BUG FIX RILIS v2.0 (lihat KDoc lengkap di atas fungsi ini): dibaca di
+    // dalam pointerInput lewat rememberUpdatedState, BUKAN offsetX/offsetY
+    // parameter composable secara langsung — pointerInput's coroutine hidup
+    // lebih lama dari satu recomposition (keys-nya cuma maxOffsetX/Y, tidak
+    // termasuk offsetX/Y supaya gesture-detection loop TIDAK ikut restart
+    // setiap kali posisi berubah selama drag berlangsung), jadi tanpa
+    // rememberUpdatedState, onDragStart bisa membaca offsetX/Y BASI dari
+    // saat pointerInput ini pertama kali dipasang, bukan nilai terkini.
+    val latestOffsetX by rememberUpdatedState(offsetX)
+    val latestOffsetY by rememberUpdatedState(offsetY)
+
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .size(trackpadSize)
                 .clip(RoundedCornerShape(20.dp))
-                .background(CrosshairCardBgAlt.copy(alpha = 0.4f))
-                .border(1.dp, CrosshairAccentDim, RoundedCornerShape(20.dp))
+                .background(SurfaceRaised.copy(alpha = 0.4f))
+                .border(1.dp, AccentBlueDim, RoundedCornerShape(20.dp))
                 .pointerInput(maxOffsetX, maxOffsetY) {
-                    // fractionX/Y: posisi jari relatif dalam kotak, 0f = tepi
-                    // kiri/atas, 1f = tepi kanan/bawah, 0.5f = tengah persis
-                    // (posisi default crosshair, offset 0,0).
-                    fun applyAbsolutePosition(pointerX: Float, pointerY: Float) {
-                        val fractionX = (pointerX / size.width).coerceIn(0f, 1f)
-                        val fractionY = (pointerY / size.height).coerceIn(0f, 1f)
-                        val newX = (((fractionX - 0.5f) * 2f) * maxOffsetX).roundToInt()
-                        val newY = (((fractionY - 0.5f) * 2f) * maxOffsetY).roundToInt()
-                        onOffsetChange(newX, newY)
-                    }
+                    // Rasio skala: SAMA PERSIS dengan pemetaan absolute
+                    // positioning sebelumnya (setengah lebar/tinggi layar
+                    // asli dibagi lebar/tinggi trackpad) — supaya satu drag
+                    // PENUH dari sisi ke sisi trackpad tetap bisa memindahkan
+                    // crosshair dari ujung ke ujung layar, TIDAK reproduksi
+                    // batas ±200 hardcode yang lama (lihat KDoc di atas).
+                    val scaleX = maxOffsetX.toFloat() * 2f / size.width.toFloat()
+                    val scaleY = maxOffsetY.toFloat() * 2f / size.height.toFloat()
+                    // Posisi "berjalan" LOKAL untuk gesture yang sedang
+                    // aktif — diinisialisasi dari offset TERKINI setiap kali
+                    // gesture BARU dimulai (onDragStart), lalu diakumulasi
+                    // dari dragAmount selama drag berlangsung. Ini
+                    // MENGGENGGAM crosshair dari posisinya sekarang, BUKAN
+                    // melompat ke titik sentuh (lihat KDoc "BUG FIX RILIS
+                    // v2.0" di atas fungsi ini).
+                    var runningX = 0f
+                    var runningY = 0f
                     detectDragGestures(
-                        onDragStart = { start -> applyAbsolutePosition(start.x, start.y) },
-                    ) { change, _ ->
+                        onDragStart = {
+                            runningX = latestOffsetX.toFloat()
+                            runningY = latestOffsetY.toFloat()
+                        },
+                    ) { change, dragAmount ->
                         change.consume()
-                        applyAbsolutePosition(change.position.x, change.position.y)
+                        runningX = (runningX + dragAmount.x * scaleX)
+                            .coerceIn(-maxOffsetX.toFloat(), maxOffsetX.toFloat())
+                        runningY = (runningY + dragAmount.y * scaleY)
+                            .coerceIn(-maxOffsetY.toFloat(), maxOffsetY.toFloat())
+                        onOffsetChange(runningX.roundToInt(), runningY.roundToInt())
                     }
                 },
         ) {
@@ -518,13 +584,13 @@ private fun PositionJoystick(
             // default" untuk pengguna.
             Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
                 drawLine(
-                    color = CrosshairAccentDim.copy(alpha = 0.4f),
+                    color = AccentBlueDim.copy(alpha = 0.4f),
                     start = Offset(size.width / 2f, size.height / 2f - 6.dp.toPx()),
                     end = Offset(size.width / 2f, size.height / 2f + 6.dp.toPx()),
                     strokeWidth = 1.5.dp.toPx(),
                 )
                 drawLine(
-                    color = CrosshairAccentDim.copy(alpha = 0.4f),
+                    color = AccentBlueDim.copy(alpha = 0.4f),
                     start = Offset(size.width / 2f - 6.dp.toPx(), size.height / 2f),
                     end = Offset(size.width / 2f + 6.dp.toPx(), size.height / 2f),
                     strokeWidth = 1.5.dp.toPx(),
@@ -547,7 +613,7 @@ private fun PositionJoystick(
                     }
                     .size(HANDLE_SIZE_DP.dp)
                     .clip(CircleShape)
-                    .background(CrosshairAccent)
+                    .background(AccentBlue)
                     .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             )
         }
@@ -580,7 +646,7 @@ private fun DirectionArrow(alignment: Alignment, rotationDeg: Float) {
                     lineTo(0f, size.height)
                     close()
                 }
-                drawPath(path, color = CrosshairAccentDim)
+                drawPath(path, color = AccentBlueDim)
             }
         }
     }
@@ -601,7 +667,7 @@ private fun VerticalAccentSlider(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
-        Text(text = valueText, style = MaterialTheme.typography.labelSmall, color = CrosshairAccent)
+        Text(text = valueText, style = MaterialTheme.typography.labelSmall, color = AccentBlue)
         Spacer(modifier = Modifier.height(8.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
         // BUG FIX (lihat perintah rework — "fix total slider crosshair
@@ -635,7 +701,7 @@ private fun VerticalAccentSlider(
                     .fillMaxHeight()
                     .width(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(CrosshairCardBgAlt),
+                    .background(SurfaceRaised),
             ) {
                 Box(
                     modifier = Modifier
@@ -643,7 +709,7 @@ private fun VerticalAccentSlider(
                         .fillMaxWidth()
                         .height((fraction * 200).dp.coerceAtMost(200.dp))
                         .clip(RoundedCornerShape(2.dp))
-                        .background(CrosshairAccent),
+                        .background(AccentBlue),
                 )
                 Box(
                     modifier = Modifier
@@ -651,7 +717,7 @@ private fun VerticalAccentSlider(
                         .padding(bottom = (fraction * 200).dp.coerceAtMost(196.dp))
                         .size(width = 20.dp, height = 10.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(CrosshairAccent),
+                        .background(AccentBlue),
                 )
             }
         }
@@ -671,7 +737,7 @@ private fun HorizontalAccentSlider(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
-            Text(text = valueText, style = MaterialTheme.typography.labelLarge, color = CrosshairAccent)
+            Text(text = valueText, style = MaterialTheme.typography.labelLarge, color = AccentBlue)
         }
         Spacer(modifier = Modifier.height(10.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
@@ -698,14 +764,14 @@ private fun HorizontalAccentSlider(
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(CrosshairCardBgAlt),
+                    .background(SurfaceRaised),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(fraction)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(CrosshairAccent),
+                        .background(AccentBlue),
                 )
                 Box(
                     modifier = Modifier
@@ -713,7 +779,7 @@ private fun HorizontalAccentSlider(
                         .padding(start = (fraction * 280).dp.coerceAtMost(276.dp))
                         .size(14.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(CrosshairAccent),
+                        .background(AccentBlue),
                 )
             }
         }
@@ -735,7 +801,7 @@ private fun ColorSwatchLarge(
             .background(Color(color.toInt()))
             .border(
                 width = if (selected) 2.dp else 0.dp,
-                color = if (selected) CrosshairAccent else Color.Transparent,
+                color = if (selected) AccentBlue else Color.Transparent,
                 shape = RoundedCornerShape(14.dp),
             )
             .clickable(onClick = onClick),

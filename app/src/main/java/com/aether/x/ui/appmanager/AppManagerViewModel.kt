@@ -1,17 +1,21 @@
 package com.aether.x.ui.appmanager
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.AetherXApp
 import com.aether.x.R
 import com.aether.x.core.appmanager.AppManagerCatalog
 import com.aether.x.core.appmanager.InstalledAppEntry
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppManagerRepository
 import com.aether.x.ui.components.showAetherToast
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -53,6 +57,13 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
 
     private val catalog = AppManagerCatalog
     private val repository = AppManagerRepository()
+    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya muncul
+    // di fitur tutup semua apps, jadikan lebih konsisten di semua fitur"):
+    // dipakai HANYA untuk baca isMembershipActive sebelum memanggil
+    // AetherXApp.interstitialAdGate.maybeShow (lihat forceStopApp/
+    // clearCacheApp di bawah) — pola SAMA PERSIS dengan
+    // TweakViewModel.preferences.
+    private val preferences = AetherXPreferences(application)
 
     private val _state = MutableStateFlow(AppManagerUiState())
     val state: StateFlow<AppManagerUiState> = _state.asStateFlow()
@@ -128,8 +139,21 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
      * Force stop satu app — reversibel/tidak destruktif (lihat KDoc
      * [AppManagerRepository.forceStop]), jadi TIDAK butuh dialog konfirmasi
      * di UI, beda dari [clearCacheApp] di bawah.
+     *
+     * @param activity RILIS v2.0 (lihat perintah rework — "perbaiki iklan
+     * yang hanya muncul di fitur tutup semua apps, jadikan lebih konsisten
+     * di semua fitur"): parameter TRANSIENT (TIDAK disimpan di ViewModel,
+     * lihat KDoc [com.aether.x.ui.tweak.TweakViewModel.onKillBackgroundAppsChange]
+     * untuk alasan lengkapnya), dipakai untuk memicu
+     * [AetherXApp.interstitialAdGate] SETELAH aksi berhasil — SATU-SATUNYA
+     * titik pemicu iklan sebelumnya hanya "Tutup Semua Aplikasi" di
+     * TweakViewModel, sekarang Force Stop di App Manager juga jadi titik
+     * transisi natural yang sama. Cooldown GLOBAL 1 menit di
+     * InterstitialAdGate tetap berlaku otomatis lintas fitur (mencegah
+     * dua-duanya menampilkan iklan berurutan kalau pengguna memakai kedua
+     * fitur dalam rentang waktu singkat).
      */
-    fun forceStopApp(entry: InstalledAppEntry) {
+    fun forceStopApp(entry: InstalledAppEntry, activity: Activity?) {
         viewModelScope.launch {
             _state.update { it.copy(pendingPackageName = entry.packageName) }
             val executor = PrivilegeManager.getExecutor()
@@ -149,6 +173,10 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
                     ),
                 )
             }
+            if (result.success && activity != null) {
+                val isMember = preferences.preferences.first().isMembershipActive
+                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+            }
         }
     }
 
@@ -157,8 +185,10 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
      * HANYA SETELAH pengguna mengonfirmasi lewat dialog — lihat KDoc
      * [AppManagerRepository.clearCache] soal kenapa aksi ini tetap dianggap
      * "sedikit destruktif" walau jauh lebih aman daripada `pm clear` biasa.
+     *
+     * @param activity lihat KDoc parameter sama di [forceStopApp] di atas.
      */
-    fun clearCacheApp(entry: InstalledAppEntry) {
+    fun clearCacheApp(entry: InstalledAppEntry, activity: Activity?) {
         viewModelScope.launch {
             _state.update { it.copy(pendingPackageName = entry.packageName) }
             val executor = PrivilegeManager.getExecutor()
@@ -177,6 +207,10 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
                         entry.label,
                     ),
                 )
+            }
+            if (result.success && activity != null) {
+                val isMember = preferences.preferences.first().isMembershipActive
+                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
             }
         }
     }

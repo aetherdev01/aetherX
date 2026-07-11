@@ -26,10 +26,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -122,7 +125,7 @@ fun MembershipScreen(
         MembershipHeroCard(status = status, expiresAtMillis = expiresAtMillis)
 
         if (status != MembershipUiStatus.ACTIVE) {
-            SectionCard(title = stringResource(R.string.membership_key_label)) {
+            SectionCard(title = stringResource(R.string.membership_key_label), watermarkIcon = Icons.Outlined.VpnKey) {
                 // Kode lisensi diperlakukan seperti sandi: tersembunyi (•••) secara
                 // default supaya tidak "bocor" kelihatan orang lain lewat bahu
                 // (shoulder-surfing) saat diketik di tempat umum, dengan ikon mata
@@ -242,7 +245,7 @@ fun MembershipScreen(
             }
         }
 
-        SectionCard(title = stringResource(R.string.membership_benefits_title)) {
+        SectionCard(title = stringResource(R.string.membership_benefits_title), watermarkIcon = Icons.Outlined.CardGiftcard) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 BenefitRow(text = stringResource(R.string.membership_benefit_1))
                 BenefitRow(text = stringResource(R.string.membership_benefit_2))
@@ -298,7 +301,7 @@ private fun MembershipProCard() {
     val selectedLabel = stringResource(selectedPlan.labelRes)
     val selectedPrice = stringResource(selectedPlan.priceRes)
 
-    SectionCard(title = stringResource(R.string.membership_pro_title)) {
+    SectionCard(title = stringResource(R.string.membership_pro_title), watermarkIcon = Icons.Outlined.WorkspacePremium) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -451,7 +454,7 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit) {
     val clipboard = LocalClipboardManager.current
     var showLogoutConfirm by remember { mutableStateOf(false) }
 
-    SectionCard(title = stringResource(R.string.membership_device_section_title)) {
+    SectionCard(title = stringResource(R.string.membership_device_section_title), watermarkIcon = Icons.Outlined.PhoneAndroid) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(

@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,7 +69,7 @@ fun AboutScreen(
 
         MaintainerHeroCard(versionName = BuildConfig.VERSION_NAME)
 
-        SectionCard(title = stringResource(R.string.about_section_links)) {
+        SectionCard(title = stringResource(R.string.about_section_links), watermarkIcon = Icons.Outlined.Link) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 CommunityLinkRow(
                     iconRes = R.drawable.ic_social_whatsapp,
@@ -107,7 +109,7 @@ fun AboutScreen(
  */
 @Composable
 private fun MaintainerHeroCard(versionName: String) {
-    SectionCard(title = null) {
+    SectionCard(title = null, watermarkIcon = Icons.Outlined.Code) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

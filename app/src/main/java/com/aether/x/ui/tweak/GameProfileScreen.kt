@@ -21,13 +21,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeveloperBoard
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -339,7 +343,7 @@ private fun GameProfileDetailPane(
                 totalTweakCount = totalTweakCount,
             )
 
-            SectionCard(title = stringResource(R.string.game_profile_app_info_title)) {
+            SectionCard(title = stringResource(R.string.game_profile_app_info_title), watermarkIcon = Icons.Outlined.Info) {
                 GameInfoRow(
                     label = stringResource(R.string.game_profile_app_info_package),
                     value = selectedEntry.packageName,
@@ -351,14 +355,14 @@ private fun GameProfileDetailPane(
         // Mode : Low, Mid, Boost"): preset yang mengisi ke-6 toggle di
         // bawahnya sekaligus, tapi tetap membiarkan tiap toggle diubah
         // manual sesudahnya — lihat KDoc GameMode/GameProfile.withGameMode.
-        SectionCard(title = stringResource(R.string.game_profile_mode_label)) {
+        SectionCard(title = stringResource(R.string.game_profile_mode_label), watermarkIcon = Icons.Outlined.SportsEsports) {
             GameModeSelector(
                 selected = profile.gameMode,
                 onSelect = viewModel::onGameModeChange,
             )
         }
 
-        SectionCard(title = stringResource(R.string.game_profile_category_cpu)) {
+        SectionCard(title = stringResource(R.string.game_profile_category_cpu), watermarkIcon = Icons.Outlined.Memory) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_cpu_performance),
                 description = stringResource(R.string.tweak_cpu_performance_desc),
@@ -375,7 +379,7 @@ private fun GameProfileDetailPane(
             )
         }
 
-        SectionCard(title = stringResource(R.string.game_profile_category_gpu)) {
+        SectionCard(title = stringResource(R.string.game_profile_category_gpu), watermarkIcon = Icons.Outlined.DeveloperBoard) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_gpu_performance),
                 description = stringResource(R.string.tweak_gpu_performance_desc),
@@ -401,7 +405,7 @@ private fun GameProfileDetailPane(
             )
         }
 
-        SectionCard(title = stringResource(R.string.game_profile_category_system)) {
+        SectionCard(title = stringResource(R.string.game_profile_category_system), watermarkIcon = Icons.Outlined.Build) {
             TweakSwitch(
                 label = stringResource(R.string.tweak_io_scheduler_boost),
                 description = stringResource(R.string.tweak_io_scheduler_boost_desc),
@@ -447,7 +451,7 @@ private fun GameIdentityCard(
     activeTweakCount: Int,
     totalTweakCount: Int,
 ) {
-    SectionCard(title = null) {
+    SectionCard(title = null, watermarkIcon = Icons.Outlined.Apps) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
                 bitmap = entry.icon,

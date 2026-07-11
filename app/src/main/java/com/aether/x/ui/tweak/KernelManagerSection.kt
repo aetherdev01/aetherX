@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeveloperBoard
+import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -128,7 +129,7 @@ fun KernelManagerSection(
         }
 
         // Card CPU — terpisah dari GPU (dulu satu Column sama dengan divider tipis).
-        SectionCard(title = stringResource(R.string.kernel_manager_section_cpu)) {
+        SectionCard(title = stringResource(R.string.kernel_manager_section_cpu), watermarkIcon = Icons.Outlined.Memory) {
             state.cpuCores.forEachIndexed { index, core ->
                 CpuCoreCard(
                     core = core,
@@ -147,7 +148,7 @@ fun KernelManagerSection(
         // Card GPU — hanya dirender kalau data GPU tersedia (chipset tanpa
         // devfreq GPU yang bisa dibaca akan membuat state.gpu tetap null).
         state.gpu?.let { gpu ->
-            SectionCard(title = stringResource(R.string.kernel_manager_section_gpu)) {
+            SectionCard(title = stringResource(R.string.kernel_manager_section_gpu), watermarkIcon = Icons.Outlined.DeveloperBoard) {
                 GpuRow(
                     gpu = gpu,
                     onFrequencyChange = { minKhz, maxKhz -> viewModel.applyGpuFrequency(minKhz, maxKhz) },

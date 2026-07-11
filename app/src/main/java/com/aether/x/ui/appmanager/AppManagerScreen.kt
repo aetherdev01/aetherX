@@ -1,5 +1,6 @@
 package com.aether.x.ui.appmanager
 
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -85,6 +87,14 @@ fun AppManagerScreen(
     viewModel: AppManagerViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya
+    // muncul di fitur tutup semua apps, jadikan lebih konsisten di semua
+    // fitur"): dipakai HANYA untuk parameter transient forceStopApp/
+    // clearCacheApp di bawah (interstitial ad setelah aksi berhasil) —
+    // pola SAMA PERSIS dengan TweakScreen.kt (lihat KDoc di sana untuk
+    // alasan lengkap kenapa Activity tidak disimpan di ViewModel sendiri).
+    val activity = LocalContext.current as? Activity
 
     // Entry yang sedang menunggu konfirmasi "Bersihkan Cache" — null berarti
     // dialog konfirmasi tidak tampil. Disimpan di level layar (bukan di
@@ -151,7 +161,7 @@ fun AppManagerScreen(
                                     entry = entry,
                                     isPending = entry.packageName == state.pendingPackageName,
                                     onToggle = { viewModel.toggleFreeze(entry) },
-                                    onForceStop = { viewModel.forceStopApp(entry) },
+                                    onForceStop = { viewModel.forceStopApp(entry, activity) },
                                     onRequestClearCache = { pendingClearCacheEntry = entry },
                                 )
                             }
@@ -165,7 +175,7 @@ fun AppManagerScreen(
                                     entry = entry,
                                     isPending = entry.packageName == state.pendingPackageName,
                                     onToggle = { viewModel.toggleFreeze(entry) },
-                                    onForceStop = { viewModel.forceStopApp(entry) },
+                                    onForceStop = { viewModel.forceStopApp(entry, activity) },
                                     onRequestClearCache = { pendingClearCacheEntry = entry },
                                 )
                             }
@@ -180,7 +190,7 @@ fun AppManagerScreen(
         ClearCacheConfirmDialog(
             appLabel = entry.label,
             onConfirm = {
-                viewModel.clearCacheApp(entry)
+                viewModel.clearCacheApp(entry, activity)
                 pendingClearCacheEntry = null
             },
             onDismiss = { pendingClearCacheEntry = null },

@@ -40,17 +40,19 @@ val TextMuted = Color(0xFF7A7B87)         // abu redup untuk caption/disabled
 val TextOnCard = Color(0xFFE7E8EE)
 
 // Aksen terracotta/oranye (FITUR BARU — lihat perintah rework: "Samakan
-// Section Crosshair Persis seperti foto ke dua dari UI"): dipakai KHUSUS
-// section Crosshair di Settings, terpisah dari AccentBlue yang jadi warna
-// utama identitas app di layar lain — referensi visual yang diberikan
-// memakai palet coklat/terracotta hangat yang berbeda total dari tema
-// biru-abu "tactical" existing, jadi disimpan sebagai token warna
-// tersendiri (bukan mengganti AccentBlue global) supaya tidak mengubah
-// tampilan layar lain di luar scope permintaan ini.
-val CrosshairAccent = Color(0xFFE8804A)          // oranye terracotta utama (slider thumb, ikon aktif, joystick)
-val CrosshairAccentDim = Color(0xFF3A2418)        // coklat gelap untuk track/latar tidak aktif
-val CrosshairCardBg = Color(0xFF1A1310)           // latar card Crosshair (coklat sangat gelap, bukan abu netral)
-val CrosshairCardBgAlt = Color(0xFF221812)        // latar sub-elemen di atas card (tombol style tidak terpilih)
+// Section Crosshair Persis seperti foto ke dua dari UI"): dulu dipakai
+// KHUSUS section Crosshair di Settings, terpisah dari AccentBlue.
+//
+// DIHAPUS (RILIS v2.0 — lihat perintah rework: "fix warna Accent pada
+// fitur crosshair itu harusnya mengikuti warna default sistem bukan
+// coklat"): CrosshairAccent/CrosshairAccentDim/CrosshairCardBg/
+// CrosshairCardBgAlt (token warna terracotta/coklat khusus Crosshair)
+// dihapus total, seluruh pemakaiannya di CrosshairSettingsSection.kt
+// diganti AccentBlue/AccentBlueDim/SurfaceRaised — MENGIKUTI PRESEDEN
+// YANG SAMA seperti penghapusan DashboardHeroStart/DashboardHeroEnd/
+// DashboardAccentOrange/DashboardPillBrown di bawah (satu identitas
+// warna AccentBlue/MaterialTheme.colorScheme untuk SELURUH app, tanpa
+// kecuali lagi).
 
 // Hero card Dashboard (FITUR BARU — lihat perintah rework: "Samakan UI
 // Dashboard Seperti Foto ke 1 dari Gaya"): gradient coklat gelap ke hitam

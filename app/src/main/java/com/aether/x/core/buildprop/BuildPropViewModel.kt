@@ -1,8 +1,10 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.AetherXApp
 import com.aether.x.R
 import com.aether.x.core.buildprop.BuildPropBackup
 import com.aether.x.core.buildprop.BuildPropEntry
@@ -10,10 +12,12 @@ import com.aether.x.core.buildprop.BuildPropPartition
 import com.aether.x.core.buildprop.BuildPropReader
 import com.aether.x.core.buildprop.BuildPropSnapshot
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.BuildPropRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -79,6 +83,10 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val reader = BuildPropReader()
     private val repository = BuildPropRepository()
+    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya
+    // muncul di fitur tutup semua apps, jadikan lebih konsisten di semua
+    // fitur"): lihat KDoc parameter activity di confirmEdit di bawah.
+    private val preferences = AetherXPreferences(application)
 
     private val _state = MutableStateFlow(BuildPropUiState())
     val state: StateFlow<BuildPropUiState> = _state.asStateFlow()
@@ -135,8 +143,14 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
      * DULU secara otomatis sebelum menulis perubahan — pengguna tidak perlu
      * langkah manual terpisah untuk "backup dulu baru edit", tapi backup
      * tetap selalu terjadi tanpa bisa dilewati.
+     *
+     * @param activity RILIS v2.0 (lihat perintah rework — "perbaiki iklan
+     * yang hanya muncul di fitur tutup semua apps, jadikan lebih konsisten
+     * di semua fitur"): lihat KDoc parameter sama di
+     * [com.aether.x.ui.appmanager.AppManagerViewModel.forceStopApp] untuk
+     * penjelasan lengkap pola ini.
      */
-    fun confirmEdit() {
+    fun confirmEdit(activity: Activity?) {
         val pending = _state.value.pendingEdit ?: return
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutor()
@@ -175,6 +189,10 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                         appString(R.string.buildprop_error_apply_failed, pending.entry.key)
                     },
                 )
+            }
+            if (result.success && activity != null) {
+                val isMember = preferences.preferences.first().isMembershipActive
+                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
             }
             refresh() // baca ulang supaya UI menampilkan isi file yang sebenarnya, termasuk kalau sed gagal sebagian
         }

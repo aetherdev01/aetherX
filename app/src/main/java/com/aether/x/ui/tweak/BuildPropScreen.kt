@@ -1,5 +1,6 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -45,7 +47,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.buildprop.BuildPropBackup
 import com.aether.x.core.buildprop.BuildPropEntry
-import com.aether.x.core.buildprop.BuildPropPartition
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
@@ -74,6 +75,11 @@ fun BuildPropScreen(
     viewModel: BuildPropViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya
+    // muncul di fitur tutup semua apps, jadikan lebih konsisten di semua
+    // fitur"): parameter transient untuk viewModel.confirmEdit di bawah —
+    // pola sama seperti TweakScreen.kt/AppManagerScreen.kt.
+    val activity = LocalContext.current as? Activity
     var showBackupSheet by remember { mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(state.message) {
@@ -178,7 +184,7 @@ fun BuildPropScreen(
             key = pending.entry.key,
             oldValue = pending.entry.value,
             newValue = pending.newValue,
-            onConfirm = viewModel::confirmEdit,
+            onConfirm = { viewModel.confirmEdit(activity) },
             onDismiss = viewModel::cancelPendingEdit,
         )
     }

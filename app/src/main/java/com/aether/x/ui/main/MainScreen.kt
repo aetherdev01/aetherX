@@ -3,7 +3,7 @@ package com.aether.x.ui.main
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,11 +47,33 @@ fun MainScreen(
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 tonalElevation = 0.dp,
             ) {
+                // RILIS v2.0 (lihat perintah rework — "di tab Tweak itu
+                // harusnya Textnya Dashboard Bukan Tweak, ganti beserta
+                // ikonnya"): label & ikon tab bottom-nav paling kiri diganti
+                // dari "Tweak" (Icons.Outlined.Tune) jadi "Dashboard"
+                // (Icons.Outlined.SpaceDashboard — SAMA PERSIS dengan ikon
+                // item drawer "Dashboard" di dalam TweakScreen, supaya
+                // konsisten secara visual).
+                //
+                // PENTING — TIDAK mengubah string nav_tweak: string itu
+                // JUGA dipakai untuk label item drawer KEDUA di dalam
+                // TweakScreen ("Tweak", sub-tab kontrol tweak — BEDA dari
+                // sub-tab "Dashboard" pertama, lihat TweakDrawerContent).
+                // Mengubah nilai nav_tweak langsung akan membuat DUA item
+                // drawer sama-sama bertuliskan "Dashboard" — kesalahan
+                // yang sama persis dengan "percobaan rename sebelumnya...
+                // DIBATALKAN karena salah interpretasi" (lihat komentar
+                // riwayat di strings.xml dekat nav_tweak/nav_dashboard).
+                // Jadi dipakai string BARU (nav_bottom_dashboard) khusus
+                // label tab bottom-nav ini, tidak menyentuh nav_tweak sama
+                // sekali — MainTab.TWEAK (nama enum) & TweakScreen (nama
+                // composable/route) TIDAK diganti, murni perubahan teks+ikon
+                // yang tampil ke pengguna.
                 NavigationBarItem(
                     selected = selectedTab == MainTab.TWEAK,
                     onClick = { selectedTab = MainTab.TWEAK },
-                    icon = { Icon(Icons.Outlined.Tune, contentDescription = null) },
-                    label = { Text(stringResource(R.string.nav_tweak)) },
+                    icon = { Icon(Icons.Outlined.SpaceDashboard, contentDescription = null) },
+                    label = { Text(stringResource(R.string.nav_bottom_dashboard)) },
                     colors = aetherNavColors(),
                 )
                 NavigationBarItem(

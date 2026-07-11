@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -74,7 +77,7 @@ fun SettingsScreen(
         // selalu mengembalikan DarkModePref.DARK), jadi tidak ada lagi
         // pengaturan tema yang perlu ditampilkan ke pengguna sama sekali.
 
-        SectionCard(title = stringResource(R.string.settings_section_general)) {
+        SectionCard(title = stringResource(R.string.settings_section_general), watermarkIcon = Icons.Outlined.Settings) {
             Column {
                 Text(
                     text = stringResource(R.string.settings_temperature_unit_label),
@@ -130,7 +133,7 @@ fun SettingsScreen(
             onOffsetChange = viewModel::setCrosshairOffset,
         )
 
-        SectionCard(title = stringResource(R.string.settings_section_fps_monitor)) {
+        SectionCard(title = stringResource(R.string.settings_section_fps_monitor), watermarkIcon = Icons.Outlined.Speed) {
             FpsMonitorSettingsSection(
                 enabled = prefs.fpsMonitorEnabled,
                 style = prefs.fpsMonitorStyle,

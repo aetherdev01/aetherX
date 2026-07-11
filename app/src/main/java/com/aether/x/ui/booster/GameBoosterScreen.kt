@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CenterFocusStrong
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.RestartAlt
@@ -413,7 +412,7 @@ private fun GameBoosterRadialContent(
                         onClick = viewModel::onScreenshot,
                     ),
                     RadialMenuItemData(
-                        icon = Icons.Outlined.Chat,
+                        brandedIconRes = R.drawable.ic_social_whatsapp,
                         label = stringResource(R.string.game_booster_radial_whatsapp),
                         onClick = viewModel::onWhatsAppLaunch,
                     ),
@@ -459,7 +458,20 @@ private fun RadialSideGauge(
 }
 
 private data class RadialMenuItemData(
-    val icon: ImageVector,
+    // BUG FIX (lihat perintah rework — "fix ikon whatsapp yang tidak
+    // pas"): SEBELUMNYA field ini WAJIB diisi ImageVector generik untuk
+    // semua item termasuk WhatsApp (Icons.Outlined.Chat, bubble chat
+    // generik yang tidak merepresentasikan WhatsApp sama sekali) —
+    // sekarang nullable, dan item WhatsApp memakai [brandedIconRes] di
+    // bawah alih-alih ini.
+    val icon: ImageVector? = null,
+    // FITUR BARU: logo BRANDED resmi (drawable vector multi-warna, mis.
+    // R.drawable.ic_social_whatsapp — SAMA PERSIS aset yang dipakai
+    // AboutScreen.CommunityLinkRow) untuk item yang punya identitas
+    // visual resmi sendiri dan TIDAK BOLEH di-tint jadi satu warna
+    // (lihat KDoc CommunityLinkRow soal kenapa). Kalau diisi, ini
+    // dipakai MENGGANTIKAN [icon] sepenuhnya — lihat RadialMenuIcon.
+    val brandedIconRes: Int? = null,
     val label: String,
     val active: Boolean = false,
     val onClick: () -> Unit,
@@ -488,10 +500,22 @@ private fun RadialMenuIcon(item: RadialMenuItemData, modifier: Modifier = Modifi
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(if (item.active) AccentBlue.copy(alpha = 0.18f) else SurfaceCard),
+                // Logo branded (mis. WhatsApp) SELALU dapat latar putih
+                // netral (SAMA seperti CommunityLinkRow di AboutScreen)
+                // supaya warna resmi logo (hijau WhatsApp, dst.) kontras
+                // dan tidak "tenggelam" di latar gelap SurfaceCard.
+                .background(if (item.brandedIconRes != null) TextOnCard else if (item.active) AccentBlue.copy(alpha = 0.18f) else SurfaceCard),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(imageVector = item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            if (item.brandedIconRes != null) {
+                Image(
+                    painter = painterResource(id = item.brandedIconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp),
+                )
+            } else if (item.icon != null) {
+                Icon(imageVector = item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            }
         }
         Text(
             text = item.label,

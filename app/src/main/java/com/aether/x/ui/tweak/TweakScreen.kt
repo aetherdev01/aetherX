@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -25,10 +24,13 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
@@ -329,7 +331,7 @@ fun TweakScreen(
                 // kernel-level (governor CPU/GPU, swappiness, dst.) di section
                 // Root, bukan campur dengan tweak Input Driver.
                 if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
-                    SectionCard(title = stringResource(R.string.tweak_section_touch)) {
+                    SectionCard(title = stringResource(R.string.tweak_section_touch), watermarkIcon = Icons.Outlined.TouchApp) {
                         // Nilai diterapkan langsung ke sistem saat slider dilepas (tidak perlu
                         // tombol "Terapkan" terpisah lagi).
                         TweakSlider(
@@ -352,7 +354,7 @@ fun TweakScreen(
                     }
                 }
 
-                SectionCard(title = stringResource(R.string.tweak_section_refresh)) {
+                SectionCard(title = stringResource(R.string.tweak_section_refresh), watermarkIcon = Icons.Outlined.RestartAlt) {
                     TweakSwitch(
                         label = stringResource(R.string.tweak_force_refresh),
                         description = stringResource(
@@ -364,7 +366,7 @@ fun TweakScreen(
                     )
                 }
 
-                SectionCard(title = stringResource(R.string.tweak_section_game_mode)) {
+                SectionCard(title = stringResource(R.string.tweak_section_game_mode), watermarkIcon = Icons.Outlined.NotificationsOff) {
                     TweakSwitch(
                         label = stringResource(R.string.tweak_game_mode),
                         description = stringResource(R.string.tweak_game_mode_desc),
@@ -388,7 +390,7 @@ fun TweakScreen(
                 // visual dengan pengelompokan kategori yang sudah dipakai di
                 // GameProfileScreen (CPU / GPU & Termal / Sistem).
                 if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
-                    SectionCard(title = stringResource(R.string.tweak_section_root_cpu)) {
+                    SectionCard(title = stringResource(R.string.tweak_section_root_cpu), watermarkIcon = Icons.Outlined.Memory) {
                         TweakDropdown(
                             label = stringResource(R.string.tweak_cpu_governor),
                             description = stringResource(R.string.tweak_cpu_governor_desc),
@@ -427,7 +429,7 @@ fun TweakScreen(
                         )
                     }
 
-                    SectionCard(title = stringResource(R.string.tweak_section_root_system)) {
+                    SectionCard(title = stringResource(R.string.tweak_section_root_system), watermarkIcon = Icons.Outlined.Terminal) {
                         TweakSwitch(
                             label = stringResource(R.string.tweak_io_scheduler_boost),
                             description = stringResource(R.string.tweak_io_scheduler_boost_desc),
@@ -530,6 +532,15 @@ private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER,
  * Root" supaya jelas kenapa jumlah item drawer berbeda-beda tergantung
  * backend yang aktif, bukan terlihat seperti bug/item hilang.
  */
+// Saklar fitur (RILIS v2.0 — lihat perintah rework "jadikan opsi drawer
+// game booster sementara tidak bisa diakses"): Game Booster hasil rework
+// total masih perlu pengujian lebih lanjut sebelum dirilis ke pengguna,
+// jadi item drawer-nya ditampilkan terkunci (disabled + badge "Segera
+// Hadir") sampai fitur ini resmi dibuka. Ubah ke false untuk unlock —
+// pola SAMA PERSIS dengan FPS_MONITOR_FEATURE_UNLOCKED di
+// FpsMonitorSettingsSection.kt (lihat KDoc di sana).
+private const val GAME_BOOSTER_DRAWER_LOCKED = true
+
 @Composable
 private fun TweakDrawerContent(
     selected: TweakSubTab,
@@ -575,10 +586,43 @@ private fun TweakDrawerContent(
     // (lihat AetherXRoutes.GAME_BOOSTER) karena butuh memaksa orientasi
     // landscape yang berbeda dari seluruh scaffold TweakScreen ini yang
     // portrait.
+    //
+    // BUG FIX / RILIS v2.0 (lihat perintah rework — "jadikan opsi drawer
+    // game booster sementara tidak bisa diakses, gak bisa dipencet"):
+    // dikunci SEMENTARA lewat const [GAME_BOOSTER_DRAWER_LOCKED] di bawah —
+    // pola SAMA PERSIS seperti FPS_MONITOR_FEATURE_UNLOCKED di
+    // FpsMonitorSettingsSection.kt (satu const boolean, gampang di-toggle
+    // balik saat fitur ini siap dirilis). `enabled = false` membuat
+    // NavigationDrawerItem otomatis redup secara visual DAN tidak lagi
+    // merespons tap (Material3 menangani ini bawaan, tidak perlu logic
+    // manual) — `onClick` TETAP terpasang ke [onNavigateToGameBooster]
+    // (bukan diganti no-op) supaya begitu const ini di-flip ke `true`
+    // lagi, tidak ada langkah lain yang perlu diingat/dikembalikan. Badge
+    // "Segera Hadir" ditambahkan supaya pengguna paham KENAPA item ini
+    // tidak bisa ditekan, bukan mengira itu bug.
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.game_booster_title)) },
         icon = { Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null) },
+        badge = {
+            // BUG FIX (ditemukan saat verifikasi akhir): SEBELUMNYA
+            // `return@NavigationDrawerItem` dipakai di sini untuk early-exit
+            // — TAPI `badge` adalah named parameter (bukan trailing lambda),
+            // jadi label implisit `@NavigationDrawerItem` TIDAK valid untuk
+            // lambda ini dan akan gagal compile ("unresolved label" / label
+            // mengikat ke tempat yang salah). Diganti pola `if` sederhana
+            // tanpa return berlabel sama sekali — lambda Composable
+            // ber-tipe Unit tidak butuh early return, cukup biarkan blok
+            // if tidak mengeksekusi apa pun kalau kondisinya false.
+            if (GAME_BOOSTER_DRAWER_LOCKED) {
+                Text(
+                    text = stringResource(R.string.game_booster_drawer_locked_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
         selected = false,
+        enabled = !GAME_BOOSTER_DRAWER_LOCKED,
         onClick = onNavigateToGameBooster,
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = 12.dp),
