@@ -60,6 +60,7 @@ import androidx.compose.runtime.setValue
 import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
@@ -541,6 +542,12 @@ private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER,
 // FpsMonitorSettingsSection.kt (lihat KDoc di sana).
 private const val GAME_BOOSTER_DRAWER_LOCKED = true
 
+// Lambda no-op bertipe eksplisit (() -> Unit) untuk onClick NavigationDrawerItem
+// yang terkunci — didefinisikan sebagai val TERPISAH (bukan `{}` inline langsung
+// di dalam ekspresi if/else) supaya tidak ambigu secara sintaks Kotlin antara
+// "blok kosong" vs "lambda kosong bertipe () -> Unit" pada posisi tersebut.
+private val LOCKED_ITEM_NO_OP_CLICK: () -> Unit = {}
+
 @Composable
 private fun TweakDrawerContent(
     selected: TweakSubTab,
@@ -592,14 +599,28 @@ private fun TweakDrawerContent(
     // dikunci SEMENTARA lewat const [GAME_BOOSTER_DRAWER_LOCKED] di bawah —
     // pola SAMA PERSIS seperti FPS_MONITOR_FEATURE_UNLOCKED di
     // FpsMonitorSettingsSection.kt (satu const boolean, gampang di-toggle
-    // balik saat fitur ini siap dirilis). `enabled = false` membuat
-    // NavigationDrawerItem otomatis redup secara visual DAN tidak lagi
-    // merespons tap (Material3 menangani ini bawaan, tidak perlu logic
-    // manual) — `onClick` TETAP terpasang ke [onNavigateToGameBooster]
-    // (bukan diganti no-op) supaya begitu const ini di-flip ke `true`
-    // lagi, tidak ada langkah lain yang perlu diingat/dikembalikan. Badge
-    // "Segera Hadir" ditambahkan supaya pengguna paham KENAPA item ini
-    // tidak bisa ditekan, bukan mengira itu bug.
+    // balik saat fitur ini siap dirilis).
+    //
+    // BUG FIX (CI gagal build — "No parameter with name 'enabled' found"):
+    // SEBELUMNYA dipakai `enabled = !GAME_BOOSTER_DRAWER_LOCKED` dengan
+    // asumsi NavigationDrawerItem Material3 punya parameter `enabled`
+    // otomatis seperti kebanyakan komponen M3 lain (Button, Switch, dst)
+    // — TERNYATA TIDAK, NavigationDrawerItem HANYA punya: label, selected,
+    // onClick, modifier, icon, badge, shape, colors, interactionSource
+    // (diverifikasi dari dokumentasi API resmi androidx.compose.material3,
+    // bukan asumsi lagi). Diganti 2 mekanisme MANUAL:
+    // 1. `.alpha(0.38f)` (alpha "disabled" standar Material Design) pada
+    //    modifier terluar — meredupkan SELURUH item (ikon+label+badge
+    //    sekaligus, karena alpha di root Modifier berlaku ke seluruh
+    //    subtree) TANPA perlu menerapkan alpha terpisah ke tiap elemen.
+    // 2. `onClick` diganti no-op ({}) saat terkunci, TIDAK memanggil
+    //    [onNavigateToGameBooster] sama sekali — supaya item benar-benar
+    //    "gak bisa dipencet" (bukan cuma redup visual tapi tetap
+    //    ter-trigger kalau tersentuh).
+    // Begitu GAME_BOOSTER_DRAWER_LOCKED di-flip ke `false`, kedua efek ini
+    // otomatis nonaktif tanpa langkah lain yang perlu diingat/dikembalikan.
+    // Badge "Segera Hadir" ditambahkan supaya pengguna paham KENAPA item
+    // ini tidak bisa ditekan, bukan mengira itu bug.
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.game_booster_title)) },
         icon = { Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null) },
@@ -622,10 +643,11 @@ private fun TweakDrawerContent(
             }
         },
         selected = false,
-        enabled = !GAME_BOOSTER_DRAWER_LOCKED,
-        onClick = onNavigateToGameBooster,
+        onClick = if (GAME_BOOSTER_DRAWER_LOCKED) LOCKED_ITEM_NO_OP_CLICK else onNavigateToGameBooster,
         colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .alpha(if (GAME_BOOSTER_DRAWER_LOCKED) 0.38f else 1f),
     )
 
     if (showRootOnlyItems) {
