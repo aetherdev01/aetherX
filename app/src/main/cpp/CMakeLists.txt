@@ -7,24 +7,28 @@ project("aetherX")
 # CATATAN soal -fvisibility=hidden + RegisterNatives (lihat jni_onload.cpp):
 # flag ini menyembunyikan SEMUA simbol secara default KECUALI yang eksplisit
 # ditandai __attribute__((visibility("default"))) — makro JNIEXPORT dari NDK
-# sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, dan nvint
-# (semuanya dideklarasikan pakai JNIEXPORT), jadi tetap bisa dipanggil
-# JVM/RegisterNatives walau visibility default project ini hidden. Fungsi
-# non-JNI lain (constantTimeEquals, fnv1a64, dkk di dalam namespace anonim)
-# TETAP tersembunyi seperti sebelumnya — tidak ada regresi di situ.
+# sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, nvint, nvpn,
+# ndns, dan nmod (semuanya dideklarasikan pakai JNIEXPORT — tiga yang
+# terakhir ditambahkan di adblockguard.cpp, lihat file itu), jadi tetap bisa
+# dipanggil JVM/RegisterNatives walau visibility default project ini hidden.
+# Fungsi non-JNI lain (constantTimeEquals, fnv1a64, dkk di dalam namespace
+# anonim) TETAP tersembunyi seperti sebelumnya — tidak ada regresi di situ.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong")
 
 # Nama library HARUS "aetherX" (menghasilkan libaetherX.so) — cocok dengan
-# System.loadLibrary("aetherX") di SignatureGuard.kt & NativeIntegrityGuard.kt.
-# ${CMAKE_PROJECT_NAME} di sini mengambil nilai dari project("aetherX") di
-# baris 2 di atas, jadi KEDUANYA (nama project & nama library) sengaja sama
-# persis "aetherX" — pastikan project() TIDAK diganti tanpa ikut mengganti
-# System.loadLibrary() di kedua file Kotlin tersebut juga.
+# System.loadLibrary("aetherX") di SignatureGuard.kt, NativeIntegrityGuard.kt,
+# DAN AdBlockDetector.kt (tiga file, SEMUA memuat SATU library yang sama,
+# bukan tiga library terpisah). ${CMAKE_PROJECT_NAME} di sini mengambil
+# nilai dari project("aetherX") di baris 2 di atas, jadi KEDUANYA (nama
+# project & nama library) sengaja sama persis "aetherX" — pastikan
+# project() TIDAK diganti tanpa ikut mengganti System.loadLibrary() di
+# KETIGA file Kotlin tersebut juga.
 add_library(${CMAKE_PROJECT_NAME} SHARED
     sigcheck.cpp
     integrityguard.cpp
+    adblockguard.cpp
     jni_onload.cpp
 )
 
@@ -50,7 +54,7 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Strip simbol non-dynamic setelah link, konsisten di semua ABI supaya hasil
 # arm64-v8a tetap fully stripped seperti build v7a (nm hanya menyisakan
-# JNI_OnLoad, nvfy, nvfy2, nvint).
+# JNI_OnLoad, nvfy, nvfy2, nvint, nvpn, ndns, nmod).
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
 )

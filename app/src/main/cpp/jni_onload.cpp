@@ -22,8 +22,11 @@
 // manual dari Kotlin mana pun.
 
 #include <jni.h>
+#include <android/log.h>
 
 #include "native_symbols.h"
+
+#define LOG_TAG "AetherXJNI"
 
 namespace {
 
@@ -39,6 +42,15 @@ const JNINativeMethod kSignatureGuardMethods[] = {
 const JNINativeMethod kIntegrityGuardMethods[] = {
     // fun nativeVerifyIntegrity(): Int
     {"nativeVerifyIntegrity", "()I", reinterpret_cast<void*>(nvint)},
+};
+
+const JNINativeMethod kAdBlockDetectorMethods[] = {
+    // fun nativeDetectVpnInterface(): Boolean
+    {"nativeDetectVpnInterface", "()Z", reinterpret_cast<void*>(nvpn)},
+    // fun nativeMatchAdBlockDns(dnsServers: Array<String>): Boolean
+    {"nativeMatchAdBlockDns", "([Ljava/lang/String;)Z", reinterpret_cast<void*>(ndns)},
+    // fun nativeMatchAdBlockModule(moduleListing: String): Boolean
+    {"nativeMatchAdBlockModule", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nmod)},
 };
 
 // Mendaftarkan satu tabel method ke satu kelas Kotlin lewat nama binary
@@ -83,6 +95,29 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
     // keamanan lain di app ini.
     if (!sigOk || !integrityOk) {
         return JNI_ERR;
+    }
+
+    // AdBlockDetector (lihat adblockguard.cpp) SENGAJA TIDAK ikut
+    // menentukan JNI_ERR di atas — ini BUKAN guard keamanan (cuma sinyal
+    // produk untuk fitur deteksi adblock), jadi kegagalan registrasinya
+    // TIDAK BOLEH ikut menjatuhkan seluruh library (yang lewat efek
+    // samping shared-library ini akan ikut membuat sigOk/integrityOk
+    // gagal juga, dan lewat filosofi fail-closed guard keamanan di atas,
+    // MEMAKSA APP FORCE-CLOSE — sama sekali tidak proporsional untuk
+    // sekadar fitur deteksi adblock yang gagal register). Kalau gagal,
+    // cukup dicatat sebagai warning; AdBlockDetector.kt sisi Kotlin sudah
+    // membungkus setiap pemanggilan native-nya sendiri dengan
+    // runCatching { }.getOrDefault(false) juga, jadi fitur ini otomatis
+    // "diam-diam tidak aktif" (bukan crash) kalau baris ini sampai gagal.
+    const bool adBlockOk = registerClass(
+        env, "com/aether/x/core/ads/AdBlockDetector",
+        kAdBlockDetectorMethods,
+        sizeof(kAdBlockDetectorMethods) / sizeof(kAdBlockDetectorMethods[0]));
+    if (!adBlockOk) {
+        __android_log_print(
+            ANDROID_LOG_WARN, LOG_TAG,
+            "Registrasi AdBlockDetector gagal — fitur deteksi adblock "
+            "nonaktif untuk sesi ini, TIDAK memengaruhi guard keamanan lain.");
     }
 
     return JNI_VERSION_1_6;

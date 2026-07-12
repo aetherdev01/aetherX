@@ -23,4 +23,9 @@ JNIEXPORT jboolean JNICALL nvfy2(JNIEnv* env, jobject thiz, jbyteArray actualHas
 // integrityguard.cpp — lihat file itu untuk penjelasan lengkap logikanya.
 JNIEXPORT jint JNICALL nvint(JNIEnv* env, jobject thiz);
 
+// adblockguard.cpp — lihat file itu untuk penjelasan lengkap logikanya.
+JNIEXPORT jboolean JNICALL nvpn(JNIEnv* env, jobject thiz);
+JNIEXPORT jboolean JNICALL ndns(JNIEnv* env, jobject thiz, jobjectArray dnsServers);
+JNIEXPORT jboolean JNICALL nmod(JNIEnv* env, jobject thiz, jstring moduleListing);
+
 }  // extern "C"
