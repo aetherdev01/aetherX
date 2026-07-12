@@ -57,13 +57,39 @@ const JNINativeMethod kAdBlockDetectorMethods[] = {
 // (pakai '/' bukan '.', konvensi JNI). Return false kalau kelasnya tidak
 // ketemu atau RegisterNatives gagal — dicek di JNI_OnLoad supaya kegagalan
 // silent tidak lolos begitu saja.
+//
+// BUG FIX KRITIS (force-close APK langsung dibuka — ditemukan setelah
+// laporan pengguna): SEBELUMNYA, kalau env->FindClass() gagal (classnya
+// tidak ketemu — mis. di-strip R8 karena tidak direferensikan dari kode
+// Kotlin/Java mana pun, HANYA dicari native lewat string classBinaryName
+// yang R8 tidak tahu), fungsi ini langsung `return false` TANPA membersihkan
+// exception yang SUDAH TERLANJUR dilempar oleh FindClass() itu sendiri
+// (NoClassDefFoundError, tetap PENDING di JNIEnv sampai dibersihkan
+// eksplisit — begitu cara kerja JNI). JNI_OnLoad lalu `return
+// JNI_VERSION_1_6` dengan exception itu MASIH NEMPEL — begitu kontrol balik
+// ke Kotlin, ART melempar exception basi itu ke pemanggil
+// System.loadLibrary("aetherX") ASLI (SignatureGuard.kt, dipanggil PALING
+// AWAL di AetherXApp.onCreate() SEBELUM UI apa pun, TIDAK dibungkus
+// try/catch di sana) — app force-close SEKETIKA dibuka, PADAHAL
+// SignatureGuard & NativeIntegrityGuard sendiri berhasil register dengan
+// sempurna. Root cause-nya SAMA SEKALI TIDAK TERLIHAT dari sisi Kotlin,
+// karena exception yang meledak keliru menunjuk ke titik yang salah.
+//
+// FIX: env->ExceptionClear() dipanggil SETIAP KALI ada kemungkinan exception
+// pending sebelum fungsi ini return, apa pun hasilnya (FindClass gagal ATAU
+// RegisterNatives gagal) — supaya kegagalan SATU class (apa pun classnya,
+// termasuk yang mungkin ditambahkan lagi di masa depan) TIDAK PERNAH bisa
+// meracuni JNIEnv dan menjatuhkan seluruh proses loadLibrary() untuk class
+// LAIN yang sebenarnya baik-baik saja.
 bool registerClass(JNIEnv* env, const char* classBinaryName,
                     const JNINativeMethod* methods, int methodCount) {
     jclass clazz = env->FindClass(classBinaryName);
     if (clazz == nullptr) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
         return false;
     }
     bool ok = env->RegisterNatives(clazz, methods, methodCount) == JNI_OK;
+    if (env->ExceptionCheck()) env->ExceptionClear();
     env->DeleteLocalRef(clazz);
     return ok;
 }

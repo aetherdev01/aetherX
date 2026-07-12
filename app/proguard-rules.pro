@@ -37,6 +37,27 @@
     private native int nativeVerifyIntegrity();
 }
 
+# ── Native adblock detector (JNI) ──────────────────────────────────────────────
+# BUG FIX KRITIS (force-close APK langsung dibuka): rule ini SEBELUMNYA
+# TIDAK ADA — AdBlockDetector.kt tidak direferensikan dari kode Kotlin/Java
+# mana pun (belum di-wire ke UI apa pun), jadi R8 menganggapnya "tidak
+# dipakai" dan menghapusnya dari APK, padahal native code (jni_onload.cpp)
+# tetap mencoba mendaftarkan method native ke class ini lewat FindClass()
+# di SETIAP startup app (berbagi satu JNI_OnLoad yang sama dengan
+# SignatureGuard/NativeIntegrityGuard di atas) — FindClass() yang gagal
+# menyisakan exception pending yang meledak balik ke pemanggilan
+# System.loadLibrary() PALING PERTAMA di app (SignatureGuard.kt, dipanggil
+# di AetherXApp.onCreate() sebelum UI apa pun) dan membuat app force-close
+# seketika dibuka. Rule ini mencegah R8 men-strip class ini SAMA SEKALI
+# (perbaikan agar fitur benar-benar berfungsi) — lihat juga fix defensif
+# env->ExceptionClear() di jni_onload.cpp (perbaikan agar TIDAK PERNAH
+# crash lagi walau suatu saat ada class serupa yang lolos tanpa rule ini).
+-keep class com.aether.x.core.ads.AdBlockDetector {
+    private native boolean nativeDetectVpnInterface();
+    private native boolean nativeMatchAdBlockDns(java.lang.String[]);
+    private native boolean nativeMatchAdBlockModule(java.lang.String);
+}
+
 # =============================================================================
 # KOTLIN / COROUTINES
 # =============================================================================

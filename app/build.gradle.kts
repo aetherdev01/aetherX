@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.aether.x"
-        minSdk        = 31
+        minSdk        = 32
         targetSdk     = 35
         versionCode   = 200
         versionName   = "2.0"
