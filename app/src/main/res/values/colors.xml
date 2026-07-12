@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="aetherx_brand">#7FA8FF</color>
-    <color name="aetherx_brand_dark">#0A0A0C</color>
-    <color name="aetherx_white">#F5F6FA</color>
-    <color name="aetherx_black">#0A0A0C</color>
-    <color name="aetherx_surface_dark">#17171C</color>
+    <color name="aetherx_brand">#C97B45</color>
+    <color name="aetherx_brand_dark">#15110F</color>
+    <color name="aetherx_white">#ECDAD0</color>
+    <color name="aetherx_black">#15110F</color>
+    <color name="aetherx_surface_dark">#272322</color>
 </resources>

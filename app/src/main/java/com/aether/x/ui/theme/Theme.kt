@@ -9,8 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// Skema gelap kustom AetherX — dasar hitam pekat + aksen biru pucat,
-// dipakai sebagai default (bukan lagi Material You bawaan Android).
+// Skema gelap kustom AetherX — dasar hitam kecoklatan + aksen terracotta
+// pucat, dipakai sebagai default (bukan lagi Material You bawaan Android).
 private val AetherXDarkScheme = darkColorScheme(
     primary = AccentBlue,
     onPrimary = OnAccentBlue,
@@ -37,19 +37,19 @@ private val AetherXDarkScheme = darkColorScheme(
 
 // Skema terang tetap disediakan (fallback), tapi referensi desain fokus ke dark.
 private val AetherXLightScheme = lightColorScheme(
-    primary = Color(0xFF3D5FD9),
+    primary = Color(0xFFA85A2E),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE1E7FF),
-    onPrimaryContainer = Color(0xFF10265E),
-    secondary = Color(0xFF3D5FD9),
-    secondaryContainer = Color(0xFFE1E7FF),
-    background = Color(0xFFF5F6FA),
+    primaryContainer = Color(0xFFF3DCC9),
+    onPrimaryContainer = Color(0xFF3D1F0A),
+    secondary = Color(0xFFA85A2E),
+    secondaryContainer = Color(0xFFF3DCC9),
+    background = Color(0xFFFAF6F3),
     surface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFFEFF0F6),
-    onBackground = Color(0xFF15161C),
-    onSurface = Color(0xFF15161C),
-    onSurfaceVariant = Color(0xFF54566A),
-    outline = Color(0xFFDADCE6),
+    surfaceVariant = Color(0xFFF0EAE4),
+    onBackground = Color(0xFF1C1817),
+    onSurface = Color(0xFF1C1817),
+    onSurfaceVariant = Color(0xFF54463C),
+    outline = Color(0xFFDDD2C8),
 )
 
 private val AetherXShapes = Shapes(

@@ -3,22 +3,27 @@ package com.aether.x.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // === AetherX Dark UI ===
-// Palet gelap "hacker/tactical" — biru-abu dingin di atas hitam pekat,
-// bukan lagi M3 default. Referensi: dashboard gelap dengan aksen biru pucat.
+// Palet gelap "hangat/terracotta" di atas hitam kecoklatan — REWORK (lihat
+// perintah "ganti warna aksen theme seluruh app biru -> krem/terracotta",
+// referensi screenshot AXGC): seluruh identitas biru sebelumnya diganti
+// terracotta + krem pucat. Nama variabel token (AccentBlue dkk) SENGAJA
+// dipertahankan apa adanya (bukan di-rename jadi AccentTerracotta) supaya
+// seluruh pemanggil di app (MaterialTheme.colorScheme turunannya) tidak
+// perlu disentuh sama sekali — hanya nilai hex di file ini yang berubah.
 
 // Background & surface
-val BgVoid = Color(0xFF0A0A0C)            // background paling belakang (hampir hitam)
-val BgBase = Color(0xFF0D0D10)            // background dasar layar
-val SurfaceCard = Color(0xFF17171C)       // kartu section utama
-val SurfaceCardAlt = Color(0xFF1C1C22)    // kartu bertingkat / hero card
-val SurfaceRaised = Color(0xFF222229)     // elemen di atas kartu (track switch off, dsb)
-val StrokeSubtle = Color(0xFF2A2A32)      // border/divider halus
+val BgVoid = Color(0xFF15110F)            // background paling belakang (hampir hitam, hangat)
+val BgBase = Color(0xFF1C1817)            // background dasar layar
+val SurfaceCard = Color(0xFF272322)       // kartu section utama
+val SurfaceCardAlt = Color(0xFF2E2927)    // kartu bertingkat / hero card
+val SurfaceRaised = Color(0xFF34302E)     // elemen di atas kartu (track switch off, dsb)
+val StrokeSubtle = Color(0xFF3D3735)      // border/divider halus
 
-// Aksen biru (primary)
-val AccentBlue = Color(0xFF7FA8FF)        // biru pucat khas referensi (judul, ikon aktif)
-val AccentBlueSoft = Color(0xFFAFC6FF)    // biru lebih muda untuk subtitle/link
-val AccentBlueDim = Color(0xFF3D4A6B)     // biru redup untuk track OFF berwarna
-val OnAccentBlue = Color(0xFF0A0F1F)
+// Aksen terracotta (primary) — sebelumnya AccentBlue/biru pucat
+val AccentBlue = Color(0xFFC97B45)        // terracotta khas referensi (judul, ikon aktif)
+val AccentBlueSoft = Color(0xFFECDAD0)    // krem pucat untuk judul besar/subtitle/link
+val AccentBlueDim = Color(0xFF4A342A)     // terracotta redup untuk track OFF berwarna
+val OnAccentBlue = Color(0xFF1F0F08)
 
 // Aksen merah (disconnected/error)
 val AccentRed = Color(0xFFFF6B5E)
@@ -34,35 +39,18 @@ val AccentAmber = Color(0xFFF6C560)
 val AccentAmberContainer = Color(0xFF3A311A)
 
 // Teks
-val TextPrimary = Color(0xFFF2F3F7)       // putih pudar untuk judul besar
-val TextSecondary = Color(0xFFB9BAC6)     // abu terang untuk body text
-val TextMuted = Color(0xFF7A7B87)         // abu redup untuk caption/disabled
-val TextOnCard = Color(0xFFE7E8EE)
+val TextPrimary = Color(0xFFECDAD0)       // krem pucat untuk judul besar (mengikuti referensi AXGC)
+val TextSecondary = Color(0xFFC7BDB6)     // krem redup untuk body text
+val TextMuted = Color(0xFF8A8078)         // coklat-abu redup untuk caption/disabled
+val TextOnCard = Color(0xFFE9DFD8)
 
-// Aksen terracotta/oranye (FITUR BARU — lihat perintah rework: "Samakan
-// Section Crosshair Persis seperti foto ke dua dari UI"): dulu dipakai
-// KHUSUS section Crosshair di Settings, terpisah dari AccentBlue.
-//
-// DIHAPUS (RILIS v2.0 — lihat perintah rework: "fix warna Accent pada
-// fitur crosshair itu harusnya mengikuti warna default sistem bukan
-// coklat"): CrosshairAccent/CrosshairAccentDim/CrosshairCardBg/
-// CrosshairCardBgAlt (token warna terracotta/coklat khusus Crosshair)
-// dihapus total, seluruh pemakaiannya di CrosshairSettingsSection.kt
-// diganti AccentBlue/AccentBlueDim/SurfaceRaised — MENGIKUTI PRESEDEN
-// YANG SAMA seperti penghapusan DashboardHeroStart/DashboardHeroEnd/
-// DashboardAccentOrange/DashboardPillBrown di bawah (satu identitas
-// warna AccentBlue/MaterialTheme.colorScheme untuk SELURUH app, tanpa
-// kecuali lagi).
+// CATATAN HISTORIS (token CrosshairAccent dkk sempat dihapus & digantikan
+// AccentBlue/AccentBlueDim/SurfaceRaised sebelum rework warna ini — lihat
+// komentar di atas). Sekarang AccentBlue dkk SUDAH terracotta (bukan biru
+// lagi), jadi section Crosshair otomatis ikut terracotta juga tanpa
+// perubahan kode tambahan.
 
-// Hero card Dashboard (FITUR BARU — lihat perintah rework: "Samakan UI
-// Dashboard Seperti Foto ke 1 dari Gaya"): gradient coklat gelap ke hitam
-// dipakai khusus kartu hero AetherXInfoCard, warna terpisah dari
-// CrosshairAccent supaya kedua kartu (Dashboard vs Crosshair) punya
-// identitas warna sedikit berbeda meski sama-sama keluarga coklat/oranye
-// hangat, mengikuti dua referensi yang diberikan.
-// REWORK (lihat perintah rework — "warna card ... default mengikuti warna
-// tema bawaan"): DashboardHeroStart/DashboardHeroEnd/DashboardAccentOrange/
-// DashboardPillBrown (gradient & aksen coklat-oranye custom, sebelumnya
-// dipakai kartu hero Dashboard & badge ID) DIHAPUS — seluruh app sekarang
-// konsisten memakai AccentBlue/MaterialTheme.colorScheme sebagai satu
-// identitas warna, bukan token warna terpisah khusus satu-dua tempat.
+// Hero card Dashboard: sebelumnya token gradient coklat terpisah
+// (DashboardHeroStart/End/AccentOrange/PillBrown) sudah dihapus dan
+// digantikan AccentBlue/MaterialTheme.colorScheme — sekarang otomatis
+// tampil terracotta lagi lewat token yang sama, tanpa perlu token baru.

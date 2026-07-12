@@ -535,4 +535,11 @@
     <string name="game_booster_notification_text">Ketuk untuk membuka sidebar</string>
 
     <string name="game_booster_splash_preparing">Menyiapkan boost performa…</string>
+
+    <!-- Dialog adblock — lihat KDoc AdBlockDialogState untuk arsitektur
+         lengkapnya. Ditampilkan sekali per sesi saat ad-blocker terdeteksi. -->
+    <string name="adblock_dialog_title">Ad Blocker Terdeteksi</string>
+    <string name="adblock_dialog_message">Iklan membantu kami menjaga AetherX tetap gratis. Nonaktifkan ad blocker, atau upgrade ke Membership untuk pengalaman bebas iklan.</string>
+    <string name="adblock_dialog_membership_button">Lihat Membership</string>
+    <string name="adblock_dialog_dismiss_button">Tutup</string>
 </resources>
