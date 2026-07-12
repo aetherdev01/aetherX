@@ -22,6 +22,13 @@ import android.app.Activity
  * Berbeda dari [RewardGate]: TIDAK ADA kuota harian atau kredit — cooldown
  * di sini murni soal jarak waktu, bukan soal "jatah pemakaian gratis".
  *
+ * FITUR BARU (deteksi adblock — lihat [AdBlockDetector]/[AdBlockDialogState]):
+ * SEBELUM mencoba tampilkan iklan, dicek dulu apakah ada sinyal adblock
+ * aktif — kalau ada, dialog jujur ditampilkan SEBAGAI GANTI mencoba
+ * memuat iklan (yang toh besar kemungkinan akan gagal/diblokir), BUKAN
+ * cara diam-diam melewati adblock-nya (lihat KDoc [AdBlockDetector] soal
+ * batasan lingkup ini — TETAP HANYA deteksi+pesan jujur).
+ *
  * CONTOH PEMAKAIAN (lihat pemasangan nyata di
  * [com.aether.x.ui.tweak.TweakViewModel.onKillBackgroundAppsChange]):
  * ```
@@ -33,15 +40,32 @@ class InterstitialAdGate(
 ) {
 
     /**
-     * Tampilkan interstitial SEKARANG kalau: [isMember] false, ada iklan
-     * siap, dan cooldown sejak tampilan terakhir sudah lewat. Kalau salah
-     * satu syarat tidak terpenuhi, fungsi ini TIDAK melakukan apa pun (no
-     * iklan, tidak ada callback/efek) — pemanggil tidak perlu menangani
-     * kasus gagal secara khusus, karena interstitial memang tidak pernah
-     * boleh mengubah alur aplikasi.
+     * Tampilkan interstitial SEKARANG kalau: [isMember] false, tidak ada
+     * sinyal adblock terdeteksi, ada iklan siap, dan cooldown sejak
+     * tampilan terakhir sudah lewat. Kalau salah satu syarat tidak
+     * terpenuhi, fungsi ini TIDAK melakukan apa pun selain (mungkin)
+     * dialog adblock — pemanggil tidak perlu menangani kasus gagal secara
+     * khusus, karena interstitial memang tidak pernah boleh mengubah alur
+     * aplikasi.
+     *
+     * SEKARANG `suspend` (sebelumnya fungsi biasa) — dibutuhkan untuk
+     * memanggil [AdBlockDetector.detect] yang juga suspend. SEMUA
+     * pemanggil yang sudah ada (TweakViewModel, AppManagerViewModel,
+     * BuildPropViewModel) TIDAK PERLU diubah sama sekali — keempatnya
+     * SUDAH memanggil fungsi ini dari dalam `viewModelScope.launch { }`
+     * (dibuktikan lewat `preferences.preferences.first()` yang dipanggil
+     * tepat sebelum `maybeShow` di keempat titik itu — `.first()` sendiri
+     * suspend, jadi keempatnya sudah pasti berada di coroutine context).
      */
-    fun maybeShow(activity: Activity, isMember: Boolean) {
+    suspend fun maybeShow(activity: Activity, isMember: Boolean) {
         if (isMember) return
+
+        val adBlockSignals = AdBlockDetector.detect(activity)
+        if (adBlockSignals.anyDetected) {
+            AdBlockDialogState.requestShow()
+            return // TIDAK mencoba tampilkan iklan yang toh kemungkinan diblokir
+        }
+
         if (!adManager.isReady) return
 
         val now = System.currentTimeMillis()

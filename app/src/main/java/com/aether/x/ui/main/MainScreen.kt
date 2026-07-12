@@ -13,15 +13,20 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
+import com.aether.x.core.ads.AdBlockDetector
+import com.aether.x.core.ads.AdBlockDialog
+import com.aether.x.core.ads.AdBlockDialogState
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
@@ -38,6 +43,39 @@ fun MainScreen(
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
 
     val tweakViewModel: TweakViewModel = viewModel()
+
+    // FITUR BARU (dialog adblock — lihat perintah rework "Deteksi-nya
+    // sendiri tetap bisa... dijalankan kapan? Keduanya" [app dibuka +
+    // sebelum interstitial]): titik PERTAMA dari dua titik pemicu — jalan
+    // SEKALI setiap MainScreen pertama kali masuk komposisi (yaitu tiap
+    // app dibuka, karena MainScreen adalah layar utama setelah onboarding
+    // selesai). Titik KEDUA ada di
+    // [com.aether.x.core.ads.InterstitialAdGate.maybeShow]. Kedua titik
+    // pemicu SAMA-SAMA hanya memanggil [AdBlockDialogState.requestShow] —
+    // dialog aktualnya (lihat [AdBlockDialog] di bawah) yang benar-benar
+    // menentukan kapan tampil, jadi di sini TIDAK perlu cast ke Activity
+    // sama sekali.
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        val signals = AdBlockDetector.detect(context)
+        if (signals.anyDetected) {
+            AdBlockDialogState.requestShow()
+        }
+    }
+
+    // Dengarkan permintaan pindah tab Membership dari tombol "Lihat
+    // Membership" di dialog adblock — lihat KDoc [AdBlockDialogState] soal
+    // kenapa event bus ini dibutuhkan (tombol yang sama bisa dipicu dari
+    // luar Composable tree ini, lewat InterstitialAdGate).
+    LaunchedEffect(Unit) {
+        AdBlockDialogState.openMembershipRequests.collect {
+            selectedTab = MainTab.MEMBERSHIP
+        }
+    }
+
+    // Dipasang SEKALI di sini (bukan di dalam salah satu tab) supaya tetap
+    // bisa tampil terlepas tab mana yang aktif — lihat KDoc [AdBlockDialog].
+    AdBlockDialog()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
