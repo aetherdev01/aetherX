@@ -736,8 +736,13 @@ private fun HorizontalAccentSlider(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
-            Text(text = valueText, style = MaterialTheme.typography.labelLarge, color = AccentBlue)
+            // FIX (lihat keluhan "ukuran font crosshair terlalu besar dan
+            // ga sama dengan yang lain"): sebelumnya label ini bodyMedium
+            // (lebih besar) sementara label VerticalAccentSlider "Size" di
+            // atas pakai labelSmall — dua slider yang sejajar tampil beda
+            // ukuran teks. Disamakan ke labelSmall supaya konsisten.
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+            Text(text = valueText, style = MaterialTheme.typography.labelSmall, color = AccentBlue)
         }
         Spacer(modifier = Modifier.height(10.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
