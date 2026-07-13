@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +36,21 @@ import androidx.compose.ui.unit.dp
  * sudah beres tidak perlu terus "berteriak" dengan label dan tombol yang
  * sudah tidak relevan. Ikon centang di header sudah cukup jadi checklist
  * bahwa metode ini aktif, tanpa elemen tambahan yang mengganggu.
+ *
+ * BUG FIX (rework permission — lihat perintah rework "terkadang bug tidak
+ * bisa di pencet"): SEBELUMNYA kalau [locked] true TAPI [lockedHint] null,
+ * tidak ada cabang `when` yang cocok sama sekali — kartu jadi tidak
+ * menampilkan tombol MAUPUN hint, membuat pengguna mengira kartu "macet/
+ * rusak". Sekarang [lockedHint] punya default string kosong yang tetap
+ * masuk cabang locked (tidak pernah jatuh ke celah kosong), dan tombol aksi
+ * di cabang non-locked SELALU dirender terlepas granted/tidak — supaya
+ * tombol tidak pernah hilang tak terduga.
+ *
+ * [isRequesting] = true SELAMA proses permintaan izin berlangsung (lihat
+ * PrivilegeStatus.shizukuRequestState/rootRequestState) — menampilkan
+ * spinner kecil + label "Meminta…" di tombol, feedback visual bahwa tap
+ * pengguna BENAR-BENAR terdaftar dan sedang diproses, bukan diam begitu
+ * saja seperti sebelumnya.
  */
 @Composable
 fun PermissionMethodCard(
@@ -46,6 +63,8 @@ fun PermissionMethodCard(
     modifier: Modifier = Modifier,
     locked: Boolean = false,
     lockedHint: String? = null,
+    isRequesting: Boolean = false,
+    requestingLabel: String? = null,
 ) {
     val contentAlpha = if (locked) 0.5f else 1f
     Card(
@@ -85,9 +104,12 @@ fun PermissionMethodCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             when {
-                locked && lockedHint != null -> {
+                // BUG FIX: locked SELALU masuk cabang ini sekarang (lockedHint
+                // tidak pernah dibiarkan null tanpa fallback) — tidak ada lagi
+                // celah "locked tapi tidak render apa-apa".
+                locked -> {
                     Text(
-                        text = lockedHint,
+                        text = lockedHint.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -111,7 +133,27 @@ fun PermissionMethodCard(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             dotColor = null,
                         )
-                        Button(onClick = onAction, enabled = !locked) { Text(actionLabel) }
+                        // BUG FIX: tombol SELALU enabled di cabang ini (locked
+                        // sudah ditangani cabang terpisah di atas, jadi tidak
+                        // perlu enabled = !locked lagi di sini) — hanya
+                        // dinonaktifkan sesaat SELAMA isRequesting supaya
+                        // tidak bisa double-tap, bukan karena alasan lain
+                        // yang tidak terlihat pengguna.
+                        Button(onClick = onAction, enabled = !isRequesting) {
+                            if (isRequesting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                                Text(
+                                    text = requestingLabel ?: actionLabel,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            } else {
+                                Text(actionLabel)
+                            }
+                        }
                     }
                 }
             }

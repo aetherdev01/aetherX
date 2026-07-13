@@ -14,11 +14,16 @@ import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 
@@ -35,13 +40,42 @@ object PrivilegeManager {
     private val _status = MutableStateFlow(PrivilegeStatus())
     val status: StateFlow<PrivilegeStatus> = _status.asStateFlow()
 
+    // FITUR BARU (rework permission — lihat perintah rework "terkadang bug
+    // tidak bisa di pencet dan kadang permission magisk & shizuku tidak
+    // trigger"): SharedFlow event sekali-jalan untuk hasil aksi permintaan
+    // izin. extraBufferCapacity=1 supaya event yang terjadi SEBELUM UI
+    // sempat mulai collect (mis. langsung setelah proses restart akibat
+    // approve Shizuku) tidak hilang begitu saja.
+    private val _events = MutableSharedFlow<RequestFeedback>(extraBufferCapacity = 1)
+    val events: SharedFlow<RequestFeedback> = _events.asSharedFlow()
+
+    // Menyerialkan adoptExistingGrantIfNoPreference() — sebelumnya dipanggil
+    // dari 3 tempat independen (init() dengan delay, LaunchedEffect resume,
+    // LaunchedEffect(shizukuGranted, rootGranted)) yang bisa saling
+    // tabrakan: dua pemanggilan berjalan bersamaan bisa membaca
+    // preferredBackend == NONE yang sama-sama masih valid lalu SAMA-SAMA
+    // memanggil selectBackend() dengan backend yang berbeda tergantung
+    // urutan eksekusi race, menghasilkan kartu yang ter-lock secara TIDAK
+    // terduga oleh pengguna ("kok kepencet sendiri / kekunci sendiri").
+    private val adoptMutex = Mutex()
+
     private var initialized = false
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener { refreshShizuku() }
     private val binderDeadListener = Shizuku.OnBinderDeadListener { refreshShizuku() }
     private val permissionResultListener =
-        Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
-            if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) refreshShizuku()
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode != SHIZUKU_PERMISSION_REQUEST_CODE) return@OnRequestPermissionResultListener
+            _status.update { it.copy(shizukuRequestState = RequestState.IDLE) }
+            refreshShizuku()
+            if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                _events.tryEmit(RequestFeedback.Granted(PrivilegeBackend.SHIZUKU))
+            } else {
+                // Pengguna menolak dialog Shizuku — beri tahu secara
+                // eksplisit alih-alih membiarkan kartu diam kembali ke
+                // status "Belum Aktif" tanpa penjelasan apa pun.
+                _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.SHIZUKU, RequestFailureReason.SHIZUKU_SERVER_NOT_RUNNING))
+            }
         }
 
     /** Panggil sekali saat aplikasi dibuat. Aman dipanggil berkali-kali.
@@ -102,15 +136,19 @@ object PrivilegeManager {
      * checkRootSilently() lambat karena perangkat sedang berat).
      */
     fun adoptExistingGrantIfNoPreference(context: Context) {
-        if (_status.value.preferredBackend != PrivilegeBackend.NONE) return
+        scope.launch {
+            adoptMutex.withLock {
+                if (_status.value.preferredBackend != PrivilegeBackend.NONE) return@withLock
 
-        val backend = when {
-            _status.value.shizukuAvailable && _status.value.shizukuGranted -> PrivilegeBackend.SHIZUKU
-            _status.value.rootGranted -> PrivilegeBackend.ROOT
-            else -> null
-        } ?: return
+                val backend = when {
+                    _status.value.shizukuAvailable && _status.value.shizukuGranted -> PrivilegeBackend.SHIZUKU
+                    _status.value.rootGranted -> PrivilegeBackend.ROOT
+                    else -> null
+                } ?: return@withLock
 
-        selectBackend(context, backend)
+                selectBackend(context, backend)
+            }
+        }
     }
 
     /**
@@ -211,8 +249,37 @@ object PrivilegeManager {
      * preferensi tidak diubah.
      */
     fun requestShizukuPermission(context: Context? = null) {
-        if (!try { Shizuku.pingBinder() } catch (t: Throwable) { false }) return
-        if (try { Shizuku.isPreV11() } catch (t: Throwable) { true }) return
+        // Guard double-tap: kalau request sebelumnya masih berjalan
+        // (mis. pengguna mencet berkali-kali karena mengira tombol tidak
+        // merespon), jangan mulai request baru — cukup beri tahu lewat
+        // event, JANGAN diam saja seperti sebelumnya.
+        if (_status.value.shizukuRequestState == RequestState.REQUESTING) {
+            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.SHIZUKU, RequestFailureReason.SHIZUKU_ALREADY_IN_PROGRESS))
+            return
+        }
+
+        _status.update { it.copy(shizukuRequestState = RequestState.REQUESTING) }
+
+        val binderAlive = try { Shizuku.pingBinder() } catch (t: Throwable) { false }
+        if (!binderAlive) {
+            // BUG FIX (rework permission — sebelumnya `return` diam-diam di
+            // sini: pengguna menekan "Izinkan", tombol terlihat merespon
+            // tap-nya, tapi TIDAK ADA APAPUN yang terjadi setelahnya karena
+            // server Shizuku belum hidup. Sekarang selalu emit event supaya
+            // UI bisa menampilkan alasan konkret — mis. "Buka aplikasi
+            // Shizuku dan aktifkan dulu" — alih-alih pengguna menebak-nebak
+            // kenapa tombol "tidak berfungsi".
+            _status.update { it.copy(shizukuRequestState = RequestState.IDLE) }
+            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.SHIZUKU, RequestFailureReason.SHIZUKU_SERVER_NOT_RUNNING))
+            return
+        }
+
+        val tooOld = try { Shizuku.isPreV11() } catch (t: Throwable) { true }
+        if (tooOld) {
+            _status.update { it.copy(shizukuRequestState = RequestState.IDLE) }
+            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.SHIZUKU, RequestFailureReason.SHIZUKU_TOO_OLD))
+            return
+        }
 
         context?.let { selectBackend(it, PrivilegeBackend.SHIZUKU) }
 
@@ -222,13 +289,23 @@ object PrivilegeManager {
             false
         }
         if (granted) {
+            _status.update { it.copy(shizukuRequestState = RequestState.IDLE) }
             refreshShizuku()
+            _events.tryEmit(RequestFeedback.Granted(PrivilegeBackend.SHIZUKU))
         } else {
             try {
                 Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
+                // requestState TETAP REQUESTING di sini — dialog sistem
+                // sedang tampil, hasilnya baru datang lewat
+                // permissionResultListener (lihat di bawah) yang akan
+                // mengembalikan requestState ke IDLE.
             } catch (t: Throwable) {
-                // Server mati di antara pingBinder() dan requestPermission(); abaikan,
-                // status akan diperbarui lewat binderDeadListener.
+                // Server mati tepat di antara pingBinder() dan
+                // requestPermission() (race jarang tapi mungkin, mis. app
+                // Shizuku di-force-stop tepat saat ini). Sebelumnya
+                // diabaikan total; sekarang tetap diberi tahu ke pengguna.
+                _status.update { it.copy(shizukuRequestState = RequestState.IDLE) }
+                _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.SHIZUKU, RequestFailureReason.SHIZUKU_SERVER_NOT_RUNNING))
             }
         }
     }
@@ -284,9 +361,14 @@ object PrivilegeManager {
      * preferensi tidak diubah.
      */
     fun requestRoot(context: Context? = null) {
+        if (_status.value.rootRequestState == RequestState.REQUESTING) {
+            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.ROOT, RequestFailureReason.ROOT_ALREADY_IN_PROGRESS))
+            return
+        }
+
         context?.let { selectBackend(it, PrivilegeBackend.ROOT) }
         scope.launch {
-            _status.update { it.copy(checkingRoot = true) }
+            _status.update { it.copy(checkingRoot = true, rootRequestState = RequestState.REQUESTING) }
             val granted = withContext(Dispatchers.IO) {
                 try {
                     Shell.getShell().isRoot
@@ -294,7 +376,26 @@ object PrivilegeManager {
                     false
                 }
             }
-            _status.update { it.copy(rootAvailable = granted, rootGranted = granted, checkingRoot = false) }
+            _status.update {
+                it.copy(
+                    rootAvailable = granted,
+                    rootGranted = granted,
+                    checkingRoot = false,
+                    rootRequestState = RequestState.IDLE,
+                )
+            }
+            // BUG FIX (rework permission): sebelumnya hasil gagal/ditolak
+            // hanya terlihat lewat rootGranted tetap false — pengguna tidak
+            // pernah diberi tahu APAKAH promptnya sempat muncul, ditolak,
+            // atau memang tidak ada provider root sama sekali di perangkat.
+            // Sekarang selalu emit event hasil, sama seperti Shizuku.
+            _events.tryEmit(
+                if (granted) {
+                    RequestFeedback.Granted(PrivilegeBackend.ROOT)
+                } else {
+                    RequestFeedback.Failed(PrivilegeBackend.ROOT, RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE)
+                },
+            )
         }
     }
 

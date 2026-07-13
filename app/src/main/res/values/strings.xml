@@ -542,4 +542,18 @@
     <string name="adblock_dialog_message">Iklan membantu kami menjaga AetherX tetap gratis. Nonaktifkan ad blocker, atau upgrade ke Membership untuk pengalaman bebas iklan.</string>
     <string name="adblock_dialog_membership_button">Lihat Membership</string>
     <string name="adblock_dialog_dismiss_button">Tutup</string>
+
+    <!-- REWORK PERMISSION (lihat perintah rework — "terkadang bug tidak
+         bisa di pencet dan kadang permission magisk & shizuku tidak
+         trigger"): pesan feedback konkret untuk setiap hasil aksi
+         permintaan izin, ditampilkan lewat Snackbar — menggantikan
+         silent-fail yang membuat tombol terasa "tidak merespon". -->
+    <string name="permission_feedback_shizuku_server_not_running">Server Shizuku belum aktif. Buka aplikasi Shizuku dan aktifkan dulu (lewat ADB/Wireless Debugging atau Sui), lalu coba lagi.</string>
+    <string name="permission_feedback_shizuku_too_old">Versi Shizuku yang terpasang terlalu lama. Perbarui aplikasi Shizuku lalu coba lagi.</string>
+    <string name="permission_feedback_shizuku_in_progress">Permintaan izin Shizuku masih diproses, tunggu sebentar.</string>
+    <string name="permission_feedback_shizuku_granted">Akses Shizuku aktif.</string>
+    <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch sudah terpasang dan coba lagi.</string>
+    <string name="permission_feedback_root_in_progress">Permintaan akses root masih diproses, tunggu sebentar.</string>
+    <string name="permission_feedback_root_granted">Akses root aktif.</string>
+    <string name="setup_action_requesting">Meminta…</string>
 </resources>

@@ -30,11 +30,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +53,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.core.permission.RequestFailureReason
+import com.aether.x.core.permission.RequestFeedback
+import com.aether.x.core.permission.RequestState
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
@@ -95,6 +102,34 @@ fun PermissionSetupScreen(
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
     val canContinue = !requireAccessToContinue || status.hasAccess
 
+    // REWORK PERMISSION (lihat perintah rework — "terkadang bug tidak bisa
+    // di pencet dan kadang permission magisk & shizuku tidak trigger"):
+    // setiap hasil aksi permintaan izin (gagal ATAU berhasil) sekarang
+    // SELALU ditampilkan lewat Snackbar di sini, mengonsumsi
+    // PrivilegeManager.events. Sebelumnya kegagalan seperti server Shizuku
+    // belum hidup hanya `return` diam-diam tanpa memberi tahu pengguna sama
+    // sekali — tap terlihat "tidak berbuat apa-apa".
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        PrivilegeManager.events.collect { feedback ->
+            val message = when (feedback) {
+                is RequestFeedback.Granted -> when (feedback.backend) {
+                    PrivilegeBackend.SHIZUKU -> context.getString(R.string.permission_feedback_shizuku_granted)
+                    PrivilegeBackend.ROOT -> context.getString(R.string.permission_feedback_root_granted)
+                    PrivilegeBackend.NONE -> null
+                }
+                is RequestFeedback.Failed -> when (feedback.reason) {
+                    RequestFailureReason.SHIZUKU_SERVER_NOT_RUNNING -> context.getString(R.string.permission_feedback_shizuku_server_not_running)
+                    RequestFailureReason.SHIZUKU_TOO_OLD -> context.getString(R.string.permission_feedback_shizuku_too_old)
+                    RequestFailureReason.SHIZUKU_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_shizuku_in_progress)
+                    RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE -> context.getString(R.string.permission_feedback_root_denied)
+                    RequestFailureReason.ROOT_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_root_in_progress)
+                }
+            }
+            message?.let { snackbarHostState.showSnackbar(it) }
+        }
+    }
+
     val notificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) {
@@ -136,7 +171,10 @@ fun PermissionSetupScreen(
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
-    Scaffold(containerColor = BgVoid) { padding ->
+    Scaffold(
+        containerColor = BgVoid,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -192,6 +230,8 @@ fun PermissionSetupScreen(
                                 else -> PrivilegeManager.requestShizukuPermission(context)
                             }
                         },
+                        isRequesting = status.shizukuRequestState == RequestState.REQUESTING,
+                        requestingLabel = stringResource(R.string.setup_action_requesting),
                     )
 
                     if (!status.hasAccess) {
@@ -211,6 +251,8 @@ fun PermissionSetupScreen(
                         lockedHint = stringResource(R.string.setup_locked_by_shizuku_hint),
                         actionLabel = stringResource(R.string.setup_action_request),
                         onAction = { PrivilegeManager.requestRoot(context) },
+                        isRequesting = status.rootRequestState == RequestState.REQUESTING,
+                        requestingLabel = stringResource(R.string.setup_action_requesting),
                     )
 
                     // Muncul begitu pengguna sudah memilih salah satu metode
