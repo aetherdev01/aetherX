@@ -66,8 +66,10 @@ data class AppPreferences(
     // Firestore terakhir yang berhasil. null = belum pernah tervalidasi.
     val licenseExpiresAtMillis: Long? = null,
     // Backend privilese yang SENGAJA dipilih pengguna di layar Izin Akses:
-    // "SHIZUKU", "ROOT", atau null (belum memilih/direset). Dipakai supaya
-    // Shizuku dan Root tidak pernah aktif bersamaan — lihat PrivilegeManager.
+    // "ADB", "ROOT", atau null (belum memilih/direset). Nilai lama "SHIZUKU"
+    // (tersimpan sebelum rework ADB tertanam) dimigrasikan otomatis jadi
+    // "ADB" oleh PrivilegeManager.init() — lihat komentar di sana. Dipakai
+    // supaya ADB Tertanam dan Root tidak pernah aktif bersamaan.
     val preferredPrivilegeBackend: String? = null,
     // Game Profile (khusus Root) — lihat data/GameProfile.kt & GameProfileMonitorService.
     // Map package name -> tweak root yang tersimpan untuk game itu.
@@ -187,7 +189,7 @@ class AetherXPreferences(private val context: Context) {
         val FPS_MONITOR_OFFSET_Y = intPreferencesKey("fps_monitor_offset_y")
 
         // ID pengguna lokal (mis. "ID-67128") yang ditampilkan sebagai pengganti
-        // status Shizuku/Root di tab Tweak. Dibuat sekali secara acak lalu
+        // status ADB/Root di tab Tweak. Dibuat sekali secara acak lalu
         // disimpan permanen di perangkat supaya nilainya konsisten setiap dibuka.
         val USER_ID = intPreferencesKey("user_id")
 
@@ -216,7 +218,7 @@ class AetherXPreferences(private val context: Context) {
         // null/tidak ada = tidak sedang lockout.
         val LICENSE_LOCKOUT_UNTIL_MILLIS = longPreferencesKey("license_lockout_until_millis")
 
-        // Backend privilese pilihan pengguna ("SHIZUKU"/"ROOT"), lihat
+        // Backend privilese pilihan pengguna ("ADB"/"ROOT"), lihat
         // AppPreferences.preferredPrivilegeBackend di atas.
         val PREFERRED_PRIVILEGE_BACKEND = stringPreferencesKey("preferred_privilege_backend")
 
@@ -485,13 +487,13 @@ class AetherXPreferences(private val context: Context) {
         }
     }
 
-    /** Baca preferensi backend privilese saat ini ("SHIZUKU"/"ROOT"/null) sekali (bukan Flow). */
+    /** Baca preferensi backend privilese saat ini ("ADB"/"ROOT"/null, atau "SHIZUKU" lama yang akan dimigrasikan oleh PrivilegeManager) sekali (bukan Flow). */
     suspend fun getPreferredPrivilegeBackend(): String? {
         val prefs = context.dataStore.data.first()
         return prefs[Keys.PREFERRED_PRIVILEGE_BACKEND]
     }
 
-    /** Menyimpan backend privilese yang sengaja dipilih pengguna ("SHIZUKU" atau "ROOT"). */
+    /** Menyimpan backend privilese yang sengaja dipilih pengguna ("ADB" atau "ROOT"). */
     suspend fun setPreferredPrivilegeBackend(value: String) {
         context.dataStore.edit { prefs -> prefs[Keys.PREFERRED_PRIVILEGE_BACKEND] = value }
     }

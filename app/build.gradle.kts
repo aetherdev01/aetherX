@@ -145,9 +145,10 @@ dependencies {
     // ── Coroutines ────────────────────────────────────────────────────────────
     implementation(libs.kotlinx.coroutines.android)
 
-    // ── Privilege backend: Shizuku (mode non-root) ───────────────────────────
-    implementation(libs.shizuku.api)
-    implementation(libs.shizuku.provider)
+    // ── Privilege backend: ADB tertanam (mode non-root — menggantikan
+    //    Shizuku total, lihat gradle/libs.versions.toml untuk catatan
+    //    JitPack repo yang wajib ditambahkan di settings.gradle.kts) ────────
+    implementation(libs.dadb)
 
     // ── Privilege backend: libsu (mode root — Magisk / KernelSU / APatch) ───
     implementation(libs.libsu.core)

@@ -91,14 +91,18 @@
 -dontwarn androidx.datastore.**
 
 # =============================================================================
-# SHIZUKU (rikka.shizuku) — wajib di-keep utuh, sebagian dipanggil lewat
-# reflection (lihat ShizukuProcessCompat) dan lewat AIDL/Binder.
+# ADB TERTANAM ("dadb") — REWORK TOTAL (lihat perintah rework — "hapus
+# semua yang bersangkutan dengan shizuku"): rule rikka.shizuku/moe.shizuku
+# DIHAPUS (library-nya sudah tidak lagi jadi dependency, lihat
+# gradle/libs.versions.toml). "dadb" murni Kotlin tanpa reflection berat
+# maupun AIDL/Binder cross-process, tapi tetap di-keep utuh karena
+# berkomunikasi lewat protokol biner ADB (parsing manual byte-level) yang
+# rawan salah kalau class-nya di-obfuscate/di-shrink R8.
 # =============================================================================
--keep class rikka.shizuku.** { *; }
--keep interface rikka.shizuku.** { *; }
--keepclassmembers class rikka.shizuku.** { *; }
--dontwarn rikka.shizuku.**
--dontwarn moe.shizuku.**
+-keep class dadb.** { *; }
+-keep interface dadb.** { *; }
+-keepclassmembers class dadb.** { *; }
+-dontwarn dadb.**
 
 # =============================================================================
 # LIBSU (com.topjohnwu.superuser) — eksekusi shell root

@@ -22,14 +22,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 
 /**
- * Kartu satu metode akses privilese (Shizuku atau Root) di layar Izin Akses.
+ * Kartu satu metode akses privilese (ADB tertanam atau Root) di layar Izin Akses.
  *
  * [locked] = true saat metode LAIN sudah dipilih pengguna (lihat
  * PrivilegeManager.selectBackend) — supaya Shizuku dan Root tidak pernah
  * bisa diaktifkan berbarengan dari layar ini. Saat terkunci, kartu tampil
  * redup, tombol aksi dinonaktifkan, dan [lockedHint] ditampilkan
  * menggantikan tombol untuk menjelaskan kenapa (mis. "Matikan Root dulu
- * untuk pakai Shizuku").
+ * untuk pakai ADB").
  *
  * Saat [granted] = true (dan tidak [locked]): pill status + tombol aksi
  * ("Aktif" / "Izinkan" dsb.) SENGAJA tidak ditampilkan lagi — kartu yang
@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
  * tombol tidak pernah hilang tak terduga.
  *
  * [isRequesting] = true SELAMA proses permintaan izin berlangsung (lihat
- * PrivilegeStatus.shizukuRequestState/rootRequestState) — menampilkan
+ * PrivilegeStatus.adbRequestState/rootRequestState) — menampilkan
  * spinner kecil + label "Meminta…" di tombol, feedback visual bahwa tap
  * pengguna BENAR-BENAR terdaftar dan sedang diproses, bukan diam begitu
  * saja seperti sebelumnya.

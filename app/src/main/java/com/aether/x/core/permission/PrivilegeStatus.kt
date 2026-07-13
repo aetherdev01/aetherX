@@ -1,11 +1,16 @@
 package com.aether.x.core.permission
 
-enum class PrivilegeBackend { SHIZUKU, ROOT, NONE }
+import com.aether.x.core.adb.AdbConnectionState
+
+// REWORK TOTAL PERMISSION (lihat perintah rework — "buatkan sistem
+// seperti shizuku langsung tertanam dalam aplikasinya... hapus semua
+// yang bersangkutan dengan shizuku"): SHIZUKU diganti ADB — backend ini
+// sekarang ADB tertanam milik AetherX sendiri (lihat core/adb/), BUKAN
+// lagi bergantung pada aplikasi Shizuku eksternal.
+enum class PrivilegeBackend { ADB, ROOT, NONE }
 
 /**
- * REWORK TOTAL PERMISSION (lihat perintah rework — "terkadang bug tidak
- * bisa di pencet dan kadang permission magisk & shizuku tidak trigger"):
- * status per-request eksplisit untuk kartu Shizuku/Root, supaya UI selalu
+ * Status per-request eksplisit untuk kartu ADB/Root, supaya UI selalu
  * tahu PERSIS kartu mana yang sedang memproses aksi (spinner) alih-alih
  * hanya mengandalkan boolean granted/checkingRoot global yang gampang
  * "diam" saat request gagal di tengah jalan tanpa mengubah apa pun yang
@@ -16,14 +21,16 @@ enum class RequestState { IDLE, REQUESTING }
 /**
  * Alasan sebuah aksi permintaan izin tidak bisa/tidak berhasil dipicu —
  * dipakai untuk menampilkan pesan yang JELAS ke pengguna, menggantikan
- * silent-return/silent-catch yang ada sebelumnya (mis. requestShizukuPermission
- * yang langsung `return` diam-diam kalau server belum hidup, atau
- * requestRoot yang catch Throwable jadi false tanpa penjelasan apa pun).
+ * silent-return/silent-catch. ADB_* menggantikan SHIZUKU_* sepenuhnya dan
+ * memetakan 1:1 dari [com.aether.x.core.adb.AdbFailureReason].
  */
 enum class RequestFailureReason {
-    SHIZUKU_SERVER_NOT_RUNNING,
-    SHIZUKU_TOO_OLD,
-    SHIZUKU_ALREADY_IN_PROGRESS,
+    ADB_WIRELESS_DEBUGGING_OFF,
+    ADB_PAIRING_CODE_INVALID_OR_EXPIRED,
+    ADB_HOST_UNREACHABLE,
+    ADB_SHELL_REJECTED_NEEDS_REPAIR,
+    ADB_UNKNOWN,
+    ADB_ALREADY_IN_PROGRESS,
     ROOT_DENIED_OR_UNAVAILABLE,
     ROOT_ALREADY_IN_PROGRESS,
 }
@@ -43,22 +50,22 @@ sealed interface RequestFeedback {
 /**
  * Snapshot kondisi akses privilese AetherX saat ini.
  *
- * - [shizukuAvailable] = server Shizuku/Sui sedang berjalan (binder hidup).
- * - [shizukuGranted]   = izin Shizuku untuk AetherX sudah disetujui.
- * - [rootAvailable]    = null berarti belum pernah dicek, true/false setelah dicek.
- * - [rootGranted]      = akses root untuk AetherX sudah disetujui.
+ * - [adbState]       = tahap koneksi ADB tertanam saat ini (lihat
+ *   [AdbConnectionState]) — menggantikan shizukuAvailable/shizukuGranted
+ *   boolean lama dengan state machine yang lebih deskriptif.
+ * - [rootAvailable]  = null berarti belum pernah dicek, true/false setelah dicek.
+ * - [rootGranted]    = akses root untuk AetherX sudah disetujui.
  * - [preferredBackend] = backend yang SENGAJA dipilih pengguna di layar Izin
  *   Akses (lihat PrivilegeManager.selectBackend). NONE berarti belum memilih
  *   apa pun (mis. baru pertama kali buka app / setelah "Ganti metode").
- *   Ini yang membuat Shizuku dan Root tidak pernah aktif bersamaan: begitu
+ *   Ini yang membuat ADB dan Root tidak pernah aktif bersamaan: begitu
  *   satu backend dipilih, backend lain dianggap tidak aktif oleh app
  *   walaupun secara sistem izinnya masih granted, supaya tweak (mis. governor
  *   CPU, DND, dsb) hanya pernah dieksekusi lewat SATU jalur dan tidak saling
  *   tabrakan.
  */
 data class PrivilegeStatus(
-    val shizukuAvailable: Boolean = false,
-    val shizukuGranted: Boolean = false,
+    val adbState: AdbConnectionState = AdbConnectionState.NotPaired,
     val rootAvailable: Boolean? = null,
     val rootGranted: Boolean = false,
     val checkingRoot: Boolean = false,
@@ -66,13 +73,15 @@ data class PrivilegeStatus(
     val overlayGranted: Boolean = false,
     val notificationsGranted: Boolean = false,
     val preferredBackend: PrivilegeBackend = PrivilegeBackend.NONE,
-    // FITUR BARU (rework permission): status request eksplisit per kartu,
-    // supaya PermissionMethodCard bisa menampilkan spinner/label "Meminta…"
-    // SELAMA proses berlangsung, bukan cuma diam sampai granted berubah
-    // (yang kalau gagal/timeout, tombol akan terlihat "tidak merespon").
-    val shizukuRequestState: RequestState = RequestState.IDLE,
+    // Status request eksplisit per kartu, supaya PermissionMethodCard bisa
+    // menampilkan spinner/label "Meminta…" SELAMA proses berlangsung, bukan
+    // cuma diam sampai granted berubah (yang kalau gagal/timeout, tombol
+    // akan terlihat "tidak merespon").
+    val adbRequestState: RequestState = RequestState.IDLE,
     val rootRequestState: RequestState = RequestState.IDLE,
 ) {
+    val adbGranted: Boolean get() = adbState == AdbConnectionState.Connected
+
     /**
      * Backend yang benar-benar aktif dipakai app untuk menjalankan tweak.
      *
@@ -81,19 +90,15 @@ data class PrivilegeStatus(
      * Backend yang tidak dipilih tidak pernah dipakai walau granted, supaya
      * tidak ada dua sumber privilese aktif berbarengan.
      *
-     * Kalau belum ada preferensi (mis. pengguna baru), fallback ke perilaku
-     * lama: Shizuku diutamakan kalau granted, baru root.
+     * Kalau belum ada preferensi (mis. pengguna baru), fallback: ADB
+     * diutamakan kalau connected, baru root.
      */
     val activeBackend: PrivilegeBackend
         get() = when (preferredBackend) {
-            PrivilegeBackend.SHIZUKU -> if (shizukuAvailable && shizukuGranted) {
-                PrivilegeBackend.SHIZUKU
-            } else {
-                PrivilegeBackend.NONE
-            }
+            PrivilegeBackend.ADB -> if (adbGranted) PrivilegeBackend.ADB else PrivilegeBackend.NONE
             PrivilegeBackend.ROOT -> if (rootGranted) PrivilegeBackend.ROOT else PrivilegeBackend.NONE
             PrivilegeBackend.NONE -> when {
-                shizukuAvailable && shizukuGranted -> PrivilegeBackend.SHIZUKU
+                adbGranted -> PrivilegeBackend.ADB
                 rootGranted -> PrivilegeBackend.ROOT
                 else -> PrivilegeBackend.NONE
             }
@@ -101,7 +106,7 @@ data class PrivilegeStatus(
 
     val hasAccess: Boolean get() = activeBackend != PrivilegeBackend.NONE
 
-    /** Semua izin pendukung (di luar Shizuku/root) sudah aktif. */
+    /** Semua izin pendukung (di luar ADB/root) sudah aktif. */
     val hasAllSupportingPermissions: Boolean
         get() = writeSettingsGranted && overlayGranted && notificationsGranted
 }

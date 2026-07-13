@@ -1,7 +1,5 @@
 package com.aether.x.ui.onboarding
 
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -30,7 +28,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -51,11 +48,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
+import com.aether.x.core.adb.AdbConnectionState
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
+import com.aether.x.ui.components.AdbPairingCard
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
@@ -69,29 +68,23 @@ import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 
-private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
-private const val SHIZUKU_PLAY_STORE_URL =
-    "https://play.google.com/store/apps/details?id=$SHIZUKU_PACKAGE"
-
 /**
- * Layar izin akses — REWORK TOTAL.
+ * Layar izin akses — REWORK TOTAL PERMISSION (lihat perintah rework —
+ * "buatkan sistem seperti shizuku langsung tertanam dalam aplikasinya...
+ * hapus semua yang bersangkutan dengan shizuku").
  *
- * Versi sebelumnya cuma `Scaffold` polos memakai warna default Material
- * (bukan skema gelap AetherX), tanpa hero/header, kartu-kartu ditumpuk
- * berurutan tanpa jeda visual yang jelas antara "wajib" dan "pendukung".
- * Rework ini:
- *  - Memakai token warna AetherX (BgVoid, TextPrimary, AccentBlue, dst.)
- *    dan bukan lagi `MaterialTheme.colorScheme` default supaya konsisten
- *    dengan layar lain (Tweak, Membership).
- *  - Header ikon perisai + judul + subjudul yang menjelaskan KENAPA izin
- *    ini dibutuhkan, bukan langsung lompat ke daftar kartu.
- *  - Banner status dipertegas: hijau solid saat siap, merah saat belum,
- *    dengan ikon & bobot teks lebih jelas.
- *  - Bagian "Izin Pendukung" divisualkan lebih redup (label kecil + garis
- *    pemisah) supaya jelas ini opsional dan tidak mengganggu hierarki
- *    dengan bagian wajib (Shizuku/Root) di atasnya.
- *  - CTA bawah dibuat sticky look dengan sedikit elevasi warna, bukan lagi
- *    menyatu polos dengan background.
+ * Kartu Shizuku (satu tombol "Izinkan" yang membuka app eksternal)
+ * DIGANTIKAN TOTAL oleh [AdbPairingCard] — form pairing wireless ADB
+ * (host, port pairing, kode 6-digit, port koneksi) yang alurnya SAMA
+ * PERSIS seperti menyandingkan Shizuku lewat Wireless debugging, bedanya
+ * semua diproses di dalam AetherX sendiri lewat
+ * [com.aether.x.core.adb.AdbConnectionManager] — tidak ada aplikasi
+ * eksternal yang perlu dipasang/dibuka sama sekali.
+ *
+ * Kartu Root tidak berubah strukturnya (masih [PermissionMethodCard]
+ * biasa, satu tombol), hanya field yang dibaca dari [PrivilegeStatus]
+ * disesuaikan (adbState/adbGranted menggantikan shizukuAvailable/
+ * shizukuGranted).
  */
 @Composable
 fun PermissionSetupScreen(
@@ -102,26 +95,25 @@ fun PermissionSetupScreen(
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
     val canContinue = !requireAccessToContinue || status.hasAccess
 
-    // REWORK PERMISSION (lihat perintah rework — "terkadang bug tidak bisa
-    // di pencet dan kadang permission magisk & shizuku tidak trigger"):
-    // setiap hasil aksi permintaan izin (gagal ATAU berhasil) sekarang
-    // SELALU ditampilkan lewat Snackbar di sini, mengonsumsi
-    // PrivilegeManager.events. Sebelumnya kegagalan seperti server Shizuku
-    // belum hidup hanya `return` diam-diam tanpa memberi tahu pengguna sama
-    // sekali — tap terlihat "tidak berbuat apa-apa".
+    // Setiap hasil aksi permintaan izin (gagal ATAU berhasil) SELALU
+    // ditampilkan lewat Snackbar di sini, mengonsumsi PrivilegeManager.events
+    // — tidak ada lagi kegagalan yang diam-diam tidak memberi tahu pengguna.
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         PrivilegeManager.events.collect { feedback ->
             val message = when (feedback) {
                 is RequestFeedback.Granted -> when (feedback.backend) {
-                    PrivilegeBackend.SHIZUKU -> context.getString(R.string.permission_feedback_shizuku_granted)
+                    PrivilegeBackend.ADB -> context.getString(R.string.permission_feedback_adb_granted)
                     PrivilegeBackend.ROOT -> context.getString(R.string.permission_feedback_root_granted)
                     PrivilegeBackend.NONE -> null
                 }
                 is RequestFeedback.Failed -> when (feedback.reason) {
-                    RequestFailureReason.SHIZUKU_SERVER_NOT_RUNNING -> context.getString(R.string.permission_feedback_shizuku_server_not_running)
-                    RequestFailureReason.SHIZUKU_TOO_OLD -> context.getString(R.string.permission_feedback_shizuku_too_old)
-                    RequestFailureReason.SHIZUKU_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_shizuku_in_progress)
+                    RequestFailureReason.ADB_WIRELESS_DEBUGGING_OFF -> context.getString(R.string.permission_feedback_adb_wireless_debugging_off)
+                    RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED -> context.getString(R.string.permission_feedback_adb_pairing_invalid)
+                    RequestFailureReason.ADB_HOST_UNREACHABLE -> context.getString(R.string.permission_feedback_adb_host_unreachable)
+                    RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR -> context.getString(R.string.permission_feedback_adb_shell_rejected)
+                    RequestFailureReason.ADB_UNKNOWN -> context.getString(R.string.permission_feedback_adb_unknown)
+                    RequestFailureReason.ADB_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_adb_in_progress)
                     RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE -> context.getString(R.string.permission_feedback_root_denied)
                     RequestFailureReason.ROOT_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_root_in_progress)
                 }
@@ -136,21 +128,15 @@ fun PermissionSetupScreen(
         PrivilegeManager.refreshSupportingPermissions(context)
     }
 
-    // Cek ulang izin overlay/write-settings/notifikasi/Shizuku tiap kali
+    // Cek ulang izin overlay/write-settings/notifikasi/ADB/root tiap kali
     // layar ini kembali ke foreground (mis. setelah pengguna kembali dari
-    // halaman pengaturan sistem atau app Shizuku).
+    // halaman Pengaturan Wireless debugging).
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshSupportingPermissions(context)
-                PrivilegeManager.refreshShizuku()
-                // Jaring pengaman: kalau ternyata sudah ada backend granted
-                // (mis. pengguna baru saja approve dialog Shizuku/su di luar
-                // app, atau ini pengguna lama sebelum fitur pemisahan ada)
-                // tapi preferensi belum sempat ter-set, adopsi otomatis di
-                // sini supaya kartu yang lain langsung terkunci begitu
-                // layar ini terlihat lagi.
+                PrivilegeManager.refreshAll()
                 PrivilegeManager.adoptExistingGrantIfNoPreference(context)
             }
         }
@@ -162,12 +148,7 @@ fun PermissionSetupScreen(
         PrivilegeManager.refreshSupportingPermissions(context)
     }
 
-    // Sama seperti jaring pengaman di atas, tapi untuk saat layar ini
-    // PERTAMA kali ditampilkan (bukan cuma saat resume dari background) —
-    // mis. pengguna lama yang baru buka layar Izin Akses pertama kali
-    // setelah update app dan status Shizuku/Root granted-nya sudah terisi
-    // duluan sebelum status.preferredBackend sempat diadopsi dari init().
-    LaunchedEffect(status.shizukuGranted, status.rootGranted) {
+    LaunchedEffect(status.adbGranted, status.rootGranted) {
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
@@ -198,40 +179,36 @@ fun PermissionSetupScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionLabel(text = stringResource(R.string.setup_required_header))
 
-                    // Shizuku dan Root TIDAK BOLEH aktif bersamaan (lihat
-                    // PrivilegeStatus.preferredBackend) — begitu salah satu
-                    // dipilih pengguna, kartu yang lain terkunci (redup +
-                    // tombol nonaktif) sampai pengguna menekan "Ganti metode"
-                    // di bawah. Ini mencegah dua backend privilese berjalan
-                    // berbarengan yang bisa saling menimpa hasil tweak.
-                    val shizukuLocked = status.preferredBackend == PrivilegeBackend.ROOT
-                    val rootLocked = status.preferredBackend == PrivilegeBackend.SHIZUKU
+                    // ADB Tertanam dan Root TIDAK BOLEH aktif bersamaan
+                    // (lihat PrivilegeStatus.preferredBackend) — begitu
+                    // salah satu dipilih pengguna, kartu yang lain terkunci
+                    // (redup + tombol nonaktif) sampai pengguna menekan
+                    // "Ganti metode" di bawah.
+                    val adbLocked = status.preferredBackend == PrivilegeBackend.ROOT
+                    val rootLocked = status.preferredBackend == PrivilegeBackend.ADB
 
-                    PermissionMethodCard(
-                        title = stringResource(R.string.setup_method_shizuku),
-                        description = stringResource(R.string.setup_method_shizuku_desc),
-                        statusText = when {
-                            !status.shizukuAvailable -> stringResource(R.string.setup_status_not_installed)
-                            status.shizukuGranted -> stringResource(R.string.setup_status_granted)
-                            else -> stringResource(R.string.setup_status_not_granted)
-                        },
-                        granted = status.shizukuGranted && !shizukuLocked,
-                        locked = shizukuLocked,
+                    AdbPairingCard(
+                        connected = status.adbGranted && !adbLocked,
+                        paired = status.adbState != AdbConnectionState.NotPaired,
+                        isBusy = status.adbRequestState == RequestState.REQUESTING,
+                        locked = adbLocked,
                         lockedHint = stringResource(R.string.setup_locked_by_root_hint),
-                        actionLabel = when {
-                            !status.shizukuAvailable -> stringResource(R.string.setup_action_install_shizuku)
-                            status.shizukuGranted -> stringResource(R.string.setup_action_open_shizuku)
-                            else -> stringResource(R.string.setup_action_request)
-                        },
-                        onAction = {
-                            when {
-                                !status.shizukuAvailable -> openShizukuStorePage(context)
-                                status.shizukuGranted -> openShizukuApp(context)
-                                else -> PrivilegeManager.requestShizukuPermission(context)
+                        onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
+                        onPair = { host, pairingPort, code, connectPort ->
+                            val pairingPortInt = pairingPort.toIntOrNull()
+                            val connectPortInt = connectPort.toIntOrNull()
+                            if (pairingPortInt != null && connectPortInt != null) {
+                                PrivilegeManager.pairAdb(
+                                    context = context,
+                                    pairingHost = host,
+                                    pairingPort = pairingPortInt,
+                                    pairingCode = code,
+                                    connectPort = connectPortInt,
+                                )
                             }
                         },
-                        isRequesting = status.shizukuRequestState == RequestState.REQUESTING,
-                        requestingLabel = stringResource(R.string.setup_action_requesting),
+                        onReconnect = { PrivilegeManager.reconnectAdb(context) },
+                        onForget = { PrivilegeManager.forgetAdbPairing() },
                     )
 
                     if (!status.hasAccess) {
@@ -248,7 +225,7 @@ fun PermissionSetupScreen(
                         },
                         granted = status.rootGranted && !rootLocked,
                         locked = rootLocked,
-                        lockedHint = stringResource(R.string.setup_locked_by_shizuku_hint),
+                        lockedHint = stringResource(R.string.setup_locked_by_adb_hint),
                         actionLabel = stringResource(R.string.setup_action_request),
                         onAction = { PrivilegeManager.requestRoot(context) },
                         isRequesting = status.rootRequestState == RequestState.REQUESTING,
@@ -257,8 +234,8 @@ fun PermissionSetupScreen(
 
                     // Muncul begitu pengguna sudah memilih salah satu metode
                     // (kartu lain jadi terkunci) — satu-satunya jalan untuk
-                    // beralih ke metode lain tanpa perlu uninstall/copot izin
-                    // manual dari Magisk/Shizuku Manager.
+                    // beralih ke metode lain tanpa perlu mencabut izin
+                    // manual dari Magisk/Pengaturan sistem.
                     AnimatedVisibility(
                         visible = status.preferredBackend != PrivilegeBackend.NONE,
                         enter = fadeIn(),
@@ -465,20 +442,5 @@ private fun OrDivider() {
             fontWeight = FontWeight.SemiBold,
             color = TextMuted,
         )
-    }
-}
-
-private fun openShizukuApp(context: android.content.Context) {
-    val intent = context.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE)
-    if (intent != null) {
-        context.startActivity(intent)
-    } else {
-        openShizukuStorePage(context)
-    }
-}
-
-private fun openShizukuStorePage(context: android.content.Context) {
-    runCatching {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SHIZUKU_PLAY_STORE_URL)))
     }
 }

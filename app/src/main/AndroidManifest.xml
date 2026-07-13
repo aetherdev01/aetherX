@@ -64,16 +64,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Shizuku binder provider — wajib untuk mode non-root.
-             Diproteksi dengan INTERACT_ACROSS_USERS_FULL agar tidak bisa
-             diakses sembarang aplikasi lain. -->
-        <provider
-            android:name="rikka.shizuku.ShizukuProvider"
-            android:authorities="${applicationId}.shizuku"
-            android:multiprocess="false"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <!-- REWORK TOTAL (lihat perintah rework — "hapus semua yang
+             bersangkutan dengan shizuku"): provider rikka.shizuku.ShizukuProvider
+             DIHAPUS. Privilese non-root sekarang ditangani sepenuhnya oleh
+             AetherX sendiri lewat com.aether.x.core.adb (ADB tertanam,
+             wireless pairing Android 11+), tidak butuh provider/manifest
+             component tambahan apa pun — koneksi ADB murni socket TCP
+             lokal ke adbd, tidak lewat ContentProvider/Binder cross-app. -->
 
         <!-- Overlay crosshair: foreground service, "specialUse" karena menampilkan
              elemen bantu di atas aplikasi lain (bukan media/lokasi/dll bawaan Android). -->
