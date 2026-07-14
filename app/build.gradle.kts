@@ -146,9 +146,13 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     // ── Privilege backend: ADB tertanam (mode non-root — menggantikan
-    //    Shizuku total, lihat gradle/libs.versions.toml untuk catatan
-    //    JitPack repo yang wajib ditambahkan di settings.gradle.kts) ────────
-    implementation(libs.dadb)
+    //    Shizuku total). libadb-android sudah punya wireless pairing
+    //    Android 11+ lengkap & teruji, tidak perlu implementasi kripto
+    //    custom. conscrypt WAJIB untuk TLS 1.3 pairing, sun-security-android
+    //    WAJIB untuk generate X509Certificate dari keypair AetherX. ───────
+    implementation(libs.libadb)
+    implementation(libs.sun.security.android)
+    implementation(libs.conscrypt)
 
     // ── Privilege backend: libsu (mode root — Magisk / KernelSU / APatch) ───
     implementation(libs.libsu.core)

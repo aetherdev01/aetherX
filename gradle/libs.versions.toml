@@ -32,14 +32,21 @@ coroutines              = "1.9.0"
 # REWORK TOTAL (lihat perintah rework — "buatkan sistem seperti shizuku
 # langsung tertanam dalam aplikasinya... hapus semua yang bersangkutan
 # dengan shizuku"): dependency Shizuku (dev.rikka.shizuku:api/provider)
-# DIHAPUS TOTAL. Digantikan "dadb" — ADB client murni-Kotlin (dipakai juga
-# oleh Maestro) yang mengimplementasikan protokol ADB asli TERMASUK
-# wireless pairing Android 11+ (com.mobiledevinc.dadb.AdbPairingClient) dan
-# shell client (Dadb.create/shell), sehingga AetherX sendiri yang berperan
-# sebagai "Shizuku Manager"-nya sendiri: tidak perlu app Shizuku eksternal
-# terpasang sama sekali, hanya perlu perangkat mengaktifkan Wireless
-# Debugging (built-in Android 11+, sama seperti prasyarat Shizuku).
-dadb                    = "1.2.10"
+# DIHAPUS TOTAL.
+#
+# KOREKSI PENTING dari versi sebelumnya: "dadb" (dev.mobile:dadb) TERNYATA
+# TIDAK menyediakan wireless pairing Android 11+ sama sekali (hanya
+# shell/install client ke device yang sudah authorized) — percobaan
+# menuliskan protokol pairing (SPAKE2 + TLS custom) dari nol GAGAL karena
+# API kriptografinya tidak bisa diverifikasi tanpa akses jaringan penuh.
+# Digantikan "libadb-android" (io.github.muntashirakon.adb, oleh pembuat
+# App Manager) yang SUDAH mengimplementasikan wireless pairing Android 11+
+# secara lengkap dan teruji (dipakai production oleh App Manager sendiri)
+# lewat method AbsAdbConnectionManager.pair(host, port, pairingCode) —
+# tidak perlu menulis kripto pairing sendiri sama sekali.
+libadb                  = "3.1.1"
+sunSecurityAndroid      = "1.1"
+conscrypt               = "2.5.3"
 libsu                   = "6.0.0"
 
 # Firebase (ID pengguna global via Firestore counter)
@@ -96,12 +103,23 @@ androidx-datastore-preferences          = { group = "androidx.datastore",       
 kotlinx-coroutines-android              = { group = "org.jetbrains.kotlinx",     name = "kotlinx-coroutines-android",  version.ref = "coroutines"          }
 
 # ── Privilege backends: ADB tertanam (no-root, menggantikan Shizuku) ─────────
-# "dadb" di-host di JitPack (bukan Maven Central) — WAJIB tambahkan
+# "libadb-android" DI-HOST DI JITPACK — WAJIB tambahkan
 #     maven { url = uri("https://jitpack.io") }
 # di blok `dependencyResolutionManagement.repositories` pada
-# settings.gradle.kts (bukan di build.gradle.kts module ini), kalau belum
-# ada. Tanpa ini Gradle tidak akan bisa resolve "com.github.mobile-dev-inc:dadb".
-dadb                                     = { group = "com.github.mobile-dev-inc", name = "dadb",                       version.ref = "dadb"                }
+# settings.gradle.kts (SUDAH ADA di project ini berdasarkan file yang
+# pernah dibagikan, jadi seharusnya tidak perlu langkah tambahan).
+libadb                                   = { group = "com.github.MuntashirAkon",   name = "libadb-android",             version.ref = "libadb"              }
+
+# sun.security port untuk Android — dipakai untuk generate X509Certificate
+# self-signed dari keypair RSA AetherX (Android standar tidak expose
+# sun.security.x509 yang dibutuhkan libadb-android untuk membuat sertifikat
+# tanpa dependency tambahan ini).
+sun-security-android                    = { group = "com.github.MuntashirAkon",   name = "sun-security-android",       version.ref = "sunSecurityAndroid"  }
+
+# Conscrypt — provider TLS 1.3 dipakai libadb-android untuk Wireless
+# debugging (pairing & koneksi TLS Android 11+). WAJIB, bukan opsional,
+# untuk fitur pairing kode 6-digit.
+conscrypt                               = { group = "org.conscrypt",              name = "conscrypt-android",           version.ref = "conscrypt"           }
 
 # ── Privilege backends: root / Magisk / KernelSU / APatch) ───────────
 libsu-core                              = { group = "com.github.topjohnwu.libsu", name = "core",                       version.ref = "libsu"               }

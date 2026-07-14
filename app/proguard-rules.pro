@@ -91,18 +91,25 @@
 -dontwarn androidx.datastore.**
 
 # =============================================================================
-# ADB TERTANAM ("dadb") — REWORK TOTAL (lihat perintah rework — "hapus
-# semua yang bersangkutan dengan shizuku"): rule rikka.shizuku/moe.shizuku
-# DIHAPUS (library-nya sudah tidak lagi jadi dependency, lihat
-# gradle/libs.versions.toml). "dadb" murni Kotlin tanpa reflection berat
-# maupun AIDL/Binder cross-process, tapi tetap di-keep utuh karena
-# berkomunikasi lewat protokol biner ADB (parsing manual byte-level) yang
-# rawan salah kalau class-nya di-obfuscate/di-shrink R8.
+# ADB TERTANAM ("libadb-android") — REWORK TOTAL (lihat perintah rework —
+# "hapus semua yang bersangkutan dengan shizuku"): rule rikka.shizuku/
+# moe.shizuku DIHAPUS (library-nya sudah tidak lagi jadi dependency).
+# Library ini + sun-security-android (generate X509Certificate) +
+# Conscrypt (provider TLS 1.3 untuk wireless pairing) berkomunikasi lewat
+# protokol biner ADB/TLS (parsing manual byte-level, refleksi provider
+# security) yang rawan salah kalau class-nya di-obfuscate/di-shrink R8.
 # =============================================================================
--keep class dadb.** { *; }
--keep interface dadb.** { *; }
--keepclassmembers class dadb.** { *; }
--dontwarn dadb.**
+-keep class io.github.muntashirakon.adb.** { *; }
+-keep interface io.github.muntashirakon.adb.** { *; }
+-keepclassmembers class io.github.muntashirakon.adb.** { *; }
+-dontwarn io.github.muntashirakon.adb.**
+
+-keep class android.sun.security.** { *; }
+-keepclassmembers class android.sun.security.** { *; }
+-dontwarn android.sun.security.**
+
+-keep class org.conscrypt.** { *; }
+-dontwarn org.conscrypt.**
 
 # =============================================================================
 # LIBSU (com.topjohnwu.superuser) — eksekusi shell root

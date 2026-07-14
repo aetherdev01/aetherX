@@ -1,8 +1,6 @@
 package com.aether.x.core.shell
 
 import com.aether.x.core.adb.AdbConnectionManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * REWORK TOTAL PERMISSION (lihat perintah rework — "buatkan sistem
@@ -11,11 +9,11 @@ import kotlinx.coroutines.withContext
  * ShizukuShellExecutor (DIHAPUS) sepenuhnya.
  *
  * Menjalankan perintah shell lewat koneksi ADB tertanam AetherX
- * ([AdbConnectionManager]) — secara fungsional PERSIS seperti
- * ShizukuShellExecutor sebelumnya (UID `shell`, akses ke perintah seperti
- * `settings put`, `wm`, `cmd`, `pm`, dll yang tidak butuh root), bedanya
- * koneksi socket ADB-nya dikelola langsung oleh AetherX sendiri tanpa
- * bergantung app Shizuku eksternal.
+ * ([AdbConnectionManager], dibangun di atas library `libadb-android`) —
+ * secara fungsional PERSIS seperti ShizukuShellExecutor sebelumnya (UID
+ * `shell`, akses ke perintah seperti `settings put`, `wm`, `cmd`, `pm`,
+ * dll yang tidak butuh root), bedanya koneksi ADB-nya dikelola langsung
+ * oleh AetherX sendiri tanpa bergantung app Shizuku eksternal.
  *
  * Semua caller yang sebelumnya memakai [ShellExecutor] (interface yang
  * SAMA, tidak berubah) lewat `PrivilegeManager.getExecutor()` tidak perlu
@@ -26,19 +24,17 @@ class EmbeddedShellExecutor : ShellExecutor {
 
     override val backendName: String = "ADB"
 
-    override suspend fun exec(command: String): ShellResult = withContext(Dispatchers.IO) {
-        val dadb = AdbConnectionManager.currentDadb()
-            ?: return@withContext ShellResult.failure("Belum terhubung ke ADB tertanam AetherX.")
-        try {
-            val response = dadb.shell(command)
+    override suspend fun exec(command: String): ShellResult {
+        if (!AdbConnectionManager.isConnected()) {
+            return ShellResult.failure("Belum terhubung ke ADB tertanam AetherX.")
+        }
+        return try {
+            val (exitCode, output) = AdbConnectionManager.execShell(command)
+            val lines = output.lineSequence().filter { it.isNotEmpty() }.toList()
             ShellResult(
-                success = response.exitCode == 0,
-                output = response.output.lineSequence().filter { it.isNotEmpty() }.toList(),
-                error = if (response.exitCode != 0) {
-                    response.output.lineSequence().filter { it.isNotEmpty() }.toList()
-                } else {
-                    emptyList()
-                },
+                success = exitCode == 0,
+                output = lines,
+                error = if (exitCode != 0) lines else emptyList(),
             )
         } catch (t: Throwable) {
             ShellResult.failure(t.message ?: "Gagal menjalankan perintah lewat ADB tertanam")
