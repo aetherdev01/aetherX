@@ -513,9 +513,6 @@
     <string name="game_booster_metrics_temp">Suhu</string>
     <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root/Shizuku di tab Tweak untuk FPS real-time</string>
 
-    <string name="game_booster_screenshot_success">Screenshot tersimpan di galeri</string>
-    <string name="game_booster_screenshot_failed">Gagal mengambil screenshot pastikan Root/Shizuku aktif</string>
-
     <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
     <string name="game_booster_sidebar_close">Tutup</string>
     <string name="game_booster_sidebar_end_session">Akhiri Sesi Boost</string>
