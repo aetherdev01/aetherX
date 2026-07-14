@@ -11,8 +11,9 @@ import kotlinx.coroutines.withContext
 /**
  * Deteksi (BUKAN pemblokiran/pemaksaan) tiga sinyal umum yang menunjukkan
  * pengguna kemungkinan memblokir iklan di level sistem/jaringan — interface
- * VPN aktif, DNS custom yang cocok penyedia DNS pemblokir iklan yang
- * dikenal, dan modul Magisk yang dikenal terkait adblock. Logika
+ * VPN aktif, DNS custom (baik IP resolver manual MAUPUN hostname Private
+ * DNS seperti "dns.adguard.com") yang cocok penyedia DNS pemblokir iklan
+ * yang dikenal, dan modul Magisk yang dikenal terkait adblock. Logika
  * pencocokan sinyal ada di native (lihat adblockguard.cpp) — file ini
  * HANYA bertugas mengumpulkan data OS/jaringan yang dibutuhkan pencocokan
  * itu (lewat API Android biasa + [PrivilegeManager] yang sudah ada untuk
@@ -113,6 +114,23 @@ object AdBlockDetector {
      * cocokkan lewat native terhadap daftar penyedia DNS pemblokir iklan
      * yang dikenal (lihat adblockguard.cpp untuk daftarnya & sumber
      * verifikasinya).
+     *
+     * BUG FIX — sebelumnya hanya membaca [android.net.LinkProperties.dnsServers]
+     * (daftar IP resolver DNS biasa), TIDAK PERNAH membaca
+     * [android.net.LinkProperties.privateDnsServerName] (API 28+) sama
+     * sekali. Ini dua API BERBEDA: kalau pengguna set Private DNS mode
+     * "Hostname" di Settings -> Network -> Private DNS (persis skenario
+     * "dns.adguard.com" — BUKAN mengisi manual DNS1/DNS2 di pengaturan
+     * WiFi), maka nilai HOSTNAME itu ("dns.adguard.com") hanya muncul di
+     * [privateDnsServerName]; [dnsServers] pada mode ini seringkali TETAP
+     * berisi resolver bawaan carrier/router (karena resolusi DoT terjadi
+     * transparan di level sistem) atau malah kosong — jadi walau native
+     * punya daftar IP AdGuard yang benar, tidak akan pernah cocok karena
+     * IP AdGuard-nya tidak pernah benar-benar sampai ke sisi Kotlin ini.
+     * Sekarang hostname itu ikut dikumpulkan sebagai kandidat tambahan,
+     * supaya native BISA mencocokkan by-hostname (jauh lebih andal
+     * daripada menebak IP resolver DoT yang bisa berubah-ubah) selain
+     * by-IP seperti sebelumnya.
      */
     private fun detectAdBlockDns(context: Context): Boolean {
         val dnsServers = readConfiguredDnsServers(context)
@@ -125,7 +143,22 @@ object AdBlockDetector {
             ?: return emptyList()
         val network = cm.activeNetwork ?: return emptyList()
         val linkProperties = cm.getLinkProperties(network) ?: return emptyList()
-        linkProperties.dnsServers.mapNotNull { it.hostAddress }
+
+        val resolverIps = linkProperties.dnsServers.mapNotNull { it.hostAddress }
+
+        // privateDnsServerName ada sejak API 28 (Android 9) — hanya terisi
+        // saat mode Private DNS "Hostname" AKTIF (bukan "Automatic"/"Off").
+        // Selalu null di bawah API 28, aman diabaikan (guard versi di
+        // bawah), dan null juga di device modern kalau pengguna sedang
+        // TIDAK pakai Private DNS hostname sama sekali — bukan bug, memang
+        // begitu kontraknya.
+        val privateDnsHostname = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            linkProperties.privateDnsServerName
+        } else {
+            null
+        }
+
+        resolverIps + listOfNotNull(privateDnsHostname)
     }.getOrDefault(emptyList())
 
     /**

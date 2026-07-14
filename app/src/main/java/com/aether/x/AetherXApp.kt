@@ -100,7 +100,6 @@ class AetherXApp : Application() {
         try {
             NativeIntegrityGuard.verifyOrDie(this)
         } catch (e: UnsatisfiedLinkError) {
-            Log.e("AetherXApp", "GAGAL memuat libaetherX.so di NativeIntegrityGuard — lihat log SignatureGuard untuk penjelasan lengkap.", e)
             Process.killProcess(Process.myPid())
             return
         }

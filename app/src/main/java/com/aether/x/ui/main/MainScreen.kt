@@ -14,10 +14,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -27,11 +29,14 @@ import com.aether.x.R
 import com.aether.x.core.ads.AdBlockDetector
 import com.aether.x.core.ads.AdBlockDialog
 import com.aether.x.core.ads.AdBlockDialogState
+import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 
@@ -55,8 +60,30 @@ fun MainScreen(
     // dialog aktualnya (lihat [AdBlockDialog] di bawah) yang benar-benar
     // menentukan kapan tampil, jadi di sini TIDAK perlu cast ke Activity
     // sama sekali.
+    //
+    // BUG FIX (lihat perintah rework — "fix AdBlock tidak berfungsi", kasus
+    // root-mode AdAway/hosts Magisk module tidak terdeteksi): SEBELUMNYA
+    // detect() langsung dipanggil begitu MainScreen pertama kali masuk
+    // komposisi, TANPA menunggu PrivilegeManager.status.checkingRoot selesai
+    // — checkRootSilently() di PrivilegeManager.init() (dipanggil dari
+    // AetherXApp.onCreate, JAUH sebelum MainScreen tampil secara urutan
+    // kode, tapi Shell.getShell() di dalamnya ASYNC dan bisa makan waktu
+    // signifikan tergantung solusi root device) punya kemungkinan nyata
+    // BELUM SELESAI saat baris ini sempat jalan duluan — kalau begitu,
+    // activeBackend masih terbaca NONE, dan
+    // AdBlockDetector.detectMagiskModule() (yang HANYA jalan kalau backend
+    // aktif persis ROOT) langsung di-skip walau root SUDAH granted,
+    // sehingga modul Magisk root-mode AdAway (kata kunci "adaway" sudah
+    // benar ada di adblockguard.cpp) tidak pernah benar-benar dicek sama
+    // sekali. Sekarang menunggu checkingRoot selesai dulu (dengan timeout
+    // wajar) sebelum detect() dipanggil, supaya sinyal backend yang dibaca
+    // sudah settled/akurat.
+    val privilegeStatus by PrivilegeManager.status.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(Unit) {
+        withTimeoutOrNull(5_000) {
+            snapshotFlow { privilegeStatus.checkingRoot }.first { checking -> !checking }
+        }
         val signals = AdBlockDetector.detect(context)
         if (signals.anyDetected) {
             AdBlockDialogState.requestShow()
