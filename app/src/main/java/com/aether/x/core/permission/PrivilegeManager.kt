@@ -219,7 +219,6 @@ object PrivilegeManager {
                 pairingHost = pairingHost,
                 pairingPort = pairingPort,
                 pairingCode = pairingCode,
-                connectHost = pairingHost,
                 connectPort = connectPort,
             )
         }
