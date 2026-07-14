@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
+import com.aether.x.ui.theme.Spacing
 
 /**
  * Watermark logo transparan di pojok kiri-atas — dipakai bersama oleh KEDUA
@@ -62,7 +63,7 @@ private fun SectionCardWatermark(icon: ImageVector? = null) {
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             modifier = Modifier
-                .padding(top = 4.dp, start = 4.dp)
+                .padding(top = Spacing.xs, start = Spacing.xs)
                 .size(84.dp),
         )
     } else {
@@ -71,7 +72,7 @@ private fun SectionCardWatermark(icon: ImageVector? = null) {
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             modifier = Modifier
-                .padding(top = 4.dp, start = 4.dp)
+                .padding(top = Spacing.xs, start = Spacing.xs)
                 .size(84.dp),
         )
     }
@@ -102,8 +103,8 @@ fun SectionCard(
         Box(modifier = Modifier.clipToBounds()) {
             SectionCardWatermark(icon = watermarkIcon)
             Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp),
+                modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
                 Text(
                     text = title,
@@ -141,8 +142,8 @@ fun SectionCard(
         Box(modifier = Modifier.clipToBounds()) {
             SectionCardWatermark(icon = watermarkIcon)
             Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
                 content()
             }

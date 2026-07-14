@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.theme.Spacing
 
 /**
  * Tab "About" tersendiri (dulu section "Tentang" ditumpuk di paling bawah
@@ -58,8 +59,8 @@ fun AboutScreen(
             .fillMaxSize()
             .padding(contentPadding)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         Text(
             text = stringResource(R.string.nav_about),
@@ -70,7 +71,7 @@ fun AboutScreen(
         MaintainerHeroCard(versionName = BuildConfig.VERSION_NAME)
 
         SectionCard(title = stringResource(R.string.about_section_links), watermarkIcon = Icons.Outlined.Link) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 CommunityLinkRow(
                     iconRes = R.drawable.ic_social_whatsapp,
                     title = stringResource(R.string.about_link_whatsapp_title),
@@ -113,7 +114,7 @@ private fun MaintainerHeroCard(versionName: String) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
             Image(
                 painter = painterResource(id = R.drawable.dev),
@@ -138,14 +139,14 @@ private fun MaintainerHeroCard(versionName: String) {
                     text = stringResource(R.string.about_maintainer_role),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = Spacing.xs),
                 )
             }
         }
 
         HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.padding(vertical = 14.dp),
+            modifier = Modifier.padding(vertical = Spacing.lg),
         )
 
         Row(
@@ -168,7 +169,7 @@ private fun MaintainerHeroCard(versionName: String) {
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
                     .background(MaterialTheme.colorScheme.secondaryContainer)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             ) {
                 Text(
                     text = stringResource(R.string.about_version, versionName),
@@ -208,9 +209,9 @@ private fun CommunityLinkRow(
                     // dengan aman daripada membuat aplikasi crash.
                 }
             }
-            .padding(vertical = 12.dp),
+            .padding(vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         // REWORK: ikon dibungkus Box putih dengan sedikit inset (padding
         // 6dp) sebelum digambar, alih-alih Image di-crop CircleShape secara

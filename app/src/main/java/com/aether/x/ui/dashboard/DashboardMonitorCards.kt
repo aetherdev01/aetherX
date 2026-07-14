@@ -44,6 +44,7 @@ import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.theme.Spacing
 
 /**
  * REWORK TOTAL (lihat perintah rework — "rework total tampilan Dashboard...
@@ -77,7 +78,7 @@ fun AetherXInfoCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
@@ -90,7 +91,7 @@ fun AetherXInfoCard(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 14.dp),
+                .padding(start = Spacing.lg),
         ) {
             Text(
                 text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
@@ -101,7 +102,7 @@ fun AetherXInfoCard(
                 text = stringResource(R.string.dashboard_hero_kicker),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = Spacing.xs),
             )
         }
         PrivilegeBackendPill(activeBackend)
@@ -129,7 +130,7 @@ private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(bgColor)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
     ) {
         Text(
             text = label,
@@ -160,7 +161,7 @@ fun GameActivitySection(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -178,7 +179,7 @@ fun GameActivitySection(
 
         when {
             loading -> Box(
-                modifier = Modifier.fillMaxWidth().height(112.dp).padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth().height(112.dp).padding(top = Spacing.md),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
@@ -187,11 +188,11 @@ fun GameActivitySection(
                 text = stringResource(R.string.dashboard_game_activity_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp),
+                modifier = Modifier.padding(top = Spacing.md),
             )
             else -> LazyRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.md),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 items(games, key = { it.packageName }) { game ->
                     GameActivityCard(
@@ -216,7 +217,7 @@ private fun GameActivityCard(
             .width(84.dp)
             .clip(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = Spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
@@ -232,7 +233,7 @@ private fun GameActivityCard(
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp).wrapContentWidth(),
+            modifier = Modifier.padding(top = Spacing.sm).wrapContentWidth(),
         )
         if (isLastPlayed) {
             Text(
@@ -241,7 +242,7 @@ private fun GameActivityCard(
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = Spacing.xs),
             )
         }
     }
@@ -266,60 +267,61 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
             return@SectionCard
         }
 
-        Text(
-            text = stringResource(R.string.dashboard_device_info_group_identity),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
-        DeviceInfoRow(
-            icon = Icons.Outlined.PhoneAndroid,
-            label = stringResource(R.string.dashboard_device_model),
-            value = "${info.manufacturer} ${info.model}".trim(),
-        )
-        DeviceInfoRow(
-            icon = Icons.Outlined.DeveloperBoard,
-            label = stringResource(R.string.dashboard_device_chipset),
-            value = info.board.ifBlank { "-" },
-        )
-        DeviceInfoRow(
-            icon = Icons.Outlined.Android,
-            label = stringResource(R.string.dashboard_device_android_version),
-            value = stringResource(R.string.dashboard_device_android_version_format, info.androidVersion, info.sdkInt),
-        )
-        DeviceInfoRow(
-            icon = Icons.Outlined.Memory,
-            label = stringResource(R.string.dashboard_device_cpu_abi),
-            value = info.cpuAbi.ifBlank { "-" },
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            Text(
+                text = stringResource(R.string.dashboard_device_info_group_identity),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            DeviceInfoRow(
+                icon = Icons.Outlined.PhoneAndroid,
+                label = stringResource(R.string.dashboard_device_model),
+                value = "${info.manufacturer} ${info.model}".trim(),
+            )
+            DeviceInfoRow(
+                icon = Icons.Outlined.DeveloperBoard,
+                label = stringResource(R.string.dashboard_device_chipset),
+                value = info.board.ifBlank { "-" },
+            )
+            DeviceInfoRow(
+                icon = Icons.Outlined.Android,
+                label = stringResource(R.string.dashboard_device_android_version),
+                value = stringResource(R.string.dashboard_device_android_version_format, info.androidVersion, info.sdkInt),
+            )
+            DeviceInfoRow(
+                icon = Icons.Outlined.Memory,
+                label = stringResource(R.string.dashboard_device_cpu_abi),
+                value = info.cpuAbi.ifBlank { "-" },
+            )
+        }
 
         androidx.compose.material3.HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            modifier = Modifier.padding(vertical = 12.dp),
         )
 
-        Text(
-            text = stringResource(R.string.dashboard_device_info_group_usage),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
-        val usedRam = info.totalRamBytes - info.availableRamBytes
-        UsageBarRow(
-            icon = Icons.Outlined.Memory,
-            label = stringResource(R.string.dashboard_device_ram),
-            usedLabel = usedRam.toGbLabel(),
-            totalLabel = info.totalRamBytes.toGbLabel(),
-            progress = if (info.totalRamBytes > 0) usedRam.toFloat() / info.totalRamBytes.toFloat() else 0f,
-        )
-        val usedStorage = info.totalStorageBytes - info.availableStorageBytes
-        UsageBarRow(
-            icon = Icons.Outlined.SdStorage,
-            label = stringResource(R.string.dashboard_device_storage),
-            usedLabel = usedStorage.toGbLabel(),
-            totalLabel = info.totalStorageBytes.toGbLabel(),
-            progress = if (info.totalStorageBytes > 0) usedStorage.toFloat() / info.totalStorageBytes.toFloat() else 0f,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            Text(
+                text = stringResource(R.string.dashboard_device_info_group_usage),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            val usedRam = info.totalRamBytes - info.availableRamBytes
+            UsageBarRow(
+                icon = Icons.Outlined.Memory,
+                label = stringResource(R.string.dashboard_device_ram),
+                usedLabel = usedRam.toGbLabel(),
+                totalLabel = info.totalRamBytes.toGbLabel(),
+                progress = if (info.totalRamBytes > 0) usedRam.toFloat() / info.totalRamBytes.toFloat() else 0f,
+            )
+            val usedStorage = info.totalStorageBytes - info.availableStorageBytes
+            UsageBarRow(
+                icon = Icons.Outlined.SdStorage,
+                label = stringResource(R.string.dashboard_device_storage),
+                usedLabel = usedStorage.toGbLabel(),
+                totalLabel = info.totalStorageBytes.toGbLabel(),
+                progress = if (info.totalStorageBytes > 0) usedStorage.toFloat() / info.totalStorageBytes.toFloat() else 0f,
+            )
+        }
     }
 }
 
@@ -354,7 +356,7 @@ private fun UsageBarRow(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp),
+                    modifier = Modifier.padding(start = Spacing.md),
                 )
             }
             Text(
@@ -367,7 +369,7 @@ private fun UsageBarRow(
             progress = { clampedProgress },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = Spacing.sm)
                 .height(6.dp)
                 .clip(RoundedCornerShape(999.dp)),
             color = barColor,
@@ -398,7 +400,7 @@ private fun DeviceInfoRow(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = Spacing.md),
             )
         }
         Text(

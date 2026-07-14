@@ -187,7 +187,7 @@
          terakhir dipakai ditandai chip khusus. Monitor CPU/GPU/Suhu
          (dashboard_monitor_*) DIHAPUS dari Dashboard, dipindah jadi
          domain khusus Game Booster. -->
-    <string name="dashboard_section_game_activity">Aktivitas Game</string>
+    <string name="dashboard_section_game_activity">AKTIVITAS GAME</string>
     <string name="dashboard_game_activity_last_used">Terakhir dipakai</string>
     <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
     <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
@@ -502,7 +502,7 @@
     <string name="game_booster_radial_touch_boost">Akselerasi\nSentuhan</string>
     <string name="game_booster_radial_screenshot">Tangkapan\nLayar</string>
     <string name="game_booster_radial_whatsapp">WhatsApp</string>
-    <string name="game_booster_radial_ax_mode">AX-MODE</string>
+    <string name="game_booster_radial_ax_mode">AXKM-MODE</string>
     <string name="game_booster_radial_quick_preset_applied_format">Preset %1$s diterapkan</string>
 
     <string name="game_booster_metrics_title">Monitoring</string>
@@ -525,7 +525,7 @@
          tombol khusus card floating compact, beda konteks dari
          game_booster_launch_cta (yang untuk layar PEMILIHAN game sebelum
          sesi dimulai) string ini untuk saat sesi SUDAH aktif. -->
-    <string name="game_booster_sidebar_header">Game Corner</string>
+    <string name="game_booster_sidebar_header">AetherX Corner</string>
     <string name="game_booster_sidebar_launch">Luncurkan</string>
 
     <string name="game_booster_notification_channel">Game Booster Aktif</string>

@@ -85,6 +85,7 @@ import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
+import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
 
@@ -214,8 +215,8 @@ fun TweakScreen(
                             Modifier.verticalScroll(rememberScrollState())
                         },
                     )
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
                 // Header "AetherX" (ikon + judul) + pill ID pengguna SELALU
                 // tampil, di SEMUA sub-tab (Dashboard/Tweak/Game
@@ -559,7 +560,7 @@ private fun TweakDrawerContent(
         text = stringResource(R.string.app_name),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
+        modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.lg),
     )
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.nav_dashboard)) },
@@ -567,7 +568,7 @@ private fun TweakDrawerContent(
         selected = selected == TweakSubTab.DASHBOARD,
         onClick = { onSelect(TweakSubTab.DASHBOARD) },
         colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
     )
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.nav_tweak)) },
@@ -575,7 +576,7 @@ private fun TweakDrawerContent(
         selected = selected == TweakSubTab.TWEAK,
         onClick = { onSelect(TweakSubTab.TWEAK) },
         colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
     )
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.nav_game_profile)) },
@@ -583,7 +584,7 @@ private fun TweakDrawerContent(
         selected = selected == TweakSubTab.GAME_PROFILE,
         onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
         colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = 12.dp),
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
     )
     // FITUR BARU — lihat KDoc lengkap di atas kelas ini soal Game Booster:
     // TERSEDIA UNTUK SEMUA BACKEND (bukan di-gate showRootOnlyItems) karena
@@ -646,20 +647,20 @@ private fun TweakDrawerContent(
         onClick = if (GAME_BOOSTER_DRAWER_LOCKED) LOCKED_ITEM_NO_OP_CLICK else onNavigateToGameBooster,
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
             .alpha(if (GAME_BOOSTER_DRAWER_LOCKED) 0.38f else 1f),
     )
 
     if (showRootOnlyItems) {
         HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
         )
         Text(
             text = stringResource(R.string.drawer_root_only_label),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
             label = { Text(stringResource(R.string.kernel_manager_title)) },
@@ -667,7 +668,7 @@ private fun TweakDrawerContent(
             selected = selected == TweakSubTab.KERNEL_MANAGER,
             onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
             colors = NavigationDrawerItemDefaults.colors(),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
             label = { Text(stringResource(R.string.nav_app_manager)) },
@@ -675,7 +676,7 @@ private fun TweakDrawerContent(
             selected = selected == TweakSubTab.APP_MANAGER,
             onClick = { onSelect(TweakSubTab.APP_MANAGER) },
             colors = NavigationDrawerItemDefaults.colors(),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
             label = { Text(stringResource(R.string.nav_build_prop)) },
@@ -683,7 +684,7 @@ private fun TweakDrawerContent(
             selected = selected == TweakSubTab.BUILD_PROP,
             onClick = { onSelect(TweakSubTab.BUILD_PROP) },
             colors = NavigationDrawerItemDefaults.colors(),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
     }
 }
@@ -747,18 +748,22 @@ private fun TweakHeader(
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
-            Spacer(modifier = Modifier.width(4.dp))
-            Image(
-                painter = painterResource(id = R.drawable.ic_aetherx_logo),
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-            )
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(start = 12.dp),
-            )
+            Spacer(modifier = Modifier.width(Spacing.sm))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_aetherx_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                )
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
         }
         if (userId != null) {
             // REWORK (lihat perintah rework — "warna card ... default

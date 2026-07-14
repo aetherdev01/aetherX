@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.theme.Spacing
 
 /**
  * Pill kecil gaya AetherX (mis. "ID-76957", "Disconnected"): latar gelap,
@@ -47,7 +48,7 @@ fun StatusPill(
         modifier = modifier
             .clip(CircleShape)
             .background(containerColor)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingIcon != null) {
@@ -57,7 +58,7 @@ fun StatusPill(
                 tint = leadingIconTint,
                 modifier = Modifier.size(14.dp),
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(Spacing.xs))
         }
         if (dotColor != null) {
             Box(
@@ -66,7 +67,7 @@ fun StatusPill(
                     .clip(CircleShape)
                     .background(dotColor),
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(Spacing.xs))
         }
         Text(
             text = text,
