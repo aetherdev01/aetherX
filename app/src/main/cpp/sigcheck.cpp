@@ -6,7 +6,7 @@
 // sehingga tidak bisa langsung ditemukan lewat `strings libaetherX.so`
 // atau decompiler Java biasa (jadx/apktool). Ini menaikkan biaya untuk
 // orang yang mau patch APK (resign dengan kunci lain lalu hilangkan
-// pengecekan) — TIDAK membuatnya mustahil, tapi jadi jauh lebih ribet
+// pengecekan) TIDAK membuatnya mustahil, tapi jadi jauh lebih ribet
 // dibanding kalau expected hash ada sebagai string plain di Kotlin.
 //
 // CARA KERJA:
@@ -24,13 +24,13 @@
 // bisa: (a) hook fungsi ini lewat Frida dan paksa selalu return true,
 // (b) patch langsung instruksi cmp di .so pakai lief/radare2, atau
 // (c) pakai LSPosed module untuk intercept JNI call sebelum sampai sini.
-// Tujuan kode ini adalah menaikkan effort, bukan membuat 100% aman —
+// Tujuan kode ini adalah menaikkan effort, bukan membuat 100% aman
 // kombinasikan dengan cek sisi server (LicenseRepository/Firestore rules)
 // untuk validasi yang benar-benar tidak bisa dipalsukan client.
 //
 // Expected hash (SHA-256 signing cert aetherx.jks, format hex tanpa ':'):
 // B8D371C1A06F445E278C66722903F1B8C21D61E7D427FFF5550B3BA06E4CEC58
-// — TIDAK disimpan plain di bawah, lihat kEncodedHash + kXorKey.
+// TIDAK disimpan plain di bawah, lihat kEncodedHash + kXorKey.
 
 #include <jni.h>
 #include <cstdint>
@@ -41,7 +41,7 @@
 
 #define LOG_TAG "AetherXSig"
 // Sengaja TIDAK ada logging sama sekali di path verifikasi ini di build
-// release — logcat adalah salah satu cara termudah orang lain memahami
+// release logcat adalah salah satu cara termudah orang lain memahami
 // alur cek ini. Makro di bawah no-op kecuali NDEBUG tidak didefinisikan.
 #ifdef AETHERX_DEBUG_LOG
 #define SIG_LOG(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -54,7 +54,7 @@ namespace {
 constexpr int kHashLen = 32;
 
 // Hash asli di-XOR per-byte dengan keystream di bawah supaya tidak ada
-// 32-byte run yang persis sama dengan SHA-256 asli di dalam binary .so —
+// 32-byte run yang persis sama dengan SHA-256 asli di dalam binary .so
 // keduanya (key & enc) harus ada bareng untuk merekonstruksi nilai asli,
 // jadi orang yang cuma dump satu array ini saja tidak langsung dapat hash-nya.
 constexpr uint8_t kXorKey[kHashLen] = {
@@ -93,11 +93,11 @@ bool constantTimeEquals(const uint8_t* a, const uint8_t* b, int len) {
 }  // namespace
 
 // PENAMAAN FUNGSI: sengaja PENDEK (nvfy/nvfy2), bukan konvensi panjang
-// `Java_com_aether_x_..._nativeVerify` — karena native method di sini
+// `Java_com_aether_x_..._nativeVerify` karena native method di sini
 // didaftarkan MANUAL lewat RegisterNatives() di jni_onload.cpp, bukan
 // dicari otomatis oleh JVM lewat pencocokan nama simbol. Kotlin-nya
 // (SignatureGuard.kt: `external fun nativeVerify`) tidak perlu tahu atau
-// berubah sama sekali — pemetaan nama Kotlin -> fungsi C++ ini terjadi di
+// berubah sama sekali pemetaan nama Kotlin -> fungsi C++ ini terjadi di
 // satu tempat saja (jni_onload.cpp), bukan lewat nama simbol yang panjang.
 extern "C" JNIEXPORT jboolean JNICALL
 nvfy(JNIEnv* env, jobject /* thiz */, jbyteArray actualHashBytes) {
@@ -109,7 +109,7 @@ nvfy(JNIEnv* env, jobject /* thiz */, jbyteArray actualHashBytes) {
 
     jsize len = env->GetArrayLength(actualHashBytes);
     if (len != kHashLen) {
-        // Panjang salah (bukan SHA-256) — pasti bukan hash valid, tolak
+        // Panjang salah (bukan SHA-256) pasti bukan hash valid, tolak
         // tanpa perlu decode expected hash sama sekali.
         SIG_LOG("unexpected hash length: %d", len);
         return JNI_FALSE;
@@ -132,7 +132,7 @@ nvfy(JNIEnv* env, jobject /* thiz */, jbyteArray actualHashBytes) {
 }
 
 // Titik verifikasi kedua yang independen, dipanggil dari tempat lain di app
-// (lihat SignatureGuard.kt: verifyAgain()) — SENGAJA fungsi terpisah
+// (lihat SignatureGuard.kt: verifyAgain()) SENGAJA fungsi terpisah
 // (bukan cuma alias) dengan nama simbol berbeda, supaya orang yang patch
 // satu titik verifikasi (mis. hook nativeVerify lewat Frida) belum tentu
 // otomatis melewati titik kedua ini juga kalau tidak sadar keduanya ada.

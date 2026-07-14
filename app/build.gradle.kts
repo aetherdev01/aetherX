@@ -24,9 +24,13 @@ android {
         minSdk        = 32
         targetSdk     = 35
         versionCode   = 200
-        versionName   = "2.0"
+        versionName   = "2.1.2 Beta"
 
-        base.archivesName = "AetherX-v$versionName"
+        // Nomor run CI (GitHub Actions) — dipakai untuk bagian "rXXX" di nama APK.
+        // Di lokal (bukan CI) akan fallback ke "0" karena env var ini tidak ada.
+        val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
+
+        base.archivesName = "AXKM_v$versionName.r$ciRunNumber" + "_$versionCode"
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }

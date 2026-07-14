@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aetherx-release-${{ github.run_number }}
-          path: app/build/outputs/apk/release/AetherX-v*-release.apk
+          path: app/build/outputs/apk/release/AXKM_v*-release.apk
           if-no-files-found: error
 
       # ── 10. Kirim APK ke Telegram ────────────────────────────────────────────

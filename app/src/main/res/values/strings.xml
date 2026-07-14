@@ -2,18 +2,18 @@
 <resources>
     <string name="app_name">AetherX</string>
 
-    <!-- Splash — loading singkat, tidak lagi memicu dialog izin -->
+    <!-- Splash loading singkat, tidak lagi memicu dialog izin -->
     <string name="splash_status_checking">Memeriksa perangkat…</string>
     <string name="splash_status_database">Menyambungkan ke database…</string>
     <string name="splash_status_ready">Siap!</string>
 
-    <!-- Onboarding — Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
+    <!-- Onboarding Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
     <string name="setup_title">Izin Akses</string>
     <string name="setup_subtitle">Pilih metode yang ingin digunakan agar AetherX dapat mengakses kernel dan menyediakan kontrol penuh terhadap fitur, performa, serta tweak sistem yang didukung perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
     <string name="setup_required_banner">Aktifkan ADB Tertanam atau Root untuk melanjutkan</string>
     <string name="setup_method_adb">ADB Tertanam</string>
-    <string name="setup_method_adb_desc">Direkomendasikan untuk perangkat tanpa root. Sandingkan lewat Wireless Debugging — tidak perlu memasang aplikasi tambahan apa pun.</string>
+    <string name="setup_method_adb_desc">Direkomendasikan untuk perangkat tanpa root. Sandingkan lewat Wireless Debugging. tidak perlu memasang aplikasi tambahan apa pun.</string>
     <string name="setup_method_root">Magisk</string>
     <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser (su) untuk mengaktifkan fitur lanjutan.</string>
     <string name="setup_status_granted">Aktif</string>
@@ -25,11 +25,11 @@
     <string name="setup_action_continue">Lanjutkan</string>
     <string name="setup_locked_hint">Aktifkan ADB Tertanam atau Root terlebih dahulu untuk membuka tombol Lanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
-    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke ADB Tertanam — kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
-    <string name="setup_locked_by_adb_hint">ADB Tertanam sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Root — kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke ADB Tertanam. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_locked_by_adb_hint">ADB Tertanam sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Root. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
     <string name="setup_switch_method">Ganti metode</string>
 
-    <!-- Onboarding — Izin pendukung (Write Settings, Overlay, Notifikasi) -->
+    <!-- Onboarding Izin pendukung (Write Settings, Overlay, Notifikasi) -->
     <string name="setup_supporting_header">Izin Tambahan</string>
     <string name="setup_supporting_subtitle">Membantu tweak dan fitur overlay berjalan lebih stabil di perangkatmu.</string>
     <string name="setup_method_write_settings">Ubah Pengaturan Sistem</string>
@@ -43,23 +43,23 @@
 
 
     <!-- Bottom navigation -->
-    <!-- KOREKSI (lihat perintah rework terbaru — "Di drawer Dashboard ya
+    <!-- KOREKSI (lihat perintah rework terbaru "Di drawer Dashboard ya
          screen Dashboard, bukan screen tweak, terus Drawer Ringkasan itu
          Dashboard"): nama "Dashboard" adalah ITEM DRAWER (sub-tab pertama,
-         berisi kartu info app + monitor CPU/GPU/Suhu + Info Device) — BUKAN
+         berisi kartu info app + monitor CPU/GPU/Suhu + Info Device) BUKAN
          label bottom nav utama. Percobaan rename sebelumnya (bottom nav
          jadi "Dashboard", drawer item jadi "Ringkasan") DIBATALKAN karena
          salah interpretasi. Bottom nav dikembalikan ke "Tweak" (nama
          section umum drawer-nya), drawer item dikembalikan ke "Dashboard". -->
     <string name="nav_dashboard">Dashboard</string>
-    <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) — string ini
+    <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah
          nilainya akan ikut mengubah label drawer itu juga. Label BOTTOM NAV
          yang terlihat pengguna sekarang pakai nav_bottom_dashboard (baru) di
-         bawah, BUKAN string ini lagi — lihat MainScreen.kt untuk detail. -->
+         bawah, BUKAN string ini lagi lihat MainScreen.kt untuk detail. -->
     <string name="nav_tweak">Tweak</string>
-    <!-- RILIS v2.0 (lihat perintah rework — "di tab Tweak itu harusnya
+    <!-- RILIS v2.0 (lihat perintah rework "di tab Tweak itu harusnya
          Textnya Dashboard Bukan Tweak, ganti beserta ikonnya"): label tab
          bottom-nav paling kiri, string TERPISAH dari nav_tweak/nav_dashboard
          di atas supaya tidak ikut mengubah label drawer manapun (lihat
@@ -103,14 +103,14 @@
     <string name="membership_benefit_1">Akses penuh ke semua tweak kernel-level (Root)</string>
     <string name="membership_benefit_2">Update fitur lebih awal dibanding versi gratis</string>
     <string name="membership_benefit_3">Dukungan prioritas lewat Telegram</string>
-    <!-- FITUR BARU (lihat perintah rework — "untuk keuntungan membership
+    <!-- FITUR BARU (lihat perintah rework "untuk keuntungan membership
          tambahkan Bebas Iklan") -->
     <string name="membership_benefit_4">Bebas iklan di seluruh aplikasi</string>
     <string name="membership_pro_title">Langganan Membership Pro</string>
-    <!-- FITUR BARU (lihat perintah rework — "tambahkan opsi harga Rp10.000
+    <!-- FITUR BARU (lihat perintah rework "tambahkan opsi harga Rp10.000
          / 1 Minggu, 60.000 / 1 bulan"): dua paket berlangganan, pengguna
          pilih salah satu lewat MembershipPlanSelector sebelum menghubungi
-         admin Telegram — bukan lagi satu harga tetap tanpa pilihan. -->
+         admin Telegram bukan lagi satu harga tetap tanpa pilihan. -->
     <string name="membership_pro_plan_weekly_label">1 Minggu</string>
     <string name="membership_pro_plan_weekly_price">Rp10.000</string>
     <string name="membership_pro_plan_monthly_label">1 Bulan</string>
@@ -119,7 +119,7 @@
     <string name="membership_pro_description">Pilih paket, lalu hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi Membership Pro.</string>
     <string name="membership_pro_cta">Langganan Sekarang</string>
     <!-- %1$s diisi label paket terpilih (mis. "1 Minggu") dan %2$s harganya
-         (mis. "Rp10.000") — pesan ini otomatis terisi di kolom chat
+         (mis. "Rp10.000") pesan ini otomatis terisi di kolom chat
          Telegram supaya admin langsung tahu paket yang diinginkan
          pengguna tanpa pengguna perlu mengetik ulang manual. -->
     <string name="membership_pro_telegram_prefill">Halo admin AetherX, saya ingin berlangganan Membership Pro paket %1$s (%2$s).</string>
@@ -145,7 +145,7 @@
     <string name="update_download_button">Update Sekarang</string>
     <string name="update_later_button">Nanti</string>
 
-    <!-- Notifikasi sistem (FITUR BARU — lihat perintah rework: "tambahkan
+    <!-- Notifikasi sistem (FITUR BARU lihat perintah rework: "tambahkan
          notifikasi di semua fitur dari update, maintenance dan lain lain").
          Setiap jenis notifikasi punya channel Android sendiri lewat
          AetherXNotifier supaya pengguna bisa mengatur masing-masing secara
@@ -161,7 +161,7 @@
     <string name="notif_channel_general_desc">Pemberitahuan umum lain dari AetherX (lisensi, akses, dsb.)</string>
     <string name="notif_license_changed_title">Status Membership Berubah</string>
     <string name="notif_license_expired_text">Lisensi kamu sudah kedaluwarsa. Ketuk untuk perpanjang di tab Membership.</string>
-    <!-- FITUR BARU (lihat perintah rework — "perbaiki notifikasi ... setiap
+    <!-- FITUR BARU (lihat perintah rework "perbaiki notifikasi ... setiap
          aktifkan fitur, monitor dll") -->
     <string name="notif_channel_feature_toggle_name">Status Fitur</string>
     <string name="notif_channel_feature_toggle_desc">Konfirmasi singkat setiap kali sebuah fitur diaktifkan atau dinonaktifkan</string>
@@ -181,8 +181,8 @@
     <!-- Dashboard: monitor CPU/GPU/Suhu ringkas + Info Device. CPU/GPU
          dibaca lewat shell executor (Root/Shizuku) kalau aktif untuk hasil
          lebih reliable, fallback baca langsung proses app kalau backend
-         belum aktif — lihat KDoc DashboardViewModel. -->
-    <!-- FITUR BARU (rework total Dashboard): section "Aktivitas Game" —
+         belum aktif lihat KDoc DashboardViewModel. -->
+    <!-- FITUR BARU (rework total Dashboard): section "Aktivitas Game"
          daftar game terpasang yang bisa di-scroll horizontal, game
          terakhir dipakai ditandai chip khusus. Monitor CPU/GPU/Suhu
          (dashboard_monitor_*) DIHAPUS dari Dashboard, dipindah jadi
@@ -236,16 +236,16 @@
     <string name="tweak_ram_priority">Swappiness Override</string>
     <string name="tweak_ram_priority_desc">Turunkan nilai swappiness kernel supaya sistem lebih jarang menukar data game ke swap/zram, menjaga game tetap di RAM. Butuh akses root.</string>
     <string name="tweak_thermal_throttle">Thermal Throttle Override</string>
-    <string name="tweak_thermal_throttle_desc">Naikkan batas suhu trip point kernel sebelum sistem menurunkan clock CPU/GPU (throttling). Berguna untuk sesi main lama, tapi tingkatkan suhu perangkat — pakai dengan hati-hati. Butuh akses root.</string>
+    <string name="tweak_thermal_throttle_desc">Naikkan batas suhu trip point kernel sebelum sistem menurunkan clock CPU/GPU (throttling). Berguna untuk sesi main lama, tapi tingkatkan suhu perangkat pakai dengan hati-hati. Butuh akses root.</string>
     <string name="tweak_gpu_performance">GPU Governor: Performance</string>
     <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Mendukung GPU Adreno (Snapdragon) maupun Mali/GED (MediaTek, Exynos). Butuh akses root.</string>
-    <!-- FITUR BARU — tweak ke-7 Game Profile: GPU Rendering Priority (SurfaceFlinger) -->
+    <!-- FITUR BARU tweak ke-7 Game Profile: GPU Rendering Priority (SurfaceFlinger) -->
     <string name="tweak_gpu_rendering_priority">GPU Rendering Priority</string>
     <string name="tweak_gpu_rendering_priority_desc">Naikkan prioritas real-time SurfaceFlinger (compositor sistem) dan RenderThread game ke SCHED_FIFO, mengurangi jitter/frame drop akibat proses lain merebut jatah CPU tepat saat rendering perlu jalan. Butuh akses root.</string>
     <string name="tweak_io_scheduler_boost">I/O Scheduler: Latensi Rendah</string>
     <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan internal ke mode latensi rendah (kyber/bfq) supaya aset game lebih cepat dibaca dari storage. Butuh akses root.</string>
 
-    <!-- Kernel Manager — section terpisah di bawah Kernel Tuning (Root), baca/tulis nilai kernel mentah per-core -->
+    <!-- Kernel Manager section terpisah di bawah Kernel Tuning (Root), baca/tulis nilai kernel mentah per-core -->
     <string name="kernel_manager_title">Kernel Manager</string>
     <string name="kernel_manager_version_format">Kernel %1$s</string>
     <string name="kernel_manager_version_unknown">Versi kernel tidak terbaca</string>
@@ -256,9 +256,9 @@
     <string name="kernel_manager_governor_label">Governor</string>
     <string name="kernel_manager_governor_desc_format">Governor CPU untuk core %1$d</string>
     <string name="kernel_manager_freq_min_label">Frekuensi minimum</string>
-    <string name="kernel_manager_freq_min_desc">Batas bawah clock — dari daftar step yang didukung kernel</string>
+    <string name="kernel_manager_freq_min_desc">Batas bawah clock dari daftar step yang didukung kernel</string>
     <string name="kernel_manager_freq_max_label">Frekuensi maksimum</string>
-    <string name="kernel_manager_freq_max_desc">Batas atas clock — dari daftar step yang didukung kernel</string>
+    <string name="kernel_manager_freq_max_desc">Batas atas clock dari daftar step yang didukung kernel</string>
     <string name="kernel_manager_freq_mhz_format">%1$d MHz</string>
     <string name="kernel_manager_section_gpu">GPU</string>
     <string name="kernel_manager_gpu_unavailable">GPU tidak terdeteksi di jalur sysfs yang didukung</string>
@@ -270,7 +270,7 @@
     <string name="kernel_manager_error_gpu_frequency">Gagal mengubah frekuensi GPU</string>
     <string name="kernel_manager_error_gpu_governor">Gagal mengubah governor GPU</string>
 
-    <!-- App Manager — sub-drawer khusus Root, freeze/unfreeze aplikasi pihak ketiga & bloatware terkurasi -->
+    <!-- App Manager sub-drawer khusus Root, freeze/unfreeze aplikasi pihak ketiga & bloatware terkurasi -->
     <string name="nav_app_manager">App Manager</string>
     <string name="app_manager_subtitle">Nonaktifkan sementara aplikasi pihak ketiga atau bloatware bawaan pabrik. Bisa diaktifkan kembali kapan saja.</string>
     <string name="app_manager_search_hint">Cari aplikasi…</string>
@@ -293,9 +293,9 @@
     <string name="app_manager_clear_cache_confirm_desc">Hanya file cache sementara %1$s yang akan dihapus. Data dan pengaturan aplikasi tetap aman.</string>
     <string name="app_manager_clear_cache_confirm_action">Bersihkan</string>
 
-    <!-- Build.prop Editor — sub-drawer khusus Root, edit PERSISTEN properti sistem lewat file (beda dari setprop runtime) -->
+    <!-- Build.prop Editor sub-drawer khusus Root, edit PERSISTEN properti sistem lewat file (beda dari setprop runtime) -->
     <string name="nav_build_prop">Build.prop Editor</string>
-    <string name="buildprop_subtitle">Edit properti sistem secara langsung di file. Perubahan bersifat permanen dan baru aktif penuh setelah reboot. Berisiko menyebabkan bootloop jika salah — backup dibuat otomatis sebelum tulis pertama tiap sesi.</string>
+    <string name="buildprop_subtitle">Edit properti sistem secara langsung di file. Perubahan bersifat permanen dan baru aktif penuh setelah reboot. Berisiko menyebabkan bootloop jika salah backup dibuat otomatis sebelum tulis pertama tiap sesi.</string>
     <string name="buildprop_search_hint">Cari key…</string>
     <string name="buildprop_empty">Tidak ada key yang cocok</string>
     <string name="buildprop_value_empty">(kosong)</string>
@@ -314,10 +314,10 @@
     <string name="buildprop_confirm_restore_title">Pulihkan dari Backup?</string>
     <string name="buildprop_confirm_restore_warning">File %1$s akan dikembalikan persis seperti sebelum sesi edit ini dimulai. Perubahan yang sudah diterapkan sejak backup ini dibuat akan hilang.</string>
     <string name="buildprop_confirm_restore_button">Ya, Pulihkan</string>
-    <string name="buildprop_success_applied">%1$s berhasil diterapkan — reboot untuk efek penuh</string>
+    <string name="buildprop_success_applied">%1$s berhasil diterapkan reboot untuk efek penuh</string>
     <string name="buildprop_success_restored">%1$s berhasil dipulihkan dari backup</string>
     <string name="buildprop_error_root_unavailable">Akses root tidak tersedia</string>
-    <string name="buildprop_error_backup_failed">Gagal membuat backup %1$s — perubahan dibatalkan demi keamanan</string>
+    <string name="buildprop_error_backup_failed">Gagal membuat backup %1$s perubahan dibatalkan demi keamanan</string>
     <string name="buildprop_error_apply_failed">Gagal menerapkan %1$s</string>
     <string name="buildprop_error_restore_failed">Gagal memulihkan %1$s</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
@@ -328,39 +328,39 @@
     <string name="tweak_doze_disabled_desc">Cegah sistem membekukan proses game atau service background (voice chat, download aset) saat perangkat idle sesaat. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
-    <string name="tweak_no_access_toast">Aktifkan Shizuku atau Root dulu di menu Pengaturan</string>
-    <string name="tweak_command_failed_toast">Perintah gagal dijalankan di perangkat ini — coba lagi atau periksa akses Shizuku/Root</string>
+    <string name="tweak_no_access_toast">Aktifkan Shizuku atau Root dulu</string>
+    <string name="tweak_command_failed_toast">Perintah gagal dijalankan di perangkat ini coba lagi atau periksa akses Shizuku/Root</string>
     <string name="tweak_kill_background_toast">Aplikasi background dibersihkan</string>
 
-    <!-- Tweak screen — game launcher -->
-    <string name="tweak_game_launch_failed">Gagal membuka game — coba buka manual lewat launcher.</string>
+    <!-- Tweak screen game launcher -->
+    <string name="tweak_game_launch_failed">Gagal membuka game coba buka manual lewat launcher.</string>
 
 
     <!-- Settings screen -->
     <string name="settings_section_crosshair">Crosshair</string>
 
-    <!-- Settings — Monitor FPS -->
+    <!-- Settings Monitor FPS -->
     <string name="settings_section_fps_monitor">Monitor FPS ( Beta )</string>
     <string name="fps_monitor_enable">Tampilkan Monitor FPS</string>
     <string name="fps_monitor_locked_desc">Fitur ini sementara dikunci dan belum bisa digunakan. Segera hadir.</string>
     <string name="fps_monitor_permission_needed">Butuh izin "Tampil di atas aplikasi lain". Ketuk saklar di atas untuk membuka pengaturan izin.</string>
     <string name="fps_monitor_style_label">Gaya Tampilan</string>
     <string name="fps_monitor_style_rog">Gaya ROG</string>
-    <string name="fps_monitor_style_rog_desc">Kartu lengkap (FPS, CPU, GPU, suhu) — bisa digeser bebas ke mana saja.</string>
+    <string name="fps_monitor_style_rog_desc">Kartu lengkap (FPS, CPU, GPU, suhu) bisa digeser bebas ke mana saja.</string>
     <string name="fps_monitor_style_classic">Klasik</string>
-    <string name="fps_monitor_style_classic_desc">Pil ringkas satu baris — posisi tetap di pojok kiri bawah layar.</string>
+    <string name="fps_monitor_style_classic_desc">Pil ringkas satu baris posisi tetap di pojok kiri bawah layar.</string>
     <string name="fps_monitor_position_locked_hint">Gaya Klasik selalu terkunci di pojok kiri bawah dan tidak bisa digeser.</string>
     <string name="fps_monitor_position_draggable_hint">Tahan dan geser panel di layar untuk memindahkan posisinya. Posisi otomatis tersimpan.</string>
-    <string name="fps_monitor_gpu_disclaimer">Pembacaan GPU tergantung chipset perangkat — tampil "-" kalau tidak didukung.</string>
+    <string name="fps_monitor_gpu_disclaimer">Pembacaan GPU tergantung chipset perangkat tampil "-" kalau tidak didukung.</string>
     <string name="fps_monitor_accuracy_disclaimer">FPS dibaca langsung dari game yang sedang berjalan (bukan Hz layar), butuh akses Shizuku atau Root aktif supaya angkanya akurat.</string>
     <string name="fps_monitor_notification_channel">Overlay Monitor FPS</string>
     <string name="fps_monitor_notification_title">Monitor FPS AetherX aktif</string>
     <string name="fps_monitor_notification_text">Ketuk untuk membuka pengaturan Monitor FPS</string>
 
-    <!-- Game Profile — khusus Root, sidebar di tab Tweak -->
+    <!-- Game Profile khusus Root, sidebar di tab Tweak -->
     <string name="nav_game_profile">Game Profile</string>
     <string name="game_profile_subtitle">Tweak root otomatis diterapkan saat game dibuka, direset saat ditutup dari recent apps.</string>
-    <string name="game_profile_scope_disclaimer">Tweak kernel-level berlaku untuk seluruh sistem (bukan benar-benar terisolasi per aplikasi) — hindari menyalakan tweak yang sama secara manual di tab Tweak biasa supaya keduanya tidak saling menimpa.</string>
+    <string name="game_profile_scope_disclaimer">Tweak kernel-level berlaku untuk seluruh sistem (bukan benar-benar terisolasi per aplikasi) hindari menyalakan tweak yang sama secara manual di tab Tweak biasa supaya keduanya tidak saling menimpa.</string>
     <string name="game_profile_root_required_title">Butuh Akses Root</string>
     <string name="game_profile_root_required_desc">Game Profile memakai tweak kernel-level (governor CPU/GPU, swappiness, dst.) yang hanya bisa dijalankan lewat akses root sungguhan. Aktifkan Root di Izin Akses untuk memakai fitur ini.</string>
     <string name="game_profile_empty_list">Tidak ada game dari daftar AetherX yang terpasang di perangkat ini.</string>
@@ -381,7 +381,7 @@
     <string name="game_profile_app_info_package">Nama Paket</string>
     <string name="game_profile_summary_active_count">%1$d dari %2$d tweak aktif</string>
     <string name="game_profile_summary_inactive">Belum ada tweak yang diaktifkan</string>
-    <!-- FITUR BARU: preset Game Mode (Low/Mid/Boost) — lihat GameMode.kt di GameProfile.kt -->
+    <!-- FITUR BARU: preset Game Mode (Low/Mid/Boost) lihat GameMode.kt di GameProfile.kt -->
     <string name="game_profile_mode_label">Mode Permainan</string>
     <string name="game_profile_mode_low">Low</string>
     <string name="game_profile_mode_mid">Mid</string>
@@ -389,7 +389,7 @@
     <string name="game_profile_category_cpu">CPU</string>
     <string name="game_profile_category_gpu">GPU &amp; Termal</string>
     <string name="game_profile_category_system">Sistem</string>
-    <!-- Tab About (dulu section "Tentang" di dalam Settings — dipindah total
+    <!-- Tab About (dulu section "Tentang" di dalam Settings dipindah total
          ke tab tersendiri, lihat perintah rework). -->
     <string name="nav_about">About</string>
     <string name="about_maintainer_name">Aldi Ahmad Khoirudin</string>
@@ -409,14 +409,14 @@
     <string name="about_link_youtube_desc">Tutorial, review, &amp; showcase fitur</string>
     <string name="about_link_youtube_url">https://youtube.com/@aetherdevofficial?si=JrYQSWzKgoKRSydR</string>
 
-    <!-- Settings — Umum -->
+    <!-- Settings Umum -->
     <string name="settings_section_general">Umum</string>
     <string name="settings_temperature_unit_label">Satuan Suhu</string>
     <string name="settings_temperature_unit_celsius">Celsius (°C)</string>
     <string name="settings_temperature_unit_fahrenheit">Fahrenheit (°F)</string>
 
     <!-- Crosshair overlay -->
-    <!-- FITUR BARU (lihat perintah rework — "Samakan Section Crosshair Persis seperti foto ke dua dari UI") -->
+    <!-- FITUR BARU (lihat perintah rework "Samakan Section Crosshair Persis seperti foto ke dua dari UI") -->
     <string name="crosshair_card_title">Crosshair</string>
     <string name="crosshair_card_subtitle">Titik referensi di layar untuk penyelarasan tampilan</string>
     <string name="crosshair_enable">Tampilkan Crosshair</string>
@@ -447,7 +447,7 @@
     <string name="crosshair_position_start">Atur Posisi</string>
     <string name="crosshair_position_done">Selesai Mengatur</string>
     <string name="crosshair_position_reset_center">Ke Tengah Layar</string>
-    <string name="crosshair_position_drag_hint">Mode atur posisi aktif — tahan dan geser crosshair di layar untuk memindahkannya.</string>
+    <string name="crosshair_position_drag_hint">Mode atur posisi aktif tahan dan geser crosshair di layar untuk memindahkannya.</string>
     <!-- FITUR BARU: label offset X/Y di bawah trackpad posisi (PositionJoystick) -->
     <string name="crosshair_position_offset_format">X: %1$d · Y: %2$d</string>
     <string name="crosshair_notification_channel">Overlay Crosshair</string>
@@ -466,7 +466,7 @@
     <string name="game_booster_subtitle">Pilih game untuk mulai boost performa</string>
     <string name="game_booster_launch_cta">Boost &amp; Main</string>
     <string name="game_booster_empty_games">Belum ada game terpasang yang dikenali</string>
-    <!-- RILIS v2.0 (lihat perintah rework — "jadikan opsi drawer game
+    <!-- RILIS v2.0 (lihat perintah rework "jadikan opsi drawer game
          booster sementara tidak bisa diakses"): badge singkat di item
          drawer yang dikunci, lihat GAME_BOOSTER_DRAWER_LOCKED di
          TweakScreen.kt. -->
@@ -480,12 +480,12 @@
     <string name="game_booster_mode_normal">Normal</string>
     <string name="game_booster_mode_boost">Boost</string>
 
-    <!-- FITUR BARU (lihat perintah rework — "rework total tampilan game
+    <!-- FITUR BARU (lihat perintah rework "rework total tampilan game
          booster seperti di foto pertama"): label menu grid radial
          GameBoosterScreen, meniru teks persis pada foto referensi 1
          ("Refresh Rate", "Information Monitor", "Jangan Ganggu",
          "Crosshair", "Boost Cepat", "Kalibrasi Gyro" [tidak diimplementasi
-         — lihat KDoc GameBoosterScreen], "Preset Cepat", "Kunci Rotasi",
+         lihat KDoc GameBoosterScreen], "Preset Cepat", "Kunci Rotasi",
          "Akselerasi Sentuhan", "Tangkapan Layar", "WhatsApp"). Beberapa
          me-reuse LOGIC yang sama dengan sidebar (mis. Tangkapan Layar ->
          viewModel.onScreenshot yang sama dengan onScreenshot sidebar)
@@ -514,43 +514,43 @@
     <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root/Shizuku di tab Tweak untuk FPS real-time</string>
 
     <string name="game_booster_screenshot_success">Screenshot tersimpan di galeri</string>
-    <string name="game_booster_screenshot_failed">Gagal mengambil screenshot — pastikan Root/Shizuku aktif</string>
+    <string name="game_booster_screenshot_failed">Gagal mengambil screenshot pastikan Root/Shizuku aktif</string>
 
     <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
     <string name="game_booster_sidebar_close">Tutup</string>
     <string name="game_booster_sidebar_end_session">Akhiri Sesi Boost</string>
 
-    <!-- FITUR BARU (lihat perintah rework — "rework total juga untuk
+    <!-- FITUR BARU (lihat perintah rework "rework total juga untuk
          floating game booster nya seperti foto ke 2"): label header &
          tombol khusus card floating compact, beda konteks dari
          game_booster_launch_cta (yang untuk layar PEMILIHAN game sebelum
-         sesi dimulai) — string ini untuk saat sesi SUDAH aktif. -->
+         sesi dimulai) string ini untuk saat sesi SUDAH aktif. -->
     <string name="game_booster_sidebar_header">Game Corner</string>
     <string name="game_booster_sidebar_launch">Luncurkan</string>
 
     <string name="game_booster_notification_channel">Game Booster Aktif</string>
-    <string name="game_booster_notification_title_format">Game Booster — %1$s</string>
+    <string name="game_booster_notification_title_format">Game Booster %1$s</string>
     <string name="game_booster_notification_text">Ketuk untuk membuka sidebar</string>
 
     <string name="game_booster_splash_preparing">Menyiapkan boost performa…</string>
 
-    <!-- Dialog adblock — lihat KDoc AdBlockDialogState untuk arsitektur
+    <!-- Dialog adblock lihat KDoc AdBlockDialogState untuk arsitektur
          lengkapnya. Ditampilkan sekali per sesi saat ad-blocker terdeteksi. -->
     <string name="adblock_dialog_title">Ad Blocker Terdeteksi</string>
     <string name="adblock_dialog_message">Iklan membantu kami menjaga AetherX tetap gratis. Nonaktifkan ad blocker, atau upgrade ke Membership untuk pengalaman bebas iklan.</string>
     <string name="adblock_dialog_membership_button">Lihat Membership</string>
     <string name="adblock_dialog_dismiss_button">Tutup</string>
 
-    <!-- REWORK TOTAL PERMISSION (lihat perintah rework — "buatkan sistem
+    <!-- REWORK TOTAL PERMISSION (lihat perintah rework "buatkan sistem
          seperti shizuku langsung tertanam dalam aplikasinya... hapus
          semua yang bersangkutan dengan shizuku"): pesan feedback konkret
          untuk setiap hasil aksi pairing/koneksi ADB tertanam & root,
-         ditampilkan lewat Snackbar — menggantikan silent-fail yang
+         ditampilkan lewat Snackbar menggantikan silent-fail yang
          membuat tombol terasa "tidak merespon". -->
     <string name="permission_feedback_adb_wireless_debugging_off">Wireless debugging tampaknya belum aktif. Aktifkan dulu di Pengaturan &gt; Opsi Developer &gt; Wireless debugging, lalu coba lagi.</string>
     <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing di Wireless debugging untuk kode baru.</string>
     <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung ke alamat itu. Pastikan IP dan port benar, serta perangkat memakai jaringan Wi-Fi yang sama.</string>
-    <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Kemungkinan izin debugging pernah dicabut manual — lakukan pairing ulang dari awal.</string>
+    <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Kemungkinan izin debugging pernah dicabut manual lakukan pairing ulang dari awal.</string>
     <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan ADB Tertanam. Coba lagi.</string>
     <string name="permission_feedback_adb_in_progress">Proses ADB Tertanam masih berjalan, tunggu sebentar.</string>
     <string name="permission_feedback_adb_granted">ADB Tertanam terhubung.</string>

@@ -8,26 +8,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.aether.x.R
 
-// Archivo — sans grotesque tegak/kotak (huruf "A" lancip-geometris, "X"
-// solid tebal) yang cocok dengan referensi visual asli app ini, dibundel
-// langsung (bukan Downloadable Fonts) supaya tampilan konsisten tanpa
-// bergantung koneksi/Google Play. Sebelumnya Poppins (terlalu bulat,
-// tidak mirip referensi terutama untuk weight Bold/ExtraBold).
+// Font "GF" — dibundel langsung (bukan Downloadable Fonts) supaya
+// tampilan konsisten tanpa bergantung koneksi/Google Play. Semua weight
+// dipetakan ke file gf*.ttf yang sesuai.
 val PoppinsFamily = FontFamily(
-    Font(R.font.archivo_regular, FontWeight.Normal),
-    Font(R.font.archivo_medium, FontWeight.Medium),
-    Font(R.font.archivo_semibold, FontWeight.SemiBold),
-    Font(R.font.archivo_bold, FontWeight.Bold),
-    Font(R.font.archivo_extrabold, FontWeight.ExtraBold),
+    Font(R.font.gfthin, FontWeight.Thin),
+    Font(R.font.gfextralight, FontWeight.ExtraLight),
+    Font(R.font.gflight, FontWeight.Light),
+    Font(R.font.gfregular, FontWeight.Normal),
+    Font(R.font.gfmedium, FontWeight.Medium),
+    Font(R.font.gfsemibold, FontWeight.SemiBold),
+    Font(R.font.gfbold, FontWeight.Bold),
+    Font(R.font.gfextrabold, FontWeight.ExtraBold),
+    Font(R.font.gfblack, FontWeight.Black),
 )
-
-// FIX (lihat keluhan "terlalu bold gaya font nya, harus mirip dengan di
-// foto"): Archivo secara visual jauh lebih tebal/solid dibanding Poppins
-// pada fontWeight yang SAMA (karakter grotesque-nya lebih blocky), jadi
-// semua level typography di bawah diturunkan SATU TINGKAT weight
-// (ExtraBold->Bold, Bold->SemiBold, SemiBold->Medium, Medium->Normal)
-// supaya beratnya kembali senada dengan referensi foto, tanpa mengganti
-// bentuk huruf yang sudah cocok.
 val AetherXTypography = Typography(
     headlineSmall = TextStyle(
         fontFamily = PoppinsFamily,

@@ -2,15 +2,15 @@
 //
 // Guard lapis TAMBAHAN: memverifikasi bahwa fungsi-fungsi kritis di dalam
 // libaetherX.so ITU SENDIRI belum dipatch (byte instruksi diubah) sejak
-// APK ini dibuild — melengkapi sigcheck.cpp yang memverifikasi signing cert
+// APK ini dibuild melengkapi sigcheck.cpp yang memverifikasi signing cert
 // APK, tapi tidak tahu kalau .so-nya sendiri sudah "disunting" langsung.
 //
 // KENAPA INI PERLU (celah yang ditutup):
 // sigcheck.cpp mencegah APK di-resign dengan kunci lain. TAPI kalau orang
-// tidak perlu resign — cukup patch instruksi `cmp`/branch di dalam
+// tidak perlu resign cukup patch instruksi `cmp`/branch di dalam
 // libaetherX.so memakai lief/radare2/Ghidra (mis. ubah instruksi yang
 // membandingkan hash jadi selalu "equal", atau ubah `return match` jadi
-// `return true` tanpa peduli isi match) — signature check sigcheck.cpp bisa
+// `return true` tanpa peduli isi match) signature check sigcheck.cpp bisa
 // dilewati TANPA menyentuh signing cert APK sama sekali (APK tetap
 // ditandatangani dengan kunci asli, resmi, valid). Guard ini menutup celah
 // itu dengan memverifikasi byte-byte MESIN dari fungsi-fungsi kritis
@@ -21,10 +21,10 @@
 //    code aktual dari nativeVerify/nativeVerifyRecheck (sigcheck.cpp) yang
 //    ada di section .text hasil compile itu, lalu hardcode checksum-nya di
 //    sini (lihat kExpectedChecksum di bawah, encoded dengan pola XOR yang
-//    sama seperti sigcheck.cpp — bukan plaintext).
+//    sama seperti sigcheck.cpp bukan plaintext).
 // 2. Saat app berjalan, fungsi ini membaca ULANG byte-byte tersebut
 //    langsung dari memory proses yang sedang berjalan (bukan dari file di
-//    disk — supaya juga menutup kemungkinan .so di-map dari lokasi lain
+//    disk supaya juga menutup kemungkinan .so di-map dari lokasi lain
 //    yang sudah dipatch tapi trik lain menahan file asli tetap utuh),
 //    hitung checksum yang sama, dan bandingkan.
 // 3. Kalau ada satu byte instruksi saja yang berubah dari hasil compile
@@ -36,7 +36,7 @@
 // pertahanan sempurna.
 // - Orang yang sudah tahu pola ini bisa menghitung ulang checksum yang
 //   BENAR untuk versi hasil patch-annya sendiri, lalu patch juga
-//   kExpectedChecksum di sini supaya cocok — effort naik (harus paham dua
+//   kExpectedChecksum di sini supaya cocok effort naik (harus paham dua
 //   titik, bukan satu), tapi tetap mungkin bagi yang cukup gigih.
 // - Frida bisa hook fungsi verifikasi checksum ini juga (sama seperti bisa
 //   hook nativeVerify) supaya selalu return true, tanpa perlu patch byte
@@ -47,7 +47,7 @@
 //
 // Checksum di bawah dihitung dari BUILD RELEASE SAAT INI. Kalau
 // sigcheck.cpp diubah (termasuk cuma reorder/reformat yang mengubah output
-// compiler), checksum ini WAJIB dihitung ulang dan diperbarui — lihat
+// compiler), checksum ini WAJIB dihitung ulang dan diperbarui lihat
 // catatan "REGENERASI CHECKSUM" di bawah, kalau tidak app release akan
 // force-close sendiri walau tidak pernah di-tamper siapa pun.
 
@@ -66,7 +66,7 @@
 #endif
 
 // nvfy/nvfy2 dideklarasikan di native_symbols.h (didefinisikan di
-// sigcheck.cpp) — kita ambil ALAMATnya (bukan panggil fungsinya) untuk
+// sigcheck.cpp) kita ambil ALAMATnya (bukan panggil fungsinya) untuk
 // membaca byte code mentahnya langsung dari memory proses yang sedang
 // berjalan.
 
@@ -80,7 +80,7 @@ namespace {
 constexpr size_t kScanLen = 256;
 
 // checksum FNV-1a 64-bit atas kedua fungsi target, digabung jadi satu
-// nilai (bukan kriptografis — cukup untuk mendeteksi PERUBAHAN byte tak
+// nilai (bukan kriptografis cukup untuk mendeteksi PERUBAHAN byte tak
 // disengaja/disengaja pada region ini, bukan untuk melawan orang yang
 // dengan sengaja mau membuat collision; kalau butuh lebih kuat, gunakan
 // digest kriptografis, tapi untuk anti-tamper region kecil ini FNV-1a
@@ -94,33 +94,33 @@ uint64_t fnv1a64(const uint8_t* data, size_t len, uint64_t seed) {
     return hash;
 }
 
-// Checksum asli (dari build release resmi) di-XOR dengan key di bawah —
+// Checksum asli (dari build release resmi) di-XOR dengan key di bawah
 // pola sama seperti kEncodedHash/kXorKey di sigcheck.cpp, supaya nilai
 // aslinya tidak muncul sebagai satu konstanta polos di .rodata.
 //
-// *** REGENERASI CHECKSUM — WAJIB DILAKUKAN SEBELUM RILIS ***
+// *** REGENERASI CHECKSUM WAJIB DILAKUKAN SEBELUM RILIS ***
 // Nilai di bawah ini MASIH PLACEHOLDER (kXorKeyChecksum == kEncodedChecksum,
 // sengaja dibuat sama supaya keduanya saling meniadakan lewat XOR dan
-// decodeExpectedChecksum() menghasilkan 0 — lihat kPlaceholderNotConfigured
+// decodeExpectedChecksum() menghasilkan 0 lihat kPlaceholderNotConfigured
 // di bawah). ISI dengan nilai asli sebelum build release, dengan langkah:
 //   1. Build APK release seperti biasa (sigcheck.cpp final, sudah fix).
 //   2. Jalankan app itu SEKALI di device/emulator dengan AETHERX_DEBUG_LOG
 //      didefinisikan (tambahkan `-DAETHERX_DEBUG_LOG` di CMAKE_CXX_FLAGS
-//      sementara) — logcat tag "AetherXIntegrity" akan mencetak baris
+//      sementara) logcat tag "AetherXIntegrity" akan mencetak baris
 //      "live checksum computed: 0x....".
 //   3. Salin nilai hex itu, XOR manual dengan kXorKeyChecksum (pilih key
 //      baru bebas, mis. random 64-bit), simpan hasilnya sebagai
 //      kEncodedChecksum, dan pastikan kXorKeyChecksum diisi key yang sama
 //      dipakai untuk encode.
 //   4. HAPUS flag `-DAETHERX_DEBUG_LOG` lagi dari CMakeLists sebelum build
-//      release final yang akan didistribusikan — logcat tidak boleh
+//      release final yang akan didistribusikan logcat tidak boleh
 //      membocorkan checksum ini di build publik.
 //   5. Set kPlaceholderNotConfigured = false setelah nilai asli diisi.
 constexpr uint64_t kXorKeyChecksum = 0x9F3B7C1E5A2D8064ULL;
 constexpr uint64_t kEncodedChecksum = 0x9F3B7C1E5A2D8064ULL; // TODO: ganti setelah regenerasi (langkah di atas)
 
 // Selama placeholder belum diganti (checksum asli belum digenerate dari
-// build final), guard ini SENGAJA tidak dijadikan alasan force-close —
+// build final), guard ini SENGAJA tidak dijadikan alasan force-close
 // supaya tim tidak tanpa sadar mengunci APK dev/staging dengan checksum
 // yang salah. Lihat NativeIntegrityGuard.kt: hasil "not configured" ini
 // diperlakukan sebagai skip, bukan sebagai gagal ATAU lolos otomatis.
@@ -148,20 +148,20 @@ uint64_t computeLiveChecksum() {
 }  // namespace
 
 // Dipanggil dari NativeIntegrityGuard.kt (didaftarkan sebagai
-// "nativeVerifyIntegrity" lewat RegisterNatives di jni_onload.cpp — nama
+// "nativeVerifyIntegrity" lewat RegisterNatives di jni_onload.cpp nama
 // simbol C++ di sini (nvint) sengaja pendek dan tidak perlu cocok dengan
 // nama method Kotlin sama sekali). Return kode int (bukan boolean) supaya
 // sisi Kotlin bisa membedakan tiga kondisi:
-//   0 = MISMATCH — byte code fungsi verifikasi sudah berubah, kemungkinan dipatch.
-//   1 = MATCH — checksum cocok, fungsi verifikasi masih utuh seperti build resmi.
-//   2 = NOT_CONFIGURED — kEncodedChecksum masih placeholder (lihat catatan
+//   0 = MISMATCH byte code fungsi verifikasi sudah berubah, kemungkinan dipatch.
+//   1 = MATCH checksum cocok, fungsi verifikasi masih utuh seperti build resmi.
+//   2 = NOT_CONFIGURED kEncodedChecksum masih placeholder (lihat catatan
 //       REGENERASI CHECKSUM di atas), guard ini belum bisa dipakai untuk
 //       menegakkan apa pun; Kotlin sebaiknya skip (bukan force-close ATAU
 //       anggap valid) sampai nilai asli diisi.
 extern "C" JNIEXPORT jint JNICALL
 nvint(JNIEnv* /* env */, jobject /* thiz */) {
     if (kPlaceholderNotConfigured) {
-        GUARD_LOG("checksum belum dikonfigurasi — lihat catatan REGENERASI CHECKSUM");
+        GUARD_LOG("checksum belum dikonfigurasi lihat catatan REGENERASI CHECKSUM");
         return 2;
     }
     const uint64_t live = computeLiveChecksum();

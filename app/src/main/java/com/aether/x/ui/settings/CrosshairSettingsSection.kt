@@ -200,7 +200,7 @@ fun CrosshairSettingsSection(
                 Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(
                         text = stringResource(R.string.crosshair_card_title),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         // BUG FIX: Color.White hardcode diganti ke
                         // MaterialTheme.colorScheme.onSurface — di light
                         // theme, teks putih di atas card putih (surface
