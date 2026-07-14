@@ -531,6 +531,9 @@
     <string name="game_booster_notification_channel">Game Booster Aktif</string>
     <string name="game_booster_notification_title_format">Game Booster %1$s</string>
     <string name="game_booster_notification_text">Ketuk untuk membuka sidebar</string>
+    <string name="game_booster_screenshot_needs_privilege">Aktifkan akses root/Shizuku dulu untuk mengambil tangkapan layar</string>
+    <string name="game_booster_screenshot_success">Tangkapan layar tersimpan</string>
+    <string name="game_booster_screenshot_failed">Gagal mengambil tangkapan layar</string>
 
     <string name="game_booster_splash_preparing">Menyiapkan boost performa…</string>
 
