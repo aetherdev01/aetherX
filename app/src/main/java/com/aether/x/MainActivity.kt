@@ -214,7 +214,9 @@ private fun AetherXRoot(
             )
         }
         composable(AetherXRoutes.GAME_BOOSTER) {
-            com.aether.x.ui.booster.GameBoosterScreen()
+            com.aether.x.ui.booster.GameBoosterScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 

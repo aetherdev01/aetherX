@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CenterFocusStrong
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.RestartAlt
@@ -103,6 +106,17 @@ fun GameBoosterScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: GameBoosterScreenViewModel = viewModel(),
+    // BUG FIX (lihat perintah rework — "banyak bug", "tidak bisa minimize"):
+    // SEBELUMNYA layar ini tidak menerima cara keluar APA PUN dari
+    // pemanggilnya (lihat MainActivity.kt sebelum fix — composable(GAME_BOOSTER)
+    // memanggil GameBoosterScreen() tanpa argumen sama sekali) — satu-satunya
+    // jalan keluar adalah tombol back sistem, yang PUN tidak ditangani
+    // khusus di sini sehingga perilakunya bergantung NavHost default (tidak
+    // selalu jelas/konsisten). Sekarang WAJIB diisi pemanggil (lihat
+    // MainActivity.kt: onBack = { navController.popBackStack() }) dan
+    // dipakai baik oleh BackHandler di bawah maupun tombol close di header
+    // radial (lihat GameBoosterRadialContent).
+    onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
     DisposableEffect(Unit) {
@@ -113,6 +127,15 @@ fun GameBoosterScreen(
             activity?.requestedOrientation = previousOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
+
+    // Tombol back sistem SEKARANG konsisten dengan tombol close di header
+    // (lihat GameBoosterRadialContent) — keduanya sama-sama memanggil onBack,
+    // BUKAN onEndSession: menutup layar TIDAK otomatis menghentikan sesi
+    // boost/overlay yang sedang berjalan (perilaku ini konsisten dengan
+    // GameBoosterOverlayService.collapseSidebar yang juga membedakan
+    // "tutup panel" dari "akhiri sesi" — lihat GameBoosterActions.onClose
+    // vs onEndSession).
+    androidx.activity.compose.BackHandler(onBack = onBack)
 
     val state by viewModel.state.collectAsState()
     val activeSession by viewModel.activeSession.collectAsState()
@@ -128,11 +151,13 @@ fun GameBoosterScreen(
             GameBoosterRadialContent(
                 session = sessionToShow,
                 viewModel = viewModel,
+                onBack = onBack,
             )
         } else {
             GameBoosterPickerContent(
                 state = state,
                 onGameSelected = viewModel::onGameSelected,
+                onBack = onBack,
             )
         }
     }
@@ -144,15 +169,36 @@ fun GameBoosterScreen(
 private fun GameBoosterPickerContent(
     state: GameBoosterScreenState,
     onGameSelected: (InstalledGameEntry) -> Unit,
+    onBack: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(24.dp))
-            Text(text = stringResource(R.string.game_booster_title), style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(24.dp))
+                Text(text = stringResource(R.string.game_booster_title), style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.game_booster_sidebar_close),
+                    tint = TextMuted,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
         Text(
             text = stringResource(R.string.game_booster_subtitle),
@@ -227,6 +273,7 @@ private fun GameBoosterGameRow(
 private fun GameBoosterRadialContent(
     session: com.aether.x.core.booster.GameBoosterSession,
     viewModel: GameBoosterScreenViewModel,
+    onBack: () -> Unit,
 ) {
     // State UI murni (BUKAN bagian dari GameBoosterSession/preferences —
     // lihat perintah rework foto referensi 1, menu "Information Monitor"):
@@ -236,12 +283,42 @@ private fun GameBoosterRadialContent(
     var infoMonitorExpanded by remember { mutableStateOf(false) }
     val onInfoMonitorToggle: (Boolean) -> Unit = { infoMonitorExpanded = it }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header atas: judul "AXERON GAME CORNER" tengah, mode pill "AX-MODE".
+    // BUG FIX (lihat perintah rework — "banyak bug", menu Crosshair
+    // sebelumnya onClick = {} kosong total, tidak melakukan apa pun sama
+    // sekali): sekarang toggle nyata yang start/stop
+    // [com.aether.x.core.overlay.CrosshairOverlayService] — pola state
+    // lokal SAMA seperti infoMonitorExpanded di atas (bukan bagian
+    // GameBoosterSession, murni cerminan status service overlay crosshair
+    // yang independen dari sesi booster ini).
+    val context = LocalContext.current
+    var crosshairActive by remember { mutableStateOf(false) }
+    val onCrosshairToggle: () -> Unit = {
+        crosshairActive = !crosshairActive
+        if (crosshairActive) {
+            com.aether.x.core.overlay.CrosshairOverlayService.start(context)
+        } else {
+            com.aether.x.core.overlay.CrosshairOverlayService.stop(context)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        // Header atas: judul "AXERON GAME CORNER" tengah, tombol tutup kanan.
+        // BUG FIX (lihat perintah rework — "tidak bisa minimize"): SEBELUMNYA
+        // header ini HANYA berisi pill judul di tengah, tidak ada elemen lain
+        // sama sekali — layar radial penuh ini (destination NavHost terpisah,
+        // lihat KDoc GameBoosterScreen soal onBack) tidak punya tombol keluar
+        // apa pun. Box sekarang membungkus DUA elemen bertumpuk: pill judul
+        // (tetap actually centered lewat Modifier.align pada Row-nya) dan
+        // tombol close di ujung kanan (Alignment.CenterEnd) — target sentuh
+        // 48dp penuh, konsisten dengan fix serupa di GameBoosterSidebarContent.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp),
+                .padding(top = 16.dp, end = 12.dp),
             contentAlignment = Alignment.Center,
         ) {
             Row(
@@ -254,6 +331,21 @@ private fun GameBoosterRadialContent(
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = TextOnCard,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.game_booster_sidebar_close),
+                    tint = TextMuted,
+                    modifier = Modifier.size(22.dp),
                 )
             }
         }
@@ -393,7 +485,8 @@ private fun GameBoosterRadialContent(
                     RadialMenuItemData(
                         icon = Icons.Outlined.CenterFocusStrong,
                         label = stringResource(R.string.game_booster_radial_crosshair),
-                        onClick = { },
+                        active = crosshairActive,
+                        onClick = onCrosshairToggle,
                     ),
                     RadialMenuItemData(
                         icon = Icons.Outlined.TouchApp,

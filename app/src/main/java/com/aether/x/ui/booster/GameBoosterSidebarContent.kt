@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Bolt
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,10 +114,35 @@ fun GameBoosterSidebarContent(
     actions: GameBoosterActions,
     modifier: Modifier = Modifier,
 ) {
+    // BUG FIX (lihat perintah rework — "saat mode lanskap banyak opsi yang
+    // terpotong, tidak bisa discroll"): panel ini digambar oleh
+    // [com.aether.x.core.overlay.GameBoosterOverlayService] sebagai window
+    // WindowManager WRAP_CONTENT/WRAP_CONTENT yang ditumpuk DI ATAS game —
+    // WindowManager TIDAK PERNAH otomatis meng-clip/scroll kontennya sendiri
+    // seperti Activity biasa. SEBELUMNYA Column di bawah ini tidak punya
+    // verticalScroll maupun batas tinggi sama sekali — saat game berjalan
+    // landscape (tinggi layar fisik jauh lebih pendek, mis. ~360-411dp),
+    // konten panel (header + baris 3-kolom + mode selector + 2 toggle +
+    // tombol screenshot + panel metrics+grafik + tombol akhiri sesi) yang
+    // totalnya SELALU sama, bisa dengan mudah melebihi tinggi layar itu —
+    // hasilnya sebagian menu digambar DI LUAR batas layar oleh OS, dan
+    // karena tidak ada scroll, pengguna tidak punya cara menjangkaunya sama
+    // sekali (persis "opsi terpotong, tidak bisa discroll").
+    //
+    // Sekarang tinggi Column dibatasi ke maksimum 85% tinggi layar TERSEDIA
+    // (dihitung dinamis lewat LocalConfiguration, bukan angka dp hardcode —
+    // supaya tetap benar di berbagai ukuran layar/lipat orientasi) dan
+    // verticalScroll dipasang supaya begitu konten melebihi batas itu,
+    // pengguna tinggal geser jari untuk melihat sisanya alih-alih terpotong
+    // permanen.
+    val configuration = LocalConfiguration.current
+    val maxPanelHeight = (configuration.screenHeightDp * 0.85f).dp
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .background(SurfaceCard)
+            .heightIn(max = maxPanelHeight)
+            .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
@@ -136,14 +165,20 @@ fun GameBoosterSidebarContent(
                     modifier = Modifier.size(16.dp),
                 )
                 actions.onClose?.let { onClose ->
-                    Icon(
-                        imageVector = Icons.Outlined.Close,
-                        contentDescription = stringResource(R.string.game_booster_sidebar_close),
-                        tint = TextMuted,
+                    Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(48.dp)
+                            .clip(CircleShape)
                             .clickable(onClick = onClose),
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.game_booster_sidebar_close),
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         }

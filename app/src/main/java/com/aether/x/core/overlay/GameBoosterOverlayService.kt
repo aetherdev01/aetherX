@@ -42,6 +42,7 @@ import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.GameMode
 import com.aether.x.ui.booster.GameBoosterActions
 import com.aether.x.ui.booster.GameBoosterSidebarContent
+import com.aether.x.ui.components.showAetherToast
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AetherXTheme
 import kotlinx.coroutines.CoroutineScope
@@ -437,8 +438,17 @@ class GameBoosterOverlayService : Service() {
 
     private fun onScreenshot() {
         serviceScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
-            actionHandler.takeScreenshot(executor)
+            val executor = PrivilegeManager.getExecutor()
+            if (executor == null) {
+                showAetherToast(getString(R.string.game_booster_screenshot_needs_privilege))
+                return@launch
+            }
+            val path = actionHandler.takeScreenshot(executor)
+            if (path != null) {
+                showAetherToast(getString(R.string.game_booster_screenshot_success))
+            } else {
+                showAetherToast(getString(R.string.game_booster_screenshot_failed))
+            }
         }
     }
 

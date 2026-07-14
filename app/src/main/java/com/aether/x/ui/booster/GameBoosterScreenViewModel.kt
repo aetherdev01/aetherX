@@ -13,6 +13,8 @@ import com.aether.x.core.overlay.GameBoosterOverlayService
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.GameMode
+import com.aether.x.R
+import com.aether.x.ui.components.showAetherToast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -172,8 +174,18 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
 
     fun onScreenshot() {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
-            actionHandler.takeScreenshot(executor)
+            val executor = PrivilegeManager.getExecutor()
+            val context = getApplication<Application>()
+            if (executor == null) {
+                context.showAetherToast(context.getString(R.string.game_booster_screenshot_needs_privilege))
+                return@launch
+            }
+            val path = actionHandler.takeScreenshot(executor)
+            if (path != null) {
+                context.showAetherToast(context.getString(R.string.game_booster_screenshot_success))
+            } else {
+                context.showAetherToast(context.getString(R.string.game_booster_screenshot_failed))
+            }
         }
     }
 
