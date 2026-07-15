@@ -12,14 +12,11 @@
     <string name="setup_subtitle">Pilih metode yang ingin digunakan agar AetherX dapat mengakses kernel dan menyediakan kontrol penuh terhadap fitur, performa, serta tweak sistem yang didukung perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
     <string name="setup_required_banner">Aktifkan ADB Tertanam atau Root untuk melanjutkan</string>
-    <string name="setup_method_adb">ADB Tertanam</string>
-    <string name="setup_method_adb_desc">Direkomendasikan untuk perangkat tanpa root. Sandingkan lewat Wireless Debugging. tidak perlu memasang aplikasi tambahan apa pun.</string>
     <string name="setup_method_root">Magisk</string>
     <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser (su) untuk mengaktifkan fitur lanjutan.</string>
     <string name="setup_status_granted">Aktif</string>
     <string name="setup_status_not_granted">Belum Aktif</string>
     <string name="setup_status_checking">Memeriksa…</string>
-    <string name="setup_status_not_installed">Belum Terpasang</string>
     <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
     <string name="setup_action_continue">Lanjutkan</string>
@@ -124,7 +121,6 @@
          pengguna tanpa pengguna perlu mengetik ulang manual. -->
     <string name="membership_pro_telegram_prefill">Halo admin AetherX, saya ingin berlangganan Membership Pro paket %1$s (%2$s).</string>
     <string name="membership_pro_telegram_url">https://t.me/AetherDev22</string>
-    <string name="membership_pro_telegram_error">Tidak ada aplikasi yang bisa membuka tautan Telegram ini.</string>
     <string name="membership_device_section_title">Perangkat Ini</string>
     <string name="membership_device_id_label">Device ID</string>
     <string name="membership_device_id_copy_cd">Salin Device ID</string>
@@ -150,26 +146,15 @@
          Setiap jenis notifikasi punya channel Android sendiri lewat
          AetherXNotifier supaya pengguna bisa mengatur masing-masing secara
          independen dari Pengaturan sistem. -->
-    <string name="notif_channel_update_name">Pembaruan Aplikasi</string>
-    <string name="notif_channel_update_desc">Pemberitahuan saat versi baru AetherX tersedia untuk diunduh</string>
     <string name="notif_update_title">Pembaruan AetherX Tersedia</string>
     <string name="notif_update_text_format">Versi %1$s sudah bisa diunduh. Ketuk untuk lihat detail.</string>
-    <string name="notif_channel_maintenance_name">Pemeliharaan Server</string>
-    <string name="notif_channel_maintenance_desc">Pemberitahuan saat server AetherX sedang dalam pemeliharaan</string>
     <string name="notif_maintenance_text">Aplikasi sedang dalam pemeliharaan sementara. Ketuk untuk info lebih lanjut.</string>
-    <string name="notif_channel_general_name">Info Umum AetherX</string>
-    <string name="notif_channel_general_desc">Pemberitahuan umum lain dari AetherX (lisensi, akses, dsb.)</string>
     <string name="notif_license_changed_title">Status Membership Berubah</string>
     <string name="notif_license_expired_text">Lisensi kamu sudah kedaluwarsa. Ketuk untuk perpanjang di tab Membership.</string>
     <!-- FITUR BARU (lihat perintah rework "perbaiki notifikasi ... setiap
          aktifkan fitur, monitor dll") -->
-    <string name="notif_channel_feature_toggle_name">Status Fitur</string>
-    <string name="notif_channel_feature_toggle_desc">Konfirmasi singkat setiap kali sebuah fitur diaktifkan atau dinonaktifkan</string>
-    <string name="notif_feature_toggle_enabled">Diaktifkan</string>
-    <string name="notif_feature_toggle_disabled">Dinonaktifkan</string>
     <string name="feature_name_crosshair">Crosshair Overlay</string>
     <string name="feature_name_fps_monitor">FPS Monitor</string>
-    <string name="feature_name_game_profile_monitor">Game Profile Monitor</string>
     <string name="notif_license_revoked_text">Lisensi kamu tidak lagi aktif di perangkat ini. Ketuk untuk cek status di tab Membership.</string>
 
     <!-- Tweak screen -->
@@ -192,7 +177,6 @@
     <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
     <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
     <string name="dashboard_hero_kicker">AETHERX</string>
-    <string name="dashboard_privilege_label">Mode Akses</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
     <string name="dashboard_privilege_root">Root</string>
     <string name="dashboard_privilege_adb">ADB</string>
@@ -315,12 +299,6 @@
     <string name="buildprop_confirm_restore_title">Pulihkan dari Backup?</string>
     <string name="buildprop_confirm_restore_warning">File %1$s akan dikembalikan persis seperti sebelum sesi edit ini dimulai. Perubahan yang sudah diterapkan sejak backup ini dibuat akan hilang.</string>
     <string name="buildprop_confirm_restore_button">Ya, Pulihkan</string>
-    <string name="buildprop_success_applied">%1$s berhasil diterapkan reboot untuk efek penuh</string>
-    <string name="buildprop_success_restored">%1$s berhasil dipulihkan dari backup</string>
-    <string name="buildprop_error_root_unavailable">Akses root tidak tersedia</string>
-    <string name="buildprop_error_backup_failed">Gagal membuat backup %1$s perubahan dibatalkan demi keamanan</string>
-    <string name="buildprop_error_apply_failed">Gagal menerapkan %1$s</string>
-    <string name="buildprop_error_restore_failed">Gagal memulihkan %1$s</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
     <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
     <string name="tweak_vm_heap_boost">VM Heap Boost</string>
@@ -338,7 +316,6 @@
 
 
     <!-- Settings screen -->
-    <string name="settings_section_crosshair">Crosshair</string>
 
     <!-- Settings Monitor FPS -->
     <string name="settings_section_fps_monitor">Monitor FPS ( Beta )</string>
@@ -354,9 +331,6 @@
     <string name="fps_monitor_position_draggable_hint">Tahan dan geser panel di layar untuk memindahkan posisinya. Posisi otomatis tersimpan.</string>
     <string name="fps_monitor_gpu_disclaimer">Pembacaan GPU tergantung chipset perangkat tampil "-" kalau tidak didukung.</string>
     <string name="fps_monitor_accuracy_disclaimer">FPS dibaca langsung dari game yang sedang berjalan (bukan Hz layar), butuh akses Shizuku atau Root aktif supaya angkanya akurat.</string>
-    <string name="fps_monitor_notification_channel">Overlay Monitor FPS</string>
-    <string name="fps_monitor_notification_title">Monitor FPS AetherX aktif</string>
-    <string name="fps_monitor_notification_text">Ketuk untuk membuka pengaturan Monitor FPS</string>
 
     <!-- Game Profile khusus Root, sidebar di tab Tweak -->
     <string name="nav_game_profile">Game Profile</string>
@@ -366,15 +340,10 @@
     <string name="game_profile_root_required_desc">Game Profile memakai tweak kernel-level (governor CPU/GPU, swappiness, dst.) yang hanya bisa dijalankan lewat akses root sungguhan. Aktifkan Root di Izin Akses untuk memakai fitur ini.</string>
     <string name="game_profile_empty_list">Tidak ada game dari daftar AetherX yang terpasang di perangkat ini.</string>
     <string name="game_profile_search_hint">Cari game…</string>
-    <string name="game_profile_select_hint">Pilih game di daftar sebelah kiri untuk mengatur tweak khususnya.</string>
     <string name="game_profile_active_badge">Sedang Diterapkan</string>
     <string name="game_profile_configured_badge">%1$d tweak diatur</string>
     <string name="game_profile_reset_button">Reset Profil Ini</string>
     <string name="game_profile_reset_toast">Profil game direset ke default.</string>
-    <string name="game_profile_saved_toast">Profil game disimpan.</string>
-    <string name="game_profile_monitor_notification_channel">Pemantau Game Profile</string>
-    <string name="game_profile_monitor_notification_title">Game Profile AetherX aktif</string>
-    <string name="game_profile_monitor_notification_text">Memantau game untuk menerapkan/mereset tweak otomatis</string>
 
     <!-- Rework Game Profile: info aplikasi (package name) + toggle
          dikelompokkan per kategori, alih-alih satu list panjang datar. -->
@@ -420,10 +389,7 @@
     <!-- FITUR BARU (lihat perintah rework "Samakan Section Crosshair Persis seperti foto ke dua dari UI") -->
     <string name="crosshair_card_title">Crosshair</string>
     <string name="crosshair_card_subtitle">Titik referensi di layar untuk penyelarasan tampilan</string>
-    <string name="crosshair_enable">Tampilkan Crosshair</string>
-    <string name="crosshair_enable_desc">Overlay bidik di tengah layar, mirip fitur Game Booster atau PUBG.</string>
     <string name="crosshair_permission_needed">Butuh izin "Tampil di atas aplikasi lain". Ketuk saklar di atas untuk membuka pengaturan izin.</string>
-    <string name="crosshair_style_label">Bentuk</string>
     <string name="crosshair_style_cross">Silang</string>
     <string name="crosshair_style_plus_gap">Silang Celah</string>
     <string name="crosshair_style_x">Diagonal X</string>
@@ -432,28 +398,23 @@
     <string name="crosshair_style_circle_dot">Lingkaran + Titik</string>
     <string name="crosshair_style_cross_dot">Silang + Titik</string>
     <string name="crosshair_style_t_shape">Bentuk T</string>
-    <string name="crosshair_color_label">Warna</string>
+    <!-- FITUR BARU: 2 style crosshair tambahan (Diamond, Square) — lihat
+         StyleIconButton & CrosshairPreview di modul ui/. -->
+    <string name="crosshair_style_diamond">Belah Ketupat</string>
+    <string name="crosshair_style_square">Kotak</string>
     <string name="crosshair_custom_color_title">Pilih Warna Kustom</string>
     <string name="crosshair_custom_color_apply">Terapkan</string>
     <string name="crosshair_custom_color_cancel">Batal</string>
-    <string name="crosshair_dimension_group_label">Ukuran &amp; Ketebalan</string>
     <string name="crosshair_size_label">Ukuran</string>
-    <string name="crosshair_size_desc">Jangkauan garis atau lingkaran crosshair dari titik tengah.</string>
     <string name="crosshair_thickness_label">Ketebalan Garis</string>
-    <string name="crosshair_thickness_desc">Semakin tebal, semakin jelas terlihat di layar terang.</string>
     <string name="crosshair_opacity_label">Transparansi</string>
-    <string name="crosshair_opacity_desc">Atur seberapa menyatu crosshair dengan tampilan game.</string>
-    <string name="crosshair_position_label">Posisi</string>
-    <string name="crosshair_position_desc">Default tepat di tengah layar. Bisa digeser manual sesuai kebutuhan.</string>
-    <string name="crosshair_position_start">Atur Posisi</string>
-    <string name="crosshair_position_done">Selesai Mengatur</string>
     <string name="crosshair_position_reset_center">Ke Tengah Layar</string>
-    <string name="crosshair_position_drag_hint">Mode atur posisi aktif tahan dan geser crosshair di layar untuk memindahkannya.</string>
+    <!-- FITUR BARU: tombol kunci posisi crosshair — lihat parameter
+         positionLocked di CrosshairSettingsSection.kt. -->
+    <string name="crosshair_position_lock">Kunci posisi crosshair</string>
+    <string name="crosshair_position_unlock">Buka kunci posisi crosshair</string>
     <!-- FITUR BARU: label offset X/Y di bawah trackpad posisi (PositionJoystick) -->
     <string name="crosshair_position_offset_format">X: %1$d · Y: %2$d</string>
-    <string name="crosshair_notification_channel">Overlay Crosshair</string>
-    <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
-    <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>
 
     <!-- ================= FITUR BARU: Game Booster ================= -->
     <!-- lihat perintah rework: "buatkan game booster screen dengan layar
@@ -465,7 +426,6 @@
          bar/floating dan gampang diakses serta smooth" -->
     <string name="game_booster_title">Game Booster</string>
     <string name="game_booster_subtitle">Pilih game untuk mulai boost performa</string>
-    <string name="game_booster_launch_cta">Boost &amp; Main</string>
     <string name="game_booster_empty_games">Belum ada game terpasang yang dikenali</string>
     <!-- RILIS v2.0 (lihat perintah rework "jadikan opsi drawer game
          booster sementara tidak bisa diakses"): badge singkat di item
@@ -474,7 +434,6 @@
     <string name="game_booster_drawer_locked_badge">Segera Hadir</string>
 
     <string name="game_booster_menu_fps">Tampilkan FPS</string>
-    <string name="game_booster_menu_game_mode">Mode Game</string>
     <string name="game_booster_menu_dnd">Jangan Ganggu</string>
     <string name="game_booster_menu_screenshot">Screenshot</string>
     <string name="game_booster_mode_hemat">Hemat</string>
@@ -504,7 +463,6 @@
     <string name="game_booster_radial_screenshot">Tangkapan\nLayar</string>
     <string name="game_booster_radial_whatsapp">WhatsApp</string>
     <string name="game_booster_radial_ax_mode">AXKM-MODE</string>
-    <string name="game_booster_radial_quick_preset_applied_format">Preset %1$s diterapkan</string>
 
     <string name="game_booster_metrics_title">Monitoring</string>
     <string name="game_booster_metrics_fps">FPS</string>
@@ -514,7 +472,6 @@
     <string name="game_booster_metrics_temp">Suhu</string>
     <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root/Shizuku di tab Tweak untuk FPS real-time</string>
 
-    <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
     <string name="game_booster_sidebar_close">Tutup</string>
     <string name="game_booster_sidebar_end_session">Akhiri Sesi Boost</string>
 
@@ -526,9 +483,6 @@
     <string name="game_booster_sidebar_header">AetherX Corner</string>
     <string name="game_booster_sidebar_launch">Luncurkan</string>
 
-    <string name="game_booster_notification_channel">Game Booster Aktif</string>
-    <string name="game_booster_notification_title_format">Game Booster %1$s</string>
-    <string name="game_booster_notification_text">Ketuk untuk membuka sidebar</string>
     <string name="game_booster_screenshot_needs_privilege">Aktifkan akses root/Shizuku dulu untuk mengambil tangkapan layar</string>
     <string name="game_booster_screenshot_success">Tangkapan layar tersimpan</string>
     <string name="game_booster_screenshot_failed">Gagal mengambil tangkapan layar</string>
@@ -537,10 +491,6 @@
 
     <!-- Dialog adblock lihat KDoc AdBlockDialogState untuk arsitektur
          lengkapnya. Ditampilkan sekali per sesi saat ad-blocker terdeteksi. -->
-    <string name="adblock_dialog_title">Ad Blocker Terdeteksi</string>
-    <string name="adblock_dialog_message">Iklan membantu kami menjaga AetherX tetap gratis. Nonaktifkan ad blocker, atau upgrade ke Membership untuk pengalaman bebas iklan.</string>
-    <string name="adblock_dialog_membership_button">Lihat Membership</string>
-    <string name="adblock_dialog_dismiss_button">Tutup</string>
 
     <!-- REWORK TOTAL PERMISSION (lihat perintah rework "buatkan sistem
          seperti shizuku langsung tertanam dalam aplikasinya... hapus
