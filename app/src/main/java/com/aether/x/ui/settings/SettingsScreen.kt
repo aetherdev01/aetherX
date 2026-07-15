@@ -118,6 +118,13 @@ fun SettingsScreen(
             offsetY = prefs.crosshairOffsetY,
             overlayPermissionGranted = overlayGranted,
             dragModeActive = dragModeActive,
+            // OPSI BARU: kunci posisi crosshair — lihat KDoc parameter di
+            // CrosshairSettingsSection.kt. prefs.crosshairPositionLocked
+            // HARUS ditambahkan ke data class AppPreferences (modul `data`),
+            // begitu juga setCrosshairPositionLocked(Boolean) di
+            // AetherXPreferences.
+            positionLocked = prefs.crosshairPositionLocked,
+            onPositionLockedChange = viewModel::setCrosshairPositionLocked,
             onEnabledChange = viewModel::setCrosshairEnabled,
             onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
             onStyleChange = viewModel::setCrosshairStyle,

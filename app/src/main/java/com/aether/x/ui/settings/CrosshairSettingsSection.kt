@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +52,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -80,6 +83,17 @@ private val styleOptions = listOf(
     StyleOption(CrosshairStyle.CIRCLE_DOT, R.string.crosshair_style_circle_dot),
     StyleOption(CrosshairStyle.CROSS_DOT, R.string.crosshair_style_cross_dot),
     StyleOption(CrosshairStyle.T_SHAPE, R.string.crosshair_style_t_shape),
+    // BARU — 2 style crosshair tambahan (permintaan "tambahkan juga
+    // crosshair baru"). PENTING: enum CrosshairStyle sendiri ADA di modul
+    // `data` (com.aether.x.data.CrosshairStyle) yang TIDAK ikut di dalam
+    // ui.zip ini, jadi dua value ini (DIAMOND, SQUARE) HARUS ditambahkan
+    // manual ke enum class CrosshairStyle di file aslinya supaya project
+    // ini bisa dikompilasi. Rendering overlay sungguhan
+    // (com.aether.x.core.overlay.CrosshairView.onDraw, juga di luar zip
+    // ini) juga perlu ditambah case yang sama biar WYSIWYG dengan preview
+    // di bawah ini.
+    StyleOption(CrosshairStyle.DIAMOND, R.string.crosshair_style_diamond),
+    StyleOption(CrosshairStyle.SQUARE, R.string.crosshair_style_square),
 )
 
 /**
@@ -138,6 +152,16 @@ fun CrosshairSettingsSection(
     // (menyeret handle langsung memicu [onOffsetChange]), menggantikan alur
     // lama "aktifkan drag-mode lalu geser crosshair di overlay layar lain".
     dragModeActive: Boolean,
+    // OPSI BARU (permintaan "tambahkan juga opsi baru di pengaturan"):
+    // kunci posisi crosshair supaya joystick tidak bisa digeser tanpa
+    // sengaja setelah posisi pas ditemukan — berguna karena kartu ini
+    // scrollable dan sentuhan tidak sengaja di area joystick sebelumnya
+    // langsung memindahkan crosshair. Sumber kebenarannya (default value,
+    // penyimpanan) ada di AppPreferences/AetherXPreferences milik modul
+    // `data`, di luar zip ini — lihat wiring di SettingsScreen.kt &
+    // SettingsViewModel.kt.
+    positionLocked: Boolean = false,
+    onPositionLockedChange: (Boolean) -> Unit = {},
     onEnabledChange: (Boolean) -> Unit,
     onRequestOverlayPermission: () -> Unit,
     onStyleChange: (CrosshairStyle) -> Unit,
@@ -272,11 +296,23 @@ fun CrosshairSettingsSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
                         ) {
-                            IconButton(onClick = onResetPosition) {
+                            // BARU: tombol kunci posisi — mencegah joystick
+                            // tergeser tidak sengaja. Ikon berubah antara
+                            // Lock/LockOpen mengikuti state positionLocked.
+                            IconButton(onClick = { onPositionLockedChange(!positionLocked) }) {
+                                Icon(
+                                    imageVector = if (positionLocked) Icons.Outlined.Lock else Icons.Outlined.LockOpen,
+                                    contentDescription = stringResource(
+                                        if (positionLocked) R.string.crosshair_position_unlock else R.string.crosshair_position_lock,
+                                    ),
+                                    tint = if (positionLocked) AccentBlue else Color.White.copy(alpha = 0.5f),
+                                )
+                            }
+                            IconButton(onClick = onResetPosition, enabled = !positionLocked) {
                                 Icon(
                                     imageVector = Icons.Outlined.Refresh,
                                     contentDescription = stringResource(R.string.crosshair_position_reset_center),
-                                    tint = Color.White.copy(alpha = 0.5f),
+                                    tint = Color.White.copy(alpha = if (positionLocked) 0.25f else 0.5f),
                                 )
                             }
                         }
@@ -297,6 +333,7 @@ fun CrosshairSettingsSection(
                             offsetX = offsetX,
                             offsetY = offsetY,
                             screenBoundsPx = screenBoundsPx,
+                            locked = positionLocked,
                             onOffsetChange = onOffsetChange,
                             modifier = Modifier.padding(top = 8.dp),
                         )
@@ -436,6 +473,41 @@ private fun StyleIconButton(
                     drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
                     drawLine(drawColor, Offset(cx, cy), Offset(cx, cy + r), thickness, StrokeCap.Round)
                 }
+                // BARU: belah ketupat terbuka (4 garis membentuk diamond,
+                // dengan gap di tengah supaya titik bidik tetap terlihat
+                // jelas) — gaya populer di crosshair custom game FPS mobile.
+                CrosshairStyle.DIAMOND -> {
+                    val gap = r * 0.3f
+                    val d = r * 0.7071f
+                    val gapD = gap * 0.7071f
+                    drawLine(drawColor, Offset(cx - gapD, cy - gapD), Offset(cx - d, cy - d), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx - d, cy - d), Offset(cx, cy - r), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx + d, cy - d), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + d, cy - d), Offset(cx + gapD, cy - gapD), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + gapD, cy + gapD), Offset(cx + d, cy + d), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + d, cy + d), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + r), Offset(cx - d, cy + d), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx - d, cy + d), Offset(cx - gapD, cy + gapD), thickness, StrokeCap.Round)
+                }
+                // BARU: kotak terbuka (4 sudut siku-siku terpisah, seperti
+                // bracket kamera) — gaya "frame" yang menandai area bidik
+                // tanpa menutupi target di tengah.
+                CrosshairStyle.SQUARE -> {
+                    val s = r * 0.85f
+                    val corner = s * 0.5f
+                    // Sudut kiri-atas.
+                    drawLine(drawColor, Offset(cx - s, cy - s), Offset(cx - s + corner, cy - s), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx - s, cy - s), Offset(cx - s, cy - s + corner), thickness, StrokeCap.Round)
+                    // Sudut kanan-atas.
+                    drawLine(drawColor, Offset(cx + s, cy - s), Offset(cx + s - corner, cy - s), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + s, cy - s), Offset(cx + s, cy - s + corner), thickness, StrokeCap.Round)
+                    // Sudut kiri-bawah.
+                    drawLine(drawColor, Offset(cx - s, cy + s), Offset(cx - s + corner, cy + s), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx - s, cy + s), Offset(cx - s, cy + s - corner), thickness, StrokeCap.Round)
+                    // Sudut kanan-bawah.
+                    drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s - corner, cy + s), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s, cy + s - corner), thickness, StrokeCap.Round)
+                }
             }
         }
     }
@@ -511,6 +583,9 @@ private fun PositionJoystick(
     offsetX: Int,
     offsetY: Int,
     screenBoundsPx: IntSize,
+    // BARU: saat true, drag gesture di trackpad diabaikan (lihat
+    // pointerInput di bawah) — pasangan tombol kunci di CrosshairSettingsSection.
+    locked: Boolean = false,
     onOffsetChange: (x: Int, y: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -537,8 +612,11 @@ private fun PositionJoystick(
                 .size(trackpadSize)
                 .clip(RoundedCornerShape(20.dp))
                 .background(SurfaceRaised.copy(alpha = 0.4f))
-                .border(1.dp, AccentBlueDim, RoundedCornerShape(20.dp))
-                .pointerInput(maxOffsetX, maxOffsetY) {
+                .border(1.dp, if (locked) AccentBlue.copy(alpha = 0.3f) else AccentBlueDim, RoundedCornerShape(20.dp))
+                .pointerInput(maxOffsetX, maxOffsetY, locked) {
+                    // BARU: saat terkunci, tidak mendaftarkan gesture drag
+                    // sama sekali — trackpad jadi murni tampilan statis.
+                    if (locked) return@pointerInput
                     // Rasio skala: SAMA PERSIS dengan pemetaan absolute
                     // positioning sebelumnya (setengah lebar/tinggi layar
                     // asli dibagi lebar/tinggi trackpad) — supaya satu drag
@@ -618,10 +696,14 @@ private fun PositionJoystick(
             )
         }
 
+        // FIX (perbaikan ukuran font terlalu kecil): labelMedium (11sp)
+        // dinaikkan ke bodyMedium (13sp) supaya konsisten dengan label
+        // slider Size/Transparansi/Ketebalan di atas.
         Text(
             text = stringResource(R.string.crosshair_position_offset_format, offsetX, offsetY),
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.6f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = 10.dp),
         )
     }
@@ -666,8 +748,23 @@ private fun VerticalAccentSlider(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
-        Text(text = valueText, style = MaterialTheme.typography.labelSmall, color = AccentBlue)
+        // FIX (perbaikan ukuran font terlalu kecil): labelSmall (10sp)
+        // dinaikkan ke bodyMedium (13sp) + Medium weight supaya label
+        // "Size" dan angka value-nya jelas terbaca, sejajar dengan
+        // perbaikan yang sama di HorizontalAccentSlider (Transparansi/
+        // Ketebalan) di bawah.
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.75f),
+        )
+        Text(
+            text = valueText,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = AccentBlue,
+        )
         Spacer(modifier = Modifier.height(8.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
         // BUG FIX (lihat perintah rework — "fix total slider crosshair
@@ -736,13 +833,23 @@ private fun HorizontalAccentSlider(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            // FIX (lihat keluhan "ukuran font crosshair terlalu besar dan
-            // ga sama dengan yang lain"): sebelumnya label ini bodyMedium
-            // (lebih besar) sementara label VerticalAccentSlider "Size" di
-            // atas pakai labelSmall — dua slider yang sejajar tampil beda
-            // ukuran teks. Disamakan ke labelSmall supaya konsisten.
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
-            Text(text = valueText, style = MaterialTheme.typography.labelSmall, color = AccentBlue)
+            // FIX (perbaikan ukuran font Transparansi/Ketebalan yang
+            // terlalu kecil): sebelumnya labelSmall (10sp) — hampir tidak
+            // terbaca. Dinaikkan ke bodyMedium (13sp) + Medium weight,
+            // DISAMAKAN dengan VerticalAccentSlider ("Size") di atas
+            // supaya semua slider crosshair konsisten dan mudah dibaca.
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.75f),
+            )
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AccentBlue,
+            )
         }
         Spacer(modifier = Modifier.height(10.dp))
         val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)

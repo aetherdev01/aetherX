@@ -86,6 +86,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
+     * OPSI BARU: kunci/buka kunci posisi crosshair. CATATAN: memanggil
+     * preferences.setCrosshairPositionLocked(Boolean) — method ini perlu
+     * ditambahkan ke AetherXPreferences (modul `data`), dengan pola persist
+     * yang sama seperti setCrosshairOffset di atasnya (DataStore key baru,
+     * mis. "crosshair_position_locked").
+     */
+    fun setCrosshairPositionLocked(locked: Boolean) {
+        viewModelScope.launch { preferences.setCrosshairPositionLocked(locked) }
+    }
+
+    /**
      * FITUR BARU (lihat perintah rework — "Samakan Section Crosshair
      * Persis seperti foto ke dua dari UI"): dipanggil dari [PositionJoystick]
      * di CrosshairSettingsSection saat pengguna menyeret handle joystick —

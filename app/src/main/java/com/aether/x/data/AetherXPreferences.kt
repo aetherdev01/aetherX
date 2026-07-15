@@ -18,7 +18,11 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
-enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE }
+// FITUR BARU: DIAMOND (belah ketupat terbuka) & SQUARE (kotak bracket
+// 4 sudut) — lihat rendering di StyleIconButton (CrosshairSettingsSection.kt)
+// dan CrosshairPreview.kt. Overlay sungguhan (CrosshairView.onDraw, modul
+// core/overlay) juga perlu ditambah case yang sama supaya WYSIWYG.
+enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE }
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
 
@@ -55,6 +59,9 @@ data class AppPreferences(
     val crosshairOpacity: Int = 100,
     val crosshairOffsetX: Int = 0,
     val crosshairOffsetY: Int = 0,
+    // OPSI BARU: kunci posisi crosshair — mencegah joystick posisi tergeser
+    // tidak sengaja di CrosshairSettingsSection. Lihat setCrosshairPositionLocked.
+    val crosshairPositionLocked: Boolean = false,
     val fpsMonitorEnabled: Boolean = false,
     val fpsMonitorStyle: FpsMonitorStyle = FpsMonitorStyle.CLASSIC,
     // Offset hanya dipakai oleh gaya ROG (bisa digeser). Gaya Classic selalu
@@ -182,6 +189,7 @@ class AetherXPreferences(private val context: Context) {
         val CROSSHAIR_OPACITY = intPreferencesKey("crosshair_opacity")
         val CROSSHAIR_OFFSET_X = intPreferencesKey("crosshair_offset_x")
         val CROSSHAIR_OFFSET_Y = intPreferencesKey("crosshair_offset_y")
+        val CROSSHAIR_POSITION_LOCKED = booleanPreferencesKey("crosshair_position_locked")
 
         val FPS_MONITOR_ENABLED = booleanPreferencesKey("fps_monitor_enabled")
         val FPS_MONITOR_STYLE = stringPreferencesKey("fps_monitor_style")
@@ -288,6 +296,7 @@ class AetherXPreferences(private val context: Context) {
             crosshairOpacity = prefs[Keys.CROSSHAIR_OPACITY] ?: 100,
             crosshairOffsetX = prefs[Keys.CROSSHAIR_OFFSET_X] ?: 0,
             crosshairOffsetY = prefs[Keys.CROSSHAIR_OFFSET_Y] ?: 0,
+            crosshairPositionLocked = prefs[Keys.CROSSHAIR_POSITION_LOCKED] ?: false,
             fpsMonitorEnabled = prefs[Keys.FPS_MONITOR_ENABLED] ?: false,
             fpsMonitorStyle = prefs[Keys.FPS_MONITOR_STYLE]
                 ?.let { runCatching { FpsMonitorStyle.valueOf(it) }.getOrNull() }
@@ -394,6 +403,13 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.CROSSHAIR_OFFSET_X] = offsetX
             prefs[Keys.CROSSHAIR_OFFSET_Y] = offsetY
+        }
+    }
+
+    /** OPSI BARU: kunci/buka kunci posisi crosshair (lihat AppPreferences.crosshairPositionLocked). */
+    suspend fun setCrosshairPositionLocked(locked: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.CROSSHAIR_POSITION_LOCKED] = locked
         }
     }
 

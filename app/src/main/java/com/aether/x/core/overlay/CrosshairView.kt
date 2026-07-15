@@ -113,6 +113,36 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawLine(cx - r, cy, cx + r, cy, paint)
                 canvas.drawLine(cx, cy, cx, cy + r, paint)
             }
+            CrosshairStyle.DIAMOND -> {
+                // FITUR BARU: belah ketupat terbuka — implementasi HARUS
+                // identik dengan StyleIconButton (CrosshairSettingsSection.kt)
+                // dan CrosshairPreview.kt supaya WYSIWYG.
+                val gap = r * 0.3f
+                val d = r * 0.7071f
+                val gapD = gap * 0.7071f
+                canvas.drawLine(cx - gapD, cy - gapD, cx - d, cy - d, paint)
+                canvas.drawLine(cx - d, cy - d, cx, cy - r, paint)
+                canvas.drawLine(cx, cy - r, cx + d, cy - d, paint)
+                canvas.drawLine(cx + d, cy - d, cx + gapD, cy - gapD, paint)
+                canvas.drawLine(cx + gapD, cy + gapD, cx + d, cy + d, paint)
+                canvas.drawLine(cx + d, cy + d, cx, cy + r, paint)
+                canvas.drawLine(cx, cy + r, cx - d, cy + d, paint)
+                canvas.drawLine(cx - d, cy + d, cx - gapD, cy + gapD, paint)
+            }
+            CrosshairStyle.SQUARE -> {
+                // FITUR BARU: kotak bracket 4 sudut — implementasi HARUS
+                // identik dengan StyleIconButton & CrosshairPreview.
+                val s = r * 0.85f
+                val corner = s * 0.5f
+                canvas.drawLine(cx - s, cy - s, cx - s + corner, cy - s, paint)
+                canvas.drawLine(cx - s, cy - s, cx - s, cy - s + corner, paint)
+                canvas.drawLine(cx + s, cy - s, cx + s - corner, cy - s, paint)
+                canvas.drawLine(cx + s, cy - s, cx + s, cy - s + corner, paint)
+                canvas.drawLine(cx - s, cy + s, cx - s + corner, cy + s, paint)
+                canvas.drawLine(cx - s, cy + s, cx - s, cy + s - corner, paint)
+                canvas.drawLine(cx + s, cy + s, cx + s - corner, cy + s, paint)
+                canvas.drawLine(cx + s, cy + s, cx + s, cy + s - corner, paint)
+            }
         }
     }
 }

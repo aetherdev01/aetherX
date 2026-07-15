@@ -54,47 +54,47 @@ object AetherXNotifier {
             channelId = "aetherx_update_alerts",
             channelNameRes = R.string.notif_channel_update_name,
             channelDescRes = R.string.notif_channel_update_desc,
-            // REWORK (lihat perintah rework — "perbaiki notifikasi tidak
-            // pernah muncul mengambang dan senyap"): dinaikkan dari
-            // IMPORTANCE_DEFAULT ke IMPORTANCE_HIGH — di Android 8+ (API
-            // 26+), HANYA channel dengan importance HIGH yang ditampilkan
-            // sebagai heads-up (mengambang di atas layar) DAN otomatis
-            // bunyi/getar; IMPORTANCE_DEFAULT hanya muncul senyap di status
-            // bar tanpa bunyi/mengambang sama sekali — inilah AKAR MASALAH
-            // "notifikasi tidak pernah muncul mengambang dan senyap".
-            importance = NotificationManager.IMPORTANCE_HIGH,
+            // FIX (permintaan "notifikasi tidak perlu mengambang, cukup ada
+            // suaranya"): diturunkan dari IMPORTANCE_HIGH ke
+            // IMPORTANCE_DEFAULT. Di Android 8+ (API 26+), HANYA channel
+            // IMPORTANCE_HIGH yang ditampilkan sebagai heads-up (mengambang
+            // di atas layar) — IMPORTANCE_DEFAULT tetap muncul normal di
+            // status bar & notification tray DAN tetap bunyi/getar (lihat
+            // enableVibration/setSound eksplisit di ensureChannel di bawah),
+            // hanya TIDAK muncul sebagai pop-up mengambang.
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
             notificationId = 1001,
         ),
         MAINTENANCE(
             channelId = "aetherx_maintenance_alerts",
             channelNameRes = R.string.notif_channel_maintenance_name,
             channelDescRes = R.string.notif_channel_maintenance_desc,
-            importance = NotificationManager.IMPORTANCE_HIGH,
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
             notificationId = 1002,
         ),
         GENERAL(
             channelId = "aetherx_general_alerts",
             channelNameRes = R.string.notif_channel_general_name,
             channelDescRes = R.string.notif_channel_general_desc,
-            // Sama seperti UPDATE — dinaikkan ke HIGH, lihat KDoc di atas.
-            importance = NotificationManager.IMPORTANCE_HIGH,
+            // Sama seperti UPDATE — diturunkan ke DEFAULT, lihat KDoc di atas.
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
             notificationId = 1003,
         ),
 
         /**
          * FITUR BARU (lihat perintah rework — "perbaiki notifikasi ...
-         * setiap aktifkan fitur, monitor dll"): konfirmasi heads-up
-         * singkat setiap kali pengguna MENGAKTIFKAN/MENONAKTIFKAN sebuah
-         * fitur (Crosshair, FPS Monitor, Game Profile Monitor, dll) —
-         * SEBELUMNYA tidak ada notifikasi APA PUN untuk kejadian ini sama
-         * sekali (lihat [notifyFeatureToggled], titik panggil baru dari
-         * layar Tweak/Settings).
+         * setiap aktifkan fitur, monitor dll"): konfirmasi singkat setiap
+         * kali pengguna MENGAKTIFKAN/MENONAKTIFKAN sebuah fitur (Crosshair,
+         * FPS Monitor, Game Profile Monitor, dll) — SEBELUMNYA tidak ada
+         * notifikasi APA PUN untuk kejadian ini sama sekali (lihat
+         * [notifyFeatureToggled], titik panggil baru dari layar
+         * Tweak/Settings).
          */
         FEATURE_TOGGLE(
             channelId = "aetherx_feature_toggle_alerts",
             channelNameRes = R.string.notif_channel_feature_toggle_name,
             channelDescRes = R.string.notif_channel_feature_toggle_desc,
-            importance = NotificationManager.IMPORTANCE_HIGH,
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
             notificationId = 1004,
         ),
     }
@@ -111,13 +111,15 @@ object AetherXNotifier {
      * suara di [notify] lewat [NotificationCompat.Builder.setDefaults]
      * tetap berlaku untuk API <26).
      *
-     * REWORK (lihat perintah rework — "perbaiki notifikasi ... senyap"):
-     * [NotificationChannel.enableVibration] dan [NotificationChannel.setSound]
-     * SEKARANG di-set EKSPLISIT — importance HIGH SEHARUSNYA sudah cukup
-     * untuk getar+suara otomatis menurut dokumentasi Android, TAPI
-     * beberapa skin OEM (mis. sebagian ROM MIUI/ColorOS versi tertentu)
-     * diketahui butuh properti ini diset eksplisit di channel, tidak cukup
-     * hanya mengandalkan importance level saja.
+     * REWORK (permintaan "notifikasi tidak perlu mengambang, cukup ada
+     * suaranya"): [NotificationChannel.enableVibration] dan
+     * [NotificationChannel.setSound] tetap di-set EKSPLISIT walau importance
+     * sekarang DEFAULT (bukan lagi HIGH) — getar & suara TETAP jalan normal
+     * di importance DEFAULT, cuma heads-up (mengambang) yang hilang karena
+     * itu eksklusif untuk importance HIGH. Beberapa skin OEM (mis. sebagian
+     * ROM MIUI/ColorOS versi tertentu) diketahui butuh properti ini diset
+     * eksplisit di channel, tidak cukup hanya mengandalkan importance level
+     * saja.
      */
     private fun ensureChannel(context: Context, kind: NotificationKind) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -191,17 +193,19 @@ object AetherXNotifier {
             .setOngoing(ongoing)
             .setContentIntent(contentIntent)
             .setPriority(importanceToPriority(kind.importance))
-            // REWORK (lihat perintah rework — "perbaiki notifikasi ...
-            // senyap"): CATEGORY_EVENT membantu beberapa OEM launcher/ROM
-            // memprioritaskan notifikasi ini untuk tampil heads-up alih-alih
-            // langsung diam di status bar. setDefaults + setVibrate di sini
-            // adalah FALLBACK untuk Android <8 (API <26) yang tidak punya
-            // konsep NotificationChannel sama sekali (properti getar/suara
-            // channel di ensureChannel tidak berlaku di API itu) — untuk
-            // API 26+, properti channel di ensureChannel yang menentukan,
-            // tapi memanggil setDefaults/setVibrate di sini tetap aman
-            // (diabaikan sistem kalau channel API 26+ sudah override-nya).
-            .setCategory(NotificationCompat.CATEGORY_EVENT)
+            // FIX (permintaan "notifikasi tidak perlu mengambang, cukup ada
+            // suaranya"): CATEGORY_EVENT DIHAPUS — kategori itu sebelumnya
+            // dipakai untuk mendorong sebagian OEM launcher/ROM menampilkan
+            // notifikasi ini sebagai heads-up, yang sekarang justru
+            // berlawanan dengan tujuan (importance sudah DEFAULT, bukan
+            // HIGH, supaya tidak mengambang). setDefaults + setVibrate tetap
+            // dipertahankan sebagai FALLBACK bunyi/getar untuk Android <8
+            // (API <26) yang tidak punya konsep NotificationChannel sama
+            // sekali (properti getar/suara channel di ensureChannel tidak
+            // berlaku di API itu) — untuk API 26+, properti channel di
+            // ensureChannel yang menentukan bunyi/getar, tapi setDefaults/
+            // setVibrate di sini tetap aman dipanggil (diabaikan sistem
+            // kalau channel API 26+ sudah override-nya).
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setVibrate(DEFAULT_VIBRATION_PATTERN)
 
