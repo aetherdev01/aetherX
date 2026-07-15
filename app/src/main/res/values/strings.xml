@@ -182,11 +182,11 @@
          terakhir dipakai ditandai chip khusus. Monitor CPU/GPU/Suhu
          (dashboard_monitor_*) DIHAPUS dari Dashboard, dipindah jadi
          domain khusus Game Booster. -->
-    <string name="dashboard_section_game_activity">AKTIVITAS GAME</string>
+    <string name="dashboard_section_game_activity">Aktivitas Game</string>
     <string name="dashboard_game_activity_last_used">Terakhir dipakai</string>
     <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
     <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
-    <string name="dashboard_hero_kicker">AETHERX</string>
+    <string name="dashboard_hero_kicker">AXKM</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
     <string name="dashboard_privilege_root">Root</string>
     <string name="dashboard_privilege_adb">ADB</string>
@@ -203,8 +203,8 @@
     <string name="dashboard_device_storage">Penyimpanan</string>
     <string name="dashboard_device_usage_format">%1$s / %2$s</string>
     <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
-    <string name="drawer_root_only_label">KHUSUS ROOT</string>
-    <string name="drawer_privileged_label">Privilege Aktif</string>
+    <string name="drawer_root_only_label">Advanced</string>
+    <string name="drawer_privileged_label">Aplikasi</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
