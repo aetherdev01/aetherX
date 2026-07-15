@@ -150,18 +150,36 @@ fun TweakScreen(
         }
     }
 
-    // Sub-tab root-only (Game Profile/Kernel Manager/App Manager/Build.prop)
-    // direset ke Dashboard otomatis kalau backend berubah jadi non-Root
-    // sementara salah satunya sedang aktif (mis. pengguna cabut akses root
-    // dari luar) — mencegah layar menampilkan konten yang sudah tidak
-    // relevan lagi untuk backend baru. Dashboard/Tweak sendiri TIDAK
-    // direset karena keduanya tetap relevan untuk backend apa pun.
+    // Sub-tab yang butuh privilege direset ke Dashboard otomatis kalau
+    // backend berubah jadi NONE sepenuhnya (mis. pengguna cabut akses
+    // root/lupakan pairing ADB dari luar) — mencegah layar menampilkan
+    // konten yang sudah tidak relevan lagi. Dashboard/Tweak/Game Profile
+    // TIDAK direset karena tetap relevan untuk backend apa pun (Game
+    // Profile lihat KDoc di NavigationDrawerItem-nya sendiri di bawah).
+    //
+    // BUG FIX (lihat perintah rework — "user no root sekarang bisa pakai
+    // opsi App Manager"): SEBELUMNYA kondisi ini (dan showRootOnlyItems di
+    // drawer) memakai `activeBackend != PrivilegeBackend.ROOT` untuk
+    // App Manager juga — TERNYATA App Manager BUKAN benar-benar root-only:
+    // ketiga perintah shell-nya (lihat AppManagerRepository.kt — `pm
+    // disable-user`, `pm enable`, `am force-stop`) adalah perintah yang
+    // memang BISA dijalankan lewat UID `shell` (backend ADB tertanam),
+    // BUKAN cuma root — ini kemampuan standar `adb shell` di Android,
+    // bukan celah keamanan. Laporan "user no root bisa akses App Manager"
+    // ternyata user itu sudah pairing ADB (privilege sah, bukan NONE).
+    // Sekarang App Manager hanya direset kalau backend benar-benar NONE
+    // (tanpa privilege apa pun) — TETAP tersedia untuk ADB maupun Root.
+    // Kernel Manager & Build Prop TETAP eksklusif Root murni (keduanya
+    // menyentuh /sys/kernel, /proc/sys, dan build.prop sistem yang butuh
+    // akses lebih dalam dari yang bisa diberikan UID shell).
     LaunchedEffect(privilegeStatus.activeBackend) {
-        val isRootOnlySubTab = selectedSubTab == TweakSubTab.GAME_PROFILE ||
-            selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
-            selectedSubTab == TweakSubTab.APP_MANAGER ||
+        val backend = privilegeStatus.activeBackend
+        val needsRootOnly = selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
             selectedSubTab == TweakSubTab.BUILD_PROP
-        if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT && isRootOnlySubTab) {
+        val needsAnyPrivilege = selectedSubTab == TweakSubTab.APP_MANAGER
+        val shouldReset = (needsRootOnly && backend != PrivilegeBackend.ROOT) ||
+            (needsAnyPrivilege && backend == PrivilegeBackend.NONE)
+        if (shouldReset) {
             selectedSubTab = TweakSubTab.DASHBOARD
             if (drawerState.isOpen) drawerState.close()
         }
@@ -173,14 +191,16 @@ fun TweakScreen(
         // hamburger) untuk SEMUA backend — beda dari sebelumnya yang
         // cuma aktif untuk Root. Alasannya: sekarang drawer minimal berisi
         // "Dashboard" dan "Tweak" yang relevan untuk backend apa pun (lihat
-        // TweakDrawerContent); item Game Profile/Kernel Manager/App
-        // Manager/Build.prop Editor sendiri yang di-gating Root-only di
-        // dalam drawer (tidak dirender untuk backend selain Root).
+        // TweakDrawerContent); Game Profile juga tersedia untuk semua
+        // backend; App Manager tersedia untuk Root ATAU ADB (lihat KDoc
+        // TweakDrawerContent soal kenapa BUKAN root-only); Kernel
+        // Manager/Build.prop Editor tetap eksklusif Root murni.
         gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
                 TweakDrawerContent(
                     selected = selectedSubTab,
+                    showPrivilegedItems = privilegeStatus.activeBackend != PrivilegeBackend.NONE,
                     showRootOnlyItems = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
                     onSelect = { tab ->
                         selectedSubTab = tab
@@ -526,13 +546,28 @@ private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER,
  *   sekarang dipisah murni jadi kontrol tweak saja.
  *
  * Item "Kernel Manager" (baca/tulis frekuensi & governor per-core CPU, GPU,
- * dan suhu live), "App Manager" (freeze/unfreeze aplikasi pihak ketiga
- * & bloatware terkurasi), dan "Build.prop Editor" (edit persisten properti
- * sistem lewat file, lihat KDoc [BuildPropScreen] soal bedanya dengan
- * `setprop` runtime) HANYA dirender kalau [showRootOnlyItems] true (backend
- * Root aktif) — dipisah dengan [HorizontalDivider] + label kecil "Khusus
- * Root" supaya jelas kenapa jumlah item drawer berbeda-beda tergantung
- * backend yang aktif, bukan terlihat seperti bug/item hilang.
+ * dan suhu live) dan "Build.prop Editor" (edit persisten properti sistem
+ * lewat file, lihat KDoc [BuildPropScreen] soal bedanya dengan `setprop`
+ * runtime) HANYA dirender kalau [showRootOnlyItems] true (backend Root
+ * aktif — keduanya menyentuh /sys/kernel, /proc/sys, dan file sistem yang
+ * butuh akses lebih dalam dari yang bisa diberikan UID shell ADB).
+ *
+ * Item "App Manager" (freeze/unfreeze aplikasi pihak ketiga & bloatware
+ * terkurasi) dirender kalau [showPrivilegedItems] true (backend Root ATAU
+ * ADB tertanam) — BUKAN root-only. BUG FIX (lihat perintah rework "user no
+ * root sekarang bisa pakai opsi App Manager"): perintah shell App Manager
+ * (`pm disable-user`, `pm enable`, `am force-stop` — lihat
+ * AppManagerRepository.kt) memang BISA dijalankan lewat UID `shell`
+ * (backend ADB), bukan cuma root — ini kemampuan standar `adb shell` di
+ * Android. SEBELUMNYA item ini ikut disatukan ke grup root-only bersama
+ * Kernel Manager/Build Prop, sehingga kategorisasinya menyesatkan (label
+ * "Khusus Root" padahal ADB pun cukup) walau bukan celah keamanan (executor
+ * tetap null-checked di AppManagerViewModel untuk backend NONE).
+ *
+ * Kedua grup dipisah dengan [HorizontalDivider] + label kecil masing-masing
+ * ("Privilege Aktif" utk App Manager, "Khusus Root" utk Kernel
+ * Manager/Build Prop) supaya jelas kenapa jumlah item drawer berbeda-beda
+ * tergantung backend yang aktif, bukan terlihat seperti bug/item hilang.
  */
 // Saklar fitur (RILIS v2.0 — lihat perintah rework "jadikan opsi drawer
 // game booster sementara tidak bisa diakses"): Game Booster hasil rework
@@ -552,6 +587,7 @@ private val LOCKED_ITEM_NO_OP_CLICK: () -> Unit = {}
 @Composable
 private fun TweakDrawerContent(
     selected: TweakSubTab,
+    showPrivilegedItems: Boolean,
     showRootOnlyItems: Boolean,
     onSelect: (TweakSubTab) -> Unit,
     onNavigateToGameBooster: () -> Unit,
@@ -651,6 +687,27 @@ private fun TweakDrawerContent(
             .alpha(if (GAME_BOOSTER_DRAWER_LOCKED) 0.38f else 1f),
     )
 
+    if (showPrivilegedItems) {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
+        )
+        Text(
+            text = stringResource(R.string.drawer_privileged_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_app_manager)) },
+            icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
+            selected = selected == TweakSubTab.APP_MANAGER,
+            onClick = { onSelect(TweakSubTab.APP_MANAGER) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+    }
+
     if (showRootOnlyItems) {
         HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant,
@@ -667,14 +724,6 @@ private fun TweakDrawerContent(
             icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
             selected = selected == TweakSubTab.KERNEL_MANAGER,
             onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
-            colors = NavigationDrawerItemDefaults.colors(),
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-        )
-        NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_app_manager)) },
-            icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
-            selected = selected == TweakSubTab.APP_MANAGER,
-            onClick = { onSelect(TweakSubTab.APP_MANAGER) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
