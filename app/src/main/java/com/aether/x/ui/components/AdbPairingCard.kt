@@ -1,7 +1,11 @@
 package com.aether.x.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -20,7 +25,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,23 +38,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 /**
- * REWORK TOTAL PERMISSION (lihat perintah rework — "cara pairingnya juga
- * sama seperti shizuku pakai wireless adb"): kartu pairing ADB tertanam,
- * mengikuti alur wireless debugging Android 11+ yang SAMA persis dengan
- * yang ditampilkan referensi AxManager/Shizuku Manager:
+ * REWORK TOTAL — Auto-Pairing (lihat perintah rework: "jadikan sistem
+ * pairing AetherX ... tinggal klik Start lalu ada notifikasi mengambang
+ * Searching for Pairing, lalu buka opsi developer pilih Debug Nirkabel
+ * lalu muncul notifikasi Pairing found ... tidak perlu isi alamat ip dll
+ * secara manual").
  *
- * 1. Pengguna membuka Pengaturan > Opsi Developer > Wireless debugging >
- *    "Pasangkan perangkat dengan kode pairing" — dialog itu menampilkan
- *    IP:PORT PAIRING dan kode 6 digit.
- * 2. Pengguna memasukkan IP, PORT PAIRING, dan kode 6-digit itu ke form
- *    ini, PLUS port koneksi (dari layar utama Wireless debugging,
- *    biasanya port BEDA dari port pairing) untuk sesi shell setelahnya.
- * 3. Tombol "Mulai Penyandingan" memicu [onPair] — hasilnya
- *    (sukses/gagal) datang lewat [PrivilegeManager.events] yang sudah
- *    ditangani di level [PermissionSetupScreen] (Snackbar), bukan di sini.
+ * UI kartu ini sekarang HANYA punya satu tombol aksi ("Mulai Penyandingan"
+ * / "Start") — TIDAK ADA field IP, port pairing, atau port koneksi sama
+ * sekali. Host+port didapat otomatis lewat mDNS (lihat
+ * [com.aether.x.core.adb.AdbAutoPairingDiscovery]); satu-satunya input
+ * manual yang tersisa adalah kode 6-digit yang tampil di dialog Android
+ * sendiri, diminta lewat [AdbAutoPairingCodeDialog] begitu service pairing
+ * terdeteksi.
  *
- * Kartu ini punya mode tampilan berbeda dari [PermissionMethodCard] biasa
- * karena butuh field input, bukan cuma tombol satu-klik.
+ * Notifikasi mengambang "Searching for Pairing…" / "Pairing found"
+ * ditampilkan oleh [AdbAutoPairingFloatingNotice] — dipanggil terpisah
+ * dari layar pemanggil (mis. Box di root PermissionSetupScreen) supaya
+ * bisa mengambang DI ATAS seluruh konten layar, bukan terkurung di dalam
+ * kartu ini.
  */
 @Composable
 fun AdbPairingCard(
@@ -60,19 +66,11 @@ fun AdbPairingCard(
     locked: Boolean,
     lockedHint: String?,
     onOpenWirelessDebugging: () -> Unit,
-    onPair: (host: String, pairingPort: String, code: String, connectPort: String) -> Unit,
+    onStartAutoPairing: () -> Unit,
     onReconnect: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var host by remember { mutableStateOf("") }
-    var pairingPort by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    var connectPort by remember { mutableStateOf("") }
-    var showForm by remember { mutableStateOf(false) }
-
-    val contentAlpha = if (locked) 0.5f else 1f
-
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -85,9 +83,7 @@ fun AdbPairingCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
-            modifier = Modifier
-                .padding(18.dp)
-                .let { if (locked) it else it }, // alpha diterapkan per-elemen di bawah, bukan seluruh Column (form tetap harus terbaca kalau tidak locked)
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
@@ -135,10 +131,7 @@ fun AdbPairingCard(
                 paired -> {
                     // Sudah pernah pairing tapi sesi shell belum aktif (mis.
                     // baru buka app, atau Wireless debugging sempat mati) —
-                    // TIDAK perlu form pairing lagi, cukup tombol sambungkan
-                    // ulang. Ini yang membuat koneksi "tidak gampang
-                    // ter-reset": pengguna tidak diminta mengetik ulang
-                    // host/port/kode setiap kali.
+                    // TIDAK perlu pairing ulang, cukup tombol sambungkan ulang.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -162,72 +155,26 @@ fun AdbPairingCard(
                     TextButton(onClick = onForget) { Text("Pairing ulang / ganti perangkat") }
                 }
                 else -> {
-                    if (!showForm) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = onOpenWirelessDebugging) {
-                                Text("Buka Pengaturan Wireless Debugging")
-                            }
-                            Button(onClick = { showForm = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Mulai Penyandingan")
-                            }
+                    // Sama persis dengan referensi UI: satu link teks untuk
+                    // membuka Pengaturan, lalu satu tombol besar "Mulai
+                    // Penyandingan" — TIDAK ADA form IP/port apa pun di sini.
+                    // Begitu ditekan, seluruh proses (cari service pairing,
+                    // notifikasi mengambang, dialog kode) ditangani otomatis
+                    // lewat AdbAutoPairingFloatingNotice di root layar.
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = onOpenWirelessDebugging) {
+                            Text("Buka Pengaturan Wireless Debugging")
                         }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "Buka \"Pasangkan perangkat dengan kode pairing\" di Wireless debugging, lalu isi sesuai yang tampil di sana.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            OutlinedTextField(
-                                value = host,
-                                onValueChange = { host = it },
-                                label = { Text("Alamat IP") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = OutlinedTextFieldDefaults.colors(),
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = pairingPort,
-                                    onValueChange = { pairingPort = it },
-                                    label = { Text("Port Pairing") },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.weight(1f),
-                                )
-                                OutlinedTextField(
-                                    value = connectPort,
-                                    onValueChange = { connectPort = it },
-                                    label = { Text("Port Koneksi") },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            OutlinedTextField(
-                                value = code,
-                                onValueChange = { code = it },
-                                label = { Text("Kode Pairing (6 digit)") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = { showForm = false }, enabled = !isBusy) {
-                                    Text("Batal")
-                                }
-                                Button(
-                                    onClick = { onPair(host.trim(), pairingPort.trim(), code.trim(), connectPort.trim()) },
-                                    enabled = !isBusy && host.isNotBlank() && pairingPort.isNotBlank() && code.isNotBlank() && connectPort.isNotBlank(),
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    if (isBusy) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                                        Text(text = "Menyandingkan…", modifier = Modifier.padding(start = 8.dp))
-                                    } else {
-                                        Text("Sandingkan")
-                                    }
-                                }
+                        Button(
+                            onClick = onStartAutoPairing,
+                            enabled = !isBusy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (isBusy) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                                Text(text = "Mencari perangkat…", modifier = Modifier.padding(start = 8.dp))
+                            } else {
+                                Text("Mulai Penyandingan")
                             }
                         }
                     }
@@ -235,4 +182,128 @@ fun AdbPairingCard(
             }
         }
     }
+}
+
+/**
+ * Notifikasi mengambang ala referensi (kartu gelap kecil, melayang di atas
+ * konten layar) yang menemani seluruh proses auto-pairing:
+ *
+ * - [AdbAutoPairingPhase.Searching] -> "Searching for Pairing…" + tombol Batal.
+ * - [AdbAutoPairingPhase.Found]     -> "Pairing found" (transisi singkat
+ *   sebelum [onCodeNeeded] otomatis membuka dialog kode).
+ *
+ * Ditempatkan sebagai overlay terpisah (bukan bagian dari [AdbPairingCard])
+ * supaya melayang DI ATAS seluruh layar, bukan hanya di dalam kartu —
+ * PERSIS seperti notifikasi mengambang pada referensi ("Searching for
+ * Pairing" muncul sebagai bubble, bukan menempel di kartu).
+ */
+enum class AdbAutoPairingPhase { SEARCHING, FOUND }
+
+@Composable
+fun AdbAutoPairingFloatingNotice(
+    phase: AdbAutoPairingPhase?,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = phase != null,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
+        modifier = modifier,
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                when (phase) {
+                    AdbAutoPairingPhase.SEARCHING -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Searching for Pairing…", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = "Buka Opsi Developer > Wireless debugging",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        TextButton(onClick = onCancel) { Text("Batal") }
+                    }
+                    AdbAutoPairingPhase.FOUND -> {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(text = "Pairing found", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    }
+                    null -> Unit
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dialog kode pairing — SATU-SATUNYA input manual yang tersisa di seluruh
+ * alur auto-pairing. Muncul otomatis begitu service pairing terdeteksi
+ * (state [com.aether.x.core.adb.AdbConnectionState.PairingFound]), diisi
+ * kode 6-digit dari dialog "Sambungkan perangkat dengan kode penyambungan"
+ * milik Android sendiri.
+ */
+@Composable
+fun AdbAutoPairingCodeDialog(
+    isBusy: Boolean,
+    onConfirm: (code: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var code by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = { if (!isBusy) onDismiss() },
+        title = { Text("Masukkan Kode Pairing") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Perangkat sudah terdeteksi. Masukkan kode 6-digit dari \"Sambungkan perangkat dengan kode penyambungan\" di Wireless debugging.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { input -> code = input.filter(Char::isDigit).take(6) },
+                    label = { Text("Kode Pairing") },
+                    singleLine = true,
+                    enabled = !isBusy,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(code.trim()) },
+                enabled = !isBusy && code.trim().length == 6,
+            ) {
+                if (isBusy) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(text = "Menyandingkan…", modifier = Modifier.padding(start = 8.dp))
+                } else {
+                    Text("Sandingkan")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isBusy) { Text("Batal") }
+        },
+    )
 }

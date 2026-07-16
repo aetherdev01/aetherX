@@ -182,11 +182,11 @@
          terakhir dipakai ditandai chip khusus. Monitor CPU/GPU/Suhu
          (dashboard_monitor_*) DIHAPUS dari Dashboard, dipindah jadi
          domain khusus Game Booster. -->
-    <string name="dashboard_section_game_activity">Aktivitas Game</string>
+    <string name="dashboard_section_game_activity">AKTIVITAS GAME</string>
     <string name="dashboard_game_activity_last_used">Terakhir dipakai</string>
     <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
     <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
-    <string name="dashboard_hero_kicker">AXKM</string>
+    <string name="dashboard_hero_kicker">AETHERX</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
     <string name="dashboard_privilege_root">Root</string>
     <string name="dashboard_privilege_adb">ADB</string>
@@ -203,8 +203,8 @@
     <string name="dashboard_device_storage">Penyimpanan</string>
     <string name="dashboard_device_usage_format">%1$s / %2$s</string>
     <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
-    <string name="drawer_root_only_label">Advanced</string>
-    <string name="drawer_privileged_label">Aplikasi</string>
+    <string name="drawer_root_only_label">KHUSUS ROOT</string>
+    <string name="drawer_privileged_label">Privilege Aktif</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
@@ -401,12 +401,11 @@
     <string name="about_link_youtube_desc">Tutorial, review, &amp; showcase fitur</string>
     <string name="about_link_youtube_url">https://youtube.com/@aetherdevofficial?si=JrYQSWzKgoKRSydR</string>
 
-    <!-- Section "Settings Umum" (settings_section_general, settings_language_*,
-         settings_reset_all_*) DIHAPUS TOTAL — fitur pemilih Bahasa & Reset
-         Semua Pengaturan di-rollback atas permintaan pengguna ("kurang
-         cocok"). Opsi Satuan Suhu yang dulu ada di section ini sebelum
-         digantikan Bahasa SUDAH lebih dulu dihapus permanen (permintaan
-         "hapus opsi suhu") dan TIDAK dikembalikan. -->
+    <!-- Settings Umum -->
+    <string name="settings_section_general">Umum</string>
+    <string name="settings_temperature_unit_label">Satuan Suhu</string>
+    <string name="settings_temperature_unit_celsius">Celsius (°C)</string>
+    <string name="settings_temperature_unit_fahrenheit">Fahrenheit (°F)</string>
 
     <!-- Crosshair overlay -->
     <!-- FITUR BARU (lihat perintah rework "Samakan Section Crosshair Persis seperti foto ke dua dari UI") -->
@@ -425,10 +424,6 @@
          StyleIconButton & CrosshairPreview di modul ui/. -->
     <string name="crosshair_style_diamond">Belah Ketupat</string>
     <string name="crosshair_style_square">Kotak</string>
-    <!-- FITUR BARU: 2 style crosshair tambahan (permintaan "tambah style
-         Crosshair baru") -->
-    <string name="crosshair_style_chevron">Chevron</string>
-    <string name="crosshair_style_double_ring">Cincin Ganda</string>
     <string name="crosshair_custom_color_title">Pilih Warna Kustom</string>
     <string name="crosshair_custom_color_apply">Terapkan</string>
     <string name="crosshair_custom_color_cancel">Batal</string>
@@ -538,6 +533,7 @@
          ditampilkan lewat Snackbar menggantikan silent-fail yang
          membuat tombol terasa "tidak merespon". -->
     <string name="permission_feedback_adb_wireless_debugging_off">Wireless debugging tampaknya belum aktif. Aktifkan dulu di Pengaturan &gt; Opsi Developer &gt; Wireless debugging, lalu coba lagi.</string>
+    <string name="permission_feedback_adb_auto_discovery_timeout">Tidak menemukan Wireless debugging di jaringan ini. Pastikan sudah membuka \"Pasangkan perangkat dengan kode pairing\" dan memakai Wi-Fi yang sama, lalu tekan Start lagi.</string>
     <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing di Wireless debugging untuk kode baru.</string>
     <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung ke alamat itu. Pastikan IP dan port benar, serta perangkat memakai jaringan Wi-Fi yang sama.</string>
     <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Kemungkinan izin debugging pernah dicabut manual lakukan pairing ulang dari awal.</string>

@@ -14,6 +14,7 @@ import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.data.FpsMonitorStyle
+import com.aether.x.data.TemperatureUnit
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -29,11 +30,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         initialValue = AppPreferences(),
     )
 
-    // setAppLanguage() dan resetAllSettings() DIHAPUS TOTAL (fitur "pemilih
-    // Bahasa" + "Reset Semua Pengaturan" di-rollback atas permintaan
-    // pengguna — "kurang cocok"). Lihat juga SettingsScreen.kt yang sudah
-    // tidak lagi memanggil kedua fungsi ini, dan AetherXPreferences.kt yang
-    // sudah tidak lagi punya setAppLanguage()/resetAll().
+    fun setTemperatureUnit(unit: TemperatureUnit) {
+        viewModelScope.launch { preferences.setTemperatureUnit(unit) }
+    }
 
     /** true kalau izin "Tampil di atas aplikasi lain" sudah diberikan. */
     fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(getApplication())

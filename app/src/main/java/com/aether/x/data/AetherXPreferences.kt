@@ -19,22 +19,14 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
 // FITUR BARU: DIAMOND (belah ketupat terbuka) & SQUARE (kotak bracket
-// 4 sudut), dan CHEVRON (panah "V" ganda dari 4 sisi mengarah ke pusat,
-// gaya populer di crosshair custom game FPS/battle-royale mobile) &
-// DOUBLE_RING (dua lingkaran konsentris, gaya sniper-scope) — lihat
-// rendering di StyleIconButton (CrosshairSettingsSection.kt) dan
-// CrosshairPreview.kt. Overlay sungguhan (CrosshairView.onDraw, modul
+// 4 sudut) — lihat rendering di StyleIconButton (CrosshairSettingsSection.kt)
+// dan CrosshairPreview.kt. Overlay sungguhan (CrosshairView.onDraw, modul
 // core/overlay) juga perlu ditambah case yang sama supaya WYSIWYG.
-enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING }
+enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE }
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
 
-// TemperatureUnit DIHAPUS dari modul ini (permintaan "hapus opsi suhu") —
-// enum ini sebelumnya cuma dipakai untuk opsi "Satuan Suhu" di Settings.
-// TemperatureUnit itu sendiri MASIH ADA, dipindah jadi detail implementasi
-// internal FpsMonitorView (lihat core/overlay/FpsMonitorView.kt) karena
-// overlay Monitor FPS tetap menampilkan suhu, hanya saja sekarang selalu
-// Celsius (tidak lagi jadi preferensi user yang bisa diganti).
+enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
@@ -44,10 +36,7 @@ data class AppPreferences(
     // mode gelap, terlepas dari pengaturan tema sistem HP-nya. Pengguna tetap
     // bisa mengganti ke LIGHT/SYSTEM kapan saja lewat menu Pengaturan.
     val darkModePref: DarkModePref = DarkModePref.DARK,
-    // appLanguage DIHAPUS TOTAL (fitur "pemilih Bahasa" di-rollback atas
-    // permintaan pengguna — "kurang cocok"). Lihat juga strings.xml
-    // (settings_language_* dihapus) dan SettingsScreen.kt/SettingsViewModel.kt
-    // yang sudah tidak lagi mereferensikan field ini.
+    val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val dpiValue: Int = -1,
     val widthValue: Int = -1,
     val pointerSpeed: Int = 0,
@@ -167,6 +156,7 @@ class AetherXPreferences(private val context: Context) {
     private object Keys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
+        val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
@@ -277,6 +267,9 @@ class AetherXPreferences(private val context: Context) {
             // pengguna yang pernah memilih tema lain sebelum update ini
             // tetap otomatis kembali ke Gelap tanpa perlu reset manual.
             darkModePref = DarkModePref.DARK,
+            temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]
+                ?.let { runCatching { TemperatureUnit.valueOf(it) }.getOrNull() }
+                ?: TemperatureUnit.CELSIUS,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -329,10 +322,9 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
     }
 
-    // setAppLanguage() dan resetAll() DIHAPUS TOTAL (fitur "pemilih Bahasa"
-    // + "Reset Semua Pengaturan" di-rollback atas permintaan pengguna —
-    // "kurang cocok"). Lihat juga SettingsScreen.kt/SettingsViewModel.kt
-    // yang sudah tidak lagi memanggil kedua fungsi ini.
+    suspend fun setTemperatureUnit(value: TemperatureUnit) {
+        context.dataStore.edit { it[Keys.TEMPERATURE_UNIT] = value.name }
+    }
 
     suspend fun saveTweakState(
         pointerSpeed: Int,

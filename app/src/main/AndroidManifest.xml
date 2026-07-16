@@ -41,6 +41,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- FITUR BARU — Auto-Pairing ADB (lihat AdbAutoPairingDiscovery):
+         ACCESS_WIFI_STATE wajib untuk NsdManager melakukan discovery mDNS
+         yang stabil, dan CHANGE_WIFI_MULTICAST_STATE wajib untuk
+         WifiManager.MulticastLock — tanpa lock ini banyak ROM (MIUI,
+         ColorOS, dll) men-drop paket mDNS/Bonjour begitu layar idle,
+         membuat "Searching for Pairing…" tidak pernah menemukan service
+         walau Wireless debugging sudah aktif di perangkat yang sama. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
     <application
         android:name=".AetherXApp"
         android:allowBackup="false"

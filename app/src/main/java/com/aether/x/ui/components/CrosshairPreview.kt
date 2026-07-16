@@ -117,29 +117,6 @@ fun CrosshairPreview(
                 drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s - corner, cy + s), thickness, StrokeCap.Round)
                 drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s, cy + s - corner), thickness, StrokeCap.Round)
             }
-            // FITUR BARU: 4 chevron "V" dari tiap sisi mengarah ke pusat —
-            // implementasi identik dengan StyleIconButton
-            // (CrosshairSettingsSection.kt) dan CrosshairView.onDraw
-            // (core/overlay) supaya WYSIWYG.
-            CrosshairStyle.CHEVRON -> {
-                val gap = r * 0.35f
-                val arm = r * 0.45f
-                val tip = r * 0.9f
-                drawLine(drawColor, Offset(cx - arm, cy - tip), Offset(cx, cy - gap), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx, cy - gap), Offset(cx + arm, cy - tip), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx - arm, cy + tip), Offset(cx, cy + gap), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx, cy + gap), Offset(cx + arm, cy + tip), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx - tip, cy - arm), Offset(cx - gap, cy), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx - gap, cy), Offset(cx - tip, cy + arm), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx + tip, cy - arm), Offset(cx + gap, cy), thickness, StrokeCap.Round)
-                drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + tip, cy + arm), thickness, StrokeCap.Round)
-            }
-            // FITUR BARU: dua lingkaran konsentris, gaya sniper-scope —
-            // implementasi identik dengan StyleIconButton & CrosshairView.
-            CrosshairStyle.DOUBLE_RING -> {
-                drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = stroke)
-                drawCircle(drawColor, radius = r * 0.55f, center = Offset(cx, cy), style = stroke)
-            }
         }
     }
 }

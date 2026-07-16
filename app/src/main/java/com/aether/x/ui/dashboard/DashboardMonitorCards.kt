@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -173,9 +172,7 @@ fun GameActivitySection(
             )
             Text(
                 text = stringResource(R.string.dashboard_section_game_activity),
-                style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold
-                ),
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
