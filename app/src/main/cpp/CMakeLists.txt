@@ -63,18 +63,28 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 # no build-id (tidak ada .note.gnu.build-id) → menyulitkan identifikasi.
 # -static-libstdc++: tidak perlu libc++_shared.so terpisah.
 # -z noexecheap: tandai heap sebagai non-executable (mengurangi path eksploit).
+#   NDK 27's bundled ld.lld belum mengenali flag ini ("unknown -z value: noexecheap"),
+#   jadi flag ini hanya ditambahkan kalau linker yang dipakai memang mendukungnya.
+include(CheckLinkerFlag OPTIONAL RESULT_VARIABLE _has_check_linker_flag)
+if(_has_check_linker_flag)
+    check_linker_flag(CXX "-Wl,-z,noexecheap" LINKER_SUPPORTS_NOEXECHEAP)
+endif()
+
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -static-libstdc++
     -Wl,-z,now
     -Wl,-z,relro
     -Wl,-z,noexecstack
     -Wl,-z,separate-code
-    -Wl,-z,noexecheap
     -Wl,--build-id=none
     -Wl,--exclude-libs,ALL
     -Wl,--gc-sections
     -Wl,--icf=all
 )
+
+if(LINKER_SUPPORTS_NOEXECHEAP)
+    target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -Wl,-z,noexecheap)
+endif()
 
 # Strip setelah link.  Simbol non-dynamic dihapus – hanya JNI_OnLoad dan
 # fungsi JNI yang tetap sebagai exported dynamic symbol.
