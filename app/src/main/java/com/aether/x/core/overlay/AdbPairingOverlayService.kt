@@ -236,13 +236,14 @@ class AdbPairingOverlayService : Service() {
 
         card.addView(headerRow)
 
-        val hint = TextView(this).apply {
+
+        val hintText = TextView(this).apply {
             text = getString(R.string.adb_pairing_overlay_searching_hint)
             setTextColor(textMuted)
             textSize = 12f
             setPadding(0, dp(6), 0, 0)
         }
-        card.addView(hint)
+        card.addView(hintText)
 
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER
