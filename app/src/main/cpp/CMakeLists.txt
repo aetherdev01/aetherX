@@ -1,3 +1,19 @@
+# ==================== Delta for cpp/CMakeLists.txt ====================
+# CHANGES:
+#   1. CXX_FLAGS_RELEASE extended with:
+#        -fno-exceptions -fno-rtti
+#        -fno-unwind-tables -fno-asynchronous-unwind-tables
+#        -fomit-frame-pointer
+#   2. Linker options: --build-id=sha1 replaced by --build-id=none
+#      (removes .note.gnu.build-id entirely); added -Wl,-z,noexecheap.
+#
+# REASON:
+#   Removes debugging aids (unwind info, frame pointers, type info) so the
+#   .so becomes much harder to analyse with standard tools.  The anti-debug
+#   code in jni_onload.cpp complements the static hardening by blocking
+#   runtime attach attempts.
+# =====================================================================
+
 cmake_minimum_required(VERSION 3.22.1)
 project("aetherX")
 
@@ -8,33 +24,27 @@ project("aetherX")
 # flag ini menyembunyikan SEMUA simbol secara default KECUALI yang eksplisit
 # ditandai __attribute__((visibility("default"))) — makro JNIEXPORT dari NDK
 # sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, nvint, nvpn,
-# ndns, dan nmod (semuanya dideklarasikan pakai JNIEXPORT — tiga yang
-# terakhir ditambahkan di adblockguard.cpp, lihat file itu), jadi tetap bisa
+# ndns, dan nmod (semuanya dideklarasikan pakai JNIEXPORT), jadi tetap bisa
 # dipanggil JVM/RegisterNatives walau visibility default project ini hidden.
 # Fungsi non-JNI lain (constantTimeEquals, fnv1a64, dkk di dalam namespace
 # anonim) TETAP tersembunyi seperti sebelumnya — tidak ada regresi di situ.
 #
-# FITUR BARU — static-link + hardening tambahan (permintaan: "jadikan hasil
-# .so lebih besar dan hard"): -static-libstdc++ (lihat target_link_options
-# di bawah) menanamkan runtime C++ langsung ke dalam libaetherX.so (bukan
-# cuma referensi ke libc++_shared.so terpisah) — .so jadi mandiri/self-
-# contained dan ukurannya naik karena membawa isi runtime C++ sendiri,
-# sekaligus menghilangkan satu file .so terpisah yang bisa jadi target
-# patch/swap dari luar. -D_FORTIFY_SOURCE=2 + -fstack-clash-protection
-# menambah lapis hardening compile-time di atas -fstack-protector-strong
-# yang sudah ada sebelumnya.
+# --- HARDENING TAMBAHAN (flags baru) ---
+# -fno-exceptions -fno-rtti: meniadakan exception-handling dan RTTI (tidak
+#     digunakan di kode ini) → menghilangkan data .eh_frame_hdr, .gcc_except_table,
+#     type_info, dsb. yang biasa dimanfaatkan tool reversing.
+# -fno-unwind-tables -fno-asynchronous-unwind-tables: menghapus tabel
+#     unwinding, menyulitkan backtrace saat crash dan membingungkan disassembler.
+# -fomit-frame-pointer: tidak lagi menggunakan frame pointer (%rbp), menghemat
+#     register dan membuat analisis stack frame lebih sulit.
+# -static-libstdc++ (lihat target_link_options) menanamkan runtime C++ langsung
+#     ke dalam libaetherX.so.  Bersama strip --strip-unneeded ukuran akhir
+#     tetap besar tapi tetap stripped — tidak ada libc++_shared.so terpisah.
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fstack-clash-protection")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fstack-clash-protection -fno-exceptions -fno-rtti -fno-unwind-tables -fno-asynchronous-unwind-tables -fomit-frame-pointer")
 
-# Nama library HARUS "aetherX" (menghasilkan libaetherX.so) — cocok dengan
-# System.loadLibrary("aetherX") di SignatureGuard.kt, NativeIntegrityGuard.kt,
-# DAN AdBlockDetector.kt (tiga file, SEMUA memuat SATU library yang sama,
-# bukan tiga library terpisah). ${CMAKE_PROJECT_NAME} di sini mengambil
-# nilai dari project("aetherX") di baris 2 di atas, jadi KEDUANYA (nama
-# project & nama library) sengaja sama persis "aetherX" — pastikan
-# project() TIDAK diganti tanpa ikut mengganti System.loadLibrary() di
-# KETIGA file Kotlin tersebut juga.
 add_library(${CMAKE_PROJECT_NAME} SHARED
     sigcheck.cpp
     integrityguard.cpp
@@ -48,34 +58,26 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     ${log-lib}
 )
 
-# --- Hardening linker, konsisten di semua ABI (arm64-v8a termasuk) ---
-# BIND_NOW + full RELRO terverifikasi ada di build armeabi-v7a sebelumnya
-# (readelf -d -> FLAGS: BIND_NOW, FLAGS_1: NOW). --gc-sections + --icf TETAP
-# dipertahankan (bukan cuma soal ukuran — ini juga memangkas gadget ROP yang
-# berguna untuk exploit, jadi tetap bagian dari hardening walau .so jadi
-# lebih besar dari static-link di bawah). -static-libstdc++ menanamkan
-# runtime C++ langsung ke .so ini (lihat catatan di CXX_FLAGS_RELEASE di
-# atas) — TIDAK ADA lagi libc++_shared.so terpisah yang perlu di-pack ke
-# APK untuk ABI ini. -z noexecstack + -z separate-code menambah lapis
-# hardening memori standar (stack tidak bisa dieksekusi, code segment
-# dipisah dari data segment secara ketat di halaman memori).
+# --- Hardening linker, konsisten di semua ABI ---
+# BIND_NOW + full RELRO, non-executable stack, code separate dari data,
+# no build-id (tidak ada .note.gnu.build-id) → menyulitkan identifikasi.
+# -static-libstdc++: tidak perlu libc++_shared.so terpisah.
+# -z noexecheap: tandai heap sebagai non-executable (mengurangi path eksploit).
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -static-libstdc++
     -Wl,-z,now
     -Wl,-z,relro
     -Wl,-z,noexecstack
     -Wl,-z,separate-code
-    -Wl,--build-id=sha1
+    -Wl,-z,noexecheap
+    -Wl,--build-id=none
     -Wl,--exclude-libs,ALL
     -Wl,--gc-sections
     -Wl,--icf=all
 )
 
-# Strip simbol non-dynamic setelah link, konsisten di semua ABI supaya hasil
-# arm64-v8a tetap fully stripped seperti build v7a (nm hanya menyisakan
-# JNI_OnLoad, nvfy, nvfy2, nvint, nvpn, ndns, nmod). Simbol runtime C++ yang
-# ikut ditanamkan lewat -static-libstdc++ di atas TETAP ikut di-strip di
-# sini juga — statis bukan berarti dibiarkan telanjang tanpa strip.
+# Strip setelah link.  Simbol non-dynamic dihapus – hanya JNI_OnLoad dan
+# fungsi JNI yang tetap sebagai exported dynamic symbol.
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
 )
