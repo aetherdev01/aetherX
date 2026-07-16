@@ -111,14 +111,14 @@ object AdbPairingNotifier {
         )
 
         return NotificationCompat.Action.Builder(
-            R.drawable.ic_aetherx_mark,
+            R.drawable.logo,
             context.getString(R.string.adb_pairing_notif_reply_action),
             replyIntent,
         ).addRemoteInput(remoteInput).build()
     }
 
     private fun cancelAction(context: Context): NotificationCompat.Action = NotificationCompat.Action.Builder(
-        R.drawable.ic_aetherx_mark,
+        R.drawable.logo,
         context.getString(R.string.adb_pairing_notif_cancel_action),
         cancelPendingIntent(context),
     ).build()
@@ -134,7 +134,7 @@ object AdbPairingNotifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_aetherx_mark)
+            .setSmallIcon(R.drawable.logo)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(contentIntent)
