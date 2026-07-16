@@ -1,10 +1,5 @@
 package com.aether.x.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,29 +7,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Wifi
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 /**
@@ -47,16 +33,14 @@ import androidx.compose.ui.unit.dp
  * UI kartu ini sekarang HANYA punya satu tombol aksi ("Mulai Penyandingan"
  * / "Start") — TIDAK ADA field IP, port pairing, atau port koneksi sama
  * sekali. Host+port didapat otomatis lewat mDNS (lihat
- * [com.aether.x.core.adb.AdbAutoPairingDiscovery]); satu-satunya input
- * manual yang tersisa adalah kode 6-digit yang tampil di dialog Android
- * sendiri, diminta lewat [AdbAutoPairingCodeDialog] begitu service pairing
- * terdeteksi.
+ * [com.aether.x.core.adb.AdbAutoPairingDiscovery]).
  *
- * Notifikasi mengambang "Searching for Pairing…" / "Pairing found"
- * ditampilkan oleh [AdbAutoPairingFloatingNotice] — dipanggil terpisah
- * dari layar pemanggil (mis. Box di root PermissionSetupScreen) supaya
- * bisa mengambang DI ATAS seluruh konten layar, bukan terkurung di dalam
- * kartu ini.
+ * FITUR BARU — notifikasi "Searching for Pairing…" dan kode 6-digit TIDAK
+ * LAGI ditampilkan lewat komponen Compose di file ini (dialog/bubble yang
+ * terikat ke Activity AetherX memaksa split-screen kalau pengguna ingin
+ * melihat kode di Pengaturan sambil mengisinya). Keduanya sekarang
+ * ditangani [com.aether.x.core.overlay.AdbPairingOverlayService] — window
+ * overlay sungguhan yang melayang DI ATAS aplikasi apa pun.
  */
 @Composable
 fun AdbPairingCard(
@@ -93,7 +77,7 @@ fun AdbPairingCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(imageVector = Icons.Outlined.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(text = "ADB Tertanam (Wireless Debugging)", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Wireless Debugging", style = MaterialTheme.typography.titleMedium)
                 }
                 if (connected) {
                     Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -182,128 +166,4 @@ fun AdbPairingCard(
             }
         }
     }
-}
-
-/**
- * Notifikasi mengambang ala referensi (kartu gelap kecil, melayang di atas
- * konten layar) yang menemani seluruh proses auto-pairing:
- *
- * - [AdbAutoPairingPhase.Searching] -> "Searching for Pairing…" + tombol Batal.
- * - [AdbAutoPairingPhase.Found]     -> "Pairing found" (transisi singkat
- *   sebelum [onCodeNeeded] otomatis membuka dialog kode).
- *
- * Ditempatkan sebagai overlay terpisah (bukan bagian dari [AdbPairingCard])
- * supaya melayang DI ATAS seluruh layar, bukan hanya di dalam kartu —
- * PERSIS seperti notifikasi mengambang pada referensi ("Searching for
- * Pairing" muncul sebagai bubble, bukan menempel di kartu).
- */
-enum class AdbAutoPairingPhase { SEARCHING, FOUND }
-
-@Composable
-fun AdbAutoPairingFloatingNotice(
-    phase: AdbAutoPairingPhase?,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AnimatedVisibility(
-        visible = phase != null,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
-        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
-        modifier = modifier,
-    ) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                when (phase) {
-                    AdbAutoPairingPhase.SEARCHING -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Searching for Pairing…", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = "Buka Opsi Developer > Wireless debugging",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        TextButton(onClick = onCancel) { Text("Batal") }
-                    }
-                    AdbAutoPairingPhase.FOUND -> {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(text = "Pairing found", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    }
-                    null -> Unit
-                }
-            }
-        }
-    }
-}
-
-/**
- * Dialog kode pairing — SATU-SATUNYA input manual yang tersisa di seluruh
- * alur auto-pairing. Muncul otomatis begitu service pairing terdeteksi
- * (state [com.aether.x.core.adb.AdbConnectionState.PairingFound]), diisi
- * kode 6-digit dari dialog "Sambungkan perangkat dengan kode penyambungan"
- * milik Android sendiri.
- */
-@Composable
-fun AdbAutoPairingCodeDialog(
-    isBusy: Boolean,
-    onConfirm: (code: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var code by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = { if (!isBusy) onDismiss() },
-        title = { Text("Masukkan Kode Pairing") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Perangkat sudah terdeteksi. Masukkan kode 6-digit dari \"Sambungkan perangkat dengan kode penyambungan\" di Wireless debugging.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { input -> code = input.filter(Char::isDigit).take(6) },
-                    label = { Text("Kode Pairing") },
-                    singleLine = true,
-                    enabled = !isBusy,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(code.trim()) },
-                enabled = !isBusy && code.trim().length == 6,
-            ) {
-                if (isBusy) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                    Text(text = "Menyandingkan…", modifier = Modifier.padding(start = 8.dp))
-                } else {
-                    Text("Sandingkan")
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isBusy) { Text("Batal") }
-        },
-    )
 }

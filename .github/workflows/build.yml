@@ -186,8 +186,11 @@ jobs:
           path: app/build/outputs/apk/debug/*-debug.apk
           if-no-files-found: error
 
-      # ── 10. Kirim APK ke Telegram ────────────────────────────────────────────
-      - name: Send APK to Telegram
+      # ── 10. Kirim link download ke Telegram ──────────────────────────────────
+      # APK debug (belum di-minify/shrink) sering > 50MB, limit sendDocument
+      # Telegram Bot API — jadi kirim link ke artifact GitHub Actions saja,
+      # bukan file APK-nya langsung (413 Request Entity Too Large kalau dipaksa).
+      - name: Send link to Telegram
         if: success()
         run: |
           SHA="${{ github.sha }}"
@@ -203,15 +206,15 @@ jobs:
           SIZE_BYTES=$(stat -c%s "$APK_PATH")
           SIZE_MB=$(awk "BEGIN {printf \"%.2f\", ${SIZE_BYTES}/1048576}")
 
-          CAPTION=$(printf \
-            '🐞 Build <b>AetherX (Debug)</b> berhasil\n\n📦 <b>File:</b> <code>%s</code>\n🏷 <b>Versi:</b> <code>%s</code>\n💾 <b>Ukuran:</b> <code>%s MB</code>\n🔖 <b>Commit:</b> <code>%s</code> — <a href="%s">lihat detail</a>' \
+          TEXT=$(printf \
+            '🐞 Build <b>AetherX (Debug)</b> berhasil\n\n📦 <b>File:</b> <code>%s</code>\n🏷 <b>Versi:</b> <code>%s</code>\n💾 <b>Ukuran:</b> <code>%s MB</code> (di atas limit 50MB Telegram, download lewat link)\n🔖 <b>Commit:</b> <code>%s</code>\n⬇️ <b>Download:</b> <a href="%s">buka artifact di GitHub Actions</a>' \
             "$APK_NAME" "$VERSION" "$SIZE_MB" "$SHA_SHORT" "$RUN_URL")
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
-            -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -F parse_mode="HTML" \
-            -F caption="${CAPTION}" \
-            -F document=@"${APK_PATH}" || true
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d disable_web_page_preview="true" \
+            -d "text=${TEXT}" || true
 
       # ── 11. Notif Telegram (gagal) ───────────────────────────────────────────
       - name: Telegram Notification (Failure)

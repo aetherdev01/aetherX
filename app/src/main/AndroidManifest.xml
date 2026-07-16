@@ -105,6 +105,19 @@
                 android:value="fps_monitor_overlay" />
         </service>
 
+        <!-- FITUR BARU — Overlay kode pairing Wireless debugging: foreground
+             service "specialUse" sama pola dengan overlay lain di atas,
+             menggantikan dialog di dalam app supaya kartu input kode tetap
+             melayang di atas aplikasi Pengaturan (lihat AdbPairingOverlayService). -->
+        <service
+            android:name=".core.overlay.AdbPairingOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="adb_pairing_overlay" />
+        </service>
+
         <!-- Pemantau Game Profile (khusus Root): TIDAK menggambar overlay,
              murni polling shell di background untuk menerapkan/mereset
              tweak root sesuai game yang sedang dimainkan pengguna. -->

@@ -11,7 +11,7 @@
     <string name="setup_title">Izin Akses</string>
     <string name="setup_subtitle">Pilih metode yang ingin digunakan agar AetherX dapat mengakses kernel dan menyediakan kontrol penuh terhadap fitur, performa, serta tweak sistem yang didukung perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
-    <string name="setup_required_banner">Aktifkan ADB Tertanam atau Root untuk melanjutkan</string>
+    <string name="setup_required_banner">Aktifkan Wireless Debugging atau Root untuk melanjutkan</string>
     <string name="setup_method_root">Magisk</string>
     <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser (su) untuk mengaktifkan fitur lanjutan.</string>
     <string name="setup_status_granted">Aktif</string>
@@ -20,10 +20,10 @@
     <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
     <string name="setup_action_continue">Lanjutkan</string>
-    <string name="setup_locked_hint">Aktifkan ADB Tertanam atau Root terlebih dahulu untuk membuka tombol Lanjutkan.</string>
+    <string name="setup_locked_hint">Aktifkan Wireless Debugging atau Root terlebih dahulu untuk membuka tombol Lanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
-    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke ADB Tertanam. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
-    <string name="setup_locked_by_adb_hint">ADB Tertanam sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Root. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Wireless Debugging. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_locked_by_adb_hint">Wireless Debugging sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Root. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
     <string name="setup_switch_method">Ganti metode</string>
 
     <!-- Onboarding Izin pendukung (Write Settings, Overlay, Notifikasi) -->
@@ -546,9 +546,9 @@
     <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing di Wireless debugging untuk kode baru.</string>
     <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung ke alamat itu. Pastikan IP dan port benar, serta perangkat memakai jaringan Wi-Fi yang sama.</string>
     <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Kemungkinan izin debugging pernah dicabut manual lakukan pairing ulang dari awal.</string>
-    <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan ADB Tertanam. Coba lagi.</string>
-    <string name="permission_feedback_adb_in_progress">Proses ADB Tertanam masih berjalan, tunggu sebentar.</string>
-    <string name="permission_feedback_adb_granted">ADB Tertanam terhubung.</string>
+    <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan Wireless Debugging. Coba lagi.</string>
+    <string name="permission_feedback_adb_in_progress">Proses Wireless Debugging masih berjalan, tunggu sebentar.</string>
+    <string name="permission_feedback_adb_granted">Wireless Debugging terhubung.</string>
     <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch sudah terpasang dan coba lagi.</string>
     <string name="permission_feedback_root_in_progress">Permintaan akses root masih diproses, tunggu sebentar.</string>
     <string name="permission_feedback_root_granted">Akses root aktif.</string>
