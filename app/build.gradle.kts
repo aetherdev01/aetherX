@@ -75,7 +75,13 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
+            // TIDAK pakai applicationIdSuffix — package name harus persis sama
+            // dengan release (com.aether.x), karena:
+            // 1. google-services.json cuma punya client untuk com.aether.x,
+            //    beda package name (mis. com.aether.x.debug) bikin
+            //    processDebugGoogleServices gagal ("No matching client found").
+            // 2. Signature/App Check tetap konsisten dengan satu applicationId.
+            //
             // Pakai signingConfig release (aetherx.jks) juga di debug — kalau
             // pakai debug keystore bawaan Android, hash signing cert-nya
             // tidak cocok dengan yang di-hardcode di sigcheck.cpp, dan
