@@ -9,7 +9,7 @@ import android.provider.Settings
 import com.aether.x.core.adb.AdbConnectionManager
 import com.aether.x.core.adb.AdbConnectionState
 import com.aether.x.core.adb.AdbFailureReason
-import com.aether.x.core.overlay.AdbPairingOverlayService
+import com.aether.x.core.notification.AdbPairingNotifier
 import com.aether.x.core.shell.EmbeddedShellExecutor
 import com.aether.x.core.shell.RootShellExecutor
 import com.aether.x.core.shell.ShellExecutor
@@ -112,30 +112,30 @@ object PrivilegeManager {
                 }
             }
 
-            // FITUR BARU — notifikasi mengambang untuk kode pairing (lihat
-            // perintah rework: "notifikasi saat pairing wireless debugging
-            // itu pakai notifikasi mengambang, bukan notifikasi dari dalam
-            // apk, jadi bisa buka aplikasi pengaturan buat isi pairing code
-            // nya, jadi ga ribet pakai layar split"). AdbPairingOverlayService
-            // yang mengurus tampilan; di sini murni menerjemahkan
-            // AdbConnectionState -> action overlay yang sesuai, PERSIS pola
-            // yang sudah dipakai untuk PrivilegeStatus/RequestFeedback di atas.
+            // REWORK — sistem notifikasi Pairing (lihat perintah rework:
+            // "bukan pakai floating window/dialog mengambang, tetapi pakai
+            // notifikasi sistem dengan notifikasi mengambang"). AdbPairingNotifier
+            // yang mengurus tampilan (notifikasi heads-up + aksi Balas untuk
+            // kode 6-digit, TANPA window overlay); di sini murni
+            // menerjemahkan AdbConnectionState -> notifikasi yang sesuai,
+            // PERSIS pola yang sudah dipakai untuk PrivilegeStatus/RequestFeedback
+            // di atas.
             when (adbState) {
-                is AdbConnectionState.SearchingForPairing -> AdbPairingOverlayService.showSearching(appContext)
-                is AdbConnectionState.PairingFound -> AdbPairingOverlayService.showCodeInput(appContext)
-                is AdbConnectionState.Pairing, is AdbConnectionState.Connecting -> AdbPairingOverlayService.showBusy(appContext)
+                is AdbConnectionState.SearchingForPairing -> AdbPairingNotifier.showSearching(appContext)
+                is AdbConnectionState.PairingFound -> AdbPairingNotifier.showCodeInput(appContext)
+                is AdbConnectionState.Pairing, is AdbConnectionState.Connecting -> AdbPairingNotifier.showBusy(appContext)
                 is AdbConnectionState.Failed -> {
-                    // Overlay tetap tampil (kembali ke mode input kode) HANYA
+                    // Notifikasi tetap tampil (kembali ke mode Balas) HANYA
                     // kalau kegagalan terjadi di tengah alur auto-pairing —
                     // kegagalan lain (mis. reconnect biasa yang gagal) tidak
-                    // perlu memunculkan overlay pairing sama sekali.
+                    // perlu memunculkan notifikasi pairing sama sekali.
                     if (wasRequesting) {
                         val message = adbState.reason.toOverlayErrorMessage(appContext)
-                        AdbPairingOverlayService.showError(appContext, message)
+                        AdbPairingNotifier.showError(appContext, message)
                     }
                 }
                 is AdbConnectionState.Connected, AdbConnectionState.NotPaired, AdbConnectionState.PairedNotConnected ->
-                    AdbPairingOverlayService.stop(appContext)
+                    AdbPairingNotifier.stop(appContext)
             }
         }.launchIn(scope)
 
@@ -174,7 +174,7 @@ object PrivilegeManager {
     }
 
     /**
-     * Pesan singkat untuk kartu overlay mengambang ([AdbPairingOverlayService])
+     * Pesan singkat untuk notifikasi sistem pairing ([AdbPairingNotifier])
      * saat pairing gagal — SENGAJA memakai string resource yang sama dengan
      * Snackbar (permission_feedback_adb_*) supaya teksnya konsisten di
      * kedua tempat, tidak ada salinan pesan yang bisa saling tidak sinkron.
@@ -298,8 +298,9 @@ object PrivilegeManager {
 
     /** Tombol "Start" ditekan — mulai mendengarkan mDNS untuk service pairing,
      * lalu langsung buka halaman Wireless debugging supaya pengguna tidak
-     * perlu mencarinya manual (kartu kode pairing tetap melayang di atas
-     * halaman itu lewat [AdbPairingOverlayService], lihat KDoc di sana). */
+     * perlu mencarinya manual (notifikasi sistem heads-up dengan aksi Balas
+     * untuk kode pairing muncul di atas halaman itu lewat
+     * [AdbPairingNotifier], lihat KDoc di sana). */
     fun startAutoPairAdb(context: Context) {
         if (_status.value.adbRequestState == RequestState.REQUESTING) {
             _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.ADB, RequestFailureReason.ADB_ALREADY_IN_PROGRESS))

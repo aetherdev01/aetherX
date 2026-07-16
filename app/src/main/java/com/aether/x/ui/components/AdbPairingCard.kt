@@ -35,12 +35,16 @@ import androidx.compose.ui.unit.dp
  * sekali. Host+port didapat otomatis lewat mDNS (lihat
  * [com.aether.x.core.adb.AdbAutoPairingDiscovery]).
  *
- * FITUR BARU — notifikasi "Searching for Pairing…" dan kode 6-digit TIDAK
- * LAGI ditampilkan lewat komponen Compose di file ini (dialog/bubble yang
- * terikat ke Activity AetherX memaksa split-screen kalau pengguna ingin
- * melihat kode di Pengaturan sambil mengisinya). Keduanya sekarang
- * ditangani [com.aether.x.core.overlay.AdbPairingOverlayService] — window
- * overlay sungguhan yang melayang DI ATAS aplikasi apa pun.
+ * REWORK — notifikasi "Searching for Pairing…" dan kode 6-digit TIDAK
+ * LAGI ditampilkan lewat komponen Compose di file ini maupun lewat window
+ * overlay (dialog/bubble yang terikat ke Activity AetherX memaksa
+ * split-screen kalau pengguna ingin melihat kode di Pengaturan sambil
+ * mengisinya, dan window overlay butuh izin "Tampil di atas aplikasi
+ * lain"). Keduanya sekarang ditangani
+ * [com.aether.x.core.notification.AdbPairingNotifier] — notifikasi sistem
+ * heads-up biasa dengan aksi **Balas** (RemoteInput) tertanam untuk
+ * mengisi kode 6-digit langsung dari notification tray, tanpa window
+ * overlay maupun izin tambahan apa pun.
  */
 @Composable
 fun AdbPairingCard(

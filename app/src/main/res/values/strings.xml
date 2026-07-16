@@ -446,14 +446,19 @@
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>
 
-    <!-- FITUR BARU — Notifikasi mengambang untuk kode pairing Wireless
-         debugging (lihat AdbPairingOverlayService): menggantikan dialog
-         AlertDialog di dalam app supaya pengguna bisa mengisi kode
-         pairing sambil tetap berada di aplikasi Pengaturan, tanpa perlu
-         layar split. -->
-    <string name="adb_pairing_overlay_notification_channel">Overlay Penyandingan ADB</string>
-    <string name="adb_pairing_overlay_notification_title">Penyandingan ADB AetherX aktif</string>
-    <string name="adb_pairing_overlay_notification_text">Ketuk untuk kembali ke AetherX</string>
+    <!-- REWORK — sistem notifikasi Pairing (lihat perintah rework: "bukan
+         pakai floating window/dialog mengambang, tetapi pakai notifikasi
+         sistem dengan notifikasi mengambang"). Menggantikan
+         AdbPairingOverlayService (window WindowManager) SEPENUHNYA dengan
+         notifikasi heads-up biasa + aksi Balas (RemoteInput) tertanam untuk
+         kode 6-digit — lihat AdbPairingNotifier. -->
+    <string name="adb_pairing_notif_channel_name">Penyandingan ADB</string>
+    <string name="adb_pairing_notif_channel_desc">Notifikasi mengambang untuk proses penyandingan Wireless debugging, termasuk pengisian kode 6-digit</string>
+    <string name="adb_pairing_notif_reply_action">Balas</string>
+    <string name="adb_pairing_notif_reply_label">Ketik kode 6-digit di sini…</string>
+    <string name="adb_pairing_notif_cancel_action">Batalkan</string>
+    <string name="adb_pairing_notif_invalid_code">Kode harus 6 digit angka. Ketuk Balas lagi untuk mencoba.</string>
+
     <string name="adb_pairing_overlay_searching_title">Searching for Pairing…</string>
     <string name="adb_pairing_overlay_searching_hint">Buka Opsi Developer &gt; Wireless debugging, lalu ketuk "Pasangkan perangkat dengan kode pairing"</string>
     <string name="adb_pairing_overlay_found_title">Pairing found</string>

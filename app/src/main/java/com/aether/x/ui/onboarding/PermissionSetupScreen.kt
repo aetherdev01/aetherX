@@ -79,18 +79,18 @@ import com.aether.x.ui.theme.TextSecondary
  * pairing & koneksi didapat OTOMATIS lewat mDNS/NSD (lihat
  * [com.aether.x.core.adb.AdbAutoPairingDiscovery]).
  *
- * FITUR BARU — notifikasi "Searching for Pairing…" dan input kode 6-digit
- * TIDAK LAGI berupa dialog/bubble Compose yang terikat ke layar ini
- * (permintaan: "notifikasi saat pairing wireless debugging itu pakai
- * notifikasi mengambang, bukan notifikasi dari dalam apk, jadi bisa buka
- * aplikasi pengaturan buat isi pairing code nya, jadi ga ribet pakai
- * layar split"). Keduanya sekarang ditangani oleh
- * [com.aether.x.core.overlay.AdbPairingOverlayService] — window overlay
- * sungguhan yang melayang DI ATAS aplikasi apa pun, termasuk Pengaturan,
- * sehingga pengguna bisa membuka Wireless debugging dan mengisi kode
- * pairing tanpa pernah berpindah balik ke AetherX. Layar ini hanya perlu
- * menekan tombol "Mulai Penyandingan"; sisanya otomatis lewat
- * PrivilegeManager -> AdbPairingOverlayService.
+ * REWORK — notifikasi "Searching for Pairing…" dan input kode 6-digit
+ * TIDAK LAGI berupa dialog/bubble Compose yang terikat ke layar ini, dan
+ * TIDAK LAGI berupa window overlay (permintaan: "bukan pakai floating
+ * window/dialog mengambang, tetapi pakai notifikasi sistem dengan
+ * notifikasi mengambang"). Keduanya sekarang ditangani oleh
+ * [com.aether.x.core.notification.AdbPairingNotifier] — notifikasi sistem
+ * heads-up biasa dengan aksi **Balas** (RemoteInput) tertanam untuk kode
+ * 6-digit, sehingga pengguna bisa membuka Wireless debugging dan mengisi
+ * kode pairing langsung dari notification tray tanpa pernah berpindah
+ * balik ke AetherX, tanpa window overlay, dan tanpa izin tambahan apa
+ * pun. Layar ini hanya perlu menekan tombol "Mulai Penyandingan"; sisanya
+ * otomatis lewat PrivilegeManager -> AdbPairingNotifier.
  *
  * Kartu Root tidak berubah strukturnya (masih [PermissionMethodCard]
  * biasa, satu tombol), hanya field yang dibaca dari [PrivilegeStatus]
@@ -164,12 +164,12 @@ fun PermissionSetupScreen(
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
-    // Notifikasi mengambang "Searching for Pairing…" / dialog kode pairing
-    // SEKARANG ditangani oleh AdbPairingOverlayService (window overlay
-    // sungguhan yang melayang di atas app APA PUN, termasuk Pengaturan) —
-    // lihat PrivilegeManager.init untuk penerjemahan AdbConnectionState ->
-    // aksi overlay. Layar ini tidak lagi perlu state/dialog Compose sendiri
-    // untuk fase pairing.
+    // Notifikasi mengambang "Searching for Pairing…" / aksi Balas kode
+    // pairing SEKARANG ditangani oleh AdbPairingNotifier (notifikasi sistem
+    // heads-up biasa, bukan window overlay) — lihat PrivilegeManager.init
+    // untuk penerjemahan AdbConnectionState -> notifikasi yang sesuai.
+    // Layar ini tidak lagi perlu state/dialog Compose sendiri untuk fase
+    // pairing.
 
     Scaffold(
         containerColor = BgVoid,
