@@ -186,7 +186,7 @@ object AetherXNotifier {
         )
 
         val builder = NotificationCompat.Builder(context, kind.channelId)
-            .setSmallIcon(R.drawable.logo)
+            .setSmallIcon(R.drawable.ic_aetherx_mark)
             .setContentTitle(title)
             .setContentText(text)
             .setAutoCancel(!ongoing)
