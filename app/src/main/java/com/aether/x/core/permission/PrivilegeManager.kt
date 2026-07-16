@@ -87,8 +87,16 @@ object PrivilegeManager {
             _status.update {
                 it.copy(
                     adbState = adbState,
+                    // FITUR BARU — Auto-Pairing: SearchingForPairing/PairingFound
+                    // JUGA dianggap "sedang meminta" (spinner/notifikasi
+                    // mengambang tetap tampil di UI) sampai berakhir di
+                    // Connected atau Failed.
                     adbRequestState = when (adbState) {
-                        is AdbConnectionState.Pairing, is AdbConnectionState.Connecting -> RequestState.REQUESTING
+                        is AdbConnectionState.Pairing,
+                        is AdbConnectionState.Connecting,
+                        is AdbConnectionState.SearchingForPairing,
+                        is AdbConnectionState.PairingFound,
+                        -> RequestState.REQUESTING
                         else -> RequestState.IDLE
                     },
                 )
@@ -131,6 +139,7 @@ object PrivilegeManager {
 
     private fun AdbFailureReason.toRequestFailureReason(): RequestFailureReason = when (this) {
         AdbFailureReason.WIRELESS_DEBUGGING_OFF -> RequestFailureReason.ADB_WIRELESS_DEBUGGING_OFF
+        AdbFailureReason.AUTO_DISCOVERY_TIMEOUT -> RequestFailureReason.ADB_AUTO_DISCOVERY_TIMEOUT
         AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED -> RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED
         AdbFailureReason.HOST_UNREACHABLE -> RequestFailureReason.ADB_HOST_UNREACHABLE
         AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR -> RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR
@@ -233,6 +242,37 @@ object PrivilegeManager {
         }
         selectBackend(context, PrivilegeBackend.ADB)
         AdbConnectionManager.autoReconnect()
+    }
+
+    // ---------------------------------------------------------------------
+    // FITUR BARU — Auto-Pairing (lihat perintah rework: tombol "Start"
+    // tunggal, notifikasi mengambang "Searching for Pairing…" -> "Pairing
+    // found" -> dialog kode 6-digit SAJA, tanpa field IP/port manual sama
+    // sekali). Lihat KDoc lengkap di AdbConnectionManager untuk alur
+    // detailnya — tiga fungsi di bawah murni meneruskan aksi UI ke sana.
+    // ---------------------------------------------------------------------
+
+    /** Tombol "Start" ditekan — mulai mendengarkan mDNS untuk service pairing. */
+    fun startAutoPairAdb(context: Context) {
+        if (_status.value.adbRequestState == RequestState.REQUESTING) {
+            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.ADB, RequestFailureReason.ADB_ALREADY_IN_PROGRESS))
+            return
+        }
+        selectBackend(context, PrivilegeBackend.ADB)
+        AdbConnectionManager.startAutoPairing(context)
+    }
+
+    /** Notifikasi mengambang "Searching for Pairing…" dibatalkan manual oleh pengguna. */
+    fun cancelAutoPairAdb() {
+        AdbConnectionManager.cancelAutoPairing()
+    }
+
+    /** Kode 6-digit dari dialog "Pairing found" dikonfirmasi pengguna —
+     * host+port SUDAH didapat otomatis, tidak ada input lain yang dibutuhkan. */
+    fun confirmAutoPairAdbCode(context: Context, pairingCode: String) {
+        scope.launch {
+            AdbConnectionManager.confirmAutoPairingCode(context, pairingCode)
+        }
     }
 
     /** "Lupakan perangkat ini" — reset total pairing ADB (keypair + host:port tersimpan). */

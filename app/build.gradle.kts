@@ -76,6 +76,13 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            // Pakai signingConfig release (aetherx.jks) juga di debug — kalau
+            // pakai debug keystore bawaan Android, hash signing cert-nya
+            // tidak cocok dengan yang di-hardcode di sigcheck.cpp, dan
+            // SignatureGuard bakal langsung force-close app (lihat
+            // SignatureGuard.kt). local.properties (STORE_FILE dkk) tetap
+            // harus di-setup sebelum build debug, sama seperti build release.
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

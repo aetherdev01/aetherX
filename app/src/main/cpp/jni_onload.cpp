@@ -64,8 +64,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
     if (!adBlockOk) {
         __android_log_print(
             ANDROID_LOG_WARN, LOG_TAG,
-            "Registrasi AdBlockDetector gagal fitur deteksi adblock "
-            "nonaktif untuk sesi ini, TIDAK memengaruhi guard keamanan lain.");
+            "AXKM (Security).");
     }
 
     return JNI_VERSION_1_6;

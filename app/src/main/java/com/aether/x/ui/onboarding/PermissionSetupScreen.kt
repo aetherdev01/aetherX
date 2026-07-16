@@ -54,6 +54,9 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
+import com.aether.x.ui.components.AdbAutoPairingCodeDialog
+import com.aether.x.ui.components.AdbAutoPairingFloatingNotice
+import com.aether.x.ui.components.AdbAutoPairingPhase
 import com.aether.x.ui.components.AdbPairingCard
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.theme.AccentBlue
@@ -69,17 +72,20 @@ import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 
 /**
- * Layar izin akses — REWORK TOTAL PERMISSION (lihat perintah rework —
- * "buatkan sistem seperti shizuku langsung tertanam dalam aplikasinya...
- * hapus semua yang bersangkutan dengan shizuku").
+ * Layar izin akses — REWORK TOTAL PERMISSION, lalu REWORK AUTO-PAIRING
+ * (lihat perintah rework: "jadikan sistem pairing AetherX ... tinggal
+ * klik Start lalu ada notifikasi mengambang Searching for Pairing ...
+ * tidak perlu isi alamat ip dll secara manual").
  *
- * Kartu Shizuku (satu tombol "Izinkan" yang membuka app eksternal)
- * DIGANTIKAN TOTAL oleh [AdbPairingCard] — form pairing wireless ADB
- * (host, port pairing, kode 6-digit, port koneksi) yang alurnya SAMA
- * PERSIS seperti menyandingkan Shizuku lewat Wireless debugging, bedanya
- * semua diproses di dalam AetherX sendiri lewat
- * [com.aether.x.core.adb.AdbConnectionManager] — tidak ada aplikasi
- * eksternal yang perlu dipasang/dibuka sama sekali.
+ * Kartu Shizuku lama DIGANTIKAN TOTAL oleh [AdbPairingCard] — sekarang
+ * hanya satu tombol "Mulai Penyandingan" tanpa field apa pun. Host+port
+ * pairing & koneksi didapat OTOMATIS lewat mDNS/NSD (lihat
+ * [com.aether.x.core.adb.AdbAutoPairingDiscovery]); satu-satunya input
+ * manual yang tersisa adalah kode 6-digit, diminta lewat
+ * [AdbAutoPairingCodeDialog] begitu service pairing terdeteksi. Progres
+ * pencarian ditampilkan sebagai notifikasi mengambang
+ * ([AdbAutoPairingFloatingNotice]) yang melayang di atas seluruh layar
+ * ini, bukan menempel di dalam kartu.
  *
  * Kartu Root tidak berubah strukturnya (masih [PermissionMethodCard]
  * biasa, satu tombol), hanya field yang dibaca dari [PrivilegeStatus]
@@ -109,6 +115,7 @@ fun PermissionSetupScreen(
                 }
                 is RequestFeedback.Failed -> when (feedback.reason) {
                     RequestFailureReason.ADB_WIRELESS_DEBUGGING_OFF -> context.getString(R.string.permission_feedback_adb_wireless_debugging_off)
+                    RequestFailureReason.ADB_AUTO_DISCOVERY_TIMEOUT -> context.getString(R.string.permission_feedback_adb_auto_discovery_timeout)
                     RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED -> context.getString(R.string.permission_feedback_adb_pairing_invalid)
                     RequestFailureReason.ADB_HOST_UNREACHABLE -> context.getString(R.string.permission_feedback_adb_host_unreachable)
                     RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR -> context.getString(R.string.permission_feedback_adb_shell_rejected)
@@ -152,10 +159,30 @@ fun PermissionSetupScreen(
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
+    // FITUR BARU — Auto-Pairing: fase notifikasi mengambang ("Searching for
+    // Pairing…" / "Pairing found") diturunkan LANGSUNG dari adbState, bukan
+    // state Compose terpisah, supaya selalu konsisten dengan satu-satunya
+    // sumber kebenaran (AdbConnectionManager) — tidak ada dua state yang
+    // bisa saling tidak sinkron.
+    val autoPairingPhase = when (status.adbState) {
+        is AdbConnectionState.SearchingForPairing -> AdbAutoPairingPhase.SEARCHING
+        is AdbConnectionState.PairingFound, is AdbConnectionState.Pairing, is AdbConnectionState.Connecting -> AdbAutoPairingPhase.FOUND
+        else -> null
+    }
+    val pairingFoundState = status.adbState as? AdbConnectionState.PairingFound
+    // Dialog kode tetap ditampilkan (dalam mode "busy") selama proses
+    // pairing+auto-connect berjalan setelah kode dikirim — supaya tidak
+    // menghilang tiba-tiba begitu state berpindah dari PairingFound ke
+    // Pairing/Connecting, sebelum akhirnya berakhir di Connected/Failed.
+    val showPairingCodeDialog = pairingFoundState != null ||
+        status.adbState is AdbConnectionState.Pairing ||
+        status.adbState is AdbConnectionState.Connecting
+
     Scaffold(
         containerColor = BgVoid,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -189,24 +216,21 @@ fun PermissionSetupScreen(
 
                     AdbPairingCard(
                         connected = status.adbGranted && !adbLocked,
-                        paired = status.adbState != AdbConnectionState.NotPaired,
+                        // PairingFound/SearchingForPairing TETAP dianggap
+                        // "belum paired" di sisi kartu utama (kartu tidak
+                        // berubah tampilan jadi status "paired" dulu) —
+                        // progresnya sepenuhnya ditampilkan lewat notifikasi
+                        // mengambang + dialog kode di bawah, bukan di kartu ini.
+                        paired = status.adbState.let {
+                            it != AdbConnectionState.NotPaired &&
+                                it !is AdbConnectionState.SearchingForPairing &&
+                                it !is AdbConnectionState.PairingFound
+                        },
                         isBusy = status.adbRequestState == RequestState.REQUESTING,
                         locked = adbLocked,
                         lockedHint = stringResource(R.string.setup_locked_by_root_hint),
                         onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
-                        onPair = { host, pairingPort, code, connectPort ->
-                            val pairingPortInt = pairingPort.toIntOrNull()
-                            val connectPortInt = connectPort.toIntOrNull()
-                            if (pairingPortInt != null && connectPortInt != null) {
-                                PrivilegeManager.pairAdb(
-                                    context = context,
-                                    pairingHost = host,
-                                    pairingPort = pairingPortInt,
-                                    pairingCode = code,
-                                    connectPort = connectPortInt,
-                                )
-                            }
-                        },
+                        onStartAutoPairing = { PrivilegeManager.startAutoPairAdb(context) },
                         onReconnect = { PrivilegeManager.reconnectAdb(context) },
                         onForget = { PrivilegeManager.forgetAdbPairing() },
                     )
@@ -353,6 +377,32 @@ fun PermissionSetupScreen(
                 }
             }
         }
+
+        // FITUR BARU — Auto-Pairing: notifikasi mengambang "Searching for
+        // Pairing…" / "Pairing found", melayang di atas SELURUH layar
+        // (bukan cuma di dalam AdbPairingCard) — persis seperti bubble
+        // notifikasi mengambang pada referensi UI.
+        AdbAutoPairingFloatingNotice(
+            phase = autoPairingPhase,
+            onCancel = { PrivilegeManager.cancelAutoPairAdb() },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 12.dp)
+                .padding(horizontal = 24.dp),
+        )
+        }
+    }
+
+    // Dialog kode 6-digit muncul otomatis begitu service pairing
+    // terdeteksi (host+port sudah didapat lewat mDNS) — satu-satunya
+    // input manual yang tersisa di seluruh alur auto-pairing.
+    if (showPairingCodeDialog) {
+        AdbAutoPairingCodeDialog(
+            isBusy = pairingFoundState == null,
+            onConfirm = { code -> PrivilegeManager.confirmAutoPairAdbCode(context, code) },
+            onDismiss = { PrivilegeManager.cancelAutoPairAdb() },
+        )
     }
 }
 

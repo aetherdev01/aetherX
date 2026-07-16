@@ -6,6 +6,8 @@ import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import io.github.muntashirakon.adb.AdbStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +56,12 @@ object AdbConnectionManager {
     val state: StateFlow<AdbConnectionState> = _state.asStateFlow()
 
     private var initialized = false
+
+    // FITUR BARU — Auto-Pairing: job discovery yang sedang berjalan (kalau
+    // ada), supaya bisa dibatalkan kalau pengguna menekan "Batal" di
+    // notifikasi mengambang "Searching for Pairing…" sebelum service
+    // pairing ditemukan.
+    private var autoPairingJob: Job? = null
 
     /** Panggil sekali dari Application.onCreate — memuat host:port
      * tersimpan (jika ada) dan langsung mencoba auto-reconnect diam-diam
@@ -129,6 +137,145 @@ object AdbConnectionManager {
      */
     suspend fun connect(host: String, port: Int): AdbConnectionState = connectMutex.withLock {
         connectLocked(host, port)
+    }
+
+    // -------------------------------------------------------------------
+    // FITUR BARU — Auto-Pairing (lihat perintah rework: tombol "Start"
+    // tunggal, tanpa form IP/port manual sama sekali — host & port pairing
+    // otomatis didapat lewat NSD/mDNS, PERSIS mekanisme broadcast yang
+    // dipakai Android sendiri untuk Wireless debugging).
+    //
+    // Alur lengkap (lihat juga AdbAutoPairingDiscovery):
+    //   1. [startAutoPairing] dipanggil dari tombol "Start" di kartu ->
+    //      state jadi [AdbConnectionState.SearchingForPairing] -> UI
+    //      menampilkan notifikasi mengambang "Searching for Pairing…".
+    //   2. AetherX mendengarkan mDNS "_adb-tls-pairing._tcp" di background.
+    //      Begitu pengguna membuka Opsi Developer > Wireless debugging >
+    //      "Pasangkan perangkat dengan kode pairing", Android otomatis
+    //      mem-broadcast service itu (TANPA aksi tambahan apa pun dari
+    //      pengguna selain membuka dialog itu) -> host+port ditemukan.
+    //   3. State jadi [AdbConnectionState.PairingFound] (host+port sudah
+    //      ada) -> UI mengganti notifikasi jadi "Pairing found" dan
+    //      menampilkan dialog input kode 6-digit SAJA (tidak ada field
+    //      IP/port apa pun yang perlu diisi pengguna).
+    //   4. Pengguna mengetik kode dari dialog Android -> [confirmAutoPairingCode]
+    //      dipanggil -> pairing (host+port hasil auto-discovery + kode
+    //      yang diketik) -> port koneksi TIDAK perlu diminta terpisah lagi:
+    //      begitu pairing sukses, AetherX langsung mendengarkan
+    //      "_adb-tls-connect._tcp" sesaat untuk mendapatkan port koneksi
+    //      terbaru secara otomatis juga (lihat [pairAndAutoConnect]).
+    // -------------------------------------------------------------------
+
+    /**
+     * Tahap 1 auto-pairing — mulai mendengarkan mDNS untuk service pairing.
+     * Aman dipanggil ulang (job lama dibatalkan dulu) kalau pengguna
+     * menekan Start lagi setelah timeout/gagal sebelumnya.
+     */
+    fun startAutoPairing(context: Context) {
+        autoPairingJob?.cancel()
+        _state.value = AdbConnectionState.SearchingForPairing
+        val job = scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { AdbAutoPairingDiscovery.discoverPairingService(context) }
+            }
+            result.fold(
+                onSuccess = { service ->
+                    _state.value = AdbConnectionState.PairingFound(service.host, service.port)
+                },
+                onFailure = { error ->
+                    val reason = if (error is TimeoutCancellationException) {
+                        AdbFailureReason.AUTO_DISCOVERY_TIMEOUT
+                    } else {
+                        AdbFailureReason.UNKNOWN
+                    }
+                    _state.value = AdbConnectionState.Failed(
+                        reason = reason,
+                        detail = error.message ?: "Tidak menemukan service pairing di jaringan lokal.",
+                    )
+                },
+            )
+        }
+        autoPairingJob = job
+        job.invokeOnCompletion { if (autoPairingJob === job) autoPairingJob = null }
+    }
+
+    /** Membatalkan pencarian "Searching for Pairing…" YANG SEDANG berjalan,
+     * atau menutup dialog kode setelah service pairing ditemukan (pengguna
+     * menekan Batal di kedua tahap tersebut). Tidak berpengaruh apa pun
+     * kalau pairing sudah lanjut ke tahap Pairing/Connecting (kode sudah
+     * terlanjur dikirim, tidak bisa dibatalkan lagi di tengah jalan). */
+    fun cancelAutoPairing() {
+        autoPairingJob?.cancel()
+        autoPairingJob = null
+        if (_state.value == AdbConnectionState.SearchingForPairing || _state.value is AdbConnectionState.PairingFound) {
+            _state.value = AdbConnectionState.NotPaired
+        }
+    }
+
+    /**
+     * Tahap 2 auto-pairing — dipanggil setelah pengguna mengetik kode
+     * 6-digit di dialog "Pairing found". Host+port SUDAH didapat otomatis
+     * dari [startAutoPairing], jadi hanya kode yang perlu diberikan di sini.
+     *
+     * Setelah pairing sukses, port koneksi (beda dari port pairing) JUGA
+     * dicari otomatis lewat mDNS "_adb-tls-connect._tcp" — pengguna tidak
+     * pernah diminta mengetik port koneksi secara manual sama sekali.
+     */
+    suspend fun confirmAutoPairingCode(
+        context: Context,
+        pairingCode: String,
+    ): AdbConnectionState {
+        val found = _state.value as? AdbConnectionState.PairingFound
+            ?: return AdbConnectionState.Failed(
+                reason = AdbFailureReason.UNKNOWN,
+                detail = "Sesi pairing sudah kedaluwarsa, tekan Start lagi.",
+            )
+        return pairAndAutoConnect(context, found.host, found.port, pairingCode)
+    }
+
+    private suspend fun pairAndAutoConnect(
+        context: Context,
+        pairingHost: String,
+        pairingPort: Int,
+        pairingCode: String,
+    ): AdbConnectionState = connectMutex.withLock {
+        _state.value = AdbConnectionState.Pairing
+
+        val paired = withContext(Dispatchers.IO) {
+            runCatching { connection.pair(pairingHost, pairingPort, pairingCode) }
+        }
+
+        if (paired.isFailure) {
+            val failure = AdbConnectionState.Failed(
+                reason = AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED,
+                detail = paired.exceptionOrNull()?.message ?: "Pairing ke $pairingHost:$pairingPort gagal atau kode kedaluwarsa.",
+            )
+            _state.value = failure
+            return failure
+        }
+
+        // Pairing sukses — sekarang cari port KONEKSI secara otomatis juga
+        // (mDNS "_adb-tls-connect._tcp"), supaya pengguna TIDAK PERNAH
+        // diminta mengetik port koneksi secara manual. Wireless debugging
+        // selalu mem-broadcast service ini selama fiturnya aktif, jadi
+        // timeout singkat (beberapa detik) sudah cukup.
+        _state.value = AdbConnectionState.Connecting
+        val connectService = withContext(Dispatchers.IO) {
+            runCatching { AdbAutoPairingDiscovery.discoverConnectService(context) }
+        }
+
+        val connectPort = connectService.getOrNull()?.port
+        if (connectPort == null) {
+            val failure = AdbConnectionState.Failed(
+                reason = AdbFailureReason.UNKNOWN,
+                detail = "Pairing berhasil, tapi port koneksi tidak ditemukan otomatis. Coba \"Sambungkan\" lagi.",
+            )
+            _state.value = failure
+            return failure
+        }
+
+        preferences.saveHostPort(pairingHost, connectPort)
+        return connectLocked(pairingHost, connectPort)
     }
 
     private suspend fun connectLocked(host: String, port: Int): AdbConnectionState {
@@ -230,6 +377,8 @@ object AdbConnectionManager {
      * alamat tapi masih dikenali certificate lama oleh adbd).
      */
     fun forgetPairing() {
+        autoPairingJob?.cancel()
+        autoPairingJob = null
         runCatching { if (::connection.isInitialized) connection.disconnect() }
         keyManager.forgetIdentity()
         _state.value = AdbConnectionState.NotPaired
