@@ -12,12 +12,11 @@ import com.aether.x.data.FpsMonitorStyle
  * Satuan tampilan suhu di [FpsMonitorView] — DIPINDAHKAN dari modul `data`
  * (sebelumnya com.aether.x.data.TemperatureUnit) ke sini karena opsi
  * "Satuan Suhu" di Settings sudah dihapus total (permintaan "hapus opsi
- * suhu", lihat AppLanguage.kt yang menggantikannya di Settings). Enum ini
- * TETAP ada karena [FpsMonitorView] tetap menampilkan suhu overlay (fitur
- * intinya dipertahankan) — hanya saja SEKARANG SELALU [CELSIUS] (tidak lagi
- * bisa diganti pengguna lewat preferensi), jadi enum ini murni detail
- * implementasi internal formatting suhu milik View ini sendiri, bukan lagi
- * bagian dari [com.aether.x.data.AppPreferences].
+ * suhu"). Enum ini TETAP ada karena [FpsMonitorView] tetap menampilkan
+ * suhu overlay (fitur intinya dipertahankan) — hanya saja SEKARANG SELALU
+ * [CELSIUS] (tidak lagi bisa diganti pengguna lewat preferensi), jadi enum
+ * ini murni detail implementasi internal formatting suhu milik View ini
+ * sendiri, bukan lagi bagian dari [com.aether.x.data.AppPreferences].
  */
 enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
 

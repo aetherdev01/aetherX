@@ -143,6 +143,35 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawLine(cx + s, cy + s, cx + s - corner, cy + s, paint)
                 canvas.drawLine(cx + s, cy + s, cx + s, cy + s - corner, paint)
             }
+            CrosshairStyle.CHEVRON -> {
+                // FITUR BARU: 4 chevron "V" dari tiap sisi mengarah ke pusat
+                // (gaya populer di crosshair custom PUBG Mobile/Free Fire) —
+                // implementasi HARUS identik dengan StyleIconButton
+                // (CrosshairSettingsSection.kt) & CrosshairPreview.kt supaya
+                // WYSIWYG.
+                val gap = r * 0.35f
+                val arm = r * 0.45f
+                val tip = r * 0.9f
+                // Chevron atas.
+                canvas.drawLine(cx - arm, cy - tip, cx, cy - gap, paint)
+                canvas.drawLine(cx, cy - gap, cx + arm, cy - tip, paint)
+                // Chevron bawah.
+                canvas.drawLine(cx - arm, cy + tip, cx, cy + gap, paint)
+                canvas.drawLine(cx, cy + gap, cx + arm, cy + tip, paint)
+                // Chevron kiri.
+                canvas.drawLine(cx - tip, cy - arm, cx - gap, cy, paint)
+                canvas.drawLine(cx - gap, cy, cx - tip, cy + arm, paint)
+                // Chevron kanan.
+                canvas.drawLine(cx + tip, cy - arm, cx + gap, cy, paint)
+                canvas.drawLine(cx + gap, cy, cx + tip, cy + arm, paint)
+            }
+            CrosshairStyle.DOUBLE_RING -> {
+                // FITUR BARU: dua lingkaran konsentris, gaya sniper-scope —
+                // implementasi HARUS identik dengan StyleIconButton &
+                // CrosshairPreview.kt supaya WYSIWYG.
+                canvas.drawCircle(cx, cy, r, paint)
+                canvas.drawCircle(cx, cy, r * 0.55f, paint)
+            }
         }
     }
 }

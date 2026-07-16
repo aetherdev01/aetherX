@@ -11,7 +11,6 @@ import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.core.overlay.CrosshairOverlayService
 import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AetherXPreferences
-import com.aether.x.data.AppLanguage
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.data.FpsMonitorStyle
@@ -30,41 +29,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         initialValue = AppPreferences(),
     )
 
-    /**
-     * OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings",
-     * MENGGANTIKAN setTemperatureUnit yang dihapus bersamaan dengan opsi
-     * Satuan Suhu — permintaan "hapus opsi suhu"): ganti bahasa aplikasi.
-     * HANYA persist ke DataStore lewat [AetherXPreferences.setAppLanguage]
-     * — TIDAK langsung menerapkan locale ke UI (ViewModel ini cuma punya
-     * [Application], bukan [android.app.Activity], jadi tidak bisa memanggil
-     * `Activity.recreate()`). Penerapan locale seketika dilakukan oleh
-     * caller di [com.aether.x.ui.settings.SettingsScreen] lewat
-     * [com.aether.x.data.AppLanguage.applyToRunningActivity] setelah
-     * fungsi ini dipanggil — lihat wiring di sana.
-     */
-    fun setAppLanguage(language: AppLanguage) {
-        viewModelScope.launch { preferences.setAppLanguage(language) }
-    }
-
-    /**
-     * OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings"):
-     * kembalikan preferensi Bahasa, Crosshair, dan Monitor FPS ke nilai
-     * default pabrik lewat [AetherXPreferences.resetAll] (data lain seperti
-     * lisensi/membership dan Game Profile SENGAJA tidak disentuh — lihat
-     * KDoc resetAll()). Overlay crosshair/FPS monitor yang sedang aktif
-     * dihentikan di sini (bukan di dalam resetAll() itu sendiri, supaya
-     * modul `data` tidak perlu bergantung pada modul `core.overlay`) agar
-     * tampilan overlay sungguhan langsung sinkron dengan
-     * crosshairEnabled/fpsMonitorEnabled yang baru direset ke false.
-     */
-    fun resetAllSettings() {
-        viewModelScope.launch {
-            preferences.resetAll()
-            val app = getApplication<Application>()
-            CrosshairOverlayService.stop(app)
-            FpsMonitorOverlayService.stop(app)
-        }
-    }
+    // setAppLanguage() dan resetAllSettings() DIHAPUS TOTAL (fitur "pemilih
+    // Bahasa" + "Reset Semua Pengaturan" di-rollback atas permintaan
+    // pengguna — "kurang cocok"). Lihat juga SettingsScreen.kt yang sudah
+    // tidak lagi memanggil kedua fungsi ini, dan AetherXPreferences.kt yang
+    // sudah tidak lagi punya setAppLanguage()/resetAll().
 
     /** true kalau izin "Tampil di atas aplikasi lain" sudah diberikan. */
     fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(getApplication())

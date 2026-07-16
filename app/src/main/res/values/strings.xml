@@ -401,23 +401,12 @@
     <string name="about_link_youtube_desc">Tutorial, review, &amp; showcase fitur</string>
     <string name="about_link_youtube_url">https://youtube.com/@aetherdevofficial?si=JrYQSWzKgoKRSydR</string>
 
-    <!-- Settings Umum -->
-    <string name="settings_section_general">Umum</string>
-    <!-- Satuan Suhu DIHAPUS (permintaan "hapus opsi suhu") — 3 string
-         settings_temperature_unit_label/celsius/fahrenheit sebelumnya di
-         sini sudah tidak dipakai di mana pun (SettingsScreen.kt sudah
-         diganti total ke pemilih Bahasa di bawah), jadi dihapus daripada
-         dibiarkan jadi string mati. -->
-    <!-- FITUR BARU (permintaan "tambahkan beberapa fitur baru di Settings") -->
-    <string name="settings_language_label">Bahasa</string>
-    <string name="settings_language_indonesian">Indonesia</string>
-    <string name="settings_language_english">English</string>
-    <string name="settings_reset_all_label">Reset Semua Pengaturan</string>
-    <string name="settings_reset_all_desc">Kembalikan semua pengaturan (bahasa, crosshair, monitor FPS) ke nilai default.</string>
-    <string name="settings_reset_all_button">Reset ke Default</string>
-    <string name="settings_reset_all_confirm_title">Reset semua pengaturan?</string>
-    <string name="settings_reset_all_confirm_message">Semua pengaturan yang sudah kamu ubah akan kembali ke nilai default. Tindakan ini tidak bisa dibatalkan.</string>
-    <string name="settings_reset_all_confirm_action">Reset</string>
+    <!-- Section "Settings Umum" (settings_section_general, settings_language_*,
+         settings_reset_all_*) DIHAPUS TOTAL — fitur pemilih Bahasa & Reset
+         Semua Pengaturan di-rollback atas permintaan pengguna ("kurang
+         cocok"). Opsi Satuan Suhu yang dulu ada di section ini sebelum
+         digantikan Bahasa SUDAH lebih dulu dihapus permanen (permintaan
+         "hapus opsi suhu") dan TIDAK dikembalikan. -->
 
     <!-- Crosshair overlay -->
     <!-- FITUR BARU (lihat perintah rework "Samakan Section Crosshair Persis seperti foto ke dua dari UI") -->
@@ -436,6 +425,10 @@
          StyleIconButton & CrosshairPreview di modul ui/. -->
     <string name="crosshair_style_diamond">Belah Ketupat</string>
     <string name="crosshair_style_square">Kotak</string>
+    <!-- FITUR BARU: 2 style crosshair tambahan (permintaan "tambah style
+         Crosshair baru") -->
+    <string name="crosshair_style_chevron">Chevron</string>
+    <string name="crosshair_style_double_ring">Cincin Ganda</string>
     <string name="crosshair_custom_color_title">Pilih Warna Kustom</string>
     <string name="crosshair_custom_color_apply">Terapkan</string>
     <string name="crosshair_custom_color_cancel">Batal</string>

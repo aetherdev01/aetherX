@@ -19,16 +19,22 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
 // FITUR BARU: DIAMOND (belah ketupat terbuka) & SQUARE (kotak bracket
-// 4 sudut) — lihat rendering di StyleIconButton (CrosshairSettingsSection.kt)
-// dan CrosshairPreview.kt. Overlay sungguhan (CrosshairView.onDraw, modul
+// 4 sudut), dan CHEVRON (panah "V" ganda dari 4 sisi mengarah ke pusat,
+// gaya populer di crosshair custom game FPS/battle-royale mobile) &
+// DOUBLE_RING (dua lingkaran konsentris, gaya sniper-scope) — lihat
+// rendering di StyleIconButton (CrosshairSettingsSection.kt) dan
+// CrosshairPreview.kt. Overlay sungguhan (CrosshairView.onDraw, modul
 // core/overlay) juga perlu ditambah case yang sama supaya WYSIWYG.
-enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE }
+enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING }
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
 
-// TemperatureUnit DIHAPUS (permintaan "hapus opsi suhu") — enum ini
-// sebelumnya cuma dipakai untuk opsi "Satuan Suhu" di Settings yang sudah
-// dihapus total (lihat AppLanguage.kt, yang MENGGANTIKAN opsi ini di UI).
+// TemperatureUnit DIHAPUS dari modul ini (permintaan "hapus opsi suhu") —
+// enum ini sebelumnya cuma dipakai untuk opsi "Satuan Suhu" di Settings.
+// TemperatureUnit itu sendiri MASIH ADA, dipindah jadi detail implementasi
+// internal FpsMonitorView (lihat core/overlay/FpsMonitorView.kt) karena
+// overlay Monitor FPS tetap menampilkan suhu, hanya saja sekarang selalu
+// Celsius (tidak lagi jadi preferensi user yang bisa diganti).
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
@@ -38,12 +44,10 @@ data class AppPreferences(
     // mode gelap, terlepas dari pengaturan tema sistem HP-nya. Pengguna tetap
     // bisa mengganti ke LIGHT/SYSTEM kapan saja lewat menu Pengaturan.
     val darkModePref: DarkModePref = DarkModePref.DARK,
-    // FITUR BARU (permintaan "tambahkan beberapa fitur baru di Settings"),
-    // MENGGANTIKAN temperatureUnit yang dihapus (permintaan "hapus opsi
-    // suhu"): bahasa aplikasi aktif. Default INDONESIAN — sama seperti
-    // seluruh string UI app ini yang memang ditulis dalam Bahasa Indonesia
-    // secara default.
-    val appLanguage: AppLanguage = AppLanguage.INDONESIAN,
+    // appLanguage DIHAPUS TOTAL (fitur "pemilih Bahasa" di-rollback atas
+    // permintaan pengguna — "kurang cocok"). Lihat juga strings.xml
+    // (settings_language_* dihapus) dan SettingsScreen.kt/SettingsViewModel.kt
+    // yang sudah tidak lagi mereferensikan field ini.
     val dpiValue: Int = -1,
     val widthValue: Int = -1,
     val pointerSpeed: Int = 0,
@@ -163,7 +167,6 @@ class AetherXPreferences(private val context: Context) {
     private object Keys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
-        val APP_LANGUAGE = stringPreferencesKey("app_language")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
@@ -274,9 +277,6 @@ class AetherXPreferences(private val context: Context) {
             // pengguna yang pernah memilih tema lain sebelum update ini
             // tetap otomatis kembali ke Gelap tanpa perlu reset manual.
             darkModePref = DarkModePref.DARK,
-            appLanguage = prefs[Keys.APP_LANGUAGE]
-                ?.let { runCatching { AppLanguage.valueOf(it) }.getOrNull() }
-                ?: AppLanguage.INDONESIAN,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -329,69 +329,10 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
     }
 
-    /**
-     * FITUR BARU (menggantikan setTemperatureUnit yang dihapus): simpan
-     * bahasa aplikasi terpilih ke DataStore. HANYA persist — TIDAK lagi
-     * langsung "menerapkan" locale di sini (BUG FIX: implementasi
-     * sebelumnya memanggil AppCompatDelegate yang tidak tersedia di project
-     * ini, lihat KDoc panjang di AppLanguage.kt). Penerapan locale ke UI
-     * yang sedang tampil adalah tanggung jawab caller — lihat
-     * [com.aether.x.ui.settings.SettingsScreen] yang memanggil
-     * [AppLanguage.applyToRunningActivity] setelah suspend function ini
-     * selesai, dan [AppLanguage.wrapContext] yang perlu dipasang di
-     * `MainActivity.attachBaseContext` supaya locale tersimpan ini
-     * ter-restore otomatis saat app dibuka ulang dari nol.
-     */
-    suspend fun setAppLanguage(value: AppLanguage) {
-        context.dataStore.edit { it[Keys.APP_LANGUAGE] = value.name }
-    }
-
-    /**
-     * FITUR BARU (permintaan "tambahkan beberapa fitur baru di Settings" —
-     * tombol "Reset Semua Pengaturan"): kembalikan HANYA preferensi
-     * tampilan/fitur yang ditawarkan di layar Settings (Bahasa, Crosshair,
-     * Monitor FPS) ke nilai default [AppPreferences] — SESUAI deskripsi
-     * yang dijanjikan ke pengguna di settings_reset_all_desc.
-     *
-     * SENGAJA TIDAK menghapus seluruh DataStore (`it.clear()`) — key-key
-     * lain di luar 3 fitur itu (lisensi/membership, user ID tersinkron,
-     * Game Profile per-game, riwayat game terakhir, reward-quota iklan,
-     * backend privilese ADB/Root terpilih, dst.) TIDAK relevan dengan
-     * tombol "reset pengaturan" di layar Settings dan menghapusnya akan
-     * merugikan pengguna secara tidak terduga (mis. kehilangan status
-     * lisensi aktif atau kuota reward-ad harian hanya karena ingin
-     * mengembalikan warna crosshair ke default).
-     *
-     * Bahasa DIKEMBALIKAN ke DataStore di sini juga (HANYA persist, sama
-     * seperti [setAppLanguage] — penerapan locale ke UI adalah tanggung
-     * jawab caller, lihat KDoc [setAppLanguage]).
-     */
-    suspend fun resetAll() {
-        val defaults = AppPreferences()
-        context.dataStore.edit { prefs ->
-            prefs.remove(Keys.APP_LANGUAGE)
-            prefs[Keys.CROSSHAIR_ENABLED] = defaults.crosshairEnabled
-            prefs[Keys.CROSSHAIR_STYLE] = defaults.crosshairStyle.name
-            prefs[Keys.CROSSHAIR_COLOR] = defaults.crosshairColor
-            prefs[Keys.CROSSHAIR_SIZE] = defaults.crosshairSize
-            prefs[Keys.CROSSHAIR_THICKNESS] = defaults.crosshairThickness
-            prefs[Keys.CROSSHAIR_OPACITY] = defaults.crosshairOpacity
-            prefs[Keys.CROSSHAIR_OFFSET_X] = defaults.crosshairOffsetX
-            prefs[Keys.CROSSHAIR_OFFSET_Y] = defaults.crosshairOffsetY
-            prefs[Keys.CROSSHAIR_POSITION_LOCKED] = defaults.crosshairPositionLocked
-            prefs[Keys.FPS_MONITOR_ENABLED] = defaults.fpsMonitorEnabled
-            prefs[Keys.FPS_MONITOR_STYLE] = defaults.fpsMonitorStyle.name
-            prefs[Keys.FPS_MONITOR_OFFSET_X] = defaults.fpsMonitorOffsetX
-            prefs[Keys.FPS_MONITOR_OFFSET_Y] = defaults.fpsMonitorOffsetY
-        }
-        // Overlay crosshair/FPS monitor yang mungkin sedang aktif juga perlu
-        // dihentikan supaya tampilan overlay sungguhan langsung sinkron
-        // dengan crosshairEnabled/fpsMonitorEnabled yang baru direset ke
-        // false — caller (SettingsViewModel.resetAllSettings) bertanggung
-        // jawab menghentikan CrosshairOverlayService/FpsMonitorOverlayService
-        // setelah memanggil fungsi ini, pola yang sama seperti
-        // setCrosshairEnabled/setFpsMonitorEnabled di ViewModel.
-    }
+    // setAppLanguage() dan resetAll() DIHAPUS TOTAL (fitur "pemilih Bahasa"
+    // + "Reset Semua Pengaturan" di-rollback atas permintaan pengguna —
+    // "kurang cocok"). Lihat juga SettingsScreen.kt/SettingsViewModel.kt
+    // yang sudah tidak lagi memanggil kedua fungsi ini.
 
     suspend fun saveTweakState(
         pointerSpeed: Int,

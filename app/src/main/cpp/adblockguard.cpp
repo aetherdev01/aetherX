@@ -5,7 +5,9 @@
 //   1. Interface VPN aktif (dipakai banyak app adblock berbasis VPN lokal,
 //      mis. Blokada/AdGuard for Android/DNS66/PersonalDNSFilter).
 //   2. DNS custom yang cocok dengan penyedia DNS pemblokir iklan yang
-//      dikenal publik (mis. AdGuard DNS, Mullvad DNS varian adblock).
+//      dikenal publik (mis. AdGuard DNS, Mullvad DNS varian adblock) —
+//      dicocokkan baik lewat IP resolver biasa MAUPUN hostname Private
+//      DNS (mis. "dns.adguard.com", lihat kAdBlockDnsHostnames di bawah).
 //   3. Modul Magisk yang dikenal terkait adblock (mis. AdAway
 //      systemless-hosts) — hanya bisa dicek kalau app sudah mendapat akses
 //      root (lihat AdBlockDetector.kt sisi Kotlin untuk kenapa).
@@ -169,6 +171,43 @@ bool isKnownAdBlockDnsIp(const char* ip) {
 }
 
 // ---------------------------------------------------------------------
+// 2b) Pencocokan HOSTNAME Private DNS (Android 9+, Settings -> Network ->
+//     Private DNS -> mode "Hostname", mis. "dns.adguard.com"). Ini API
+//     BERBEDA dari daftar IP di atas — lihat penjelasan lengkap di
+//     AdBlockDetector.kt bagian "BUG FIX" kenapa keduanya harus dicek
+//     terpisah: dalam mode ini, dnsServers biasa (daftar IP) seringkali
+//     TIDAK PERNAH berisi IP AdGuard sama sekali, jadi tanpa daftar
+//     hostname ini deteksi selalu gagal walau pengguna jelas memakai
+//     Private DNS adblock. Case-insensitive karena hostname secara
+//     teknis tidak case-sensitive.
+// ---------------------------------------------------------------------
+
+constexpr const char* kAdBlockDnsHostnames[] = {
+    // --- AdGuard DNS ---
+    "dns.adguard.com",           // Default (iklan+tracker)
+    "dns-family.adguard.com",    // Family protection (+ konten dewasa)
+    // SENGAJA TIDAK diikutkan: dns-unfiltered.adguard.com — varian itu
+    // EKSPLISIT TIDAK memblokir iklan sama sekali (sama seperti alasan
+    // varian "Non-filtering" IP di atas tidak diikutkan).
+
+    // --- Mullvad DNS (varian yang mengikutkan ad-blocking) ---
+    "adblock.dns.mullvad.net",
+    "base.dns.mullvad.net",
+    "extended.dns.mullvad.net",
+    "family.dns.mullvad.net",
+    "all.dns.mullvad.net",
+};
+constexpr size_t kAdBlockDnsHostnameCount =
+    sizeof(kAdBlockDnsHostnames) / sizeof(kAdBlockDnsHostnames[0]);
+
+bool isKnownAdBlockDnsHostname(const char* hostname) {
+    for (size_t i = 0; i < kAdBlockDnsHostnameCount; i++) {
+        if (strcasecmp(hostname, kAdBlockDnsHostnames[i]) == 0) return true;
+    }
+    return false;
+}
+
+// ---------------------------------------------------------------------
 // 3) Pencocokan KATA KUNCI pada listing direktori modul Magisk (bukan
 //    daftar ID modul yang presisi/lengkap — lihat catatan batasan di
 //    atas). Case-insensitive karena penamaan folder modul Magisk tidak
@@ -225,7 +264,8 @@ ndns(JNIEnv* env, jobject /* thiz */, jobjectArray dnsServers) {
         if (element == nullptr) continue;
 
         const char* ip = env->GetStringUTFChars(element, nullptr);
-        const bool match = (ip != nullptr) && isKnownAdBlockDnsIp(ip);
+        const bool match = (ip != nullptr) &&
+            (isKnownAdBlockDnsIp(ip) || isKnownAdBlockDnsHostname(ip));
         if (ip != nullptr) env->ReleaseStringUTFChars(element, ip);
         env->DeleteLocalRef(element);
 

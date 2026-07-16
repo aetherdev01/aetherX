@@ -84,17 +84,14 @@ private val styleOptions = listOf(
     StyleOption(CrosshairStyle.CIRCLE_DOT, R.string.crosshair_style_circle_dot),
     StyleOption(CrosshairStyle.CROSS_DOT, R.string.crosshair_style_cross_dot),
     StyleOption(CrosshairStyle.T_SHAPE, R.string.crosshair_style_t_shape),
-    // BARU — 2 style crosshair tambahan (permintaan "tambahkan juga
-    // crosshair baru"). PENTING: enum CrosshairStyle sendiri ADA di modul
-    // `data` (com.aether.x.data.CrosshairStyle) yang TIDAK ikut di dalam
-    // ui.zip ini, jadi dua value ini (DIAMOND, SQUARE) HARUS ditambahkan
-    // manual ke enum class CrosshairStyle di file aslinya supaya project
-    // ini bisa dikompilasi. Rendering overlay sungguhan
-    // (com.aether.x.core.overlay.CrosshairView.onDraw, juga di luar zip
-    // ini) juga perlu ditambah case yang sama biar WYSIWYG dengan preview
-    // di bawah ini.
     StyleOption(CrosshairStyle.DIAMOND, R.string.crosshair_style_diamond),
     StyleOption(CrosshairStyle.SQUARE, R.string.crosshair_style_square),
+    // FITUR BARU: 2 style tambahan (permintaan "tambah style Crosshair
+    // baru"). Rendering-nya ada di 3 tempat yang HARUS konsisten (WYSIWYG):
+    // StyleIconButton di bawah (icon kecil), CrosshairPreview.kt (preview
+    // besar), dan CrosshairView.onDraw (core/overlay, overlay sungguhan).
+    StyleOption(CrosshairStyle.CHEVRON, R.string.crosshair_style_chevron),
+    StyleOption(CrosshairStyle.DOUBLE_RING, R.string.crosshair_style_double_ring),
 )
 
 /**
@@ -549,6 +546,34 @@ private fun StyleIconButton(
                     // Sudut kanan-bawah.
                     drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s - corner, cy + s), thickness, StrokeCap.Round)
                     drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s, cy + s - corner), thickness, StrokeCap.Round)
+                }
+                // FITUR BARU: 4 chevron "V" dari tiap sisi mengarah ke pusat
+                // (gaya populer di crosshair custom PUBG Mobile/Free Fire) —
+                // implementasi HARUS identik dengan CrosshairPreview.kt dan
+                // CrosshairView.onDraw (core/overlay) supaya WYSIWYG.
+                CrosshairStyle.CHEVRON -> {
+                    val gap = r * 0.35f
+                    val arm = r * 0.45f
+                    val tip = r * 0.9f
+                    // Chevron atas: "V" terbalik, ujung mengarah ke bawah/pusat.
+                    drawLine(drawColor, Offset(cx - arm, cy - tip), Offset(cx, cy - gap), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - gap), Offset(cx + arm, cy - tip), thickness, StrokeCap.Round)
+                    // Chevron bawah.
+                    drawLine(drawColor, Offset(cx - arm, cy + tip), Offset(cx, cy + gap), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + gap), Offset(cx + arm, cy + tip), thickness, StrokeCap.Round)
+                    // Chevron kiri.
+                    drawLine(drawColor, Offset(cx - tip, cy - arm), Offset(cx - gap, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx - gap, cy), Offset(cx - tip, cy + arm), thickness, StrokeCap.Round)
+                    // Chevron kanan.
+                    drawLine(drawColor, Offset(cx + tip, cy - arm), Offset(cx + gap, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + tip, cy + arm), thickness, StrokeCap.Round)
+                }
+                // FITUR BARU: dua lingkaran konsentris, gaya sniper-scope —
+                // implementasi HARUS identik dengan CrosshairPreview.kt dan
+                // CrosshairView.onDraw (core/overlay) supaya WYSIWYG.
+                CrosshairStyle.DOUBLE_RING -> {
+                    drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+                    drawCircle(drawColor, radius = r * 0.55f, center = Offset(cx, cy), style = Stroke(thickness))
                 }
             }
         }
