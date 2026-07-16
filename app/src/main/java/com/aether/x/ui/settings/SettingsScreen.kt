@@ -1,21 +1,31 @@
 package com.aether.x.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
-import com.aether.x.data.TemperatureUnit
+import com.aether.x.data.AppLanguage
 import com.aether.x.ui.components.SectionCard
 
 @Composable
@@ -46,6 +56,13 @@ fun SettingsScreen(
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     var dragModeActive by remember { mutableStateOf(false) }
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
+    // OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings"):
+    // reset semua preferensi tampilan (bahasa, crosshair, FPS monitor)
+    // kembali ke default pabrik — lihat viewModel.resetAllSettings() &
+    // AetherXPreferences.resetAll() (modul `data`, di luar zip ini).
+    // Dialog konfirmasi dulu supaya tidak ke-tap tidak sengaja, karena
+    // aksi ini tidak bisa di-undo.
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -77,28 +94,93 @@ fun SettingsScreen(
         // selalu mengembalikan DarkModePref.DARK), jadi tidak ada lagi
         // pengaturan tema yang perlu ditampilkan ke pengguna sama sekali.
 
+        // OPSI BARU (permintaan "tambahkan beberapa fitur baru di
+        // Settings"): pemilih Bahasa aplikasi (Indonesia/English),
+        // MENGGANTIKAN opsi Satuan Suhu yang dihapus (permintaan "hapus
+        // opsi suhu" — tidak ada lagi konsumer nilainya di layar mana pun
+        // setelah monitor CPU/GPU/Suhu dipindah jadi domain Game Booster,
+        // lihat komentar dashboard_monitor_* di strings.xml).
+        //
+        // Menggunakan AppCompatDelegate.setApplicationLocales (Android
+        // per-app language API, lihat AppLanguage.applyToApp() di modul
+        // `data`) — TIDAK butuh restart Activity manual, sistem otomatis
+        // me-recreate Activity yang aktif dengan locale baru.
         SectionCard(title = stringResource(R.string.settings_section_general), watermarkIcon = Icons.Outlined.Settings) {
             Column {
                 Text(
-                    text = stringResource(R.string.settings_temperature_unit_label),
+                    text = stringResource(R.string.settings_language_label),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     val options = listOf(
-                        TemperatureUnit.CELSIUS to stringResource(R.string.settings_temperature_unit_celsius),
-                        TemperatureUnit.FAHRENHEIT to stringResource(R.string.settings_temperature_unit_fahrenheit),
+                        AppLanguage.INDONESIAN to stringResource(R.string.settings_language_indonesian),
+                        AppLanguage.ENGLISH to stringResource(R.string.settings_language_english),
                     )
-                    options.forEachIndexed { index, (unit, label) ->
+                    options.forEachIndexed { index, (language, label) ->
                         SegmentedButton(
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                            selected = prefs.temperatureUnit == unit,
-                            onClick = { viewModel.setTemperatureUnit(unit) },
+                            selected = prefs.appLanguage == language,
+                            onClick = { viewModel.setAppLanguage(language) },
                         ) {
                             Text(label)
                         }
                     }
                 }
+
+                // OPSI BARU: reset semua pengaturan ke default — lihat KDoc
+                // showResetConfirmDialog di atas.
+                Text(
+                    text = stringResource(R.string.settings_reset_all_label),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 20.dp),
+                )
+                Text(
+                    text = stringResource(R.string.settings_reset_all_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                OutlinedButton(
+                    onClick = { showResetConfirmDialog = true },
+                    modifier = Modifier.padding(top = 10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.RestartAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.settings_reset_all_button))
+                }
             }
+        }
+
+        if (showResetConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetConfirmDialog = false },
+                title = { Text(stringResource(R.string.settings_reset_all_confirm_title)) },
+                text = { Text(stringResource(R.string.settings_reset_all_confirm_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.resetAllSettings()
+                        showResetConfirmDialog = false
+                    }) {
+                        Text(
+                            text = stringResource(R.string.settings_reset_all_confirm_action),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetConfirmDialog = false }) {
+                        Text(stringResource(R.string.crosshair_custom_color_cancel))
+                    }
+                },
+            )
         }
 
         // REWORK TOTAL (lihat perintah rework terbaru — "Samakan Section

@@ -7,7 +7,19 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.view.View
 import com.aether.x.data.FpsMonitorStyle
-import com.aether.x.data.TemperatureUnit
+
+/**
+ * Satuan tampilan suhu di [FpsMonitorView] — DIPINDAHKAN dari modul `data`
+ * (sebelumnya com.aether.x.data.TemperatureUnit) ke sini karena opsi
+ * "Satuan Suhu" di Settings sudah dihapus total (permintaan "hapus opsi
+ * suhu", lihat AppLanguage.kt yang menggantikannya di Settings). Enum ini
+ * TETAP ada karena [FpsMonitorView] tetap menampilkan suhu overlay (fitur
+ * intinya dipertahankan) — hanya saja SEKARANG SELALU [CELSIUS] (tidak lagi
+ * bisa diganti pengguna lewat preferensi), jadi enum ini murni detail
+ * implementasi internal formatting suhu milik View ini sendiri, bukan lagi
+ * bagian dari [com.aether.x.data.AppPreferences].
+ */
+enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
 
 /**
  * View kustom yang menggambar panel Monitor FPS, dengan dua gaya visual:
@@ -41,7 +53,11 @@ class FpsMonitorView(context: Context) : View(context) {
         set(value) { field = value; invalidate() }
 
     /** Satuan tampilan suhu. Nilai sumber selalu disimpan dalam Celsius
-     *  ([temperatureCelsius]); konversi hanya terjadi saat digambar. */
+     *  ([temperatureCelsius]); konversi hanya terjadi saat digambar.
+     *  SELALU [TemperatureUnit.CELSIUS] sekarang (lihat KDoc enum di atas)
+     *  — var+setter dipertahankan apa adanya (bukan val) supaya minim
+     *  perubahan pada logika formattedTemperature() di bawah, walau saat
+     *  ini tidak ada lagi caller yang mengubah nilainya dari CELSIUS. */
     var temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS
         set(value) { field = value; invalidate() }
 

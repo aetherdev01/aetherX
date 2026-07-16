@@ -26,7 +26,9 @@ enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, C
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
 
-enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
+// TemperatureUnit DIHAPUS (permintaan "hapus opsi suhu") — enum ini
+// sebelumnya cuma dipakai untuk opsi "Satuan Suhu" di Settings yang sudah
+// dihapus total (lihat AppLanguage.kt, yang MENGGANTIKAN opsi ini di UI).
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
@@ -36,7 +38,12 @@ data class AppPreferences(
     // mode gelap, terlepas dari pengaturan tema sistem HP-nya. Pengguna tetap
     // bisa mengganti ke LIGHT/SYSTEM kapan saja lewat menu Pengaturan.
     val darkModePref: DarkModePref = DarkModePref.DARK,
-    val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
+    // FITUR BARU (permintaan "tambahkan beberapa fitur baru di Settings"),
+    // MENGGANTIKAN temperatureUnit yang dihapus (permintaan "hapus opsi
+    // suhu"): bahasa aplikasi aktif. Default INDONESIAN — sama seperti
+    // seluruh string UI app ini yang memang ditulis dalam Bahasa Indonesia
+    // secara default.
+    val appLanguage: AppLanguage = AppLanguage.INDONESIAN,
     val dpiValue: Int = -1,
     val widthValue: Int = -1,
     val pointerSpeed: Int = 0,
@@ -156,7 +163,7 @@ class AetherXPreferences(private val context: Context) {
     private object Keys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
-        val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
+        val APP_LANGUAGE = stringPreferencesKey("app_language")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
@@ -267,9 +274,9 @@ class AetherXPreferences(private val context: Context) {
             // pengguna yang pernah memilih tema lain sebelum update ini
             // tetap otomatis kembali ke Gelap tanpa perlu reset manual.
             darkModePref = DarkModePref.DARK,
-            temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]
-                ?.let { runCatching { TemperatureUnit.valueOf(it) }.getOrNull() }
-                ?: TemperatureUnit.CELSIUS,
+            appLanguage = prefs[Keys.APP_LANGUAGE]
+                ?.let { runCatching { AppLanguage.valueOf(it) }.getOrNull() }
+                ?: AppLanguage.INDONESIAN,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -322,8 +329,63 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
     }
 
-    suspend fun setTemperatureUnit(value: TemperatureUnit) {
-        context.dataStore.edit { it[Keys.TEMPERATURE_UNIT] = value.name }
+    /**
+     * FITUR BARU (menggantikan setTemperatureUnit yang dihapus): simpan
+     * bahasa aplikasi terpilih ke DataStore, lalu terapkan seketika lewat
+     * [AppLanguage.applyToApp] (AppCompatDelegate.setApplicationLocales) —
+     * sistem otomatis me-recreate Activity yang sedang aktif dengan locale
+     * baru, tidak perlu restart manual.
+     */
+    suspend fun setAppLanguage(value: AppLanguage) {
+        context.dataStore.edit { it[Keys.APP_LANGUAGE] = value.name }
+        value.applyToApp()
+    }
+
+    /**
+     * FITUR BARU (permintaan "tambahkan beberapa fitur baru di Settings" —
+     * tombol "Reset Semua Pengaturan"): kembalikan HANYA preferensi
+     * tampilan/fitur yang ditawarkan di layar Settings (Bahasa, Crosshair,
+     * Monitor FPS) ke nilai default [AppPreferences] — SESUAI deskripsi
+     * yang dijanjikan ke pengguna di settings_reset_all_desc.
+     *
+     * SENGAJA TIDAK menghapus seluruh DataStore (`it.clear()`) — key-key
+     * lain di luar 3 fitur itu (lisensi/membership, user ID tersinkron,
+     * Game Profile per-game, riwayat game terakhir, reward-quota iklan,
+     * backend privilese ADB/Root terpilih, dst.) TIDAK relevan dengan
+     * tombol "reset pengaturan" di layar Settings dan menghapusnya akan
+     * merugikan pengguna secara tidak terduga (mis. kehilangan status
+     * lisensi aktif atau kuota reward-ad harian hanya karena ingin
+     * mengembalikan warna crosshair ke default).
+     *
+     * Bahasa DIKEMBALIKAN + diterapkan seketika lewat [setAppLanguage] agar
+     * konsisten dengan perilaku toggle Bahasa manual di Settings.
+     */
+    suspend fun resetAll() {
+        val defaults = AppPreferences()
+        context.dataStore.edit { prefs ->
+            prefs.remove(Keys.APP_LANGUAGE)
+            prefs[Keys.CROSSHAIR_ENABLED] = defaults.crosshairEnabled
+            prefs[Keys.CROSSHAIR_STYLE] = defaults.crosshairStyle.name
+            prefs[Keys.CROSSHAIR_COLOR] = defaults.crosshairColor
+            prefs[Keys.CROSSHAIR_SIZE] = defaults.crosshairSize
+            prefs[Keys.CROSSHAIR_THICKNESS] = defaults.crosshairThickness
+            prefs[Keys.CROSSHAIR_OPACITY] = defaults.crosshairOpacity
+            prefs[Keys.CROSSHAIR_OFFSET_X] = defaults.crosshairOffsetX
+            prefs[Keys.CROSSHAIR_OFFSET_Y] = defaults.crosshairOffsetY
+            prefs[Keys.CROSSHAIR_POSITION_LOCKED] = defaults.crosshairPositionLocked
+            prefs[Keys.FPS_MONITOR_ENABLED] = defaults.fpsMonitorEnabled
+            prefs[Keys.FPS_MONITOR_STYLE] = defaults.fpsMonitorStyle.name
+            prefs[Keys.FPS_MONITOR_OFFSET_X] = defaults.fpsMonitorOffsetX
+            prefs[Keys.FPS_MONITOR_OFFSET_Y] = defaults.fpsMonitorOffsetY
+        }
+        defaults.appLanguage.applyToApp()
+        // Overlay crosshair/FPS monitor yang mungkin sedang aktif juga perlu
+        // dihentikan supaya tampilan overlay sungguhan langsung sinkron
+        // dengan crosshairEnabled/fpsMonitorEnabled yang baru direset ke
+        // false — caller (SettingsViewModel.resetAllSettings) bertanggung
+        // jawab menghentikan CrosshairOverlayService/FpsMonitorOverlayService
+        // setelah memanggil fungsi ini, pola yang sama seperti
+        // setCrosshairEnabled/setFpsMonitorEnabled di ViewModel.
     }
 
     suspend fun saveTweakState(

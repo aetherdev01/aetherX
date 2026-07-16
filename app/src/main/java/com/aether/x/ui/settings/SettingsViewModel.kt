@@ -11,10 +11,10 @@ import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.core.overlay.CrosshairOverlayService
 import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AetherXPreferences
+import com.aether.x.data.AppLanguage
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.data.FpsMonitorStyle
-import com.aether.x.data.TemperatureUnit
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -30,8 +30,37 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         initialValue = AppPreferences(),
     )
 
-    fun setTemperatureUnit(unit: TemperatureUnit) {
-        viewModelScope.launch { preferences.setTemperatureUnit(unit) }
+    /**
+     * OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings",
+     * MENGGANTIKAN setTemperatureUnit yang dihapus bersamaan dengan opsi
+     * Satuan Suhu — permintaan "hapus opsi suhu"): ganti bahasa aplikasi.
+     * [AetherXPreferences.setAppLanguage] menyimpan pilihan ke DataStore
+     * DAN langsung memanggil [com.aether.x.data.AppLanguage.applyToApp]
+     * (AppCompatDelegate.setApplicationLocales) — locale berubah seketika,
+     * sistem otomatis me-recreate Activity yang aktif.
+     */
+    fun setAppLanguage(language: AppLanguage) {
+        viewModelScope.launch { preferences.setAppLanguage(language) }
+    }
+
+    /**
+     * OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings"):
+     * kembalikan preferensi Bahasa, Crosshair, dan Monitor FPS ke nilai
+     * default pabrik lewat [AetherXPreferences.resetAll] (data lain seperti
+     * lisensi/membership dan Game Profile SENGAJA tidak disentuh — lihat
+     * KDoc resetAll()). Overlay crosshair/FPS monitor yang sedang aktif
+     * dihentikan di sini (bukan di dalam resetAll() itu sendiri, supaya
+     * modul `data` tidak perlu bergantung pada modul `core.overlay`) agar
+     * tampilan overlay sungguhan langsung sinkron dengan
+     * crosshairEnabled/fpsMonitorEnabled yang baru direset ke false.
+     */
+    fun resetAllSettings() {
+        viewModelScope.launch {
+            preferences.resetAll()
+            val app = getApplication<Application>()
+            CrosshairOverlayService.stop(app)
+            FpsMonitorOverlayService.stop(app)
+        }
     }
 
     /** true kalau izin "Tampil di atas aplikasi lain" sudah diberikan. */
