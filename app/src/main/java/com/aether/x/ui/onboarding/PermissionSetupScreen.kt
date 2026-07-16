@@ -54,9 +54,6 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
-import com.aether.x.ui.components.AdbAutoPairingCodeDialog
-import com.aether.x.ui.components.AdbAutoPairingFloatingNotice
-import com.aether.x.ui.components.AdbAutoPairingPhase
 import com.aether.x.ui.components.AdbPairingCard
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.theme.AccentBlue
@@ -80,12 +77,20 @@ import com.aether.x.ui.theme.TextSecondary
  * Kartu Shizuku lama DIGANTIKAN TOTAL oleh [AdbPairingCard] — sekarang
  * hanya satu tombol "Mulai Penyandingan" tanpa field apa pun. Host+port
  * pairing & koneksi didapat OTOMATIS lewat mDNS/NSD (lihat
- * [com.aether.x.core.adb.AdbAutoPairingDiscovery]); satu-satunya input
- * manual yang tersisa adalah kode 6-digit, diminta lewat
- * [AdbAutoPairingCodeDialog] begitu service pairing terdeteksi. Progres
- * pencarian ditampilkan sebagai notifikasi mengambang
- * ([AdbAutoPairingFloatingNotice]) yang melayang di atas seluruh layar
- * ini, bukan menempel di dalam kartu.
+ * [com.aether.x.core.adb.AdbAutoPairingDiscovery]).
+ *
+ * FITUR BARU — notifikasi "Searching for Pairing…" dan input kode 6-digit
+ * TIDAK LAGI berupa dialog/bubble Compose yang terikat ke layar ini
+ * (permintaan: "notifikasi saat pairing wireless debugging itu pakai
+ * notifikasi mengambang, bukan notifikasi dari dalam apk, jadi bisa buka
+ * aplikasi pengaturan buat isi pairing code nya, jadi ga ribet pakai
+ * layar split"). Keduanya sekarang ditangani oleh
+ * [com.aether.x.core.overlay.AdbPairingOverlayService] — window overlay
+ * sungguhan yang melayang DI ATAS aplikasi apa pun, termasuk Pengaturan,
+ * sehingga pengguna bisa membuka Wireless debugging dan mengisi kode
+ * pairing tanpa pernah berpindah balik ke AetherX. Layar ini hanya perlu
+ * menekan tombol "Mulai Penyandingan"; sisanya otomatis lewat
+ * PrivilegeManager -> AdbPairingOverlayService.
  *
  * Kartu Root tidak berubah strukturnya (masih [PermissionMethodCard]
  * biasa, satu tombol), hanya field yang dibaca dari [PrivilegeStatus]
@@ -159,24 +164,12 @@ fun PermissionSetupScreen(
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
-    // FITUR BARU — Auto-Pairing: fase notifikasi mengambang ("Searching for
-    // Pairing…" / "Pairing found") diturunkan LANGSUNG dari adbState, bukan
-    // state Compose terpisah, supaya selalu konsisten dengan satu-satunya
-    // sumber kebenaran (AdbConnectionManager) — tidak ada dua state yang
-    // bisa saling tidak sinkron.
-    val autoPairingPhase = when (status.adbState) {
-        is AdbConnectionState.SearchingForPairing -> AdbAutoPairingPhase.SEARCHING
-        is AdbConnectionState.PairingFound, is AdbConnectionState.Pairing, is AdbConnectionState.Connecting -> AdbAutoPairingPhase.FOUND
-        else -> null
-    }
-    val pairingFoundState = status.adbState as? AdbConnectionState.PairingFound
-    // Dialog kode tetap ditampilkan (dalam mode "busy") selama proses
-    // pairing+auto-connect berjalan setelah kode dikirim — supaya tidak
-    // menghilang tiba-tiba begitu state berpindah dari PairingFound ke
-    // Pairing/Connecting, sebelum akhirnya berakhir di Connected/Failed.
-    val showPairingCodeDialog = pairingFoundState != null ||
-        status.adbState is AdbConnectionState.Pairing ||
-        status.adbState is AdbConnectionState.Connecting
+    // Notifikasi mengambang "Searching for Pairing…" / dialog kode pairing
+    // SEKARANG ditangani oleh AdbPairingOverlayService (window overlay
+    // sungguhan yang melayang di atas app APA PUN, termasuk Pengaturan) —
+    // lihat PrivilegeManager.init untuk penerjemahan AdbConnectionState ->
+    // aksi overlay. Layar ini tidak lagi perlu state/dialog Compose sendiri
+    // untuk fase pairing.
 
     Scaffold(
         containerColor = BgVoid,
@@ -377,32 +370,7 @@ fun PermissionSetupScreen(
                 }
             }
         }
-
-        // FITUR BARU — Auto-Pairing: notifikasi mengambang "Searching for
-        // Pairing…" / "Pairing found", melayang di atas SELURUH layar
-        // (bukan cuma di dalam AdbPairingCard) — persis seperti bubble
-        // notifikasi mengambang pada referensi UI.
-        AdbAutoPairingFloatingNotice(
-            phase = autoPairingPhase,
-            onCancel = { PrivilegeManager.cancelAutoPairAdb() },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 12.dp)
-                .padding(horizontal = 24.dp),
-        )
         }
-    }
-
-    // Dialog kode 6-digit muncul otomatis begitu service pairing
-    // terdeteksi (host+port sudah didapat lewat mDNS) — satu-satunya
-    // input manual yang tersisa di seluruh alur auto-pairing.
-    if (showPairingCodeDialog) {
-        AdbAutoPairingCodeDialog(
-            isBusy = pairingFoundState == null,
-            onConfirm = { code -> PrivilegeManager.confirmAutoPairAdbCode(context, code) },
-            onDismiss = { PrivilegeManager.cancelAutoPairAdb() },
-        )
     }
 }
 

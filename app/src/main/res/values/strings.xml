@@ -446,6 +446,24 @@
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>
 
+    <!-- FITUR BARU — Notifikasi mengambang untuk kode pairing Wireless
+         debugging (lihat AdbPairingOverlayService): menggantikan dialog
+         AlertDialog di dalam app supaya pengguna bisa mengisi kode
+         pairing sambil tetap berada di aplikasi Pengaturan, tanpa perlu
+         layar split. -->
+    <string name="adb_pairing_overlay_notification_channel">Overlay Penyandingan ADB</string>
+    <string name="adb_pairing_overlay_notification_title">Penyandingan ADB AetherX aktif</string>
+    <string name="adb_pairing_overlay_notification_text">Ketuk untuk kembali ke AetherX</string>
+    <string name="adb_pairing_overlay_searching_title">Searching for Pairing…</string>
+    <string name="adb_pairing_overlay_searching_hint">Buka Opsi Developer &gt; Wireless debugging, lalu ketuk "Pasangkan perangkat dengan kode pairing"</string>
+    <string name="adb_pairing_overlay_found_title">Pairing found</string>
+    <string name="adb_pairing_overlay_code_hint">Kode 6-digit</string>
+    <string name="adb_pairing_overlay_code_hint_detail">Masukkan kode 6-digit yang tampil di dialog Wireless debugging</string>
+    <string name="adb_pairing_overlay_confirm">Sandingkan</string>
+    <string name="adb_pairing_overlay_connecting_title">Menyandingkan…</string>
+    <string name="adb_pairing_overlay_connecting_hint">Mohon tunggu, sedang menyambungkan ke perangkat</string>
+    <string name="adb_pairing_overlay_error_title">Pairing gagal</string>
+    
     <!-- ================= FITUR BARU: Game Booster ================= -->
     <!-- lihat perintah rework: "buatkan game booster screen dengan layar
          lanskap serta ada list game discroll atau gaya rog, ada pilihan
