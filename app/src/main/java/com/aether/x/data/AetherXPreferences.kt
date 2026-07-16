@@ -331,14 +331,19 @@ class AetherXPreferences(private val context: Context) {
 
     /**
      * FITUR BARU (menggantikan setTemperatureUnit yang dihapus): simpan
-     * bahasa aplikasi terpilih ke DataStore, lalu terapkan seketika lewat
-     * [AppLanguage.applyToApp] (AppCompatDelegate.setApplicationLocales) —
-     * sistem otomatis me-recreate Activity yang sedang aktif dengan locale
-     * baru, tidak perlu restart manual.
+     * bahasa aplikasi terpilih ke DataStore. HANYA persist — TIDAK lagi
+     * langsung "menerapkan" locale di sini (BUG FIX: implementasi
+     * sebelumnya memanggil AppCompatDelegate yang tidak tersedia di project
+     * ini, lihat KDoc panjang di AppLanguage.kt). Penerapan locale ke UI
+     * yang sedang tampil adalah tanggung jawab caller — lihat
+     * [com.aether.x.ui.settings.SettingsScreen] yang memanggil
+     * [AppLanguage.applyToRunningActivity] setelah suspend function ini
+     * selesai, dan [AppLanguage.wrapContext] yang perlu dipasang di
+     * `MainActivity.attachBaseContext` supaya locale tersimpan ini
+     * ter-restore otomatis saat app dibuka ulang dari nol.
      */
     suspend fun setAppLanguage(value: AppLanguage) {
         context.dataStore.edit { it[Keys.APP_LANGUAGE] = value.name }
-        value.applyToApp()
     }
 
     /**
@@ -357,8 +362,9 @@ class AetherXPreferences(private val context: Context) {
      * lisensi aktif atau kuota reward-ad harian hanya karena ingin
      * mengembalikan warna crosshair ke default).
      *
-     * Bahasa DIKEMBALIKAN + diterapkan seketika lewat [setAppLanguage] agar
-     * konsisten dengan perilaku toggle Bahasa manual di Settings.
+     * Bahasa DIKEMBALIKAN ke DataStore di sini juga (HANYA persist, sama
+     * seperti [setAppLanguage] — penerapan locale ke UI adalah tanggung
+     * jawab caller, lihat KDoc [setAppLanguage]).
      */
     suspend fun resetAll() {
         val defaults = AppPreferences()
@@ -378,7 +384,6 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.FPS_MONITOR_OFFSET_X] = defaults.fpsMonitorOffsetX
             prefs[Keys.FPS_MONITOR_OFFSET_Y] = defaults.fpsMonitorOffsetY
         }
-        defaults.appLanguage.applyToApp()
         // Overlay crosshair/FPS monitor yang mungkin sedang aktif juga perlu
         // dihentikan supaya tampilan overlay sungguhan langsung sinkron
         // dengan crosshairEnabled/fpsMonitorEnabled yang baru direset ke

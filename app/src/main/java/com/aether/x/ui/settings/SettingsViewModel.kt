@@ -34,10 +34,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings",
      * MENGGANTIKAN setTemperatureUnit yang dihapus bersamaan dengan opsi
      * Satuan Suhu — permintaan "hapus opsi suhu"): ganti bahasa aplikasi.
-     * [AetherXPreferences.setAppLanguage] menyimpan pilihan ke DataStore
-     * DAN langsung memanggil [com.aether.x.data.AppLanguage.applyToApp]
-     * (AppCompatDelegate.setApplicationLocales) — locale berubah seketika,
-     * sistem otomatis me-recreate Activity yang aktif.
+     * HANYA persist ke DataStore lewat [AetherXPreferences.setAppLanguage]
+     * — TIDAK langsung menerapkan locale ke UI (ViewModel ini cuma punya
+     * [Application], bukan [android.app.Activity], jadi tidak bisa memanggil
+     * `Activity.recreate()`). Penerapan locale seketika dilakukan oleh
+     * caller di [com.aether.x.ui.settings.SettingsScreen] lewat
+     * [com.aether.x.data.AppLanguage.applyToRunningActivity] setelah
+     * fungsi ini dipanggil — lihat wiring di sana.
      */
     fun setAppLanguage(language: AppLanguage) {
         viewModelScope.launch { preferences.setAppLanguage(language) }

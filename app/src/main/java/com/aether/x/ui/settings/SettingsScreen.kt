@@ -1,5 +1,6 @@
 package com.aether.x.ui.settings
 
+import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -54,6 +56,10 @@ fun SettingsScreen(
 ) {
     val prefs by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
+    // Dipakai HANYA untuk pemilih Bahasa (lihat SectionCard "Umum" di
+    // bawah) — perlu Activity sungguhan (bukan Application context) untuk
+    // memanggil Activity.recreate() lewat AppLanguage.applyToRunningActivity.
+    val context = LocalContext.current
     var dragModeActive by remember { mutableStateOf(false) }
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
     // OPSI BARU (permintaan "tambahkan beberapa fitur baru di Settings"):
@@ -101,10 +107,13 @@ fun SettingsScreen(
         // setelah monitor CPU/GPU/Suhu dipindah jadi domain Game Booster,
         // lihat komentar dashboard_monitor_* di strings.xml).
         //
-        // Menggunakan AppCompatDelegate.setApplicationLocales (Android
-        // per-app language API, lihat AppLanguage.applyToApp() di modul
-        // `data`) — TIDAK butuh restart Activity manual, sistem otomatis
-        // me-recreate Activity yang aktif dengan locale baru.
+        // Memakai Configuration/createConfigurationContext bawaan Android
+        // SDK murni (BUKAN AppCompatDelegate — project ini tidak punya
+        // dependency androidx.appcompat, lihat KDoc panjang di
+        // AppLanguage.kt) — mengganti pilihan memanggil
+        // AppLanguage.applyToRunningActivity(activity) di bawah, yang
+        // memicu Activity.recreate() supaya seluruh string ter-render ulang
+        // dengan locale baru.
         SectionCard(title = stringResource(R.string.settings_section_general), watermarkIcon = Icons.Outlined.Settings) {
             Column {
                 Text(
@@ -120,7 +129,23 @@ fun SettingsScreen(
                         SegmentedButton(
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                             selected = prefs.appLanguage == language,
-                            onClick = { viewModel.setAppLanguage(language) },
+                            onClick = {
+                                viewModel.setAppLanguage(language)
+                                // BUG FIX (AetherXPreferences.setAppLanguage
+                                // SEKARANG hanya persist ke DataStore, TIDAK
+                                // lagi otomatis "menerapkan" locale sendiri —
+                                // lihat KDoc panjang di AppLanguage.kt soal
+                                // kenapa AppCompatDelegate tidak dipakai lagi
+                                // di project ini): terapkan locale baru ke UI
+                                // yang sedang tampil SEKARANG JUGA lewat
+                                // Activity.recreate(), dipanggil di sini
+                                // (bukan dari ViewModel) karena hanya lapisan
+                                // Composable yang punya akses Activity lewat
+                                // LocalContext.
+                                (context as? Activity)?.let { activity ->
+                                    language.applyToRunningActivity(activity)
+                                }
+                            },
                         ) {
                             Text(label)
                         }
