@@ -318,7 +318,7 @@ class AdbPairingOverlayService : Service() {
         cardView = root
         layoutParams = params
         statusLabel = status
-        hintLabel = hint
+        hintLabel = hintText
         codeInput = input
         confirmButton = confirm
         progressSpinner = spinner
