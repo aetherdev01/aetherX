@@ -260,13 +260,10 @@ class FpsMonitorOverlayService : Service() {
             if (view.style != prefs.fpsMonitorStyle) {
                 view.style = prefs.fpsMonitorStyle
             }
-            // OPSI "Satuan Suhu" DIHAPUS dari Settings (permintaan "hapus
-            // opsi suhu") — prefs.temperatureUnit tidak ada lagi. FpsMonitorView
-            // TETAP menampilkan suhu (fitur intinya dipertahankan), hanya saja
-            // satuannya sekarang SELALU Celsius (nilai default
-            // TemperatureUnit.CELSIUS milik FpsMonitorView sendiri), tidak lagi
-            // bisa diganti pengguna — baris `view.temperatureUnit = ...` yang
-            // sebelumnya membaca prefs di sini sengaja dihapus.
+            // temperatureUnit TIDAK diambil dari prefs — sudah dihapus dari
+            // AppPreferences (fitur "Satuan Suhu" di-rollback). FpsMonitorView
+            // tetap punya field temperatureUnit tapi selalu default CELSIUS
+            // (lihat KDoc di FpsMonitorView.kt), jadi tidak perlu di-set di sini.
             currentStyle = prefs.fpsMonitorStyle
 
             applyGravityAndPosition(params, prefs.fpsMonitorStyle, prefs.fpsMonitorOffsetX, prefs.fpsMonitorOffsetY)
