@@ -4,17 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +27,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
-import com.aether.x.data.TemperatureUnit
 import com.aether.x.ui.components.SectionCard
 
 @Composable
@@ -77,29 +71,11 @@ fun SettingsScreen(
         // selalu mengembalikan DarkModePref.DARK), jadi tidak ada lagi
         // pengaturan tema yang perlu ditampilkan ke pengguna sama sekali.
 
-        SectionCard(title = stringResource(R.string.settings_section_general), watermarkIcon = Icons.Outlined.Settings) {
-            Column {
-                Text(
-                    text = stringResource(R.string.settings_temperature_unit_label),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    val options = listOf(
-                        TemperatureUnit.CELSIUS to stringResource(R.string.settings_temperature_unit_celsius),
-                        TemperatureUnit.FAHRENHEIT to stringResource(R.string.settings_temperature_unit_fahrenheit),
-                    )
-                    options.forEachIndexed { index, (unit, label) ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                            selected = prefs.temperatureUnit == unit,
-                            onClick = { viewModel.setTemperatureUnit(unit) },
-                        ) {
-                            Text(label)
-                        }
-                    }
-                }
-            }
-        }
+        // Section "Umum" (pemilih Bahasa + tombol Reset Semua Pengaturan)
+        // DIHAPUS TOTAL atas permintaan pengguna ("kurang cocok"). Lihat
+        // AppLanguage.kt yang juga dihapus, dan AetherXPreferences.kt /
+        // SettingsViewModel.kt yang rollback ke state sebelum fitur ini
+        // ditambahkan (appLanguage, setAppLanguage, resetAll dihapus).
 
         // REWORK TOTAL (lihat perintah rework terbaru — "Samakan Section
         // Crosshair Persis seperti foto ke dua dari UI"): CrosshairSettingsSection

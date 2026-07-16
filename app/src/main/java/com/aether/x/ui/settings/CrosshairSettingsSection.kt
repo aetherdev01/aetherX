@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -83,17 +84,14 @@ private val styleOptions = listOf(
     StyleOption(CrosshairStyle.CIRCLE_DOT, R.string.crosshair_style_circle_dot),
     StyleOption(CrosshairStyle.CROSS_DOT, R.string.crosshair_style_cross_dot),
     StyleOption(CrosshairStyle.T_SHAPE, R.string.crosshair_style_t_shape),
-    // BARU — 2 style crosshair tambahan (permintaan "tambahkan juga
-    // crosshair baru"). PENTING: enum CrosshairStyle sendiri ADA di modul
-    // `data` (com.aether.x.data.CrosshairStyle) yang TIDAK ikut di dalam
-    // ui.zip ini, jadi dua value ini (DIAMOND, SQUARE) HARUS ditambahkan
-    // manual ke enum class CrosshairStyle di file aslinya supaya project
-    // ini bisa dikompilasi. Rendering overlay sungguhan
-    // (com.aether.x.core.overlay.CrosshairView.onDraw, juga di luar zip
-    // ini) juga perlu ditambah case yang sama biar WYSIWYG dengan preview
-    // di bawah ini.
     StyleOption(CrosshairStyle.DIAMOND, R.string.crosshair_style_diamond),
     StyleOption(CrosshairStyle.SQUARE, R.string.crosshair_style_square),
+    // FITUR BARU: 2 style tambahan (permintaan "tambah style Crosshair
+    // baru"). Rendering-nya ada di 3 tempat yang HARUS konsisten (WYSIWYG):
+    // StyleIconButton di bawah (icon kecil), CrosshairPreview.kt (preview
+    // besar), dan CrosshairView.onDraw (core/overlay, overlay sungguhan).
+    StyleOption(CrosshairStyle.CHEVRON, R.string.crosshair_style_chevron),
+    StyleOption(CrosshairStyle.DOUBLE_RING, R.string.crosshair_style_double_ring),
 )
 
 /**
@@ -173,6 +171,10 @@ fun CrosshairSettingsSection(
     onResetPosition: () -> Unit,
     onOffsetChange: (x: Int, y: Int) -> Unit,
 ) {
+    // FITUR BARU: state dialog color picker HSV kustom — lihat pemakaian di
+    // baris swatch warna & CrosshairColorPickerDialog di bawah.
+    var showColorPicker by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,11 +250,24 @@ fun CrosshairSettingsSection(
                             onEnabledChange(checked)
                         }
                     },
+                    // BUG FIX (permintaan "fix warna Accent switch crosshair
+                    // saat off harusnya default abu' seperti switch
+                    // lainnya"): SEBELUMNYA uncheckedThumbColor = AccentBlueDim
+                    // — walau namanya "Blue", token ini sebenarnya nuansa
+                    // coklat/oranye redup (turunan dari AccentBlue lama yang
+                    // sudah diganti tapi dim-nya belum ikut di-update saat
+                    // BUG FIX RILIS v2.0 di atas), sehingga thumb saat OFF
+                    // terlihat coklat mencolok (lihat screenshot laporan) —
+                    // tidak konsisten dengan Switch "Monitor FPS" di bawahnya
+                    // yang polos pakai SwitchDefaults.colors() default M3
+                    // (abu-abu netral saat off). uncheckedThumbColor &
+                    // uncheckedTrackColor sekarang di-OMIT supaya keduanya
+                    // otomatis jatuh ke default M3 SwitchDefaults — sama
+                    // persis dengan switch FPS Monitor, konsisten di seluruh
+                    // layar Settings.
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = AccentBlue,
-                        uncheckedThumbColor = AccentBlueDim,
-                        uncheckedTrackColor = SurfaceRaised,
                     ),
                 )
             }
@@ -371,7 +386,14 @@ fun CrosshairSettingsSection(
                     modifier = Modifier.padding(top = 16.dp),
                 )
 
-                // Swatch warna besar rounded-square berjajar horizontal.
+                // Swatch warna besar rounded-square berjajar horizontal,
+                // + satu swatch "custom" di ujung kanan yang membuka
+                // [CrosshairColorPickerDialog] — FITUR BARU (permintaan
+                // "opsi warna untuk sesuai selera sendiri pakai picker").
+                // Swatch custom ini SELALU tampak terpilih (border aktif)
+                // kalau warna saat ini BUKAN salah satu dari 6 preset di
+                // [crosshairColorPalette] — menandakan pengguna sedang
+                // memakai warna hasil pilihan bebas, bukan preset.
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -384,9 +406,26 @@ fun CrosshairSettingsSection(
                             modifier = Modifier.weight(1f),
                         )
                     }
+                    CustomColorSwatch(
+                        currentColorArgb = colorArgb,
+                        isCustomActive = crosshairColorPalette.none { it == colorArgb },
+                        onClick = { showColorPicker = true },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
+    }
+
+    if (showColorPicker) {
+        CrosshairColorPickerDialog(
+            initialColorArgb = colorArgb,
+            onDismiss = { showColorPicker = false },
+            onColorConfirmed = { picked ->
+                onColorChange(picked)
+                showColorPicker = false
+            },
+        )
     }
 }
 
@@ -507,6 +546,34 @@ private fun StyleIconButton(
                     // Sudut kanan-bawah.
                     drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s - corner, cy + s), thickness, StrokeCap.Round)
                     drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s, cy + s - corner), thickness, StrokeCap.Round)
+                }
+                // FITUR BARU: 4 chevron "V" dari tiap sisi mengarah ke pusat
+                // (gaya populer di crosshair custom PUBG Mobile/Free Fire) —
+                // implementasi HARUS identik dengan CrosshairPreview.kt dan
+                // CrosshairView.onDraw (core/overlay) supaya WYSIWYG.
+                CrosshairStyle.CHEVRON -> {
+                    val gap = r * 0.35f
+                    val arm = r * 0.45f
+                    val tip = r * 0.9f
+                    // Chevron atas: "V" terbalik, ujung mengarah ke bawah/pusat.
+                    drawLine(drawColor, Offset(cx - arm, cy - tip), Offset(cx, cy - gap), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - gap), Offset(cx + arm, cy - tip), thickness, StrokeCap.Round)
+                    // Chevron bawah.
+                    drawLine(drawColor, Offset(cx - arm, cy + tip), Offset(cx, cy + gap), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + gap), Offset(cx + arm, cy + tip), thickness, StrokeCap.Round)
+                    // Chevron kiri.
+                    drawLine(drawColor, Offset(cx - tip, cy - arm), Offset(cx - gap, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx - gap, cy), Offset(cx - tip, cy + arm), thickness, StrokeCap.Round)
+                    // Chevron kanan.
+                    drawLine(drawColor, Offset(cx + tip, cy - arm), Offset(cx + gap, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + tip, cy + arm), thickness, StrokeCap.Round)
+                }
+                // FITUR BARU: dua lingkaran konsentris, gaya sniper-scope —
+                // implementasi HARUS identik dengan CrosshairPreview.kt dan
+                // CrosshairView.onDraw (core/overlay) supaya WYSIWYG.
+                CrosshairStyle.DOUBLE_RING -> {
+                    drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+                    drawCircle(drawColor, radius = r * 0.55f, center = Offset(cx, cy), style = Stroke(thickness))
                 }
             }
         }
@@ -926,6 +993,75 @@ private fun ColorSwatchLarge(
                 tint = contrastingCheckTint(Color(color.toInt())),
                 modifier = Modifier.size(18.dp),
             )
+        }
+    }
+}
+
+/**
+ * Swatch "custom" — pintu masuk ke [CrosshairColorPickerDialog]. FITUR BARU
+ * (permintaan "opsi warna untuk sesuai selera sendiri pakai picker"),
+ * ditaruh di ujung kanan baris [ColorSwatchLarge] preset.
+ *
+ * Latar selalu conic-gradient pelangi (representasi visual "semua warna
+ * tersedia di sini", tidak terikat satu warna seperti swatch preset) dengan
+ * ikon "+" di tengah. Kalau [isCustomActive] true (warna crosshair saat ini
+ * bukan salah satu dari 6 preset), border aktif [AccentBlue] ditampilkan —
+ * sama seperti indikator "selected" pada [ColorSwatchLarge] — supaya jelas
+ * kalau pengguna sedang memakai hasil pilihan custom, bukan berarti belum
+ * memilih apa pun.
+ */
+@Composable
+private fun CustomColorSwatch(
+    currentColorArgb: Long,
+    isCustomActive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rainbowBrush = remember {
+        Brush.sweepGradient(
+            listOf(
+                Color(0xFFFF3B30), Color(0xFFFFD60A), Color(0xFF34C759),
+                Color(0xFF2F6FED), Color(0xFFAF52DE), Color(0xFFFF3B30),
+            ),
+        )
+    }
+    Box(
+        modifier = modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(rainbowBrush)
+            .border(
+                width = if (isCustomActive) 2.dp else 0.dp,
+                color = if (isCustomActive) AccentBlue else Color.Transparent,
+                shape = RoundedCornerShape(14.dp),
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isCustomActive) Color(currentColorArgb.toInt()) else Color.Black.copy(alpha = 0.45f),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!isCustomActive) {
+                Text(
+                    text = "+",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = contrastingCheckTint(Color(currentColorArgb.toInt())),
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }
