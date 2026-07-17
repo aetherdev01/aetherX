@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import com.aether.x.MainActivity
 import com.aether.x.R
 import com.aether.x.core.apps.GameProfileCatalog
+import com.aether.x.core.booster.GameBoosterFeatureFlag
 import com.aether.x.core.overlay.GameBoosterOverlayService
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
@@ -251,6 +252,17 @@ class GameProfileMonitorService : Service() {
      * tetap tidak saling mengganggu satu sama lain.
      */
     private suspend fun handleGameBoosterAutoTrigger(foregroundPackage: String?) {
+        // NONAKTIF SEMENTARA (lihat perintah: "sekarang sementara jangan
+        // tampilkan floating gamebooster nya saat buka game") — lihat KDoc
+        // GameBoosterFeatureFlag.autoTriggerOnGameOpenEnabled untuk cakupan
+        // persis apa yang dimatikan (HANYA jalur otomatis ini, bukan alur
+        // manual dari drawer Game Booster AetherX). return awal di sini
+        // membiarkan SELURUH logic start/stop di bawah tidak pernah
+        // berjalan sama sekali selama flag ini false — tidak perlu
+        // menghapus/mengomentari kode apa pun, tinggal balikkan flag ke
+        // true nanti untuk mengaktifkan lagi.
+        if (!GameBoosterFeatureFlag.autoTriggerOnGameOpenEnabled) return
+
         val executor = PrivilegeManager.getExecutor() ?: return
         val current = activeBoosterPackage
 
