@@ -565,6 +565,45 @@
 
     <string name="game_booster_splash_preparing">Menyiapkan boost performa…</string>
 
+    <!-- REWORK TOTAL (lihat perintah rework: "diakses dengan geser dari
+         kiri layar ke kanan layar... ui GB lebih mirip Game Booster
+         ROG/Lainnya... bisa di minimize dengan mudah... lengkap dengan
+         fitur Monitoring, mode Boost, Low, banyak quick tile/panel"):
+         seluruh label panel BARU GameBoosterPanelContent.kt, MENGGANTIKAN
+         string literal hardcoded sementara yang dipakai saat rework awal
+         (upload project waktu itu belum menyertakan folder res/) — lihat
+         komentar "// STRING BARU" yang sudah dihapus dari
+         GameBoosterPanelContent.kt begitu key-key di bawah ini dipakai. -->
+    <string name="game_booster_panel_title">AetherX Booster</string>
+    <string name="game_booster_panel_minimize">Sembunyikan panel</string>
+    <string name="game_booster_panel_end_session">Akhiri sesi boost</string>
+
+    <string name="game_booster_panel_tab_tools">Gaming tools</string>
+    <string name="game_booster_panel_tab_games">Games</string>
+
+    <string name="game_booster_panel_monitor_average_jitter">Average %1$d FPS   Jitter %2$d</string>
+    <string name="game_booster_panel_monitor_realtime">Real-time %1$d FPS</string>
+    <string name="game_booster_panel_monitor_fps_unavailable_hint">Aktifkan Root/ADB untuk FPS real-time</string>
+
+    <string name="game_booster_panel_mode_balanced">Balanced</string>
+    <string name="game_booster_panel_mode_performance">Performance</string>
+
+    <string name="game_booster_panel_tile_settings_title">Pengaturan</string>
+    <string name="game_booster_panel_tile_settings_subtitle">Performa app</string>
+    <string name="game_booster_panel_tile_clear_memory_title">Bersihkan memori</string>
+    <string name="game_booster_panel_tile_clear_memory_subtitle">Percepat kinerja</string>
+
+    <string name="game_booster_panel_quick_voice_changer">Voice changer</string>
+    <string name="game_booster_panel_quick_screenshot">Screenshot</string>
+    <string name="game_booster_panel_quick_record">Record</string>
+    <string name="game_booster_panel_quick_dnd">DND</string>
+    <string name="game_booster_panel_quick_on_screen">On-screen</string>
+    <string name="game_booster_panel_quick_brightness">Brightness</string>
+    <string name="game_booster_panel_quick_wifi">Wi-Fi</string>
+    <string name="game_booster_panel_quick_more_tools">More tools</string>
+
+    <string name="game_booster_panel_open_game">Buka</string>
+
     <!-- Dialog adblock lihat KDoc AdBlockDialogState untuk arsitektur
          lengkapnya. Ditampilkan sekali per sesi saat ad-blocker terdeteksi. -->
     <string name="adblock_dialog_title">Ad Blocker Terdeteksi</string>

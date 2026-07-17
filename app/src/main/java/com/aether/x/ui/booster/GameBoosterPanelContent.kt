@@ -55,9 +55,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aether.x.R
 import com.aether.x.core.booster.GameBoosterMetrics
 import com.aether.x.core.booster.GameBoosterSession
 import com.aether.x.core.booster.RecentAppEntry
@@ -94,14 +96,13 @@ import com.aether.x.ui.theme.TextSecondary
  * window panel edge-swipe yang baru (lihat KDoc service tsb untuk gesture
  * trigger-nya).
  *
- * CATATAN STRING RESOURCE: proyek yang diupload untuk rework ini TIDAK
- * menyertakan folder `res/` (hanya `java/`), jadi label-label BARU di file
- * ini (nama tab, judul tile baru, dst — beda dari label yang SUDAH ada di
- * strings.xml seperti game_booster_mode_boost yang tetap dipakai lewat
- * `stringResource`) ditulis sebagai string literal Indonesia langsung.
- * SEBAIKNYA dipindah ke `res/values/strings.xml` (dan `values-en/` untuk
- * versi Inggris, konsisten dengan pola bilingual project ini) begitu file
- * `res/` tersedia lagi — cukup cari komentar "// STRING BARU" di bawah.
+ * CATATAN STRING RESOURCE: seluruh label di file ini SUDAH dipindah ke
+ * `res/values/strings.xml` lewat key `game_booster_panel_*` (tab, judul
+ * panel, monitoring, mode selector, tile pengaturan, quick tile, tombol
+ * buka game) — riwayat: rework awal file ini ditulis sebelum folder
+ * `res/` ikut ter-upload, jadi labelnya sempat berupa string literal
+ * hardcoded sementara (ditandai komentar "// STRING BARU") sampai
+ * dipindah ke sini.
  */
 @Composable
 fun GameBoosterPanelContent(
@@ -257,10 +258,8 @@ private fun PanelHeader(onMinimize: (() -> Unit)?, onEndSession: () -> Unit) {
                     modifier = Modifier.size(16.dp),
                 )
             }
-            // STRING BARU — judul panel, pindahkan ke strings.xml (mis.
-            // game_booster_panel_title) begitu folder res/ tersedia.
             Text(
-                text = "AetherX Booster",
+                text = stringResource(R.string.game_booster_panel_title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -272,9 +271,9 @@ private fun PanelHeader(onMinimize: (() -> Unit)?, onEndSession: () -> Unit) {
             // (lihat GameBoosterOverlayService.collapsePanel) — BEDA dari
             // onEndSession yang menghentikan sesi boost sepenuhnya.
             onMinimize?.let { minimize ->
-                HeaderIconButton(icon = Icons.Outlined.Remove, contentDescription = "Sembunyikan panel", onClick = minimize)
+                HeaderIconButton(icon = Icons.Outlined.Remove, contentDescription = stringResource(R.string.game_booster_panel_minimize), onClick = minimize)
             }
-            HeaderIconButton(icon = Icons.Outlined.Close, contentDescription = "Akhiri sesi boost", onClick = onEndSession, tint = AccentRed)
+            HeaderIconButton(icon = Icons.Outlined.Close, contentDescription = stringResource(R.string.game_booster_panel_end_session), onClick = onEndSession, tint = AccentRed)
         }
     }
 }
@@ -303,15 +302,14 @@ private fun GameBoosterTabRow(selectedTab: GameBoosterTab, onTabSelected: (GameB
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // STRING BARU — label tab, pindahkan ke strings.xml begitu res/ tersedia.
         TabChip(
-            label = "Gaming tools",
+            label = stringResource(R.string.game_booster_panel_tab_tools),
             selected = selectedTab == GameBoosterTab.GAMING_TOOLS,
             onClick = { onTabSelected(GameBoosterTab.GAMING_TOOLS) },
             modifier = Modifier.weight(1f),
         )
         TabChip(
-            label = "Games",
+            label = stringResource(R.string.game_booster_panel_tab_games),
             selected = selectedTab == GameBoosterTab.GAMES,
             onClick = { onTabSelected(GameBoosterTab.GAMES) },
             modifier = Modifier.weight(1f),
@@ -371,9 +369,12 @@ private fun MonitoringGraphCard(metrics: GameBoosterMetrics) {
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                // STRING BARU — label monitoring, pindahkan ke strings.xml begitu res/ tersedia.
                 Text(
-                    text = "Average ${metrics.fps ?: "-"} FPS   Jitter ${calculateJitter(metrics.fpsHistory)}",
+                    text = stringResource(
+                        R.string.game_booster_panel_monitor_average_jitter,
+                        metrics.fps ?: 0,
+                        calculateJitter(metrics.fpsHistory),
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = TextMuted,
                 )
@@ -386,7 +387,7 @@ private fun MonitoringGraphCard(metrics: GameBoosterMetrics) {
                     modifier = Modifier.size(8.dp),
                 )
                 Text(
-                    text = "Real-time ${metrics.fps ?: 0} FPS",
+                    text = stringResource(R.string.game_booster_panel_monitor_realtime, metrics.fps ?: 0),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = AccentGreen,
@@ -396,7 +397,7 @@ private fun MonitoringGraphCard(metrics: GameBoosterMetrics) {
 
         if (metrics.fps == null) {
             Text(
-                text = "Aktifkan Root/ADB untuk FPS real-time",
+                text = stringResource(R.string.game_booster_panel_monitor_fps_unavailable_hint),
                 style = MaterialTheme.typography.labelSmall,
                 color = TextMuted,
             )
@@ -457,14 +458,13 @@ private fun ModeSelector(currentMode: GameMode, onModeChange: (GameMode) -> Unit
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        // STRING BARU — "Balanced"/"Performance", pindahkan ke strings.xml begitu res/ tersedia.
         ModeUnderlineOption(
-            label = "Balanced",
+            label = stringResource(R.string.game_booster_panel_mode_balanced),
             selected = currentMode == GameMode.MID,
             onClick = { onModeChange(GameMode.MID) },
         )
         ModeUnderlineOption(
-            label = "Performance",
+            label = stringResource(R.string.game_booster_panel_mode_performance),
             selected = currentMode == GameMode.BOOST,
             onClick = { onModeChange(GameMode.BOOST) },
         )
@@ -498,18 +498,17 @@ private fun ModeUnderlineOption(label: String, selected: Boolean, onClick: () ->
 @Composable
 private fun SettingsTileRow(actions: GameBoosterActions) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        // STRING BARU — label tile, pindahkan ke strings.xml begitu res/ tersedia.
         SettingsTile(
             icon = Icons.Outlined.Tune,
-            title = "Pengaturan",
-            subtitle = "Performa app",
+            title = stringResource(R.string.game_booster_panel_tile_settings_title),
+            subtitle = stringResource(R.string.game_booster_panel_tile_settings_subtitle),
             onClick = actions.onOpenPerformanceSettings ?: {},
             modifier = Modifier.weight(1f),
         )
         SettingsTile(
             icon = Icons.Outlined.CleaningServices,
-            title = "Bersihkan memori",
-            subtitle = "Percepat kinerja",
+            title = stringResource(R.string.game_booster_panel_tile_clear_memory_title),
+            subtitle = stringResource(R.string.game_booster_panel_tile_clear_memory_subtitle),
             onClick = actions.onClearMemory ?: {},
             modifier = Modifier.weight(1f),
         )
@@ -573,6 +572,7 @@ private fun SettingsTile(
  */
 @Composable
 private fun QuickToolsGrid(session: GameBoosterSession, actions: GameBoosterActions) {
+    val tiles = quickTiles(session, actions)
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         modifier = Modifier
@@ -582,7 +582,7 @@ private fun QuickToolsGrid(session: GameBoosterSession, actions: GameBoosterActi
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         userScrollEnabled = false,
     ) {
-        items(quickTiles(session, actions)) { tile ->
+        items(tiles) { tile ->
             QuickTile(tile = tile)
         }
     }
@@ -596,28 +596,28 @@ private data class QuickToolTile(
     val onClick: () -> Unit,
 )
 
-// STRING BARU — seluruh label tile di bawah ini, pindahkan ke strings.xml begitu res/ tersedia.
+@Composable
 private fun quickTiles(session: GameBoosterSession, actions: GameBoosterActions): List<QuickToolTile> = listOf(
-    QuickToolTile(icon = Icons.Outlined.RecordVoiceOver, label = "Voice changer", onClick = actions.onVoiceChanger ?: {}),
-    QuickToolTile(icon = Icons.Outlined.ScreenshotMonitor, label = "Screenshot", onClick = actions.onScreenshot),
-    QuickToolTile(icon = Icons.Outlined.FiberManualRecord, label = "Record", onClick = actions.onRecord ?: {}),
+    QuickToolTile(icon = Icons.Outlined.RecordVoiceOver, label = stringResource(R.string.game_booster_panel_quick_voice_changer), onClick = actions.onVoiceChanger ?: {}),
+    QuickToolTile(icon = Icons.Outlined.ScreenshotMonitor, label = stringResource(R.string.game_booster_panel_quick_screenshot), onClick = actions.onScreenshot),
+    QuickToolTile(icon = Icons.Outlined.FiberManualRecord, label = stringResource(R.string.game_booster_panel_quick_record), onClick = actions.onRecord ?: {}),
     QuickToolTile(
         icon = Icons.Outlined.NotificationsOff,
-        label = "DND",
+        label = stringResource(R.string.game_booster_panel_quick_dnd),
         active = session.dndEnabled,
         tint = if (session.dndEnabled) AccentGreen else TextSecondary,
         onClick = { actions.onDndToggle(!session.dndEnabled) },
     ),
     QuickToolTile(
         icon = Icons.Outlined.GridView,
-        label = "On-screen",
+        label = stringResource(R.string.game_booster_panel_quick_on_screen),
         active = session.rotationLocked,
         tint = if (session.rotationLocked) AccentGreen else TextSecondary,
         onClick = { actions.onRotationLockToggle?.invoke(!session.rotationLocked) },
     ),
-    QuickToolTile(icon = Icons.Outlined.Brightness6, label = "Brightness", onClick = actions.onBrightness ?: {}),
-    QuickToolTile(icon = Icons.Outlined.Wifi, label = "Wi-Fi", onClick = actions.onWifi ?: {}),
-    QuickToolTile(icon = Icons.Outlined.Memory, label = "More tools", onClick = actions.onMoreTools ?: {}),
+    QuickToolTile(icon = Icons.Outlined.Brightness6, label = stringResource(R.string.game_booster_panel_quick_brightness), onClick = actions.onBrightness ?: {}),
+    QuickToolTile(icon = Icons.Outlined.Wifi, label = stringResource(R.string.game_booster_panel_quick_wifi), onClick = actions.onWifi ?: {}),
+    QuickToolTile(icon = Icons.Outlined.Memory, label = stringResource(R.string.game_booster_panel_quick_more_tools), onClick = actions.onMoreTools ?: {}),
 )
 
 @Composable
@@ -697,8 +697,7 @@ private fun GamesTab(session: GameBoosterSession, onLaunchGame: (() -> Unit)?) {
                     .clickable(onClick = onLaunchGame)
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
-                // STRING BARU — reuse label "Luncurkan" yang sudah ada di strings.xml lewat GameBoosterActions pemanggil bila diinginkan.
-                Text(text = "Buka", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(text = stringResource(R.string.game_booster_panel_open_game), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
     }
