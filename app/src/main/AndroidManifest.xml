@@ -155,5 +155,34 @@
             android:excludeFromRecents="true"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
 
+        <!-- FITUR BARU — Firebase Cloud Messaging: menerima push notifikasi
+             maintenance/update/membership yang tetap sampai walau aplikasi
+             sedang di-background ATAU sudah ditutup total (lihat KDoc
+             AetherXFirebaseMessagingService). android:exported="false" wajib
+             — service ini HANYA boleh dibangunkan oleh Google Play Services
+             lewat intent internal sistem, bukan dari app lain mana pun. -->
+        <service
+            android:name=".core.messaging.AetherXFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Default notification channel FCM untuk kasus TEPI (edge case)
+             SDK menampilkan notifikasi bawaan sistem sebelum sempat
+             memanggil AetherXFirebaseMessagingService.onMessageReceived
+             (mis. notification message biasa yang tiba saat app killed di
+             Android versi tertentu) — tanpa meta-data ini, Android 8+ (API
+             26+) bisa menolak menampilkan pesan sama sekali karena channel
+             belum terdaftar. Diarahkan ke channel GENERAL milik
+             AetherXNotifier supaya tetap konsisten. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="aetherx_general_alerts" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/logo" />
+
     </application>
 </manifest>

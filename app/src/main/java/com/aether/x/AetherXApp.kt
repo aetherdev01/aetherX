@@ -12,7 +12,12 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
 import com.aether.x.core.security.NativeIntegrityGuard
 import com.aether.x.core.security.SignatureGuard
+import com.aether.x.data.FcmTokenRepository
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AetherXApp : Application() {
 
@@ -52,6 +57,15 @@ class AetherXApp : Application() {
         val interstitialAdGate: InterstitialAdGate by lazy {
             InterstitialAdGate(interstitialAdManager)
         }
+
+        // Scope umur-aplikasi (bukan umur-Activity/ViewModel) untuk
+        // pekerjaan FCM yang harus tetap jalan sampai selesai walau
+        // Activity yang memicunya (di sini: AetherXApp.onCreate, jadi
+        // sebenarnya tidak terikat Activity manapun sejak awal) sudah
+        // berpindah/berhenti. SupervisorJob supaya kegagalan sync token
+        // (mis. offline saat pertama install) tidak mengganggu pekerjaan
+        // lain yang memakai scope yang sama di masa depan.
+        private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
     override fun onCreate() {
@@ -111,6 +125,26 @@ class AetherXApp : Application() {
         // Check. Lihat SECURITY.md dan firestore.rules (fungsi isVerifiedApp()).
         AppCheckInitializer.init(this)
         PrivilegeManager.init(this)
+
+        // FITUR BARU — Firebase Cloud Messaging: subscribe device ini ke
+        // topic broadcast default (maintenance/update/membership/general)
+        // dan sinkronkan token FCM saat ini ke Firestore SEKALI di setiap
+        // start aplikasi (bukan hanya saat pertama install) — supaya kalau
+        // token sempat berubah selagi app benar-benar tidak pernah dibuka
+        // sama sekali dalam rentang waktu tertentu (jarang tapi mungkin,
+        // mis. dipicu pembersihan data Google Play Services oleh sistem),
+        // Firestore tetap punya token terbaru begitu app dibuka lagi —
+        // pelengkap dari onNewToken() di AetherXFirebaseMessagingService
+        // yang menangani kasus token berubah SELAGI app tidak sedang
+        // dibuka user secara aktif.
+        //
+        // Dipanggil best-effort lewat appScope (BUKAN blocking main thread):
+        // subscribeToTopic/getToken adalah panggilan jaringan yang tidak
+        // boleh menunda splash screen atau bagian lain startup aplikasi.
+        FcmTokenRepository.subscribeToDefaultTopics()
+        appScope.launch {
+            FcmTokenRepository.syncTokenToFirestore(this@AetherXApp)
+        }
 
         // Inisialisasi SDK ads (rewarded MAUPUN interstitial) SENGAJA TIDAK
         // dilakukan di sini. UnityRewardedAdManager.initialize() dan

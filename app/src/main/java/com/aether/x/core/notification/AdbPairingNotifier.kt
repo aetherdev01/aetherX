@@ -20,28 +20,59 @@ import com.aether.x.core.permission.PrivilegeManager
  * floating window/dialog mengambang, tetapi pakai notifikasi sistem dengan
  * notifikasi mengambang").
  *
+ * FIX (rework kedua) — dua masalah dari implementasi awal:
+ *
+ * 1. "saat klik Sambungkan perangkat dengan kode penyambungan itu langsung
+ *    muncul lagi notifikasi mengambang" — sebelumnya [baseBuilder] memakai
+ *    `setOnlyAlertOnce(true)`, yang membuat notifikasi tahap berikutnya
+ *    ([showCodeInput]) dengan NOTIFICATION_ID sama dianggap "update biasa"
+ *    oleh sistem dan TIDAK heads-up lagi. Padahal justru momen "Pairing
+ *    found" ini yang paling butuh muncul mengambang lagi (kode 6-digit
+ *    kedaluwarsa cepat). `setOnlyAlertOnce` sudah DIHAPUS — setiap kali
+ *    [AdbConnectionState] berpindah tahap, notifikasi heads-up ulang.
+ *
+ * 2. "reply nya itu ga perlu ada balas tapi langsung edit text gitu
+ *    dibawah title Pairing found" — CATATAN PENTING soal batasan platform:
+ *    Android TIDAK menyediakan API apa pun (baik `RemoteInput` standar,
+ *    `MessagingStyle`/conversation notification, maupun `RemoteViews`
+ *    custom) yang bisa menampilkan kotak ketik langsung terbuka di
+ *    notifikasi TANPA satu ketukan pada action reply lebih dulu — ini
+ *    berlaku sama persis untuk notifikasi WhatsApp/Telegram/SMS sekalipun,
+ *    kotak ketik mereka pun baru terbuka setelah action "Balas" diketuk.
+ *    `RemoteViews` custom dengan `EditText` sendiri TIDAK bisa dipakai di
+ *    sini karena `RemoteViews` berjalan di proses SystemUI terpisah —
+ *    app tidak bisa membaca isi `EditText` di dalamnya kecuali lewat
+ *    `RemoteInput` yang tetap butuh action Builder standar. Yang DIUBAH
+ *    di [showCodeInput] & [showError]: aksinya sekarang HANYA SATU
+ *    (reply kode), diletakkan sebagai action pertama dengan label yang
+ *    langsung menunjukkan fungsinya ("Isi kode 6-digit", bukan "Balas"
+ *    generik) — supaya begitu notifikasi di-expand, satu-satunya tindakan
+ *    yang terlihat memang mengarah ke kotak kode, sedekat mungkin dengan
+ *    "langsung terlihat" dalam batas yang diizinkan platform.
+ *
  * Menggantikan [com.aether.x.core.overlay.AdbPairingOverlayService]
  * SEPENUHNYA — TIDAK ADA lagi `WindowManager` / `TYPE_APPLICATION_OVERLAY`
  * / izin "Tampil di atas aplikasi lain" yang dipakai untuk alur pairing.
  * Sebagai gantinya dipakai **notifikasi sistem heads-up** biasa (channel
  * `IMPORTANCE_HIGH`, persis mekanisme yang membuat notifikasi WhatsApp/SMS
- * muncul melayang di atas layar), dengan aksi **Balas** (`RemoteInput`)
- * langsung tertanam di notifikasi itu sendiri untuk mengisi kode 6-digit —
- * TANPA perlu membuka AetherX sama sekali, TANPA window overlay, dan
- * TANPA izin SYSTEM_ALERT_WINDOW.
+ * muncul melayang di atas layar), dengan aksi kode 6-digit (`RemoteInput`)
+ * langsung tertanam di notifikasi itu sendiri — TANPA perlu membuka
+ * AetherX sama sekali, TANPA window overlay, dan TANPA izin
+ * SYSTEM_ALERT_WINDOW.
  *
  * Alur (mengikuti urutan [com.aether.x.core.adb.AdbConnectionState] persis
  * seperti overlay sebelumnya):
  *  1. [showSearching] — tombol "Mulai Penyandingan" ditekan -> notifikasi
  *     heads-up "Searching for Pairing…" muncul, dengan aksi "Batalkan".
  *  2. [showCodeInput] — service pairing terdeteksi otomatis via mDNS ->
- *     notifikasi berganti jadi "Pairing found" dengan aksi **Balas**
- *     (RemoteInput) untuk mengisi kode 6-digit + aksi "Batalkan".
+ *     notifikasi heads-up ULANG berganti jadi "Pairing found" dengan aksi
+ *     tunggal "Isi kode 6-digit" (RemoteInput) + aksi "Batalkan".
  *  3. [showBusy] — kode terkirim, notifikasi berganti "Menyandingkan…"
  *     tanpa aksi apa pun (indeterminate, `setOngoing`).
- *  4. [showError] — pairing gagal -> notifikasi balik ke mode "Balas"
- *     dengan pesan error di bawahnya, supaya pengguna bisa langsung
- *     coba lagi dari notifikasi yang sama tanpa mengulang dari awal.
+ *  4. [showError] — pairing gagal -> notifikasi heads-up ULANG, kembali ke
+ *     mode isi kode dengan pesan error di bawahnya, supaya pengguna bisa
+ *     langsung coba lagi dari notifikasi yang sama tanpa mengulang dari
+ *     awal.
  *  5. [stop] — dipanggil saat Connected/NotPaired/PairedNotConnected,
  *     notifikasi pairing dibatalkan dari tray.
  *
@@ -65,7 +96,7 @@ object AdbPairingNotifier {
      * supaya tidak heads-up, lihat KDoc di sana) karena notifikasi pairing
      * justru WAJIB tampil mengambang: kode 6-digit di dialog Wireless
      * debugging kedaluwarsa dalam hitungan detik, pengguna harus langsung
-     * lihat aksi "Balas" tanpa perlu membuka notification tray dulu.
+     * lihat aksi isi kode tanpa perlu membuka notification tray dulu.
      */
     private fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -97,7 +128,15 @@ object AdbPairingNotifier {
         PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    /** Aksi "Balas" dengan input teks tertanam (RemoteInput) untuk kode 6-digit. */
+    /**
+     * Aksi tunggal untuk mengisi kode 6-digit (`RemoteInput`) — SENGAJA
+     * diberi label yang langsung menyebut fungsinya ("Isi kode 6-digit"),
+     * BUKAN "Balas" generik, dan SENGAJA jadi action PERTAMA (lihat
+     * [showCodeInput]/[showError]) supaya begitu notifikasi di-expand,
+     * satu-satunya tindakan yang terlihat memang mengarah ke kotak kode
+     * (lihat KDoc kelas soal batasan platform Android — tidak ada cara
+     * membuka kotak ketik tanpa satu ketukan pada action).
+     */
     private fun replyAction(context: Context): NotificationCompat.Action {
         val remoteInput = RemoteInput.Builder(REMOTE_INPUT_KEY)
             .setLabel(context.getString(R.string.adb_pairing_notif_reply_label))
@@ -111,14 +150,16 @@ object AdbPairingNotifier {
         )
 
         return NotificationCompat.Action.Builder(
-            R.drawable.ic_aetherx_mark,
+            R.drawable.logo,
             context.getString(R.string.adb_pairing_notif_reply_action),
             replyIntent,
-        ).addRemoteInput(remoteInput).build()
+        ).addRemoteInput(remoteInput)
+            .setAllowGeneratedReplies(false)
+            .build()
     }
 
     private fun cancelAction(context: Context): NotificationCompat.Action = NotificationCompat.Action.Builder(
-        R.drawable.ic_aetherx_mark,
+        R.drawable.logo,
         context.getString(R.string.adb_pairing_notif_cancel_action),
         cancelPendingIntent(context),
     ).build()
@@ -134,11 +175,16 @@ object AdbPairingNotifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_aetherx_mark)
+            .setSmallIcon(R.drawable.logo)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(contentIntent)
-            .setOnlyAlertOnce(true)
+        // SENGAJA TIDAK ada .setOnlyAlertOnce(true) di sini (lihat KDoc
+        // fix #1 di atas) — setiap tahap pairing (Searching -> Found ->
+        // Busy -> Error) harus heads-up ulang saat berpindah, karena
+        // masing-masing tahap adalah kejadian baru yang perlu perhatian
+        // pengguna, bukan sekadar progress update dari notifikasi yang
+        // sama.
     }
 
     private fun push(context: Context, notification: Notification) {
@@ -159,7 +205,12 @@ object AdbPairingNotifier {
         push(context, notification)
     }
 
-    /** Tahap 2 — host+port ditemukan otomatis: notifikasi "Pairing found" + aksi Balas. */
+    /**
+     * Tahap 2 — host+port ditemukan otomatis: notifikasi heads-up ULANG
+     * (lihat KDoc fix #1) berganti jadi "Pairing found" dengan aksi
+     * tunggal "Isi kode 6-digit" (lihat [replyAction]) sebagai action
+     * pertama + aksi "Batalkan".
+     */
     fun showCodeInput(context: Context) {
         val hint = context.getString(R.string.adb_pairing_overlay_code_hint_detail)
         val notification = baseBuilder(context)
@@ -188,7 +239,12 @@ object AdbPairingNotifier {
         push(context, notification)
     }
 
-    /** Tahap 4 — pairing gagal: kembali ke mode Balas + pesan error di isi notifikasi. */
+    /**
+     * Tahap 4 — pairing gagal: notifikasi heads-up ULANG (lihat KDoc fix
+     * #1), kembali ke aksi tunggal "Isi kode 6-digit" dengan pesan error
+     * tampil di isi notifikasi, supaya pengguna bisa langsung coba isi
+     * ulang kode dari notifikasi yang sama.
+     */
     fun showError(context: Context, message: String) {
         val notification = baseBuilder(context)
             .setContentTitle(context.getString(R.string.adb_pairing_overlay_error_title))

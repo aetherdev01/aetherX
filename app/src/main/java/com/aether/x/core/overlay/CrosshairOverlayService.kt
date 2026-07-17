@@ -119,7 +119,7 @@ class CrosshairOverlayService : Service() {
         )
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_aetherx_mark)
+            .setSmallIcon(R.drawable.logo)
             .setContentTitle(getString(R.string.crosshair_notification_title))
             .setContentText(getString(R.string.crosshair_notification_text))
             .setOngoing(true)

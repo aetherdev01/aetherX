@@ -157,6 +157,16 @@
     <string name="notif_channel_general_desc">Pemberitahuan umum lain dari AetherX (lisensi, akses, dsb.)</string>
     <string name="notif_license_changed_title">Status Membership Berubah</string>
     <string name="notif_license_expired_text">Lisensi kamu sudah kedaluwarsa. Ketuk untuk perpanjang di tab Membership.</string>
+    <!-- FITUR BARU — Firebase Cloud Messaging (lihat
+         core/messaging/AetherXFirebaseMessagingService.kt): channel khusus
+         notifikasi membership/lisensi yang dikirim ADMIN lewat push (bot
+         Telegram -> FCM), terpisah dari channel GENERAL supaya pengguna bisa
+         menonaktifkan notifikasi membership tanpa ikut mematikan info umum
+         lain. Notifikasi jenis ini SENGAJA bisa sampai walau aplikasi
+         ditutup total, berbeda dari observe() Firestore yang hanya realtime
+         selagi aplikasi punya proses hidup. -->
+    <string name="notif_channel_membership_name">Membership &amp; Lisensi</string>
+    <string name="notif_channel_membership_desc">Pemberitahuan push tentang status membership/lisensi dari admin (perpanjangan, pencabutan, promo, dsb.)</string>
     <!-- FITUR BARU (lihat perintah rework "perbaiki notifikasi ... setiap
          aktifkan fitur, monitor dll") -->
     <string name="notif_channel_feature_toggle_name">Status Fitur</string>
@@ -454,10 +464,10 @@
          kode 6-digit — lihat AdbPairingNotifier. -->
     <string name="adb_pairing_notif_channel_name">Penyandingan ADB</string>
     <string name="adb_pairing_notif_channel_desc">Notifikasi mengambang untuk proses penyandingan Wireless debugging, termasuk pengisian kode 6-digit</string>
-    <string name="adb_pairing_notif_reply_action">Balas</string>
-    <string name="adb_pairing_notif_reply_label">Ketik kode 6-digit di sini…</string>
+    <string name="adb_pairing_notif_reply_action">Isi kode 6-digit</string>
+    <string name="adb_pairing_notif_reply_label">Kode 6-digit…</string>
     <string name="adb_pairing_notif_cancel_action">Batalkan</string>
-    <string name="adb_pairing_notif_invalid_code">Kode harus 6 digit angka. Ketuk Balas lagi untuk mencoba.</string>
+    <string name="adb_pairing_notif_invalid_code">Kode harus 6 digit angka. Ketuk "Isi kode 6-digit" lagi untuk mencoba.</string>
 
     <string name="adb_pairing_overlay_searching_title">Searching for Pairing…</string>
     <string name="adb_pairing_overlay_searching_hint">Buka Opsi Developer &gt; Wireless debugging, lalu ketuk "Pasangkan perangkat dengan kode pairing"</string>

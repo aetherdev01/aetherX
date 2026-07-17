@@ -128,6 +128,12 @@ libsu-core                              = { group = "com.github.topjohnwu.libsu"
 firebase-bom                            = { group = "com.google.firebase",        name = "firebase-bom",               version.ref = "firebaseBom"         }
 firebase-analytics                      = { group = "com.google.firebase",        name = "firebase-analytics"                                               }
 firebase-firestore                      = { group = "com.google.firebase",        name = "firebase-firestore"                                               }
+# Firebase Cloud Messaging — notifikasi push realtime (maintenance/update/
+# membership) yang WAJIB tetap sampai walau aplikasi sedang di-background
+# atau ditutup total (di-kill dari recent apps), berbeda dari
+# MaintenanceRepository/UpdateRepository/LicenseRepository yang pakai
+# Firestore addSnapshotListener dan HANYA jalan selagi app punya proses hidup.
+firebase-messaging                      = { group = "com.google.firebase",        name = "firebase-messaging"                                               }
 
 # ── Ads: Unity Ads (rewarded ads — lihat core/ads/RewardGate.kt) ────────────
 unity-ads                               = { group = "com.unity3d.ads",            name = "unity-ads",                   version.ref = "unityAds"            }

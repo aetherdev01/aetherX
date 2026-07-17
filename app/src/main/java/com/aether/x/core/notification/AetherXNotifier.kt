@@ -72,6 +72,23 @@ object AetherXNotifier {
             importance = NotificationManager.IMPORTANCE_DEFAULT,
             notificationId = 1002,
         ),
+
+        /**
+         * FITUR BARU — Firebase Cloud Messaging (lihat
+         * [com.aether.x.core.messaging.AetherXFirebaseMessagingService]):
+         * notifikasi push tentang status membership/lisensi yang dikirim
+         * ADMIN lewat bot Telegram -> FCM topic "membership" — misalnya
+         * lisensi akan kedaluwarsa, promo perpanjangan, atau pencabutan.
+         * Channel terpisah dari GENERAL supaya bisa dimatikan sendiri lewat
+         * Pengaturan sistem tanpa ikut mematikan info umum lain.
+         */
+        MEMBERSHIP(
+            channelId = "aetherx_membership_alerts",
+            channelNameRes = R.string.notif_channel_membership_name,
+            channelDescRes = R.string.notif_channel_membership_desc,
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
+            notificationId = 1005,
+        ),
         GENERAL(
             channelId = "aetherx_general_alerts",
             channelNameRes = R.string.notif_channel_general_name,
@@ -186,7 +203,7 @@ object AetherXNotifier {
         )
 
         val builder = NotificationCompat.Builder(context, kind.channelId)
-            .setSmallIcon(R.drawable.ic_aetherx_mark)
+            .setSmallIcon(R.drawable.logo)
             .setContentTitle(title)
             .setContentText(text)
             .setAutoCancel(!ongoing)

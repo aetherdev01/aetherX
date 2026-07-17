@@ -173,9 +173,7 @@ fun GameActivitySection(
             )
             Text(
                 text = stringResource(R.string.dashboard_section_game_activity),
-                style = MaterialTheme.typography.titleSmall.copy(
-                fontWeight = FontWeight.Bold
-                ),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }

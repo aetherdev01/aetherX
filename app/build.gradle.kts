@@ -179,6 +179,12 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
 
+    // ── Firebase Cloud Messaging: notifikasi push realtime (maintenance/
+    // update/membership) yang tetap sampai walau aplikasi di-background atau
+    // ditutup total — lihat core/messaging/AetherXFirebaseMessagingService.kt
+    // dan data/FcmTokenRepository.kt.
+    implementation(libs.firebase.messaging)
+
     // ── Firebase App Check (Play Integrity) — GUARD anti brute-force lisensi ─
     // Menandatangani setiap request Firestore dengan bukti bahwa request ini
     // datang dari APK asli yang ditandatangani dengan kunci rilis kita dan
