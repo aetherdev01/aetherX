@@ -81,14 +81,14 @@ fun AdbPairingCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(imageVector = Icons.Outlined.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(text = "Wireless Debugging", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Wireless Debugging (Beta)", style = MaterialTheme.typography.titleMedium)
                 }
                 if (connected) {
                     Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Text(
-                text = "Aktifkan Wireless debugging di Opsi Developer, lalu sandingkan AetherX seperti menyandingkan Shizuku — tanpa perlu memasang aplikasi tambahan apa pun.",
+                text = "Aktifkan Wireless debugging di Opsi Developer, isi kode pairing lalu sandingkan AetherX",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -140,7 +140,7 @@ fun AdbPairingCard(
                             }
                         }
                     }
-                    TextButton(onClick = onForget) { Text("Pairing ulang / ganti perangkat") }
+                    TextButton(onClick = onForget) { Text("Pairing") }
                 }
                 else -> {
                     // Sama persis dengan referensi UI: satu link teks untuk

@@ -219,7 +219,7 @@
          ketika toggle Wireless debugging sistem sedang mati, hilang
          otomatis begitu dinyalakan kembali. -->
     <string name="dashboard_wireless_debugging_off_title">Wireless Debugging Mati</string>
-    <string name="dashboard_wireless_debugging_off_desc">Nyalakan lagi supaya AetherX otomatis tersambung ulang — tidak perlu isi kode 6-digit lagi.</string>
+    <string name="dashboard_wireless_debugging_off_desc">Nyalakan lagi agar AetherX tersambung otomatis.</string>
     <string name="dashboard_wireless_debugging_off_action">Aktifkan</string>
     <string name="drawer_root_only_label">Advanced</string>
     <string name="drawer_privileged_label">Aplikasi</string>
@@ -469,19 +469,19 @@
          sistem dengan notifikasi mengambang"). Menggantikan
          AdbPairingOverlayService (window WindowManager) SEPENUHNYA dengan
          notifikasi heads-up biasa + aksi Balas (RemoteInput) tertanam untuk
-         kode 6-digit — lihat AdbPairingNotifier. -->
+         kode pairing — lihat AdbPairingNotifier. -->
     <string name="adb_pairing_notif_channel_name">Penyandingan ADB</string>
-    <string name="adb_pairing_notif_channel_desc">Notifikasi mengambang untuk proses penyandingan Wireless debugging, termasuk pengisian kode 6-digit</string>
-    <string name="adb_pairing_notif_reply_action">Isi kode 6-digit</string>
-    <string name="adb_pairing_notif_reply_label">Kode 6-digit…</string>
+    <string name="adb_pairing_notif_channel_desc">Notifikasi mengambang untuk proses penyandingan Wireless debugging, termasuk pengisian kode pairing</string>
+    <string name="adb_pairing_notif_reply_action">Isi kode pairing</string>
+    <string name="adb_pairing_notif_reply_label">Kode Pairing…</string>
     <string name="adb_pairing_notif_cancel_action">Batalkan</string>
-    <string name="adb_pairing_notif_invalid_code">Kode harus 6 digit angka. Ketuk "Isi kode 6-digit" lagi untuk mencoba.</string>
+    <string name="adb_pairing_notif_invalid_code">Kode harus 6 digit angka. Ketuk "Isi kode pairing" lagi untuk mencoba.</string>
 
     <string name="adb_pairing_overlay_searching_title">Searching for Pairing…</string>
     <string name="adb_pairing_overlay_searching_hint">Buka Opsi Developer &gt; Wireless debugging, lalu ketuk "Pasangkan perangkat dengan kode pairing"</string>
     <string name="adb_pairing_overlay_found_title">Pairing found</string>
-    <string name="adb_pairing_overlay_code_hint">Kode 6-digit</string>
-    <string name="adb_pairing_overlay_code_hint_detail">Masukkan kode 6-digit yang tampil di dialog Wireless debugging</string>
+    <string name="adb_pairing_overlay_code_hint">Kode pairing</string>
+    <string name="adb_pairing_overlay_code_hint_detail">Masukkan kode pairing yang tampil di dialog Wireless debugging</string>
     <string name="adb_pairing_overlay_confirm">Sandingkan</string>
     <string name="adb_pairing_overlay_connecting_title">Menyandingkan…</string>
     <string name="adb_pairing_overlay_connecting_hint">Mohon tunggu, sedang menyambungkan ke perangkat</string>
