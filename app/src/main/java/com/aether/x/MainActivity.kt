@@ -135,6 +135,7 @@ private fun AetherXRoot(
     // berada, supaya tidak "basi" (mis. root terlihat hilang padahal masih
     // diizinkan).
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -162,7 +163,6 @@ private fun AetherXRoot(
     // Settings) atau app di-background — persis kebutuhan "tweak aktif
     // ketika game dibuka, reset kalau game ditutup dari recent apps"
     // walaupun AetherX sendiri tidak sedang dilihat pengguna saat itu.
-    val context = LocalContext.current
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val appPrefsForService by preferences.preferences.collectAsStateWithLifecycle(initialValue = null)
     LaunchedEffect(privilegeStatus.activeBackend, appPrefsForService?.gameProfiles?.keys) {
