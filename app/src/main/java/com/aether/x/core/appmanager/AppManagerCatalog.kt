@@ -113,6 +113,33 @@ object AppManagerCatalog {
             .toSet()
     }
 
+    /**
+     * FIX (App Manager tanpa root lewat ADB tertanam — freeze/unfreeze
+     * berhasil diterapkan tapi toast menampilkan gagal): exit code `pm`
+     * TIDAK BISA dipercaya sepenuhnya sebagai penentu sukses/gagal saat
+     * dijalankan lewat shell ADB biasa (uid `shell`, bukan root). Di
+     * banyak perangkat, `pm disable-user`/`pm enable` MEMANG menerapkan
+     * perubahan status app dengan benar, tapi proses `pm` tetap keluar
+     * dengan exit code bukan-nol karena exception non-fatal yang terjadi
+     * SETELAH state-nya berhasil ditulis (mis. gagal notify listener lain
+     * lewat binder yang butuh permission tambahan yang tidak dimiliki
+     * `shell`) — pola ini TIDAK terjadi lewat root karena root punya semua
+     * permission itu sehingga tidak ada exception susulan yang memicu
+     * exit code salah.
+     *
+     * Solusinya: baca ulang status `isFrozen` package INI SAJA langsung
+     * dari `pm list packages -d` (sumber kebenaran yang sama dipakai
+     * [loadManageableApps]) setelah setiap toggle, lalu bandingkan dengan
+     * status yang DIHARAPKAN — bukan percaya exit code shell mentah-mentah.
+     * Dipanggil dari [com.aether.x.ui.appmanager.AppManagerViewModel] agar
+     * toast yang ditampilkan selalu mencerminkan status app yang
+     * SEBENARNYA, bukan yang diasumsikan dari exit code yang tidak
+     * konsisten antar backend.
+     */
+    suspend fun isPackageFrozen(executor: ShellExecutor, packageName: String): Boolean {
+        return packageName in readFrozenPackageNames(executor)
+    }
+
     private fun toEntry(
         pm: PackageManager,
         appInfo: ApplicationInfo,

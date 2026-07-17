@@ -25,6 +25,9 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.WifiTethering
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -138,6 +141,93 @@ private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
             style = MaterialTheme.typography.labelMedium,
             color = textColor,
         )
+    }
+}
+
+/**
+ * FITUR BARU — perbaikan alur "server Wireless debugging mati" (lihat
+ * perintah rework: "ketika server wireless debugging mati, di AXKM ga
+ * perlu setup isi kode 6 digit lagi biar ga ribet / buatkan opsi
+ * aktifkan Wireless Debugging di tab Settings/Dashboard khusus no root &
+ * muncul ketika Wireless Debugging belum aktif dan hilangkan saat
+ * aktif").
+ *
+ * Kartu pintasan ini KHUSUS untuk mode No Root/ADB ([PrivilegeBackend.ADB]
+ * atau [PrivilegeBackend.NONE] — TIDAK pernah tampil untuk
+ * [PrivilegeBackend.ROOT], karena backend Root tidak bergantung sama
+ * sekali pada toggle Wireless debugging). Sengaja ditempatkan di
+ * Dashboard (bukan hanya di layar Izin Akses) karena Dashboard adalah
+ * layar yang paling sering dilihat pengguna sehari-hari — begitu server
+ * Wireless debugging mati (mis. Wi-Fi sempat putus, atau toggle-nya
+ * sendiri dimatikan sistem/pengguna), kartu ini langsung terlihat tanpa
+ * perlu membuka layar Izin Akses secara khusus.
+ *
+ * Tombolnya HANYA membuka halaman Pengaturan > Wireless debugging —
+ * TIDAK memicu alur pairing/kode 6-digit apa pun. Begitu pengguna
+ * menyalakan toggle-nya kembali di sana, [WirelessDebuggingMonitor]
+ * (dipantau reaktif lewat ContentObserver sejak app dibuka, lihat
+ * AetherXApp) otomatis memicu `AdbConnectionManager.autoReconnect()` dari
+ * pairing tersimpan — TIDAK PERNAH meminta kode 6-digit lagi selama
+ * pairing sebelumnya masih tersimpan (hanya pairing pertama kali / setelah
+ * "Lupakan perangkat" yang tetap butuh kode). Kartu ini sendiri otomatis
+ * hilang begitu status [wirelessDebuggingEnabled] berubah jadi true,
+ * murni reaktif terhadap parameter — tidak ada logic tampil/sembunyi lain
+ * yang tersembunyi di sini.
+ */
+@Composable
+fun WirelessDebuggingQuickCard(
+    activeBackend: PrivilegeBackend,
+    wirelessDebuggingEnabled: Boolean,
+    onOpenWirelessDebugging: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Root tidak butuh Wireless debugging sama sekali -> kartu ini tidak
+    // relevan dan tidak pernah ditampilkan untuk backend itu.
+    if (activeBackend == PrivilegeBackend.ROOT) return
+    // Sudah aktif -> kartu langsung hilang (lihat KDoc di atas).
+    if (wirelessDebuggingEnabled) return
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.WifiTethering,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp),
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Spacing.md, end = Spacing.md),
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_wireless_debugging_off_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.dashboard_wireless_debugging_off_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Spacing.xs),
+            )
+        }
+        Button(
+            onClick = onOpenWirelessDebugging,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+        ) {
+            Text(text = stringResource(R.string.dashboard_wireless_debugging_off_action))
+        }
     }
 }
 

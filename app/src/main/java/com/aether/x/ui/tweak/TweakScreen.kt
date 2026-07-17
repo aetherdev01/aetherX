@@ -81,10 +81,12 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
+import com.aether.x.core.adb.WirelessDebuggingMonitor
 import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
+import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
@@ -109,12 +111,17 @@ fun TweakScreen(
     val dashboardViewModel: DashboardViewModel = viewModel()
     val dashboardState by dashboardViewModel.state.collectAsStateWithLifecycle()
 
+    // FITUR BARU — kartu pintasan "Aktifkan Wireless Debugging" (khusus
+    // No Root/ADB, lihat KDoc WirelessDebuggingQuickCard) di tab Dashboard.
+    val wirelessDebuggingEnabled by WirelessDebuggingMonitor.state.collectAsStateWithLifecycle()
+
     // Dipakai HANYA untuk parameter transient onKillBackgroundAppsChange di
     // bawah (interstitial ad setelah aksi selesai) — lihat KDoc fungsi itu
     // di TweakViewModel untuk alasan kenapa Activity tidak disimpan di
     // ViewModel sendiri. LocalContext di sini selalu berupa Activity karena
     // TweakScreen hanya pernah dirender dari MainActivity.
-    val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
+    val activity = context as? Activity
 
     // Sub-tab "Game Profile", "Kernel Manager", "App Manager" & "Build.prop
     // Editor" hanya relevan untuk backend Root — direset ke Dashboard
@@ -262,6 +269,21 @@ fun TweakScreen(
                     // pill-nya sudah pindah ke dalam hero card ini, tidak
                     // perlu diulang di kartu kedua.
                     AetherXInfoCard(activeBackend = privilegeStatus.activeBackend)
+
+                    // FITUR BARU — perbaikan alur "server Wireless debugging
+                    // mati" (lihat perintah rework: "ga perlu setup isi kode
+                    // 6 digit lagi biar ga ribet / buatkan opsi aktifkan
+                    // Wireless Debugging di tab Settings/Dashboard khusus no
+                    // root & muncul ketika Wireless Debugging belum aktif dan
+                    // hilangkan saat aktif"). Kartu ini SENGAJA return
+                    // langsung (tidak render apa pun) di dalam composable-nya
+                    // sendiri kalau backend aktif Root ATAU toggle sedang
+                    // menyala — lihat KDoc WirelessDebuggingQuickCard.
+                    WirelessDebuggingQuickCard(
+                        activeBackend = privilegeStatus.activeBackend,
+                        wirelessDebuggingEnabled = wirelessDebuggingEnabled,
+                        onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
+                    )
 
                     // Monitor CPU/GPU/Suhu (gauge kecil) DIHAPUS TOTAL dari
                     // Dashboard — domain itu sekarang murni milik Game

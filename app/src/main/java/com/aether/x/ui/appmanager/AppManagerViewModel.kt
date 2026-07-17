@@ -110,12 +110,24 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
                 }
                 return@launch
             }
-            val result = if (entry.isFrozen) {
+            if (entry.isFrozen) {
                 repository.unfreeze(executor, entry.packageName)
             } else {
                 repository.freeze(executor, entry.packageName)
             }
-            if (!result.success) {
+            // FIX (App Manager tanpa root lewat ADB — toast "gagal" padahal
+            // app SUDAH kenonaktif): exit code `pm` TIDAK dipakai lagi untuk
+            // menentukan sukses/gagal (lihat KDoc
+            // [AppManagerCatalog.isPackageFrozen] untuk alasan lengkapnya —
+            // singkatnya, exit code `pm` tidak bisa dipercaya lewat shell
+            // ADB biasa/uid `shell`, beda dari root yang selalu akurat).
+            // Sumber kebenaran satu-satunya sekarang murni status app
+            // SESUDAH perintah dijalankan, dibaca ulang langsung dari
+            // `pm list packages -d` — toast HANYA muncul kalau status akhir
+            // itu TERNYATA tidak berubah sesuai yang diharapkan pengguna.
+            val actuallyFrozen = catalog.isPackageFrozen(executor, entry.packageName)
+            val expectedFrozen = !entry.isFrozen
+            if (actuallyFrozen != expectedFrozen) {
                 _state.update {
                     it.copy(
                         message = appString(
@@ -125,11 +137,9 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
                     )
                 }
             }
-            // Baca ulang status app INI dari sumber kebenaran (pm list
-            // packages -d) alih-alih optimistically flip di memori — kalau
-            // pm menolak diam-diam (mis. app tidak boleh di-disable di
-            // perangkat tertentu), UI harus menampilkan status yang
-            // SEBENARNYA, bukan yang diasumsikan berhasil.
+            // Baca ulang SELURUH daftar (bukan cuma package ini) supaya
+            // status app lain yang mungkin berubah lewat cara lain di luar
+            // App Manager ini juga tetap tercermin akurat di UI.
             val refreshedApps = catalog.loadManageableApps(getApplication(), executor)
             _state.update { it.copy(apps = refreshedApps, pendingPackageName = null) }
         }

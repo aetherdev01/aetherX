@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -26,8 +27,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
+import com.aether.x.core.adb.WirelessDebuggingMonitor
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard
 
 @Composable
 fun SettingsScreen(
@@ -41,11 +44,17 @@ fun SettingsScreen(
     var dragModeActive by remember { mutableStateOf(false) }
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
 
+    // FITUR BARU — kartu pintasan "Aktifkan Wireless Debugging" (khusus No
+    // Root/ADB, lihat KDoc WirelessDebuggingQuickCard di DashboardMonitorCards.kt).
+    val context = LocalContext.current
+    val wirelessDebuggingEnabled by WirelessDebuggingMonitor.state.collectAsStateWithLifecycle()
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 overlayGranted = viewModel.canDrawOverlays()
+                WirelessDebuggingMonitor.refresh(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -64,6 +73,15 @@ fun SettingsScreen(
             text = stringResource(R.string.nav_settings),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
+        )
+
+        // FITUR BARU — lihat KDoc WirelessDebuggingQuickCard: kartu ini
+        // sendiri yang memutuskan untuk tidak merender apa pun kalau backend
+        // aktif Root atau toggle Wireless debugging sedang menyala.
+        WirelessDebuggingQuickCard(
+            activeBackend = privilegeStatus.activeBackend,
+            wirelessDebuggingEnabled = wirelessDebuggingEnabled,
+            onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
         )
 
         // Section "Tampilan" (pemilih tema) dihapus total — aplikasi hanya

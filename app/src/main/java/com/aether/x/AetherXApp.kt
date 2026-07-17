@@ -8,6 +8,7 @@ import com.aether.x.core.ads.InterstitialAdManager
 import com.aether.x.core.ads.RewardedAdManager
 import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
+import com.aether.x.core.adb.WirelessDebuggingMonitor
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
 import com.aether.x.core.security.NativeIntegrityGuard
@@ -125,6 +126,15 @@ class AetherXApp : Application() {
         // Check. Lihat SECURITY.md dan firestore.rules (fungsi isVerifiedApp()).
         AppCheckInitializer.init(this)
         PrivilegeManager.init(this)
+
+        // FITUR BARU — perbaikan alur "server Wireless debugging mati"
+        // (lihat perintah rework: "ga perlu setup isi kode 6 digit lagi").
+        // Dipantau seumur aplikasi (bukan seumur layar Izin Akses) supaya
+        // begitu pengguna menyalakan lagi toggle Wireless debugging dari
+        // Pengaturan sistem, AetherX otomatis coba sambungkan ulang dari
+        // pairing tersimpan di background — terlepas dari layar mana yang
+        // sedang dibuka saat itu. Lihat KDoc WirelessDebuggingMonitor.
+        WirelessDebuggingMonitor.startObserving(this)
 
         // FITUR BARU — Firebase Cloud Messaging: subscribe device ini ke
         // topic broadcast default (maintenance/update/membership/general)

@@ -213,6 +213,14 @@
     <string name="dashboard_device_storage">Penyimpanan</string>
     <string name="dashboard_device_usage_format">%1$s / %2$s</string>
     <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
+
+    <!-- FITUR BARU — kartu pintasan "Aktifkan Wireless Debugging" (khusus
+         No Root/ADB, lihat WirelessDebuggingQuickCard) — muncul HANYA
+         ketika toggle Wireless debugging sistem sedang mati, hilang
+         otomatis begitu dinyalakan kembali. -->
+    <string name="dashboard_wireless_debugging_off_title">Wireless Debugging Mati</string>
+    <string name="dashboard_wireless_debugging_off_desc">Nyalakan lagi supaya AetherX otomatis tersambung ulang — tidak perlu isi kode 6-digit lagi.</string>
+    <string name="dashboard_wireless_debugging_off_action">Aktifkan</string>
     <string name="drawer_root_only_label">Advanced</string>
     <string name="drawer_privileged_label">Aplikasi</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>

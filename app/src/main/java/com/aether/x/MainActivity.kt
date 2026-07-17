@@ -139,6 +139,14 @@ private fun AetherXRoot(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshAll()
+                // FITUR BARU — kartu "Aktifkan Wireless Debugging" (Dashboard,
+                // khusus No Root/ADB) butuh status toggle sistem paling baru
+                // begitu pengguna kembali dari Pengaturan — WirelessDebuggingMonitor
+                // sendiri sudah dipantau reaktif lewat ContentObserver (lihat
+                // AetherXApp), tapi refresh eksplisit di sini menjaganya tetap
+                // akurat walau observer sempat terlewat (mis. race saat proses
+                // baru saja dibangunkan sistem).
+                com.aether.x.core.adb.WirelessDebuggingMonitor.refresh(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
