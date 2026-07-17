@@ -204,7 +204,7 @@
     <string name="dashboard_section_device_info">Info Device</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
     <string name="dashboard_device_info_group_identity">Identitas Perangkat</string>
-    <string name="dashboard_device_info_group_usage">Penggunaan Resource</string>
+    <string name="dashboard_device_info_group_usage">Pemakaian Memori</string>
     <string name="dashboard_device_model">Model</string>
     <string name="dashboard_device_chipset">Chipset/Board</string>
     <string name="dashboard_device_android_version">Versi Android</string>
