@@ -13,37 +13,40 @@ import android.os.IBinder
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowManager
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.SportsEsports
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationCompat
 import com.aether.x.MainActivity
 import com.aether.x.R
+import com.aether.x.core.apps.GameLauncher
+import com.aether.x.core.apps.GameProfileCatalog
 import com.aether.x.core.booster.GameBoosterActionHandler
 import com.aether.x.core.booster.GameBoosterMonitor
 import com.aether.x.core.booster.GameBoosterSession
 import com.aether.x.core.booster.GameBoosterSessionHolder
+import com.aether.x.core.booster.RecentAppEntry
+import com.aether.x.core.monitor.RecentTasksReader
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.GameMode
 import com.aether.x.ui.booster.GameBoosterActions
-import com.aether.x.ui.booster.GameBoosterSidebarContent
+import com.aether.x.ui.booster.GameBoosterPanelContent
 import com.aether.x.ui.components.showAetherToast
-import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AetherXTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,23 +59,39 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * Foreground service untuk floating sidebar Game Booster (lihat perintah
- * rework: "lalu saat buka game game booster jadi side bar/floating dan
- * gampang diakses serta smooth") — MENIRU pola foreground overlay yang
- * sudah ada ([CrosshairOverlayService], [FpsMonitorOverlayService]), tapi
- * dengan DUA state visual alih-alih satu:
+ * REWORK TOTAL tampilan & interaksi Game Booster (lihat perintah rework:
+ * "diakses dengan geser dari kiri layar ke kanan layar untuk memunculkan
+ * floating GB... tidak bisa dipindah dan posisi tetap dikiri... bisa di
+ * minimize dengan mudah... animasi show/hide smooth"), MENGGANTIKAN
+ * pendekatan bubble draggable + tap-to-expand sebelumnya SEPENUHNYA:
  *
- * 1. **Collapsed (bubble)**: bulatan kecil draggable (seperti chat head
- *    Messenger) yang mengambang di atas game — SELALU jadi state AWAL saat
- *    sesi boost dimulai, supaya tidak menghalangi layar permainan.
- * 2. **Expanded (sidebar)**: panel penuh [GameBoosterSidebarContent] — 
- *    muncul saat bubble di-tap, berisi semua menu (FPS/DND/screenshot/mode)
- *    + grafik monitoring. Tap di luar sidebar (atau tombol tutup) kembali
- *    ke state bubble.
+ * 1. **Edge-trigger (tersembunyi)**: strip tipis TANPA GAMBAR APA PUN,
+ *    SELALU menempel di tepi kiri layar (posisi TETAP, TIDAK BISA
+ *    digeser — beda total dari bubble lama yang draggable), lebar
+ *    [EDGE_TRIGGER_WIDTH_DP]. Satu-satunya fungsinya menangkap gesture
+ *    swipe kiri->kanan untuk memicu [showPanelExpanded] — window-nya
+ *    SENGAJA dibuat SESEMPIT itu (bukan lewat `FLAG_NOT_TOUCHABLE` yang
+ *    membuat window TIDAK PERNAH menerima sentuhan sama sekali seperti
+ *    pada fix [CrosshairOverlayService]; di sini window tetap harus bisa
+ *    menerima gesture-nya sendiri) sehingga area yang berpotensi
+ *    menghalangi kontrol game di baliknya sangat kecil dan bisa diprediksi
+ *    (selalu strip [EDGE_TRIGGER_WIDTH_DP] di tepi kiri, bukan area besar
+ *    berubah-ubah seperti bubble draggable lama).
+ * 2. **Panel (expanded)**: [GameBoosterPanelContent] gaya ROG — muncul
+ *    dengan animasi slide-in dari kiri + fade ([AnimatedVisibility]),
+ *    posisi TETAP mepet kiri (gravity START, x=0, TIDAK draggable sama
+ *    sekali — user secara eksplisit minta "tidak bisa dipindah dan posisi
+ *    tetap dikiri"). Tombol minimize ATAU tap di luar panel
+ *    mengembalikan ke state edge-trigger dengan animasi slide-out.
  *
- * Kedua state dirender lewat [ComposeView] yang di-attach manual ke
- * [WindowManager] — lihat [ComposeOverlayLifecycleOwner] untuk alasan
- * kenapa ini butuh lifecycle owner manual (service ini bukan Activity).
+ * BEDA ARSITEKTUR UTAMA dari versi bubble sebelumnya: HANYA SATU window
+ * overlay yang pernah aktif dalam satu waktu (edge-trigger ATAU panel,
+ * tidak pernah dua-duanya), diatur lewat satu [ComposeView] + state
+ * `panelVisible` di dalam Compose itu sendiri (bukan dua window terpisah
+ * yang di-add/remove — supaya transisi collapse<->expand bisa dianimasikan
+ * mulus lewat [AnimatedVisibility], yang MUSTAHIL dilakukan mulus kalau
+ * setiap transisi berarti window WindowManager dibongkar-pasang seperti
+ * pola bubble/sidebar terpisah sebelumnya).
  */
 class GameBoosterOverlayService : Service() {
 
@@ -84,13 +103,20 @@ class GameBoosterOverlayService : Service() {
 
         private const val NOTIFICATION_CHANNEL_ID = "aetherx_game_booster_overlay"
         private const val NOTIFICATION_ID = 4103
-        private const val BUBBLE_SIZE_DP = 56
-        // FITUR BARU (lihat perintah rework floating booster foto 2):
-        // diperbesar dari 260 -> 320 karena layout baru GameBoosterSidebarContent
-        // sekarang berbentuk card lebar horizontal (suhu CPU kiri — card
-        // game tengah — ping kanan), bukan lagi panel sempit vertikal.
-        private const val SIDEBAR_WIDTH_DP = 320
-        private const val DRAG_THRESHOLD_PX_SQUARED = 400f
+
+        // FITUR BARU (lihat perintah rework — "ukuran Diameter: sekitar
+        // 48-56 dp"): dipakai sebagai LEBAR strip edge-trigger tersembunyi
+        // (bukan diameter bubble bulat lagi, karena bubble sudah dihapus),
+        // supaya area tangkapan gesture swipe tetap konsisten dengan
+        // ukuran yang diminta.
+        private const val EDGE_TRIGGER_WIDTH_DP = 24
+        private const val PANEL_WIDTH_DP = 430 // rail (52dp + 10dp gap) + panel utama (360dp) + padding (10dp*2)
+        private const val SWIPE_OPEN_THRESHOLD_PX = 60f
+
+        // Batas jumlah ikon yang ditampilkan di rail quick-app kiri (lihat
+        // refreshRecentApps()) — dibatasi supaya rail tidak melebihi
+        // tinggi layar pada perangkat dengan sangat banyak recent tasks.
+        private const val MAX_RAIL_APPS = 8
 
         fun start(context: Context, packageName: String, gameLabel: String) {
             val intent = Intent(context, GameBoosterOverlayService::class.java)
@@ -109,12 +135,17 @@ class GameBoosterOverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var preferences: AetherXPreferences
     private val actionHandler = GameBoosterActionHandler()
+    private val recentTasksReader = RecentTasksReader()
 
-    private var bubbleView: ComposeView? = null
-    private var sidebarView: ComposeView? = null
+    private var overlayView: ComposeView? = null
+    private var overlayLifecycleOwner: ComposeOverlayLifecycleOwner? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
 
-    private var bubbleLifecycleOwner: ComposeOverlayLifecycleOwner? = null
-    private var sidebarLifecycleOwner: ComposeOverlayLifecycleOwner? = null
+    // Pegangan mutable ke state Compose panelVisible — diperbarui dari
+    // sisi Service (di luar scope Compose) setiap kali showPanelExpanded()/
+    // collapsePanel() dipanggil dari luar (mis. dari gesture handler yang
+    // dipasang lewat setOnTouchListener, bukan dari dalam composable).
+    private var panelVisibleState: androidx.compose.runtime.MutableState<Boolean>? = null
 
     private var monitorJob: Job? = null
     private var currentPackageName: String? = null
@@ -144,18 +175,14 @@ class GameBoosterOverlayService : Service() {
 
     private fun startSession(packageName: String, gameLabel: String) {
         // Sesi baru menimpa sesi lama kalau ada (mis. pengguna berpindah
-        // game tanpa menutup sidebar dulu) — bersihkan view lama dulu.
+        // game tanpa menutup panel dulu) — bersihkan view lama dulu.
         if (currentPackageName != null && currentPackageName != packageName) {
-            removeAllViews()
+            removeOverlay()
         }
         currentPackageName = packageName
 
         serviceScope.launch {
             val prefs = preferences.preferences
-            // Baca SEKALI snapshot preferences untuk nilai awal sesi (mode,
-            // toggle FPS overlay) — perubahan SELANJUTNYA dari sidebar UI
-            // langsung mengubah GameBoosterSessionHolder + preferences
-            // bersamaan, tidak perlu terus mengamati Flow preferences ini.
             val initial = prefs.first()
             GameBoosterSessionHolder.start(
                 GameBoosterSession(
@@ -177,20 +204,15 @@ class GameBoosterOverlayService : Service() {
                 if (initial.gameBoosterTouchBoostEnabled) actionHandler.applyTouchBoost(executor, true)
             }
 
-            showBubble()
+            showOverlay()
             startMonitor(packageName)
 
-            // FITUR BARU (lihat perintah rework floating booster foto 2 —
-            // card game menampilkan ikon ASLI): dimuat SETELAH session
-            // awal di-start (bukan sebelum) supaya bubble/sidebar tampil
-            // secepatnya tanpa menunggu I/O baca PackageManager; begitu
-            // icon siap, GameBoosterSessionHolder.update menyisipkannya ke
-            // session yang sudah berjalan — GameBoosterSidebarContent yang
-            // mengamati StateFlow ini otomatis recompose menampilkannya.
-            val icon = com.aether.x.core.apps.GameProfileCatalog.loadIconForPackage(applicationContext, packageName)
+            val icon = GameProfileCatalog.loadIconForPackage(applicationContext, packageName)
             if (icon != null) {
                 GameBoosterSessionHolder.update { it.copy(icon = icon) }
             }
+
+            refreshRecentApps()
         }
     }
 
@@ -202,14 +224,38 @@ class GameBoosterOverlayService : Service() {
             .launchIn(serviceScope)
     }
 
+    /**
+     * FITUR BARU (rail quick-app — lihat perintah rework "sisi kiri list
+     * untuk quick app atau membuka apps"): dimuat ULANG setiap kali panel
+     * dibuka ([showPanelExpanded]) supaya daftarnya tidak basi, BUKAN
+     * hanya sekali di awal sesi — pengguna bisa membuka app lain lewat
+     * rail ini KAPAN SAJA selama sesi boost berjalan.
+     */
+    private fun refreshRecentApps() {
+        serviceScope.launch {
+            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            // `packageName` di sini adalah Context.getPackageName() bawaan
+            // Service (package AetherX SENDIRI, BUKAN package game yang
+            // sedang di-boost) — dikecualikan supaya AetherX tidak muncul
+            // sebagai salah satu "quick app" di rail-nya sendiri (lihat
+            // KDoc listRecentPackages soal parameter excludingPackage).
+            val ownPackageName = packageName
+            val packages = recentTasksReader.listRecentPackages(executor, excludingPackage = ownPackageName) ?: return@launch
+            val entries = packages.take(MAX_RAIL_APPS).map { pkg ->
+                RecentAppEntry(
+                    packageName = pkg,
+                    label = pkg.substringAfterLast('.'),
+                    icon = GameProfileCatalog.loadIconForPackage(applicationContext, pkg),
+                )
+            }
+            GameBoosterSessionHolder.update { it.copy(recentApps = entries) }
+        }
+    }
+
     private fun endSession() {
         serviceScope.launch {
             val executor = PrivilegeManager.getExecutor()
             if (executor != null) {
-                // Kembalikan mode ke MID (normal) & matikan DND saat sesi
-                // boost diakhiri — TIDAK memakai resetRootTweaksOnly di sini
-                // karena itu untuk tweak Game Profile per-game yang berbeda
-                // domain dari preset Game Booster ini.
                 actionHandler.applyMode(executor, GameMode.MID)
                 actionHandler.applyDnd(executor, false)
             }
@@ -217,197 +263,228 @@ class GameBoosterOverlayService : Service() {
         monitorJob?.cancel()
         GameBoosterSessionHolder.clear()
         currentPackageName = null
-        removeAllViews()
+        removeOverlay()
     }
 
-    private fun removeAllViews() {
-        bubbleView?.let { runCatching { windowManager.removeView(it) } }
-        sidebarView?.let { runCatching { windowManager.removeView(it) } }
-        bubbleLifecycleOwner?.onDestroy()
-        sidebarLifecycleOwner?.onDestroy()
-        bubbleView = null
-        sidebarView = null
-        bubbleLifecycleOwner = null
-        sidebarLifecycleOwner = null
-    }
+    // ============================ Window tunggal (edge-trigger <-> panel) ============================
 
-    // ============================ Bubble (collapsed) ============================
-
-    private fun showBubble() {
-        if (bubbleView != null) return
+    /**
+     * Memasang SATU window WindowManager yang berisi DUA state Compose
+     * (edge-trigger tersembunyi & panel penuh), diatur lewat
+     * [panelVisibleState] internal — lihat KDoc kelas untuk alasan
+     * pendekatan window tunggal ini (supaya transisi bisa dianimasikan
+     * mulus lewat AnimatedVisibility).
+     */
+    private fun showOverlay() {
+        if (overlayView != null) return
 
         val owner = ComposeOverlayLifecycleOwner()
-        bubbleLifecycleOwner = owner
+        overlayLifecycleOwner = owner
 
-        // WindowManager.LayoutParams WAJIB nilai piksel asli, BUKAN dp
-        // mentah — konversi manual lewat displayMetrics.density (bukan
-        // BUBBLE_SIZE_DP.dp.value yang hanya mengembalikan angka dp itu
-        // sendiri, tanpa dikalikan densitas layar sama sekali).
-        val bubbleSizePx = (BUBBLE_SIZE_DP * resources.displayMetrics.density).roundToInt()
+        val displayMetrics = resources.displayMetrics
+        val panelWidthPx = (PANEL_WIDTH_DP * displayMetrics.density).roundToInt()
+        val edgeTriggerWidthPx = (EDGE_TRIGGER_WIDTH_DP * displayMetrics.density).roundToInt()
 
         val params = WindowManager.LayoutParams(
-            bubbleSizePx,
-            bubbleSizePx,
+            edgeTriggerWidthPx,
+            WindowManager.LayoutParams.MATCH_PARENT,
             overlayWindowType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            baseWindowFlags(),
             PixelFormat.TRANSLUCENT,
         ).apply {
+            // FITUR BARU (lihat perintah rework: "tidak bisa dipindah dan
+            // posisi tetap dikiri"): gravity TOP|START + x=0 SELALU, TIDAK
+            // PERNAH diubah lewat drag apa pun (beda total dari bubble
+            // lama yang punya dragStartX/Y & updateViewLayout saat
+            // ACTION_MOVE) — satu-satunya cara window ini berubah lebar
+            // adalah toggle antara edgeTriggerWidthPx <-> panelWidthPx
+            // saat show/hide panel, POSISI x tetap 0 selalu.
             gravity = Gravity.TOP or Gravity.START
             x = 0
-            y = 300
+            y = 0
         }
-
-        var dragStartRawX = 0f
-        var dragStartRawY = 0f
-        var dragStartX = 0
-        var dragStartY = 0
-        var isDragging = false
+        layoutParams = params
 
         val view = ComposeView(this).apply {
             setContent {
                 AetherXTheme {
-                    Box(
-                        modifier = Modifier
-                            .size(BUBBLE_SIZE_DP.dp)
-                            .clip(CircleShape)
-                            .background(AccentBlue),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.SportsEsports,
-                            contentDescription = stringResource(R.string.game_booster_bubble_content_desc),
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    }
-                }
-            }
-            setOnTouchListener { _, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        dragStartRawX = event.rawX
-                        dragStartRawY = event.rawY
-                        dragStartX = params.x
-                        dragStartY = params.y
-                        isDragging = false
-                        true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = (event.rawX - dragStartRawX)
-                        val dy = (event.rawY - dragStartRawY)
-                        if (dx * dx + dy * dy > DRAG_THRESHOLD_PX_SQUARED) isDragging = true
-                        if (isDragging) {
-                            params.x = dragStartX + dx.roundToInt()
-                            params.y = dragStartY + dy.roundToInt()
-                            runCatching { windowManager.updateViewLayout(this, params) }
+                    val panelVisible = remember { mutableStateOf(false) }
+                    panelVisibleState = panelVisible
+
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Edge-trigger: window ini SENGAJA hanya selebar
+                        // EDGE_TRIGGER_WIDTH_DP saat panel tertutup (lihat
+                        // showOverlay()/showPanelExpanded()), jadi Box ini
+                        // tidak pernah menggambar apa pun terlihat di sini
+                        // — satu-satunya perannya menyediakan permukaan
+                        // untuk gesture swipe kiri->kanan yang ditangkap
+                        // installEdgeSwipeGesture() lewat setOnTouchListener
+                        // di bawah, PERSIS permintaan "diakses dengan geser
+                        // dari kiri layar ke kanan layar".
+
+                        AnimatedVisibility(
+                            visible = panelVisible.value,
+                            enter = slideInHorizontally(animationSpec = tween(260)) { fullWidth -> -fullWidth } +
+                                fadeIn(animationSpec = tween(200)),
+                            exit = slideOutHorizontally(animationSpec = tween(220)) { fullWidth -> -fullWidth } +
+                                fadeOut(animationSpec = tween(160)),
+                            modifier = Modifier.align(Alignment.TopStart),
+                        ) {
+                            val session by GameBoosterSessionHolder.session.collectAsState()
+                            session?.let { activeSession ->
+                                GameBoosterPanelContent(
+                                    session = activeSession,
+                                    actions = buildActions(),
+                                    modifier = Modifier.padding(top = 96.dp),
+                                )
+                            }
                         }
-                        true
                     }
-                    MotionEvent.ACTION_UP -> {
-                        if (!isDragging) {
-                            expandSidebar()
-                        }
-                        true
-                    }
-                    else -> false
                 }
             }
         }
+
+        installEdgeSwipeGesture(view, params)
+
         owner.attachToDecorView(view)
         owner.onCreate()
         owner.onStart()
         owner.onResume()
 
         runCatching { windowManager.addView(view, params) }
-        bubbleView = view
+        overlayView = view
     }
 
-    private fun hideBubble() {
-        bubbleView?.let { runCatching { windowManager.removeView(it) } }
-        bubbleLifecycleOwner?.onDestroy()
-        bubbleView = null
-        bubbleLifecycleOwner = null
-    }
-
-    // ============================ Sidebar (expanded) ============================
-
-    private fun expandSidebar() {
-        if (sidebarView != null) return
-        hideBubble()
-
-        val owner = ComposeOverlayLifecycleOwner()
-        sidebarLifecycleOwner = owner
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            overlayWindowType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            // FITUR BARU (lihat perintah rework floating booster foto 2):
-            // gravity diubah dari TOP|END (cocok untuk panel sempit
-            // mepet-kanan sebelumnya) ke TOP|CENTER_HORIZONTAL, karena
-            // layout baru berbentuk card lebar yang di referensi tampil
-            // rata-tengah horizontal, bukan menempel di tepi kanan layar.
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
-            y = 120
-        }
-
-        val view = ComposeView(this).apply {
-            setContent {
-                AetherXTheme {
-                    val session by GameBoosterSessionHolder.session.collectAsState()
-                    session?.let { activeSession ->
-                        GameBoosterSidebarContent(
-                            session = activeSession,
-                            actions = GameBoosterActions(
-                                onModeChange = { mode -> onModeChange(mode) },
-                                onDndToggle = { enabled -> onDndToggle(enabled) },
-                                onFpsOverlayToggle = { enabled -> onFpsOverlayToggle(enabled) },
-                                onScreenshot = { onScreenshot() },
-                                onEndSession = {
-                                    endSession()
-                                    stopSelf()
-                                },
-                                onClose = { collapseSidebar() },
-                                // FITUR BARU (lihat perintah rework floating
-                                // booster foto 2 — tombol "Luncurkan" di
-                                // card game): reuse GameLauncher.launch yang
-                                // sudah menangani FLAG_ACTIVITY_NEW_TASK
-                                // (wajib karena dipanggil dari Service,
-                                // bukan Activity) — bukan menulis logic
-                                // Intent baru yang terpisah.
-                                onLaunchGame = {
-                                    com.aether.x.core.apps.GameLauncher.launch(applicationContext, activeSession.packageName)
-                                },
-                            ),
-                            modifier = Modifier.width(SIDEBAR_WIDTH_DP.dp),
-                        )
-                    }
+    /**
+     * Gesture handler manual lewat `setOnTouchListener` (BUKAN
+     * `Modifier.pointerInput` Compose, yang lebih rumit dipadukan dengan
+     * window WindowManager mentah di luar Activity) — window ini HANYA
+     * selebar [EDGE_TRIGGER_WIDTH_DP] saat panel tertutup (lihat
+     * [showOverlay]), jadi `event.x` di listener ini SELALU relatif
+     * terhadap strip sempit itu saja, tidak perlu pengecekan area
+     * tambahan.
+     *
+     * Swipe kiri->kanan sejauh >= [SWIPE_OPEN_THRESHOLD_PX] dari titik
+     * ACTION_DOWN langsung membuka panel — TIDAK menunggu ACTION_UP,
+     * supaya terasa responsif ("smooth" sesuai perintah rework) alih-alih
+     * terasa delay.
+     */
+    private fun installEdgeSwipeGesture(view: ComposeView, params: WindowManager.LayoutParams) {
+        var startX = 0f
+        var opened = false
+        view.setOnTouchListener { _, event ->
+            if (panelVisibleState?.value == true) return@setOnTouchListener false
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    startX = event.x
+                    opened = false
+                    true
                 }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!opened && event.x - startX >= SWIPE_OPEN_THRESHOLD_PX) {
+                        opened = true
+                        showPanelExpanded()
+                    }
+                    true
+                }
+                else -> false
             }
         }
-        owner.attachToDecorView(view)
-        owner.onCreate()
-        owner.onStart()
-        owner.onResume()
-
-        runCatching { windowManager.addView(view, params) }
-        sidebarView = view
     }
 
-    private fun collapseSidebar() {
-        sidebarView?.let { runCatching { windowManager.removeView(it) } }
-        sidebarLifecycleOwner?.onDestroy()
-        sidebarView = null
-        sidebarLifecycleOwner = null
-        showBubble()
+    private fun buildActions(): GameBoosterActions = GameBoosterActions(
+        onModeChange = ::onModeChange,
+        onDndToggle = ::onDndToggle,
+        onFpsOverlayToggle = ::onFpsOverlayToggle,
+        onScreenshot = ::onScreenshot,
+        onEndSession = {
+            endSession()
+            stopSelf()
+        },
+        onLaunchGame = {
+            currentPackageName?.let { GameLauncher.launch(applicationContext, it) }
+        },
+        onMinimize = { collapsePanel() },
+        onOpenApp = { packageName -> GameLauncher.launch(applicationContext, packageName) },
+        onRotationLockToggle = ::onRotationLockToggle,
+        onMoreTools = {
+            // "More tools" membuka GameBoosterScreen layar penuh (drawer)
+            // untuk menu lengkap — lihat KDoc GamesTab/QuickToolsGrid di
+            // GameBoosterPanelContent soal alasan tile ini bukan aksi
+            // shell langsung.
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            runCatching { startActivity(intent) }
+        },
+    )
+
+    /**
+     * Buka panel: lebarkan window dari [EDGE_TRIGGER_WIDTH_DP] ke
+     * [PANEL_WIDTH_DP] (WAJIB, karena window edge-trigger sengaja dibuat
+     * sempit supaya tidak menghalangi game — panel butuh lebar penuh untuk
+     * digambar), aktifkan touchable flag (panel butuh menerima tap semua
+     * tombolnya), lalu set [panelVisibleState] true untuk memicu animasi
+     * slide-in [AnimatedVisibility]. Rail quick-app dimuat ulang setiap
+     * kali ini dipanggil (lihat [refreshRecentApps]).
+     */
+    private fun showPanelExpanded() {
+        val params = layoutParams ?: return
+        val view = overlayView ?: return
+        val panelWidthPx = (PANEL_WIDTH_DP * resources.displayMetrics.density).roundToInt()
+        params.width = panelWidthPx
+        params.flags = baseWindowFlags()
+        runCatching { windowManager.updateViewLayout(view, params) }
+        panelVisibleState?.value = true
+        refreshRecentApps()
     }
+
+    /**
+     * Tutup panel kembali ke strip edge-trigger tersembunyi — dipicu oleh
+     * tombol minimize (lihat perintah rework: "bisa di minimize dengan
+     * mudah"). Window disempitkan LAGI ke [EDGE_TRIGGER_WIDTH_DP] SETELAH
+     * animasi slide-out selesai (bukan langsung) — supaya animasi
+     * [AnimatedVisibility] sempat terlihat penuh sebelum window
+     * benar-benar menyempit, alih-alih terpotong di tengah animasi.
+     */
+    private fun collapsePanel() {
+        panelVisibleState?.value = false
+        val params = layoutParams ?: return
+        val view = overlayView ?: return
+        serviceScope.launch {
+            kotlinx.coroutines.delay(240) // >= durasi exit animation (220ms) di showOverlay()
+            val edgeTriggerWidthPx = (EDGE_TRIGGER_WIDTH_DP * resources.displayMetrics.density).roundToInt()
+            params.width = edgeTriggerWidthPx
+            params.flags = baseWindowFlags()
+            runCatching { windowManager.updateViewLayout(view, params) }
+        }
+    }
+
+    private fun removeOverlay() {
+        overlayView?.let { runCatching { windowManager.removeView(it) } }
+        overlayLifecycleOwner?.onDestroy()
+        overlayView = null
+        overlayLifecycleOwner = null
+        layoutParams = null
+        panelVisibleState = null
+    }
+
+    /**
+     * Flag window — SAMA PERSIS baik saat edge-trigger tersembunyi maupun
+     * saat panel terbuka (`FLAG_NOT_TOUCH_MODAL` supaya sentuhan DI LUAR
+     * bounds window ini selalu diteruskan ke game di bawahnya, lihat fix
+     * serupa di [CrosshairOverlayService]). Yang BERUBAH antara dua state
+     * itu BUKAN flag-nya, melainkan LEBAR window itu sendiri
+     * ([EDGE_TRIGGER_WIDTH_DP] vs [PANEL_WIDTH_DP], lihat
+     * [showPanelExpanded]/[collapsePanel]) — window sempit secara alami
+     * hanya bisa menangkap sentuhan di area sempit itu, tidak perlu
+     * `FLAG_NOT_TOUCHABLE` terpisah untuk mengatur area mana yang
+     * touchable.
+     */
+    private fun baseWindowFlags(): Int =
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
 
     // ============================ Aksi menu ============================
 
@@ -426,6 +503,15 @@ class GameBoosterOverlayService : Service() {
             preferences.setGameBoosterDndEnabled(enabled)
             val executor = PrivilegeManager.getExecutor() ?: return@launch
             actionHandler.applyDnd(executor, enabled)
+        }
+    }
+
+    private fun onRotationLockToggle(locked: Boolean) {
+        serviceScope.launch {
+            GameBoosterSessionHolder.update { it.copy(rotationLocked = locked) }
+            preferences.setGameBoosterRotationLocked(locked)
+            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            actionHandler.applyRotationLock(executor, locked)
         }
     }
 
@@ -491,7 +577,7 @@ class GameBoosterOverlayService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        removeAllViews()
+        removeOverlay()
         monitorJob?.cancel()
         serviceScope.cancel()
     }

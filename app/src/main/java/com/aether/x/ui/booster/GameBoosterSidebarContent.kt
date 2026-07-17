@@ -84,6 +84,28 @@ data class GameBoosterActions(
     // GameBoosterScreen (layar penuh) tidak memerlukan aksi ini karena
     // sudah punya cara sendiri untuk membuka game dari daftar.
     val onLaunchGame: (() -> Unit)? = null,
+    // ======================= REWORK TOTAL — panel baru =======================
+    // Seluruh field di bawah ini BARU (lihat perintah rework: "bisa di
+    // minimize dengan mudah", "sisi kiri list untuk quick app", "banyak
+    // quick tile/panel") — dipakai [GameBoosterPanelContent], SEMUA
+    // default null/no-op supaya [GameBoosterScreen] (layar penuh, yang
+    // belum tentu punya semua aksi ini) tetap compile tanpa perlu
+    // disentuh sama sekali.
+
+    /** Sembunyikan panel kembali ke edge-trigger tersembunyi TANPA mengakhiri sesi boost. Null = tombol minimize tidak ditampilkan. */
+    val onMinimize: (() -> Unit)? = null,
+    /** Tap ikon app di rail kiri ([GameBoosterAppRail]) — bawa app itu ke foreground. */
+    val onOpenApp: ((String) -> Unit)? = null,
+    /** Tile "Pengaturan" (performa app) di [SettingsTileRow]. */
+    val onOpenPerformanceSettings: (() -> Unit)? = null,
+    /** Tile "Bersihkan memori" di [SettingsTileRow]. */
+    val onClearMemory: (() -> Unit)? = null,
+    val onVoiceChanger: (() -> Unit)? = null,
+    val onRecord: (() -> Unit)? = null,
+    val onRotationLockToggle: ((Boolean) -> Unit)? = null,
+    val onBrightness: (() -> Unit)? = null,
+    val onWifi: (() -> Unit)? = null,
+    val onMoreTools: (() -> Unit)? = null,
 )
 
 /**

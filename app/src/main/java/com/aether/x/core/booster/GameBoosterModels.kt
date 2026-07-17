@@ -34,6 +34,22 @@ data class GameBoosterMetrics(
 )
 
 /**
+ * FITUR BARU (rework total Game Booster — rail "quick app" di sisi kiri
+ * panel, lihat perintah rework): satu entri app yang MASIH punya task
+ * hidup di recent apps, siap ditampilkan sebagai ikon di rail vertikal
+ * kiri panel. Dimuat oleh [com.aether.x.core.overlay.GameBoosterOverlayService]
+ * lewat [com.aether.x.core.monitor.RecentTasksReader.listRecentPackages]
+ * (nama & package) + [com.aether.x.core.apps.GameProfileCatalog.loadIconForPackage]
+ * (ikon), MIRIP pola [GameBoosterSession.icon] tapi untuk banyak app
+ * sekaligus alih-alih satu game yang sedang di-boost.
+ */
+data class RecentAppEntry(
+    val packageName: String,
+    val label: String,
+    val icon: androidx.compose.ui.graphics.ImageBitmap?,
+)
+
+/**
  * Satu sesi Game Booster aktif — package game yang sedang di-boost beserta
  * preset & toggle yang berlaku SELAMA sesi ini. Instance-nya dipegang oleh
  * [GameBoosterOverlayService] (bukan ViewModel biasa, karena overlay hidup
@@ -72,4 +88,11 @@ data class GameBoosterSession(
     // oleh GameBoosterScreenViewModel setiap kali diubah dari UI.
     val rotationLocked: Boolean = false,
     val touchBoostEnabled: Boolean = false,
+    // FITUR BARU (rework total tampilan — lihat perintah rework "bisa di
+    // minimize dengan mudah"): rail quick-app (lihat [RecentAppEntry] di
+    // atas), dimuat ULANG setiap kali panel dibuka (bukan sekali di awal
+    // sesi seperti [icon]) supaya daftar recent apps selalu mencerminkan
+    // app yang BENAR-BENAR baru saja dipakai pengguna, bukan snapshot basi
+    // dari saat sesi boost pertama kali dimulai.
+    val recentApps: List<RecentAppEntry> = emptyList(),
 )
