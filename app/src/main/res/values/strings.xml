@@ -204,7 +204,7 @@
     <string name="dashboard_section_device_info">Info Device</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
     <string name="dashboard_device_info_group_identity">Identitas Perangkat</string>
-    <string name="dashboard_device_info_group_usage">Pemakaian Memori</string>
+    <string name="dashboard_device_info_group_usage">Penggunaan Resource</string>
     <string name="dashboard_device_model">Model</string>
     <string name="dashboard_device_chipset">Chipset/Board</string>
     <string name="dashboard_device_android_version">Versi Android</string>
@@ -624,7 +624,7 @@
          pernah menemukan service pairing dalam batas waktu. -->
     <string name="permission_feedback_adb_auto_discovery_timeout">Tidak menemukan Wireless debugging di jaringan ini. Pastikan sudah membuka \"Pasangkan perangkat dengan kode pairing\" dan memakai Wi-Fi yang sama, lalu tekan Start lagi.</string>
     <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing di Wireless debugging untuk kode baru.</string>
-    <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung ke alamat itu. Pastikan IP dan port benar, serta perangkat memakai jaringan Wi-Fi yang sama.</string>
+    <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung — pastikan Wireless debugging masih aktif di Opsi Developer, lalu coba lagi. Pairing sebelumnya tetap tersimpan, tidak perlu diulang dari awal.</string>
     <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Kemungkinan izin debugging pernah dicabut manual lakukan pairing ulang dari awal.</string>
     <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan Wireless Debugging. Coba lagi.</string>
     <string name="permission_feedback_adb_in_progress">Proses Wireless Debugging masih berjalan, tunggu sebentar.</string>

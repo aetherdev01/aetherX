@@ -297,20 +297,28 @@ object AdbConnectionManager {
             _state.value = connected
             connected
         } else {
-            // BUG FIX pola sama seperti rework sebelumnya: SELALU beri
-            // tahu alasan kegagalan yang spesifik, jangan pernah diam.
-            // Kalau sudah pernah pairing tapi sekarang ditolak,
-            // kemungkinan besar pengguna mencabut izin debugging secara
-            // manual — arahkan untuk pairing ulang, bukan sekadar "gagal"
-            // generik.
-            val hadPreviousPairing = preferences.getSavedHostPort() != null
+            // FIX (lihat perintah rework wireless: sebelumnya SETIAP
+            // kegagalan connect setelah pernah pairing otomatis
+            // diklasifikasikan SHELL_REJECTED_NEEDS_REPAIR ("wajib pairing
+            // ulang dari nol") HANYA karena `hadPreviousPairing == true` —
+            // padahal penyebab paling umum kegagalan ini adalah PORT BASI
+            // (lihat KDoc autoReconnect di atas), bukan certificate yang
+            // benar-benar ditolak adbd. Sekarang HANYA diklasifikasikan
+            // SHELL_REJECTED_NEEDS_REPAIR kalau library BENAR-BENAR
+            // melempar exception jenis "pairing diperlukan lagi" (sinyal
+            // eksplisit dari adbd bahwa certificate ini tidak/tidak lagi
+            // dikenal) — kegagalan lain (timeout, connection refused ke
+            // port basi, dst) tetap [AdbFailureReason.HOST_UNREACHABLE]
+            // yang pesannya lebih akurat ("coba sambungkan lagi", BUKAN
+            // "wajib pairing ulang").
             val exception = result.exceptionOrNull()
+            val certificateRejected = exception != null &&
+                exception.javaClass.simpleName.contains("PairingRequired", ignoreCase = true)
             val failure = AdbConnectionState.Failed(
-                reason = when {
-                    exception != null && exception.javaClass.simpleName.contains("PairingRequired", ignoreCase = true) ->
-                        AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR
-                    hadPreviousPairing -> AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR
-                    else -> AdbFailureReason.HOST_UNREACHABLE
+                reason = if (certificateRejected) {
+                    AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR
+                } else {
+                    AdbFailureReason.HOST_UNREACHABLE
                 },
                 detail = exception?.message ?: "Tidak bisa terhubung ke $host:$port.",
             )
@@ -326,12 +334,60 @@ object AdbConnectionManager {
      * pengguna tidak perlu membuka form pairing lagi setiap kali membuka
      * AetherX atau kembali dari background, selama Wireless debugging
      * masih aktif di perangkat.
+     *
+     * FIX (lihat perintah: "wireless sifatnya sementara... coba jadikan
+     * lebih gampang untuk aktifkan lagi biar ga ribet hapus data aplikasi
+     * lalu melakukan permission wireless ulang"): PORT KONEKSI
+     * (`_adb-tls-connect._tcp`) Android SELALU berubah setiap kali
+     * Wireless debugging dimatikan-nyalakan ulang ATAU perangkat
+     * di-reboot — ini perilaku BAWAAN Android, bukan sesuatu yang bisa
+     * AetherX cegah. Sebelum fix ini, [connect] hanya mencoba port LAMA
+     * yang tersimpan di [preferences] — begitu port itu basi, percobaan
+     * SELALU gagal dan diklasifikasikan [AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR]
+     * ("wajib pairing ulang dari nol"), padahal CERTIFICATE AetherX
+     * (lihat [AdbKeyManager]) MASIH SEPENUHNYA valid & masih dikenal adbd
+     * — satu-satunya yang basi cuma NOMOR PORT-nya, bukan identitas
+     * pairing-nya. Menghapus data aplikasi (yang menghapus certificate
+     * juga) untuk masalah PORT SAJA sebenarnya berlebihan.
+     *
+     * Sekarang: kalau percobaan pertama pakai port tersimpan GAGAL,
+     * SELAMA masih ada pairing tersimpan (bukan [AdbConnectionState.NotPaired]),
+     * otomatis coba temukan port koneksi TERBARU lewat mDNS
+     * ([AdbAutoPairingDiscovery.discoverConnectService] — service yang
+     * SAMA yang sudah dipakai saat pairing pertama kali, lihat
+     * [pairAndAutoConnect]) SEBELUM menyerah, lalu simpan port baru itu
+     * dan coba connect ulang sekali lagi — SEMUA ini terjadi diam-diam di
+     * background, TANPA pengguna perlu membuka dialog pairing kode 6-digit
+     * apa pun, karena pairing-nya sendiri tidak pernah hilang. Wireless
+     * debugging di perangkat HARUS sedang aktif supaya service mDNS ini
+     * ter-broadcast — kalau memang mati, langkah ini akan timeout wajar
+     * dan pengguna tetap diarahkan menyalakan Wireless debugging dulu.
      */
     fun autoReconnect() {
         scope.launch {
             val saved = preferences.getSavedHostPort() ?: return@launch
             if (_state.value == AdbConnectionState.Connected) return@launch
-            connect(saved.first, saved.second)
+
+            val firstAttempt = connect(saved.first, saved.second)
+            if (firstAttempt is AdbConnectionState.Connected) return@launch
+
+            // Port lama basi (paling sering setelah Wireless debugging
+            // dimatikan-nyalakan ulang/reboot) — coba cari port terbaru
+            // lewat mDNS TANPA meminta pairing ulang, selama identitas
+            // pairing-nya sendiri masih ada (host tersimpan masih ada).
+            val rediscovered = withContext(Dispatchers.IO) {
+                runCatching { AdbAutoPairingDiscovery.discoverConnectService(appContext, timeoutMs = 8_000) }
+            }.getOrNull() ?: return@launch
+
+            if (rediscovered.port == saved.second && rediscovered.host == saved.first) {
+                // Sama persis dengan yang baru saja gagal — mengulang
+                // connect() tidak akan mengubah apa pun, biarkan state
+                // Failed dari percobaan pertama tetap ditampilkan ke
+                // pengguna (biasanya berarti Wireless debugging memang
+                // sedang mati, bukan cuma port basi).
+                return@launch
+            }
+            connect(rediscovered.host, rediscovered.port)
         }
     }
 
