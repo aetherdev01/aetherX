@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isVerifiedApp() {
+      return true;
+    }
+
+    match /meta/user_counter {
+      allow get: if true;
+
+      allow create: if isVerifiedApp() && request.resource.data.count == 1;
+
+      allow update: if isVerifiedApp() && request.resource.data.count == resource.data.count + 1;
+
+      allow delete: if false;
+    }
+
+    match /devices/{deviceId} {
+      allow get: if isVerifiedApp();
+
+      allow create: if isVerifiedApp()
+        && request.resource.data.deviceId == deviceId
+        && request.resource.data.firstLoginAt == request.time
+        && request.resource.data.lastLoginAt == request.time
+        && request.resource.data.userId is number;
+
+      allow update: if isVerifiedApp()
+        && request.resource.data.deviceId == resource.data.deviceId
+        && request.resource.data.firstLoginAt == resource.data.firstLoginAt
+        && request.resource.data.lastLoginAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /config/maintenance {
+      allow get: if true;
+      allow create, update: if false;
+      allow delete: if false;
+    }
+
+    match /config/update {
+      allow get: if true;
+      allow create, update: if false;
+      allow delete: if false;
+    }
+
+    match /licenses/{key} {
+      allow get: if isVerifiedApp();
+
+      allow create: if false;
+
+      allow update: if
+        (
+          resource.data.deviceId == null &&
+          resource.data.status == "unused" &&
+          request.resource.data.deviceId is string &&
+          request.resource.data.deviceId.matches('^[a-f0-9]{64}$') &&
+          request.resource.data.status == "active" &&
+          request.resource.data.activatedAt == request.time &&
+          request.resource.data.expiresAt == resource.data.expiresAt &&
+          request.resource.data.createdAt == resource.data.createdAt
+        )
+        ||
+        request.resource.data.deviceId == resource.data.deviceId
+        ||
+        (
+          resource.data.deviceId.matches('^[0-9a-f]{16}$') &&
+          request.resource.data.deviceId.matches('^[0-9a-f]{64}$') &&
+          request.resource.data.migratedFromLegacyDeviceId == resource.data.deviceId
+        );
+
+      allow delete: if false;
+    }
+  }
+}
