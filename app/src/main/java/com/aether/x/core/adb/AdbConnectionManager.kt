@@ -362,22 +362,71 @@ object AdbConnectionManager {
      * debugging di perangkat HARUS sedang aktif supaya service mDNS ini
      * ter-broadcast — kalau memang mati, langkah ini akan timeout wajar
      * dan pengguna tetap diarahkan menyalakan Wireless debugging dulu.
+     *
+     * FIX 2 (Tombol "Sambungkan" terkadang menampilkan "Tidak bisa
+     * terhubung" padahal Wireless debugging AKTIF dan pairing masih
+     * valid): mDNS/NSD di Android TIDAK selalu mengembalikan hasil di
+     * percobaan pertama — chipset Wi-Fi di banyak ROM (terutama
+     * MIUI/ColorOS, bahkan dengan multicast lock sudah dipegang) kadang
+     * butuh beberapa ratus milidetik sampai beberapa detik ekstra sebelum
+     * benar-benar mem-flush paket multicast pertama, terutama tepat
+     * setelah radio Wi-Fi baru saja bangun dari idle. Sebelumnya
+     * rediscovery HANYA dicoba SATU KALI dengan timeout 15 detik — kalau
+     * percobaan tunggal itu timeout (bukan berarti service-nya benar-benar
+     * tidak ada, cuma belum sempat "kedengaran"), fungsi ini langsung
+     * menyerah dan membiarkan state [AdbConnectionState.Failed] dari
+     * percobaan [connect] pertama tetap tampil ke pengguna, walau service
+     * koneksinya sebenarnya ada dan akan ditemukan kalau dicoba sekali
+     * lagi. Sekarang rediscovery dicoba sampai `maxRediscoveryAttempts`
+     * kali (timeout lebih pendek per percobaan supaya total waktu tunggu
+     * tidak membengkak drastis), berhenti begitu salah satu percobaan
+     * berhasil — Wireless debugging yang BENAR-BENAR mati tetap gagal di
+     * semua percobaan secara wajar, hanya kegagalan sesaat akibat timing
+     * mDNS yang sekarang tidak langsung dilaporkan sebagai gagal permanen.
      */
     fun autoReconnect() {
         scope.launch {
             val saved = preferences.getSavedHostPort() ?: return@launch
             if (_state.value == AdbConnectionState.Connected) return@launch
 
-            val firstAttempt = connect(saved.first, saved.second)
+            val firstAttempt = connectMutex.withLock { connectLocked(saved.first, saved.second) }
             if (firstAttempt is AdbConnectionState.Connected) return@launch
 
             // Port lama basi (paling sering setelah Wireless debugging
             // dimatikan-nyalakan ulang/reboot) — coba cari port terbaru
             // lewat mDNS TANPA meminta pairing ulang, selama identitas
             // pairing-nya sendiri masih ada (host tersimpan masih ada).
-            val rediscovered = withContext(Dispatchers.IO) {
-                runCatching { AdbAutoPairingDiscovery.discoverConnectService(appContext, timeoutMs = 8_000) }
-            }.getOrNull() ?: return@launch
+            // Dicoba beberapa kali (bukan sekali) karena mDNS kadang
+            // butuh lebih dari satu percobaan sebelum "kedengaran".
+            //
+            // PENTING: [_state] SENGAJA dijaga tetap [Connecting] selama
+            // rediscovery masih berjalan (bukan dibiarkan di [firstAttempt]
+            // yang [Failed]) — [connectLocked] tiap dipanggil ulang di
+            // bawah sudah menimpa state jadi [Connecting] lagi lewat baris
+            // pertamanya sendiri, tapi KALAU rediscovery-nya sendiri butuh
+            // beberapa detik untuk timeout/retry, tanpa baris ini state
+            // akan "berkedip" balik ke [Failed] milik [firstAttempt] dulu
+            // selama proses mDNS berjalan — memicu [AdbPairingNotifier]
+            // menampilkan notifikasi error PADAHAL AetherX masih aktif
+            // mencoba, bukan benar-benar sudah menyerah.
+            _state.value = AdbConnectionState.Connecting
+
+            val maxRediscoveryAttempts = 3
+            var rediscovered: AdbAutoPairingDiscovery.DiscoveredService? = null
+            for (attempt in 1..maxRediscoveryAttempts) {
+                rediscovered = withContext(Dispatchers.IO) {
+                    runCatching { AdbAutoPairingDiscovery.discoverConnectService(appContext, timeoutMs = 6_000) }
+                }.getOrNull()
+                if (rediscovered != null) break
+            }
+            if (rediscovered == null) {
+                // Semua percobaan rediscovery benar-benar habis — BARU
+                // sekarang kegagalan [firstAttempt] final dipublish ke
+                // pengguna (state publik jatuh ke Failed di sini, bukan
+                // lebih awal).
+                _state.value = firstAttempt
+                return@launch
+            }
 
             if (rediscovered.port == saved.second && rediscovered.host == saved.first) {
                 // Sama persis dengan yang baru saja gagal — mengulang
@@ -385,9 +434,10 @@ object AdbConnectionManager {
                 // Failed dari percobaan pertama tetap ditampilkan ke
                 // pengguna (biasanya berarti Wireless debugging memang
                 // sedang mati, bukan cuma port basi).
+                _state.value = firstAttempt
                 return@launch
             }
-            connect(rediscovered.host, rediscovered.port)
+            connectMutex.withLock { connectLocked(rediscovered.host, rediscovered.port) }
         }
     }
 

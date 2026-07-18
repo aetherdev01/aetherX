@@ -9,28 +9,28 @@
 
     <!-- Onboarding Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
     <string name="setup_title">Izin Akses</string>
-    <string name="setup_subtitle">Pilih metode yang ingin digunakan agar AetherX dapat mengakses kernel dan menyediakan kontrol penuh terhadap fitur, performa, serta tweak sistem yang didukung perangkatmu.</string>
+    <string name="setup_subtitle">Pilih metode akses agar AetherX bisa mengontrol performa dan tweak sistem di perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
     <string name="setup_required_banner">Aktifkan Wireless Debugging atau Root untuk melanjutkan</string>
     <string name="setup_method_root">Magisk</string>
-    <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser (su) untuk mengaktifkan fitur lanjutan.</string>
+    <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser untuk fitur lanjutan.</string>
     <string name="setup_status_granted">Aktif</string>
     <string name="setup_status_not_granted">Belum Aktif</string>
     <string name="setup_status_checking">Memeriksa…</string>
     <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
     <string name="setup_action_continue">Lanjutkan</string>
-    <string name="setup_locked_hint">Aktifkan Wireless Debugging atau Root terlebih dahulu untuk membuka tombol Lanjutkan.</string>
+    <string name="setup_locked_hint">Aktifkan Wireless Debugging atau Root dulu untuk membuka tombol Lanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
-    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Wireless Debugging. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
-    <string name="setup_locked_by_adb_hint">Wireless Debugging sedang dipakai. Ketuk "Ganti metode" di bawah kalau ingin beralih ke Root. kedua metode tidak bisa aktif bersamaan agar tweak tidak saling konflik.</string>
+    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Wireless Debugging.</string>
+    <string name="setup_locked_by_adb_hint">Wireless Debugging sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Root.</string>
     <string name="setup_switch_method">Ganti metode</string>
 
     <!-- Onboarding Izin pendukung (Write Settings, Overlay, Notifikasi) -->
     <string name="setup_supporting_header">Izin Tambahan</string>
-    <string name="setup_supporting_subtitle">Membantu tweak dan fitur overlay berjalan lebih stabil di perangkatmu.</string>
+    <string name="setup_supporting_subtitle">Membantu tweak dan overlay berjalan lebih stabil.</string>
     <string name="setup_method_write_settings">Ubah Pengaturan Sistem</string>
-    <string name="setup_method_write_settings_desc">Mengizinkan AetherX membaca/menulis sebagian setelan sistem secara langsung.</string>
+    <string name="setup_method_write_settings_desc">Mengizinkan AetherX membaca dan mengubah sebagian setelan sistem.</string>
     <string name="setup_method_overlay">Tampil di Atas Aplikasi Lain</string>
     <string name="setup_method_overlay_desc">Dibutuhkan untuk crosshair dan monitor FPS saat bermain.</string>
     <string name="setup_method_notifications">Notifikasi</string>
@@ -127,7 +127,7 @@
     <string name="membership_device_id_copied">Device ID disalin</string>
     <string name="membership_logout_button">Logout dari Perangkat Ini</string>
     <string name="membership_logout_confirm_title">Logout membership?</string>
-    <string name="membership_logout_confirm_message">Status membership di perangkat ini akan disembunyikan sampai kode lisensi dimasukkan lagi. Kode yang sama tetap bisa dipakai ulang di perangkat ini kapan saja.</string>
+    <string name="membership_logout_confirm_message">Status membership disembunyikan sampai kode dimasukkan lagi. Kode yang sama tetap bisa dipakai ulang kapan saja.</string>
     <string name="membership_logout_confirm_action">Logout</string>
     <string name="membership_logout_cancel">Batal</string>
 
@@ -226,10 +226,10 @@
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
-    <string name="tweak_touch_boost_desc">Eksperimental. Menimpa parameter respons sentuh pada kernel. Hasil dan kompatibilitas bergantung pada driver perangkat.</string>
+    <string name="tweak_touch_boost_desc">Eksperimental. Menimpa parameter respons sentuh kernel. Hasil bergantung pada driver perangkat.</string>
     <string name="tweak_section_refresh">Display Refresh Rate</string>
     <string name="tweak_force_refresh">Paksa Refresh Rate Maksimal</string>
-    <string name="tweak_force_refresh_desc">Mengunci parameter refresh rate layar pada nilai tertinggi yang didukung hardware.</string>
+    <string name="tweak_force_refresh_desc">Mengunci refresh rate layar ke nilai tertinggi yang didukung hardware.</string>
     <string name="tweak_section_game_mode">Mode Game</string>
     <string name="tweak_game_mode">Aktifkan Mode Game</string>
     <string name="tweak_game_mode_desc">Nyalakan Jangan Ganggu (DND) otomatis supaya notifikasi tidak muncul saat main.</string>
@@ -238,25 +238,25 @@
     <string name="tweak_section_root_cpu">CPU &amp; Performa (Root)</string>
     <string name="tweak_section_root_system">Memori &amp; Sistem (Root)</string>
     <string name="tweak_cpu_governor">Governor CPU</string>
-    <string name="tweak_cpu_governor_desc">Pilih governor clock CPU: Performance untuk clock maksimum terus-menerus, Ondemand/Schedutil untuk seimbang, Battery untuk hemat daya, atau Universal untuk otomatis sesuai dukungan chipset (Snapdragon, MediaTek, Exynos). Butuh akses root.</string>
+    <string name="tweak_cpu_governor_desc">Pilih governor clock CPU. Performance untuk clock maksimum, Ondemand/Schedutil untuk seimbang, Battery untuk hemat daya, Universal untuk otomatis sesuai chipset. Butuh akses root.</string>
     <string name="tweak_cpu_governor_schedutil">Schedutil</string>
     <string name="tweak_cpu_governor_performance">Performance</string>
     <string name="tweak_cpu_governor_ondemand">Ondemand</string>
     <string name="tweak_cpu_governor_battery">Battery</string>
     <string name="tweak_cpu_governor_universal">Universal</string>
     <string name="tweak_cpu_performance">CPU Governor: Performance</string>
-    <string name="tweak_cpu_performance_desc">Kunci clock CPU ke frekuensi maksimum selama bermain, mengurangi drop FPS akibat governor CPU turun-naik. Butuh akses root.</string>
+    <string name="tweak_cpu_performance_desc">Kunci clock CPU ke frekuensi maksimum selama bermain. Butuh akses root.</string>
     <string name="tweak_ram_priority">Swappiness Override</string>
-    <string name="tweak_ram_priority_desc">Turunkan nilai swappiness kernel supaya sistem lebih jarang menukar data game ke swap/zram, menjaga game tetap di RAM. Butuh akses root.</string>
+    <string name="tweak_ram_priority_desc">Turunkan swappiness kernel supaya game tetap di RAM, jarang ditukar ke swap/zram. Butuh akses root.</string>
     <string name="tweak_thermal_throttle">Thermal Throttle Override</string>
-    <string name="tweak_thermal_throttle_desc">Naikkan batas suhu trip point kernel sebelum sistem menurunkan clock CPU/GPU (throttling). Berguna untuk sesi main lama, tapi tingkatkan suhu perangkat pakai dengan hati-hati. Butuh akses root.</string>
+    <string name="tweak_thermal_throttle_desc">Naikkan batas suhu sebelum sistem menurunkan clock CPU/GPU. Berguna untuk sesi main lama, tapi pantau suhu perangkat. Butuh akses root.</string>
     <string name="tweak_gpu_performance">GPU Governor: Performance</string>
-    <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum yang didukung selama bermain, mengurangi drop FPS akibat governor GPU turun-naik. Mendukung GPU Adreno (Snapdragon) maupun Mali/GED (MediaTek, Exynos). Butuh akses root.</string>
+    <string name="tweak_gpu_performance_desc">Kunci frekuensi GPU ke clock maksimum selama bermain, mengurangi drop FPS. Mendukung Adreno, Mali, dan GED. Butuh akses root.</string>
     <!-- FITUR BARU tweak ke-7 Game Profile: GPU Rendering Priority (SurfaceFlinger) -->
     <string name="tweak_gpu_rendering_priority">GPU Rendering Priority</string>
-    <string name="tweak_gpu_rendering_priority_desc">Naikkan prioritas real-time SurfaceFlinger (compositor sistem) dan RenderThread game ke SCHED_FIFO, mengurangi jitter/frame drop akibat proses lain merebut jatah CPU tepat saat rendering perlu jalan. Butuh akses root.</string>
+    <string name="tweak_gpu_rendering_priority_desc">Naikkan prioritas rendering game supaya lebih jarang terganggu proses lain. Butuh akses root.</string>
     <string name="tweak_io_scheduler_boost">I/O Scheduler: Latensi Rendah</string>
-    <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan internal ke mode latensi rendah (kyber/bfq) supaya aset game lebih cepat dibaca dari storage. Butuh akses root.</string>
+    <string name="tweak_io_scheduler_boost_desc">Ganti scheduler penyimpanan ke mode latensi rendah supaya aset game lebih cepat dibaca. Butuh akses root.</string>
 
     <!-- Kernel Manager section terpisah di bawah Kernel Tuning (Root), baca/tulis nilai kernel mentah per-core -->
     <string name="kernel_manager_title">Kernel Manager</string>
@@ -293,8 +293,8 @@
     <string name="app_manager_status_frozen">Dinonaktifkan</string>
     <string name="app_manager_status_active">Aktif</string>
     <string name="app_manager_error_root_unavailable">Sambungkan ADB tertanam atau Root dulu di layar Izin Akses</string>
-    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Sebagian perangkat menolak perintah ini tanpa akses Root — coba pakai Root jika ADB tidak berhasil</string>
-    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Sebagian perangkat menolak perintah ini tanpa akses Root — coba pakai Root jika ADB tidak berhasil</string>
+    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Coba pakai akses Root jika ADB tidak berhasil.</string>
+    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Coba pakai akses Root jika ADB tidak berhasil.</string>
     <string name="app_manager_more_options_cd">Opsi lainnya</string>
     <string name="app_manager_action_force_stop">Force Stop</string>
     <string name="app_manager_action_clear_cache">Bersihkan Cache</string>
@@ -308,7 +308,7 @@
 
     <!-- Build.prop Editor sub-drawer khusus Root, edit PERSISTEN properti sistem lewat file (beda dari setprop runtime) -->
     <string name="nav_build_prop">Build.prop Editor</string>
-    <string name="buildprop_subtitle">Edit properti sistem secara langsung di file. Perubahan bersifat permanen dan baru aktif penuh setelah reboot. Berisiko menyebabkan bootloop jika salah backup dibuat otomatis sebelum tulis pertama tiap sesi.</string>
+    <string name="buildprop_subtitle">Edit properti sistem langsung di file. Perubahan permanen, aktif penuh setelah reboot. Backup otomatis dibuat sebelum tulis pertama tiap sesi.</string>
     <string name="buildprop_search_hint">Cari key…</string>
     <string name="buildprop_empty">Tidak ada key yang cocok</string>
     <string name="buildprop_value_empty">(kosong)</string>
@@ -321,28 +321,28 @@
     <string name="buildprop_backups_title">Backup Tersimpan</string>
     <string name="buildprop_backups_empty">Belum ada backup untuk partisi ini</string>
     <string name="buildprop_confirm_edit_title">Terapkan Perubahan?</string>
-    <string name="buildprop_confirm_edit_warning">Mengubah properti sistem bisa menyebabkan perangkat gagal boot (bootloop) jika nilai tidak didukung. Backup akan dibuat otomatis sebelum perubahan pertama di sesi ini. Perubahan baru terasa penuh setelah reboot.</string>
+    <string name="buildprop_confirm_edit_warning">Mengubah properti sistem bisa menyebabkan perangkat gagal boot jika nilai tidak didukung. Backup dibuat otomatis sebelum perubahan pertama. Efek penuh terasa setelah reboot.</string>
     <string name="buildprop_confirm_edit_diff_format">%1$s\n- %2$s\n+ %3$s</string>
     <string name="buildprop_confirm_edit_button">Ya, Terapkan</string>
     <string name="buildprop_confirm_restore_title">Pulihkan dari Backup?</string>
-    <string name="buildprop_confirm_restore_warning">File %1$s akan dikembalikan persis seperti sebelum sesi edit ini dimulai. Perubahan yang sudah diterapkan sejak backup ini dibuat akan hilang.</string>
+    <string name="buildprop_confirm_restore_warning">File %1$s akan dikembalikan seperti sebelum sesi edit ini dimulai. Perubahan sejak backup ini dibuat akan hilang.</string>
     <string name="buildprop_confirm_restore_button">Ya, Pulihkan</string>
-    <string name="buildprop_success_applied">%1$s berhasil diterapkan reboot untuk efek penuh</string>
+    <string name="buildprop_success_applied">%1$s diterapkan. Reboot untuk efek penuh</string>
     <string name="buildprop_success_restored">%1$s berhasil dipulihkan dari backup</string>
     <string name="buildprop_error_root_unavailable">Akses root tidak tersedia</string>
-    <string name="buildprop_error_backup_failed">Gagal membuat backup %1$s perubahan dibatalkan demi keamanan</string>
+    <string name="buildprop_error_backup_failed">Gagal membuat backup %1$s. Perubahan dibatalkan</string>
     <string name="buildprop_error_apply_failed">Gagal menerapkan %1$s</string>
     <string name="buildprop_error_restore_failed">Gagal memulihkan %1$s</string>
     <string name="tweak_kill_background_apps">Bersihkan Aplikasi Background</string>
-    <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga yang berjalan di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan, bukan status permanen. Butuh akses root.</string>
+    <string name="tweak_kill_background_apps_desc">Hentikan paksa aplikasi pihak ketiga di background untuk membebaskan RAM/CPU sebelum main. Aksi sekali jalan. Butuh akses root.</string>
     <string name="tweak_vm_heap_boost">VM Heap Boost</string>
-    <string name="tweak_vm_heap_boost_desc">Perbesar batas heap Dalvik/ART supaya garbage collector lebih jarang menyebabkan jeda saat bermain. Berlaku untuk proses yang baru dimulai. Butuh akses root.</string>
+    <string name="tweak_vm_heap_boost_desc">Perbesar batas heap Dalvik/ART supaya garbage collector jarang menyebabkan jeda saat bermain. Butuh akses root.</string>
     <string name="tweak_doze_disabled">Nonaktifkan Doze/App Standby</string>
     <string name="tweak_doze_disabled_desc">Cegah sistem membekukan proses game atau service background (voice chat, download aset) saat perangkat idle sesaat. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
     <string name="tweak_no_access_toast">Sambungkan ADB tertanam atau Root dulu di layar Izin Akses</string>
-    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Koneksi ADB tertanam sempat terputus dan sudah dicoba disambungkan ulang otomatis — coba tekan sekali lagi</string>
+    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Koneksi ADB sempat terputus dan sudah dicoba disambungkan ulang, coba tekan sekali lagi</string>
     <string name="tweak_kill_background_toast">Aplikasi background dibersihkan</string>
 
     <!-- Tweak screen game launcher -->
@@ -617,19 +617,19 @@
          untuk setiap hasil aksi pairing/koneksi ADB tertanam & root,
          ditampilkan lewat Snackbar menggantikan silent-fail yang
          membuat tombol terasa "tidak merespon". -->
-    <string name="permission_feedback_adb_wireless_debugging_off">Wireless debugging tampaknya belum aktif. Aktifkan dulu di Pengaturan &gt; Opsi Developer &gt; Wireless debugging, lalu coba lagi.</string>
+    <string name="permission_feedback_adb_wireless_debugging_off">Wireless debugging belum aktif. Aktifkan di Pengaturan > Opsi Developer, lalu coba lagi.</string>
     <!-- FITUR BARU — Auto-Pairing (lihat AdbConnectionState.AUTO_DISCOVERY_TIMEOUT):
          string ini WAJIB ada, dipakai PermissionSetupScreen.kt untuk
          menampilkan Snackbar saat proses "Searching for Pairing…" tidak
          pernah menemukan service pairing dalam batas waktu. -->
-    <string name="permission_feedback_adb_auto_discovery_timeout">Tidak menemukan Wireless debugging di jaringan ini. Pastikan sudah membuka \"Pasangkan perangkat dengan kode pairing\" dan memakai Wi-Fi yang sama, lalu tekan Start lagi.</string>
-    <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing di Wireless debugging untuk kode baru.</string>
-    <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung — pastikan Wireless debugging masih aktif di Opsi Developer, lalu coba lagi. Pairing sebelumnya tetap tersimpan, tidak perlu diulang dari awal.</string>
-    <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Kemungkinan izin debugging pernah dicabut manual lakukan pairing ulang dari awal.</string>
+    <string name="permission_feedback_adb_auto_discovery_timeout">Tidak menemukan Wireless debugging di jaringan ini. Pastikan dialog pairing terbuka dan Wi-Fi sama, lalu tekan Start lagi.</string>
+    <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing untuk kode baru.</string>
+    <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung. Pastikan Wireless debugging masih aktif, lalu coba lagi. Pairing sebelumnya tetap tersimpan.</string>
+    <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Izin debugging mungkin pernah dicabut, lakukan pairing ulang.</string>
     <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan Wireless Debugging. Coba lagi.</string>
     <string name="permission_feedback_adb_in_progress">Proses Wireless Debugging masih berjalan, tunggu sebentar.</string>
     <string name="permission_feedback_adb_granted">Wireless Debugging terhubung.</string>
-    <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch sudah terpasang dan coba lagi.</string>
+    <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch terpasang, lalu coba lagi.</string>
     <string name="permission_feedback_root_in_progress">Permintaan akses root masih diproses, tunggu sebentar.</string>
     <string name="permission_feedback_root_granted">Akses root aktif.</string>
     <string name="setup_action_requesting">Meminta…</string>
