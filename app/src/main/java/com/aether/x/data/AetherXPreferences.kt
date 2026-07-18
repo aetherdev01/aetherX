@@ -206,14 +206,15 @@ class AetherXPreferences(private val context: Context) {
         val FPS_MONITOR_OFFSET_X = intPreferencesKey("fps_monitor_offset_x")
         val FPS_MONITOR_OFFSET_Y = intPreferencesKey("fps_monitor_offset_y")
 
-        // ID pengguna lokal (mis. "ID-67128") yang ditampilkan sebagai pengganti
-        // status ADB/Root di tab Tweak. Dibuat sekali secara acak lalu
+        // ID pengguna lokal (mis. "ID-K3p9X2q7") yang ditampilkan sebagai
+        // pengganti status ADB/Root di tab Tweak. String 8 karakter acak
+        // (6 digit angka + 2 huruf besar/kecil campur) — dibuat sekali lalu
         // disimpan permanen di perangkat supaya nilainya konsisten setiap dibuka.
-        val USER_ID = intPreferencesKey("user_id")
+        val USER_ID = stringPreferencesKey("user_id")
 
-        // true kalau USER_ID di atas adalah nomor urut ASLI hasil alokasi dari
-        // counter Firestore (lihat UserIdRepository) — bukan sekadar angka acak
-        // fallback lokal yang dibuat saat offline.
+        // true kalau USER_ID di atas adalah ID ASLI hasil alokasi dari
+        // Firestore (lihat UserIdRepository) — bukan sekadar nilai fallback
+        // lokal yang dibuat saat offline.
         val USER_ID_SYNCED = booleanPreferencesKey("user_id_synced")
 
         // ── Dialog AdBlock (lihat AdBlockDialogState) ──
@@ -448,14 +449,14 @@ class AetherXPreferences(private val context: Context) {
         }
     }
 
-    /** ID urut asli hasil alokasi Firestore, kalau sudah pernah berhasil disinkronkan. */
-    suspend fun getSyncedUserId(): Int? {
+    /** ID asli hasil alokasi Firestore, kalau sudah pernah berhasil disinkronkan. */
+    suspend fun getSyncedUserId(): String? {
         val prefs = context.dataStore.data.first()
         return if (prefs[Keys.USER_ID_SYNCED] == true) prefs[Keys.USER_ID] else null
     }
 
-    /** Menyimpan ID urut asli dari Firestore sebagai nilai permanen ID pengguna. */
-    suspend fun setSyncedUserId(id: Int) {
+    /** Menyimpan ID asli dari Firestore sebagai nilai permanen ID pengguna. */
+    suspend fun setSyncedUserId(id: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.USER_ID] = id
             prefs[Keys.USER_ID_SYNCED] = true

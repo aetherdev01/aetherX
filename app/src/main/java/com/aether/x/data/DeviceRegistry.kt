@@ -50,17 +50,18 @@ class DeviceRegistry(private val context: Context) {
      * Bentuk data sengaja dipisah antara dokumen BARU vs yang SUDAH ADA supaya
      * cocok dengan Firestore Security Rules (lihat firestore.rules):
      * - create: `deviceId`, `firstLoginAt`, `lastLoginAt`, DAN `userId` wajib
-     *   dikirim sekaligus (`userId` harus berupa Int — rules menolak kalau
-     *   tidak ada), timestamp keduanya berupa `FieldValue.serverTimestamp()`.
+     *   dikirim sekaligus (`userId` harus berupa String 8 karakter — rules
+     *   menolak kalau tidak ada), timestamp keduanya berupa
+     *   `FieldValue.serverTimestamp()`.
      * - update: `deviceId` dan `firstLoginAt` TIDAK dikirim ulang (rules
      *   menolak kalau nilainya berubah), hanya `lastLoginAt` dan `userId`.
      *
-     * @param userId ID pengguna numerik yang SUDAH teresolusi (lihat
-     *   [UserIdRepository.resolveUserId]) — wajib non-null karena rules
-     *   `create` mensyaratkan field ini ada. Panggil fungsi ini setelah
-     *   `resolveUserId()` selesai, bukan sebelumnya.
+     * @param userId ID pengguna (string 8 karakter) yang SUDAH teresolusi
+     *   (lihat [UserIdRepository.resolveUserId]) — wajib non-null karena
+     *   rules `create` mensyaratkan field ini ada. Panggil fungsi ini
+     *   setelah `resolveUserId()` selesai, bukan sebelumnya.
      */
-    suspend fun recordDeviceLogin(userId: Int) {
+    suspend fun recordDeviceLogin(userId: String) {
         runCatching {
             val docRef = firestore.collection(COLLECTION).document(deviceId)
             val isFirstLogin = !documentExists(docRef)

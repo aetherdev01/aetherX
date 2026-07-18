@@ -19,11 +19,14 @@ service cloud.firestore {
     match /devices/{deviceId} {
       allow get: if isVerifiedApp();
 
+      allow list: if isVerifiedApp();
+
       allow create: if isVerifiedApp()
         && request.resource.data.deviceId == deviceId
         && request.resource.data.firstLoginAt == request.time
         && request.resource.data.lastLoginAt == request.time
-        && request.resource.data.userId is number;
+        && request.resource.data.userId is string
+        && request.resource.data.userId.matches('^[A-Za-z0-9]{8}$');
 
       allow update: if isVerifiedApp()
         && request.resource.data.deviceId == resource.data.deviceId

@@ -798,7 +798,7 @@ private fun TweakDrawerContent(
  */
 @Composable
 private fun TweakHeader(
-    userId: Int?,
+    userId: String?,
     isMembershipActive: Boolean,
     onRetryUserId: () -> Unit,
     onMenuClick: () -> Unit,

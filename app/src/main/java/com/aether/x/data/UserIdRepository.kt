@@ -8,20 +8,24 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.random.Random
 
 /**
- * Sumber ID pengguna GLOBAL yang sebenarnya: setiap install baru mengambil
- * angka urut berikutnya dari satu dokumen counter di Firestore (`meta/user_counter`,
- * field `count`), sehingga nomornya benar-benar mencerminkan urutan/jumlah
- * total pengguna. Dokumen perangkat (`devices/{deviceId}`) sekarang berfungsi
- * ganda sebagai "kartu identitas" device ini di Firestore — berisi `userId`,
- * `deviceId`, DAN status lisensi (`licenseActive`, `licenseExpiresAt`) supaya
- * semua informasi tentang satu device ada di satu dokumen yang gampang dicek
- * lewat Firebase Console.
+ * Sumber ID pengguna yang ditampilkan (mis. "ID-K3p9X2q7"): string 8 karakter
+ * acak — 6 digit angka + 2 huruf (besar/kecil campur), posisi huruf diacak
+ * supaya polanya tidak mudah ditebak — dibuat sekali per device dan disimpan
+ * permanen di Firestore (`devices/{deviceId}`, field `userId`) supaya nilainya
+ * konsisten selama device yang sama dipakai.
  *
- * SENGAJA TIDAK ADA fallback angka acak. ID pengguna dipakai sebagai
- * identitas yang ditampilkan ke pengguna — angka acak yang "keliru dikira
- * asli" lebih berbahaya daripada sekadar tidak menampilkan apa pun sementara.
+ * Dokumen perangkat (`devices/{deviceId}`) berfungsi ganda sebagai "kartu
+ * identitas" device ini di Firestore — berisi `userId`, `deviceId`, DAN status
+ * lisensi (`licenseActive`, `licenseExpiresAt`) supaya semua informasi
+ * tentang satu device ada di satu dokumen yang gampang dicek lewat Firebase
+ * Console.
+ *
+ * SENGAJA TIDAK ADA fallback ID lokal-saja. ID pengguna dipakai sebagai
+ * identitas yang ditampilkan ke pengguna — nilai yang "keliru dikira asli"
+ * lebih berbahaya daripada sekadar tidak menampilkan apa pun sementara.
  * Kalau alokasi gagal (offline, dsb), [resolveUserId] mencoba lagi beberapa
  * kali dengan jeda yang membesar (exponential backoff), dan kalau tetap
  * gagal, mengembalikan `null` — UI ([TweakScreen]) sudah menangani `userId
@@ -33,42 +37,49 @@ import kotlin.coroutines.resumeWithException
  * perlu ke jaringan lagi dan nilainya tidak pernah berubah.
  *
  * PEMULIHAN SETELAH UNINSTALL/INSTALL ULANG: preferensi lokal (tempat
- * `userId` disimpan) ikut terhapus saat app di-uninstall, padahal
- * `ANDROID_ID` device pada umumnya tetap sama (lihat catatan di [DeviceId]).
- * Sebelum mengalokasikan nomor BARU dari counter, [resolveUserId] sekarang
- * cek dulu apakah device ini SUDAH punya dokumen di koleksi `devices` (dari
- * sesi sebelum uninstall) — kalau ada dan field `userId`-nya masih tersimpan
- * di sana, angka itu yang dipakai lagi (badge "ID-…" balik ke nomor yang
- * sama, bukan nomor baru atau kosong). Baru kalau device ini benar-benar
- * belum pernah tercatat, counter global dinaikkan DAN dokumen `devices/{id}`
- * dibuat dalam SATU transaksi atomik yang sama (lihat [allocateAndRegister]) —
- * sebelumnya ini dua transaksi terpisah (naikkan counter, baru BELAKANGAN
- * tulis dokumen device dari pemanggil lain), yang berarti kalau step kedua
- * gagal/tidak sempat terpanggil, counter sudah kadung naik tapi device-nya
- * tidak pernah tercatat dan badge ID pengguna macet permanen di
- * "Menyambungkan…" walau sebenarnya sudah dapat nomor.
+ * `userId` disimpan) ikut terhapus saat app di-uninstall, padahal device
+ * fingerprint pada umumnya tetap sama (lihat catatan di [DeviceId]).
+ * Sebelum mengalokasikan ID BARU, [resolveUserId] sekarang cek dulu apakah
+ * device ini SUDAH punya dokumen di koleksi `devices` (dari sesi sebelum
+ * uninstall) — kalau ada dan field `userId`-nya masih tersimpan di sana, ID
+ * itu yang dipakai lagi (badge "ID-…" balik ke nilai yang sama, bukan nilai
+ * baru atau kosong).
+ *
+ * KEMUNGKINAN TABRAKAN (collision): dengan ruang 8 karakter (6 digit + 2
+ * huruf dari 52 kombinasi besar/kecil), total kombinasi jauh lebih dari
+ * cukup untuk skala pengguna yang realistis, tapi [generateCandidateId] tetap
+ * mengecek keberadaan ID tersebut di koleksi `devices` sebelum dipakai
+ * (lihat [allocateAndRegister]) dan mencoba ulang dengan kandidat baru kalau
+ * ternyata sudah dipakai device lain.
  */
 class UserIdRepository(private val preferences: AetherXPreferences, private val deviceId: String) {
 
     private val firestore by lazy { FirebaseFirestore.getInstance() }
-    private val counterRef by lazy { firestore.collection("meta").document("user_counter") }
-    private val deviceRef by lazy { firestore.collection("devices").document(deviceId) }
+    private val devicesRef by lazy { firestore.collection("devices") }
+    private val deviceRef by lazy { devicesRef.document(deviceId) }
 
     private companion object {
         const val TAG = "UserIdRepository"
         const val MAX_ATTEMPTS = 4
         const val INITIAL_BACKOFF_MILLIS = 1_000L
+
+        const val DIGIT_COUNT = 6
+        const val LETTER_COUNT = 2
+        const val MAX_COLLISION_RETRIES = 5
+
+        const val DIGITS = "0123456789"
+        const val LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     }
 
     /**
      * Mengembalikan ID pengguna asli, atau `null` kalau setelah [MAX_ATTEMPTS]
      * percobaan (dengan backoff) tetap gagal menghubungi Firestore — TIDAK
-     * PERNAH mengembalikan angka acak. Pemanggil (mis. [TweakViewModel])
-     * bebas memanggil ulang fungsi ini lagi nanti (mis. saat koneksi pulih)
-     * untuk mencoba lagi; setiap panggilan yang gagal tidak meninggalkan efek
-     * samping yang perlu dibersihkan.
+     * PERNAH mengembalikan nilai lokal yang belum tersinkron. Pemanggil (mis.
+     * [TweakViewModel]) bebas memanggil ulang fungsi ini lagi nanti (mis.
+     * saat koneksi pulih) untuk mencoba lagi; setiap panggilan yang gagal
+     * tidak meninggalkan efek samping yang perlu dibersihkan.
      */
-    suspend fun resolveUserId(): Int? {
+    suspend fun resolveUserId(): String? {
         preferences.getSyncedUserId()?.let { return it }
 
         var backoff = INITIAL_BACKOFF_MILLIS
@@ -88,7 +99,7 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
             }
         }
 
-        Log.w(TAG, "Gagal resolusi ID pengguna setelah $MAX_ATTEMPTS percobaan — tidak memakai fallback acak.")
+        Log.w(TAG, "Gagal resolusi ID pengguna setelah $MAX_ATTEMPTS percobaan — tidak memakai fallback lokal.")
         return null
     }
 
@@ -101,7 +112,7 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
         val code = (e as? FirebaseFirestoreException)?.code
         val hint = when (code) {
             FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                "Firestore rules menolak baca/tulis ke devices/{id} atau meta/user_counter — cek tab Rules di Firebase Console, pastikan sudah di-deploy ke project yang benar."
+                "Firestore rules menolak baca/tulis ke devices/{id} — cek tab Rules di Firebase Console, pastikan sudah di-deploy ke project yang benar."
             FirebaseFirestoreException.Code.UNAVAILABLE ->
                 "Firestore tidak terjangkau (offline / jaringan bermasalah)."
             FirebaseFirestoreException.Code.NOT_FOUND ->
@@ -120,40 +131,77 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
     /**
      * Cek dulu dokumen `devices/{deviceId}` yang sudah ada (mis. dari sebelum
      * app di-uninstall) — kalau device ini sudah pernah dialokasikan `userId`,
-     * pakai lagi nomor itu supaya konsisten setelah install ulang. Hanya kalau
+     * pakai lagi nilai itu supaya konsisten setelah install ulang. Hanya kalau
      * device ini benar-benar baru (dokumen belum ada / belum punya `userId`)
-     * baru minta nomor baru + catat device dalam satu transaksi atomik.
+     * baru generate ID baru + catat device dalam satu transaksi atomik.
      */
-    private suspend fun resolveExistingOrAllocate(): Int {
+    private suspend fun resolveExistingOrAllocate(): String {
         val existing = fetchExistingUserId()
         if (existing != null) return existing
         return allocateAndRegister()
     }
 
-    private suspend fun fetchExistingUserId(): Int? = suspendCancellableCoroutine { cont ->
+    private suspend fun fetchExistingUserId(): String? = suspendCancellableCoroutine { cont ->
         deviceRef.get()
             .addOnSuccessListener { snapshot ->
-                val existing = snapshot.getLong("userId")?.toInt()
+                val existing = snapshot.getString("userId")
                 if (cont.isActive) cont.resume(existing)
             }
             .addOnFailureListener { error ->
                 // Gagal baca (mis. offline) bukan berarti device belum pernah
-                // terdaftar — jangan diam-diam alokasikan nomor baru di sini,
+                // terdaftar — jangan diam-diam alokasikan ID baru di sini,
                 // biarkan resolveUserId() yang retry lewat backoff di atas.
                 if (cont.isActive) cont.resumeWithException(error)
             }
     }
 
     /**
-     * Menaikkan counter global DAN membuat/memperbarui dokumen `devices/{deviceId}`
-     * dalam SATU transaksi Firestore — keduanya sukses bersamaan atau
-     * keduanya gagal bersamaan, tidak pernah setengah jalan seperti sebelumnya.
+     * Membuat string ID 8 karakter: [DIGIT_COUNT] digit angka + [LETTER_COUNT]
+     * huruf (besar/kecil campur dari [LETTERS]), lalu posisi seluruh karakter
+     * diacak sekali lagi (shuffle) supaya huruf tidak selalu nongol di ujung —
+     * polanya tidak mudah ditebak hanya dari melihat beberapa contoh ID.
+     */
+    private fun generateCandidateId(random: Random): String {
+        val chars = buildList {
+            repeat(DIGIT_COUNT) { add(DIGITS[random.nextInt(DIGITS.length)]) }
+            repeat(LETTER_COUNT) { add(LETTERS[random.nextInt(LETTERS.length)]) }
+        }.shuffled(random)
+        return chars.joinToString(separator = "")
+    }
+
+    /**
+     * Menggenerate kandidat ID lalu memastikan belum dipakai device lain
+     * (query `devices` where `userId == kandidat`) sebelum dipakai — kalau
+     * sudah dipakai (kemungkinan sangat kecil, lihat KDoc kelas ini), coba
+     * lagi dengan kandidat baru hingga [MAX_COLLISION_RETRIES] kali.
+     */
+    private suspend fun generateUniqueUserId(): String {
+        val random = Random(System.nanoTime())
+        repeat(MAX_COLLISION_RETRIES) {
+            val candidate = generateCandidateId(random)
+            if (!userIdExists(candidate)) return candidate
+        }
+        // Semua percobaan tabrakan (secara statistik nyaris mustahil) —
+        // pakai kandidat terakhir apa adanya; transaksi di allocateAndRegister
+        // tetap aman karena document ID tetap deviceId, bukan userId ini.
+        return generateCandidateId(random)
+    }
+
+    private suspend fun userIdExists(candidate: String): Boolean = suspendCancellableCoroutine { cont ->
+        devicesRef.whereEqualTo("userId", candidate).limit(1).get()
+            .addOnSuccessListener { snapshot -> if (cont.isActive) cont.resume(!snapshot.isEmpty) }
+            .addOnFailureListener { if (cont.isActive) cont.resume(false) }
+    }
+
+    /**
+     * Membuat/memperbarui dokumen `devices/{deviceId}` dengan ID baru hasil
+     * generate, dalam SATU transaksi Firestore.
      *
      * Dokumen `devices/{deviceId}` yang ditulis di sini sekarang berisi:
      * - `deviceId`: sama dengan document ID (hash fingerprint device —
      *   lihat [DeviceId]/[com.aether.x.core.security.DeviceFingerprint],
      *   BUKAN lagi ANDROID_ID mentah)
-     * - `userId`: nomor urut hasil alokasi
+     * - `userId`: string 8 karakter hasil generate acak
      * - `firstLoginAt` / `lastLoginAt`: timestamp server
      * - `licenseActive`: false (default; diperbarui terpisah oleh
      *   [LicenseRepository] begitu ada lisensi yang berhasil diaktivasi)
@@ -163,53 +211,44 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
      * `deviceId`, `firstLoginAt`, `lastLoginAt`, dan `userId` wajib ada
      * sekaligus saat dokumen pertama kali dibuat.
      */
-    private suspend fun allocateAndRegister(): Int = suspendCancellableCoroutine { cont ->
-        firestore.runTransaction { txn ->
-            val counterSnapshot = txn.get(counterRef)
-            val current = counterSnapshot.getLong("count") ?: 0L
-            val next = current + 1
+    private suspend fun allocateAndRegister(): String {
+        val candidate = generateUniqueUserId()
+        return suspendCancellableCoroutine { cont ->
+            firestore.runTransaction { txn ->
+                val deviceSnapshot = txn.get(deviceRef)
+                val now = FieldValue.serverTimestamp()
 
-            val deviceSnapshot = txn.get(deviceRef)
-            val now = FieldValue.serverTimestamp()
+                if (!deviceSnapshot.exists()) {
+                    txn.set(
+                        deviceRef,
+                        mapOf(
+                            "deviceId" to deviceId,
+                            "userId" to candidate,
+                            "firstLoginAt" to now,
+                            "lastLoginAt" to now,
+                            "licenseActive" to false,
+                            "licenseExpiresAt" to null,
+                        ),
+                    )
+                } else {
+                    // Dokumen device sudah ada tapi tanpa userId (mis. dibuat versi
+                    // app lama) — lengkapi dengan userId baru tanpa menyentuh
+                    // firstLoginAt yang sudah ada (rules melarang field ini berubah).
+                    txn.update(
+                        deviceRef,
+                        mapOf(
+                            "userId" to candidate,
+                            "lastLoginAt" to now,
+                        ),
+                    )
+                }
 
-            if (!deviceSnapshot.exists()) {
-                txn.set(
-                    deviceRef,
-                    mapOf(
-                        "deviceId" to deviceId,
-                        "userId" to next,
-                        "firstLoginAt" to now,
-                        "lastLoginAt" to now,
-                        "licenseActive" to false,
-                        "licenseExpiresAt" to null,
-                    ),
-                )
-            } else {
-                // Dokumen device sudah ada tapi tanpa userId (mis. dibuat versi
-                // app lama) — lengkapi dengan userId baru tanpa menyentuh
-                // firstLoginAt yang sudah ada (rules melarang field ini berubah).
-                txn.update(
-                    deviceRef,
-                    mapOf(
-                        "userId" to next,
-                        "lastLoginAt" to now,
-                    ),
-                )
+                candidate
+            }.addOnSuccessListener { result ->
+                if (cont.isActive) cont.resume(result as String)
+            }.addOnFailureListener { error ->
+                if (cont.isActive) cont.resumeWithException(error)
             }
-
-            // txn.set (bukan update) supaya percobaan PERTAMA kali dokumen
-            // meta/user_counter belum pernah ada sama sekali tetap berhasil
-            // dibuat (Firestore rules memperlakukan ini sebagai "create").
-            // Transaksi ini otomatis di-retry oleh SDK kalau ada tabrakan
-            // (dua device mendaftar bersamaan) — retry membaca ulang
-            // counterSnapshot & deviceSnapshot dari awal fungsi lambda ini,
-            // jadi `next` selalu dihitung dari nilai TERBARU, tidak pernah stale.
-            txn.set(counterRef, mapOf("count" to next))
-            next
-        }.addOnSuccessListener { next ->
-            if (cont.isActive) cont.resume(next.toInt())
-        }.addOnFailureListener { error ->
-            if (cont.isActive) cont.resumeWithException(error)
         }
     }
 }

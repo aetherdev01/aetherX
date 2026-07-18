@@ -41,7 +41,7 @@ data class TweakUiState(
     val dozeDisabled: Boolean = false,
     val message: String? = null,
     val detectedGames: List<DetectedGame> = emptyList(),
-    val userId: Int? = null,
+    val userId: String? = null,
     val isMembershipActive: Boolean = false,
 )
 
