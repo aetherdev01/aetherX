@@ -292,9 +292,9 @@
     <string name="app_manager_empty">Tidak ada aplikasi yang cocok</string>
     <string name="app_manager_status_frozen">Dinonaktifkan</string>
     <string name="app_manager_status_active">Aktif</string>
-    <string name="app_manager_error_root_unavailable">Akses root tidak tersedia</string>
-    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s</string>
-    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s</string>
+    <string name="app_manager_error_root_unavailable">Sambungkan ADB tertanam atau Root dulu di layar Izin Akses</string>
+    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Sebagian perangkat menolak perintah ini tanpa akses Root — coba pakai Root jika ADB tidak berhasil</string>
+    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Sebagian perangkat menolak perintah ini tanpa akses Root — coba pakai Root jika ADB tidak berhasil</string>
     <string name="app_manager_more_options_cd">Opsi lainnya</string>
     <string name="app_manager_action_force_stop">Force Stop</string>
     <string name="app_manager_action_clear_cache">Bersihkan Cache</string>
@@ -341,8 +341,8 @@
     <string name="tweak_doze_disabled_desc">Cegah sistem membekukan proses game atau service background (voice chat, download aset) saat perangkat idle sesaat. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
-    <string name="tweak_no_access_toast">Aktifkan Shizuku atau Root dulu</string>
-    <string name="tweak_command_failed_toast">Perintah gagal dijalankan di perangkat ini coba lagi atau periksa akses Shizuku/Root</string>
+    <string name="tweak_no_access_toast">Sambungkan ADB tertanam atau Root dulu di layar Izin Akses</string>
+    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Koneksi ADB tertanam sempat terputus dan sudah dicoba disambungkan ulang otomatis — coba tekan sekali lagi</string>
     <string name="tweak_kill_background_toast">Aplikasi background dibersihkan</string>
 
     <!-- Tweak screen game launcher -->

@@ -426,6 +426,34 @@ object AdbConnectionManager {
     fun isConnected(): Boolean = _state.value == AdbConnectionState.Connected && ::connection.isInitialized && connection.isConnected
 
     /**
+     * FIX (Tweak selalu menampilkan "Perintah gagal dijalankan" walau
+     * status Izin Akses terlihat "Terhubung"): [connection.isConnected]
+     * milik libadb-android hanya mencerminkan status socket TCP terakhir
+     * yang DIKETAHUI library, bukan hasil ping aktif — begitu koneksi
+     * putus diam-diam di background (layar mati lama, Wireless debugging
+     * dimatikan sebentar, perangkat pindah jaringan Wi-Fi), [isConnected]
+     * bisa saja masih melaporkan `true` sampai percobaan `openStream`
+     * BERIKUTNYA benar-benar gagal — sehingga [_state] tetap [Connected]
+     * padahal socket sudah mati, dan setiap tweak yang dicoba SELALU
+     * gagal tanpa penjelasan yang akurat ke pengguna (toast generik yang
+     * menyuruh "periksa akses" padahal UI menunjukkan status tersambung).
+     *
+     * Dipanggil oleh [com.aether.x.core.shell.EmbeddedShellExecutor] tiap
+     * kali [execShell] melempar exception I/O — menandai state SEBENARNYA
+     * ([PairedNotConnected], BUKAN [AdbConnectionState.Failed] supaya
+     * tidak memicu notifikasi pairing error yang tidak perlu) lalu memicu
+     * [autoReconnect] di background supaya percobaan tweak BERIKUTNYA
+     * (setelah pengguna menekan tombolnya lagi) punya peluang berhasil
+     * tanpa pengguna perlu bolak-balik ke layar Izin Akses secara manual.
+     */
+    fun markStreamFailureAndReconnect() {
+        if (_state.value == AdbConnectionState.Connected) {
+            _state.value = AdbConnectionState.PairedNotConnected
+        }
+        autoReconnect()
+    }
+
+    /**
      * "Lupakan perangkat ini" — dipanggil HANYA dari aksi eksplisit
      * pengguna di layar Izin Akses / Pengaturan. Menutup koneksi aktif,
      * menghapus host:port tersimpan, DAN menghapus keypair+certificate
