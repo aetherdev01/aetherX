@@ -8,13 +8,14 @@ project("aetherX")
 # flag ini menyembunyikan SEMUA simbol secara default KECUALI yang eksplisit
 # ditandai __attribute__((visibility("default"))) — makro JNIEXPORT dari NDK
 # sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, nvint, ndns,
-# dan nmod (semuanya dideklarasikan pakai JNIEXPORT — dua yang terakhir
-# ditambahkan di adblockguard.cpp, lihat file itu), jadi tetap bisa dipanggil
-# JVM/RegisterNatives walau visibility default project ini hidden. (nvpn
-# SUDAH DIHAPUS — deteksi VPN pindah ke ConnectivityManager di Kotlin, lihat
-# AdBlockDetector.kt.) Fungsi non-JNI lain (constantTimeEquals, fnv1a64, dkk
-# di dalam namespace anonim) TETAP tersembunyi seperti sebelumnya — tidak
-# ada regresi di situ.
+# nmod, dan nfgp (semuanya dideklarasikan pakai JNIEXPORT — ndns/nmod
+# ditambahkan di adblockguard.cpp, nfgp di devicefingerprint.cpp, lihat
+# file masing-masing), jadi tetap bisa dipanggil JVM/RegisterNatives walau
+# visibility default project ini hidden. (nvpn SUDAH DIHAPUS — deteksi VPN
+# pindah ke ConnectivityManager di Kotlin, lihat AdBlockDetector.kt.)
+# Fungsi non-JNI lain (constantTimeEquals, fnv1a64, sha256/hmacSha256, dkk
+# di dalam namespace anonim/common.h) TETAP tersembunyi seperti sebelumnya —
+# tidak ada regresi di situ.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong")
@@ -31,6 +32,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     sigcheck.cpp
     integrityguard.cpp
     adblockguard.cpp
+    devicefingerprint.cpp
     jni_onload.cpp
 )
 

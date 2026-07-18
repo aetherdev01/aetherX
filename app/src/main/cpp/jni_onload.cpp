@@ -27,6 +27,13 @@ const JNINativeMethod kAdBlockDetectorMethods[] = {
     {"nativeMatchAdBlockModule", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nmod)},
 };
 
+// Device fingerprint (lihat devicefingerprint.h/.cpp) — dipakai
+// DeviceFingerprint.kt untuk menurunkan deviceId yang dikunci lisensi,
+// menggantikan ANDROID_ID mentah.
+const JNINativeMethod kDeviceFingerprintMethods[] = {
+    {"nativeDeriveFingerprint", "([B)[B", reinterpret_cast<void*>(nfgp)},
+};
+
 bool registerClass(JNIEnv* env, const char* classBinaryName,
                     const JNINativeMethod* methods, int methodCount) {
     jclass clazz = env->FindClass(classBinaryName);
@@ -70,6 +77,16 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         __android_log_print(
             ANDROID_LOG_WARN, LOG_TAG,
             "");
+    }
+
+    const bool fingerprintOk = registerClass(
+        env, "com/aether/x/core/security/DeviceFingerprint",
+        kDeviceFingerprintMethods,
+        sizeof(kDeviceFingerprintMethods) / sizeof(kDeviceFingerprintMethods[0]));
+    if (!fingerprintOk) {
+        __android_log_print(
+            ANDROID_LOG_WARN, LOG_TAG,
+            "DeviceFingerprint native registration failed");
     }
 
     return JNI_VERSION_1_6;

@@ -15,4 +15,9 @@ JNIEXPORT jint JNICALL nvint(JNIEnv* env, jobject thiz);
 JNIEXPORT jboolean JNICALL ndns(JNIEnv* env, jobject thiz, jobjectArray dnsServers);
 JNIEXPORT jboolean JNICALL nmod(JNIEnv* env, jobject thiz, jstring moduleListing);
 
+// nfgp: turunan device fingerprint hash (HMAC-SHA256) dari identifier
+// perangkat mentah — lihat devicefingerprint.h/.cpp untuk kontrak dan
+// alasan lengkap, dan DeviceFingerprint.kt untuk sisi pemanggil.
+JNIEXPORT jbyteArray JNICALL nfgp(JNIEnv* env, jobject thiz, jbyteArray rawInput);
+
 }

@@ -150,7 +150,9 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
      * keduanya gagal bersamaan, tidak pernah setengah jalan seperti sebelumnya.
      *
      * Dokumen `devices/{deviceId}` yang ditulis di sini sekarang berisi:
-     * - `deviceId`: sama dengan document ID (ANDROID_ID)
+     * - `deviceId`: sama dengan document ID (hash fingerprint device —
+     *   lihat [DeviceId]/[com.aether.x.core.security.DeviceFingerprint],
+     *   BUKAN lagi ANDROID_ID mentah)
      * - `userId`: nomor urut hasil alokasi
      * - `firstLoginAt` / `lastLoginAt`: timestamp server
      * - `licenseActive`: false (default; diperbarui terpisah oleh
