@@ -7,12 +7,14 @@ project("aetherX")
 # CATATAN soal -fvisibility=hidden + RegisterNatives (lihat jni_onload.cpp):
 # flag ini menyembunyikan SEMUA simbol secara default KECUALI yang eksplisit
 # ditandai __attribute__((visibility("default"))) — makro JNIEXPORT dari NDK
-# sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, nvint, nvpn,
-# ndns, dan nmod (semuanya dideklarasikan pakai JNIEXPORT — tiga yang
-# terakhir ditambahkan di adblockguard.cpp, lihat file itu), jadi tetap bisa
-# dipanggil JVM/RegisterNatives walau visibility default project ini hidden.
-# Fungsi non-JNI lain (constantTimeEquals, fnv1a64, dkk di dalam namespace
-# anonim) TETAP tersembunyi seperti sebelumnya — tidak ada regresi di situ.
+# sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, nvint, ndns,
+# dan nmod (semuanya dideklarasikan pakai JNIEXPORT — dua yang terakhir
+# ditambahkan di adblockguard.cpp, lihat file itu), jadi tetap bisa dipanggil
+# JVM/RegisterNatives walau visibility default project ini hidden. (nvpn
+# SUDAH DIHAPUS — deteksi VPN pindah ke ConnectivityManager di Kotlin, lihat
+# AdBlockDetector.kt.) Fungsi non-JNI lain (constantTimeEquals, fnv1a64, dkk
+# di dalam namespace anonim) TETAP tersembunyi seperti sebelumnya — tidak
+# ada regresi di situ.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong")
@@ -54,7 +56,7 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Strip simbol non-dynamic setelah link, konsisten di semua ABI supaya hasil
 # arm64-v8a tetap fully stripped seperti build v7a (nm hanya menyisakan
-# JNI_OnLoad, nvfy, nvfy2, nvint, nvpn, ndns, nmod).
+# JNI_OnLoad, nvfy, nvfy2, nvint, ndns, nmod — nvpn sudah dihapus).
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
 )

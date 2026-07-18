@@ -62,7 +62,7 @@ class InterstitialAdGate(
 
         val adBlockSignals = AdBlockDetector.detect(activity)
         if (adBlockSignals.anyDetected) {
-            AdBlockDialogState.requestShow()
+            AdBlockDialogState.requestShow(activity, adBlockSignals)
             return // TIDAK mencoba tampilkan iklan yang toh kemungkinan diblokir
         }
 

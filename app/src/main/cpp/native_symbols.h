@@ -9,7 +9,9 @@ JNIEXPORT jboolean JNICALL nvfy2(JNIEnv* env, jobject thiz, jbyteArray actualHas
 
 JNIEXPORT jint JNICALL nvint(JNIEnv* env, jobject thiz);
 
-JNIEXPORT jboolean JNICALL nvpn(JNIEnv* env, jobject thiz);
+// nvpn (deteksi VPN via getifaddrs) SUDAH DIHAPUS — lihat catatan di
+// adblockguard.cpp kenapa deteksi VPN pindah sepenuhnya ke
+// ConnectivityManager/NetworkCapabilities di Kotlin (AdBlockDetector.kt).
 JNIEXPORT jboolean JNICALL ndns(JNIEnv* env, jobject thiz, jobjectArray dnsServers);
 JNIEXPORT jboolean JNICALL nmod(JNIEnv* env, jobject thiz, jstring moduleListing);
 

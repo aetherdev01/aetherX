@@ -216,6 +216,18 @@ class AetherXPreferences(private val context: Context) {
         // fallback lokal yang dibuat saat offline.
         val USER_ID_SYNCED = booleanPreferencesKey("user_id_synced")
 
+        // ── Dialog AdBlock (lihat AdBlockDialogState) ──
+        // Dipersist (bukan cuma in-memory/shownThisSession) supaya "Tutup"
+        // benar-benar berarti tutup — tidak nongol lagi setiap kali app
+        // dibuka ulang selama sinyal adblock masih SAMA seperti terakhir
+        // kali pengguna menutupnya. Menyimpan SNAPSHOT sinyal (bukan cuma
+        // boolean "pernah ditutup") supaya kalau pengguna GANTI metode
+        // adblock (mis. lepas DNS lalu pasang modul Magisk baru), dialog
+        // tetap muncul lagi untuk sinyal BARU itu — bukan dianggap "sudah
+        // pernah ditutup" secara keliru hanya karena pernah menutup untuk
+        // kombinasi sinyal yang berbeda.
+        val ADBLOCK_LAST_ACKNOWLEDGED_SIGNAL = stringPreferencesKey("adblock_last_acknowledged_signal")
+
         // Cache lokal hasil validasi lisensi Firestore terakhir (lihat
         // LicenseRepository). Dipakai supaya app tidak wajib online setiap
         // kali dibuka — selama cache ini masih menunjukkan lisensi valid DAN
@@ -447,6 +459,26 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.USER_ID] = id
             prefs[Keys.USER_ID_SYNCED] = true
+        }
+    }
+
+    /**
+     * Snapshot sinyal adblock terakhir yang SUDAH ditutup pengguna lewat
+     * tombol "Tutup"/"Lihat Membership" di [com.aether.x.core.ads.AdBlockDialog],
+     * atau null kalau belum pernah ditutup sama sekali. Dipakai
+     * [com.aether.x.core.ads.AdBlockDialogState] untuk memutuskan apakah
+     * dialog perlu ditampilkan lagi (hanya kalau sinyal SEKARANG berbeda
+     * dari snapshot ini) atau tidak.
+     */
+    suspend fun getAdBlockAcknowledgedSignal(): String? {
+        val prefs = context.dataStore.data.first()
+        return prefs[Keys.ADBLOCK_LAST_ACKNOWLEDGED_SIGNAL]
+    }
+
+    /** Menyimpan sinyal adblock yang baru saja ditutup/diakui pengguna. */
+    suspend fun setAdBlockAcknowledgedSignal(signalKey: String) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.ADBLOCK_LAST_ACKNOWLEDGED_SIGNAL] = signalKey
         }
     }
 

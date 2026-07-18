@@ -86,7 +86,7 @@ fun MainScreen(
         }
         val signals = AdBlockDetector.detect(context)
         if (signals.anyDetected) {
-            AdBlockDialogState.requestShow()
+            AdBlockDialogState.requestShow(context, signals)
         }
     }
 

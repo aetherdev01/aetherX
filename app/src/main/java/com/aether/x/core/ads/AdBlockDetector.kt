@@ -2,6 +2,7 @@ package com.aether.x.core.ads
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
@@ -13,11 +14,15 @@ import kotlinx.coroutines.withContext
  * pengguna kemungkinan memblokir iklan di level sistem/jaringan — interface
  * VPN aktif, DNS custom (baik IP resolver manual MAUPUN hostname Private
  * DNS seperti "dns.adguard.com") yang cocok penyedia DNS pemblokir iklan
- * yang dikenal, dan modul Magisk yang dikenal terkait adblock. Logika
- * pencocokan sinyal ada di native (lihat adblockguard.cpp) — file ini
- * HANYA bertugas mengumpulkan data OS/jaringan yang dibutuhkan pencocokan
- * itu (lewat API Android biasa + [PrivilegeManager] yang sudah ada untuk
- * shell root/Shizuku) lalu meneruskannya.
+ * yang dikenal, dan modul Magisk yang dikenal terkait adblock.
+ *
+ * Deteksi VPN memakai API Android biasa ([ConnectivityManager]/
+ * [NetworkCapabilities]) SEPENUHNYA di Kotlin — lihat KDoc
+ * [detectVpnInterface] kenapa TIDAK LAGI lewat native. Pencocokan DNS &
+ * modul Magisk MASIH lewat native (lihat adblockguard.cpp); file ini
+ * bertugas mengumpulkan data OS/jaringan yang dibutuhkan pencocokan itu
+ * (lewat API Android biasa + [PrivilegeManager] yang sudah ada untuk
+ * shell root) lalu meneruskannya.
  *
  * =====================================================================
  * LINGKUP OBJECT INI — DIBACA DULU SEBELUM MENAMBAH FUNGSI APA PUN DI SINI:
@@ -49,10 +54,14 @@ object AdBlockDetector {
         // System.loadLibrary("aetherX") dari beberapa object aman
         // (JVM/ART hanya benar-benar memuat .so sekali per proses,
         // pemanggilan berikutnya jadi no-op).
+        //
+        // CATATAN: deteksi VPN TIDAK LAGI lewat native (lihat
+        // [detectVpnInterface] di bawah) — library tetap dimuat karena
+        // dua fungsi native lain ([nativeMatchAdBlockDns],
+        // [nativeMatchAdBlockModule]) masih dipakai.
         System.loadLibrary("aetherX")
     }
 
-    private external fun nativeDetectVpnInterface(): Boolean
     private external fun nativeMatchAdBlockDns(dnsServers: Array<String>): Boolean
     private external fun nativeMatchAdBlockModule(moduleListing: String): Boolean
 
@@ -77,6 +86,19 @@ object AdBlockDetector {
          * mengandalkan [anyDetected] mentah-mentah.
          */
         val anyDetected: Boolean get() = vpnInterfaceActive || knownAdBlockDnsActive || knownMagiskModuleActive
+
+        /**
+         * Representasi ringkas & stabil dari kombinasi sinyal ini, dipakai
+         * [AdBlockDialogState] untuk membandingkan "sinyal sekarang" dengan
+         * sinyal yang TERAKHIR KALI diakui/ditutup pengguna (disimpan lewat
+         * [com.aether.x.data.AetherXPreferences.setAdBlockAcknowledgedSignal]).
+         * Kalau kombinasinya SAMA PERSIS dengan yang terakhir ditutup,
+         * dialog tidak perlu tampil lagi — tapi kalau pengguna GANTI metode
+         * adblock (mis. matikan DNS lalu pasang modul Magisk baru), string
+         * ini otomatis berubah sehingga dialog wajar tampil lagi untuk
+         * sinyal yang benar-benar baru itu.
+         */
+        val signalKey: String get() = "vpn=$vpnInterfaceActive;dns=$knownAdBlockDnsActive;module=$knownMagiskModuleActive"
     }
 
     /**
@@ -86,26 +108,54 @@ object AdBlockDetector {
      *
      * SETIAP deteksi individual dibungkus [runCatching] dan gagal-ke-false
      * sendiri-sendiri (lihat fungsi private di bawah) — kalau satu sinyal
-     * gagal dibaca (mis. getifaddrs error, ConnectivityManager null,
-     * shell root belum granted), sinyal LAIN tetap dicoba secara
-     * independen, TIDAK saling menjatuhkan.
+     * gagal dibaca (mis. ConnectivityManager null, shell root belum
+     * granted), sinyal LAIN tetap dicoba secara independen, TIDAK saling
+     * menjatuhkan.
      */
     suspend fun detect(context: Context): AdBlockSignals = withContext(Dispatchers.IO) {
         AdBlockSignals(
-            vpnInterfaceActive = detectVpnInterface(),
+            vpnInterfaceActive = detectVpnInterface(context),
             knownAdBlockDnsActive = detectAdBlockDns(context),
             knownMagiskModuleActive = detectMagiskModule(),
         )
     }
 
     /**
-     * Sinyal PALING LEMAH dari ketiganya — lihat KDoc [AdBlockSignals] dan
-     * penjelasan lengkap di adblockguard.cpp (bagian "CATATAN JUJUR SOAL
-     * BATASAN") kenapa "ada interface VPN aktif" TIDAK SAMA dengan
-     * "pengguna ini memblokir iklan".
+     * Sinyal PALING LEMAH dari ketiganya — lihat KDoc [AdBlockSignals]
+     * kenapa "ada interface VPN aktif" TIDAK SAMA dengan "pengguna ini
+     * memblokir iklan".
+     *
+     * BUG FIX (lihat perintah rework — "VPN detection tidak berfungsi
+     * kecuali DNS AdGuard"): implementasi SEBELUMNYA memanggil
+     * `getifaddrs()` dari native lalu mencocokkan nama interface (mis.
+     * "tun0", "ppp0") secara manual. Itu bekerja di Android lama, tapi
+     * SEJAK Android 11 (API 30), proses app biasa (non-root, tanpa
+     * privilese NETLINK) TIDAK LAGI diizinkan melakukan enumerasi
+     * interface jaringan mentah lewat getifaddrs()/NETLINK — panggilan
+     * itu diam-diam gagal atau mengembalikan daftar kosong/tidak lengkap
+     * di kebanyakan device modern (lihat catatan resmi Android soal
+     * pembatasan non-SDK interface dan netlink RTM_GETLINK untuk app
+     * pihak ketiga). Native sendiri sudah menangani kegagalan itu dengan
+     * baik (getifaddrs gagal -> false), tapi HASILNYA nyaris selalu false
+     * meski VPN benar-benar aktif — bukan bug di logic pencocokannya,
+     * tapi API-nya sendiri yang sudah tidak bisa diandalkan lagi di OS
+     * modern untuk app tanpa privilese khusus.
+     *
+     * PERBAIKAN: pindah ke [ConnectivityManager]/[NetworkCapabilities]
+     * (API publik Android biasa, TIDAK butuh root/Shizuku, TIDAK kena
+     * pembatasan netlink di atas) — `hasTransport(TRANSPORT_VPN)` pada
+     * network aktif adalah cara resmi & didukung Android untuk tahu
+     * apakah trafik SEDANG dirutekan lewat VPN, cocok dipakai sejak API
+     * 21 (jauh di bawah minSdk 32 app ini). Tidak ada lagi ketergantungan
+     * pada native untuk sinyal ini.
      */
-    private fun detectVpnInterface(): Boolean =
-        runCatching { nativeDetectVpnInterface() }.getOrDefault(false)
+    private fun detectVpnInterface(context: Context): Boolean = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return@runCatching false
+        val network = cm.activeNetwork ?: return@runCatching false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return@runCatching false
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+    }.getOrDefault(false)
 
     /**
      * Baca DNS server AKTIF perangkat lewat [ConnectivityManager] (API

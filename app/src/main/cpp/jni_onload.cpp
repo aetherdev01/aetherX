@@ -16,8 +16,13 @@ const JNINativeMethod kIntegrityGuardMethods[] = {
     {"nativeVerifyIntegrity", "()I", reinterpret_cast<void*>(nvint)},
 };
 
+// nvpn (deteksi VPN) SUDAH TIDAK dipakai/didaftarkan di sini — deteksi VPN
+// pindah sepenuhnya ke ConnectivityManager/NetworkCapabilities di Kotlin
+// (lihat AdBlockDetector.kt) karena getifaddrs()/NETLINK tidak lagi bisa
+// diandalkan dari proses app biasa sejak Android 11. Fungsi nvpn di
+// adblockguard.cpp dibiarkan ada (tidak dihapus) sebagai referensi/tidak
+// mengganggu, tapi TIDAK didaftarkan lewat RegisterNatives lagi.
 const JNINativeMethod kAdBlockDetectorMethods[] = {
-    {"nativeDetectVpnInterface", "()Z", reinterpret_cast<void*>(nvpn)},
     {"nativeMatchAdBlockDns", "([Ljava/lang/String;)Z", reinterpret_cast<void*>(ndns)},
     {"nativeMatchAdBlockModule", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nmod)},
 };
