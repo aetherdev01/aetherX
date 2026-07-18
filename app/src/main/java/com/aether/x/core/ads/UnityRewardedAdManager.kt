@@ -7,6 +7,12 @@ import com.unity3d.ads.IUnityAdsLoadListener
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
 import com.unity3d.ads.UnityAdsShowOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Implementasi [RewardedAdManager] memakai Unity Ads (`com.unity3d.ads:unity-ads`).
@@ -53,6 +59,17 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
 
         // Placement ID ad unit rewarded dari Unity Ads Dashboard.
         const val PLACEMENT_ID = "Rewarded_Android"
+
+        // FITUR BARU (retry otomatis — lihat catatan lengkap di
+        // UnityInterstitialAdManager companion object, pola dan alasannya
+        // identik di sini): backoff exponential dibatasi jumlah percobaan
+        // supaya gagal load sesaat (network blip) tidak membuat tombol
+        // "Tonton Iklan untuk..." di UI mati berkepanjangan tanpa alasan
+        // jelas, TAPI juga tidak retry tanpa batas kalau memang tidak ada
+        // koneksi/inventory sama sekali.
+        const val INITIAL_RETRY_DELAY_MILLIS = 2_000L
+        const val MAX_RETRY_DELAY_MILLIS = 60_000L
+        const val MAX_RETRY_ATTEMPTS = 6
     }
 
     @Volatile
@@ -60,6 +77,12 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
 
     @Volatile
     private var loaded = false
+
+    private val retryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var retryJob: Job? = null
+
+    @Volatile
+    private var consecutiveFailures = 0
 
     override val isReady: Boolean get() = loaded
 
@@ -99,9 +122,21 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
 
     override fun preload() {
         if (!initialized || GAME_ID.isBlank() || PLACEMENT_ID.isBlank() || loaded) return
+
+        // Sama seperti UnityInterstitialAdManager.preload — batalkan retry
+        // job internal yang mungkin masih menunggu delay, supaya trigger
+        // eksternal tidak menyebabkan UnityAds.load() bertumpuk dobel.
+        retryJob?.cancel()
+        retryJob = null
+
+        requestLoad()
+    }
+
+    private fun requestLoad() {
         UnityAds.load(PLACEMENT_ID, object : IUnityAdsLoadListener {
             override fun onUnityAdsAdLoaded(placementId: String?) {
                 loaded = true
+                consecutiveFailures = 0
             }
 
             override fun onUnityAdsFailedToLoad(
@@ -111,8 +146,38 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
             ) {
                 loaded = false
                 Log.w(TAG, "Gagal memuat rewarded ad: $error / $message")
+                scheduleRetry()
             }
         })
+    }
+
+    /**
+     * Lihat KDoc [UnityInterstitialAdManager.scheduleRetry] — logika dan
+     * alasannya identik di sini.
+     */
+    private fun scheduleRetry() {
+        if (consecutiveFailures >= MAX_RETRY_ATTEMPTS) {
+            Log.w(
+                TAG,
+                "Rewarded ad gagal load $MAX_RETRY_ATTEMPTS kali berturut-turut — " +
+                    "berhenti retry otomatis, menunggu trigger eksternal (mis. show() " +
+                    "berikutnya) untuk mencoba lagi.",
+            )
+            return
+        }
+        val attempt = consecutiveFailures
+        consecutiveFailures++
+
+        val delayMillis = (INITIAL_RETRY_DELAY_MILLIS shl attempt)
+            .coerceAtMost(MAX_RETRY_DELAY_MILLIS)
+
+        retryJob?.cancel()
+        retryJob = retryScope.launch {
+            delay(delayMillis)
+            if (!loaded) {
+                requestLoad()
+            }
+        }
     }
 
     override fun show(activity: Activity, onResult: (RewardedAdResult) -> Unit) {

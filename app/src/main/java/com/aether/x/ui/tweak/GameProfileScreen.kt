@@ -1,5 +1,6 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -318,6 +320,15 @@ private fun GameProfileDetailPane(
     val activeTweakCount = countEnabledTweaks(profile)
     val totalTweakCount = 6
 
+    // Dipakai HANYA untuk parameter transient onGameModeChange di bawah
+    // (interstitial ad setelah preset Game Mode diterapkan) — lihat KDoc
+    // GameProfileViewModel.onGameModeChange untuk alasan lengkapnya, pola
+    // identik dengan TweakScreen.kt untuk onKillBackgroundAppsChange.
+    // LocalContext di sini selalu berupa Activity karena GameProfileScreen
+    // (layar ini) hanya pernah dirender dari MainActivity.
+    val context = LocalContext.current
+    val activity = context as? Activity
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -358,7 +369,7 @@ private fun GameProfileDetailPane(
         SectionCard(title = stringResource(R.string.game_profile_mode_label), watermarkIcon = Icons.Outlined.SportsEsports) {
             GameModeSelector(
                 selected = profile.gameMode,
-                onSelect = viewModel::onGameModeChange,
+                onSelect = { mode -> viewModel.onGameModeChange(mode, activity) },
             )
         }
 

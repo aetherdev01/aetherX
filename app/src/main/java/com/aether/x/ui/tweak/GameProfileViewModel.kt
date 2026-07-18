@@ -1,8 +1,10 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.AetherXApp
 import com.aether.x.R
 import com.aether.x.core.apps.GameProfileCatalog
 import com.aether.x.core.apps.InstalledGameEntry
@@ -107,9 +109,34 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
      * [GameProfile.withGameMode]) — pengguna tetap bisa mengubah toggle
      * manual setelahnya, memilih mode lain lagi akan menimpa ulang semua
      * toggle sesuai kombinasi mode yang baru dipilih.
+     *
+     * FITUR BARU (titik pemicu interstitial baru — lihat perintah rework
+     * "tambahkan pemicu lagi terutama di game profile"): [activity]
+     * OPSIONAL (default null, SAMA persis polanya dengan
+     * [com.aether.x.ui.tweak.TweakViewModel.onKillBackgroundAppsChange] —
+     * lihat KDoc di sana untuk alasan lengkap kenapa Activity tidak
+     * disimpan permanen di ViewModel), dipakai HANYA untuk menampilkan
+     * interstitial ad SETELAH preset benar-benar diterapkan & tersimpan —
+     * TIDAK PERNAH menunda penerapan preset itu sendiri (lihat KDoc
+     * [com.aether.x.core.ads.InterstitialAdGate]: interstitial murni
+     * transisi SESUDAH aksi, bukan gerbang SEBELUM aksi). Kalau [activity]
+     * null (pemanggil tidak menyediakannya) atau iklan belum siap, tidak
+     * ada yang terlihat pengguna selain preset yang tetap berhasil
+     * diterapkan seperti biasa.
      */
-    fun onGameModeChange(mode: GameMode) =
-        updateSelectedProfile { GameProfile.withGameMode(it, mode) }
+    fun onGameModeChange(mode: GameMode, activity: Activity? = null) {
+        val pkg = _state.value.selectedPackage ?: return
+        val current = _state.value.profiles[pkg] ?: GameProfile.default(pkg)
+        val updated = GameProfile.withGameMode(current, mode)
+        _state.update { it.copy(profiles = it.profiles + (pkg to updated)) }
+        viewModelScope.launch {
+            preferences.saveGameProfile(updated)
+            if (activity != null) {
+                val isMember = preferences.preferences.first().isMembershipActive
+                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+            }
+        }
+    }
 
     fun onCpuPerformanceModeChange(checked: Boolean) =
         updateSelectedProfile { it.copy(cpuPerformanceMode = checked) }
