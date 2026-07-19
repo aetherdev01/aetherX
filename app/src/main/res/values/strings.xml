@@ -625,6 +625,12 @@
     <string name="permission_feedback_adb_auto_discovery_timeout">Tidak menemukan Wireless debugging di jaringan ini. Pastikan dialog pairing terbuka dan Wi-Fi sama, lalu tekan Start lagi.</string>
     <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing untuk kode baru.</string>
     <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung. Pastikan Wireless debugging masih aktif, lalu coba lagi. Pairing sebelumnya tetap tersimpan.</string>
+    <!-- FIX (Android 12/13 — "kode pairing benar tapi tetap 'Tidak bisa
+         terhubung'"): pesan KHUSUS untuk kegagalan connect PERTAMA KALI
+         tepat setelah pairing sukses — BEDA dari permission_feedback_adb_host_unreachable
+         di atas (yang menyiratkan "pairing sebelumnya", membingungkan untuk
+         percobaan pertama). Lihat KDoc AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED. -->
+    <string name="permission_feedback_adb_connect_after_pairing_failed">Kode pairing berhasil, tapi koneksi belum terbentuk. Tekan "Sambungkan" sekali lagi — tidak perlu pairing ulang.</string>
     <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Izin debugging mungkin pernah dicabut, lakukan pairing ulang.</string>
     <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan Wireless Debugging. Coba lagi.</string>
     <string name="permission_feedback_adb_in_progress">Proses Wireless Debugging masih berjalan, tunggu sebentar.</string>
