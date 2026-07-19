@@ -169,6 +169,7 @@ object PrivilegeManager {
         AdbFailureReason.AUTO_DISCOVERY_TIMEOUT -> RequestFailureReason.ADB_AUTO_DISCOVERY_TIMEOUT
         AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED -> RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED
         AdbFailureReason.HOST_UNREACHABLE -> RequestFailureReason.ADB_HOST_UNREACHABLE
+        AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED -> RequestFailureReason.ADB_CONNECT_AFTER_PAIRING_FAILED
         AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR -> RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR
         AdbFailureReason.UNKNOWN -> RequestFailureReason.ADB_UNKNOWN
     }
@@ -185,6 +186,7 @@ object PrivilegeManager {
             AdbFailureReason.AUTO_DISCOVERY_TIMEOUT -> com.aether.x.R.string.permission_feedback_adb_auto_discovery_timeout
             AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED -> com.aether.x.R.string.permission_feedback_adb_pairing_invalid
             AdbFailureReason.HOST_UNREACHABLE -> com.aether.x.R.string.permission_feedback_adb_host_unreachable
+            AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED -> com.aether.x.R.string.permission_feedback_adb_connect_after_pairing_failed
             AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR -> com.aether.x.R.string.permission_feedback_adb_shell_rejected
             AdbFailureReason.UNKNOWN -> com.aether.x.R.string.permission_feedback_adb_unknown
         },

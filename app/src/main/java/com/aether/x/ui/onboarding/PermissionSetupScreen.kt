@@ -123,6 +123,7 @@ fun PermissionSetupScreen(
                     RequestFailureReason.ADB_AUTO_DISCOVERY_TIMEOUT -> context.getString(R.string.permission_feedback_adb_auto_discovery_timeout)
                     RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED -> context.getString(R.string.permission_feedback_adb_pairing_invalid)
                     RequestFailureReason.ADB_HOST_UNREACHABLE -> context.getString(R.string.permission_feedback_adb_host_unreachable)
+                    RequestFailureReason.ADB_CONNECT_AFTER_PAIRING_FAILED -> context.getString(R.string.permission_feedback_adb_connect_after_pairing_failed)
                     RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR -> context.getString(R.string.permission_feedback_adb_shell_rejected)
                     RequestFailureReason.ADB_UNKNOWN -> context.getString(R.string.permission_feedback_adb_unknown)
                     RequestFailureReason.ADB_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_adb_in_progress)

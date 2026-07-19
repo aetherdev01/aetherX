@@ -65,6 +65,26 @@ enum class AdbFailureReason {
     /** Host/port yang dimasukkan tidak bisa dihubungi (typo, beda jaringan Wi-Fi, dsb). */
     HOST_UNREACHABLE,
 
+    /**
+     * FIX (Android 12/13 — "kode pairing benar tapi tetap 'Tidak bisa
+     * terhubung'"): khusus kegagalan CONNECT PERTAMA KALI, tepat setelah
+     * [AdbConnectionManager.pairAndAutoConnect] berhasil menyelesaikan
+     * tahap pairing (`connection.pair()` sudah sukses — jadi BUKAN kode
+     * pairing salah, BUKAN pula "belum pernah pairing"). Kegagalan di
+     * titik ini SELALU berarti perangkat baru saja pairing untuk PERTAMA
+     * KALI, jadi frasa "Pairing sebelumnya tetap tersimpan" milik
+     * [HOST_UNREACHABLE] membingungkan (menyiratkan sudah pernah connect
+     * sebelumnya, padahal ini percobaan pertama). Root cause paling umum:
+     * NsdManager di banyak build Android 12/13 (terutama sebelum patch
+     * AOSP terkait resolveService yang tidak semua vendor terapkan tepat
+     * waktu) tidak konsisten mem-broadcast/resolve service mDNS di
+     * percobaan pertama tepat setelah radio Wi-Fi baru saja dipakai
+     * intensif (proses pairing itu sendiri) — retry dengan discovery baru
+     * (bukan sekadar menunggu lebih lama) yang biasanya berhasil, lihat
+     * [AdbConnectionManager.pairAndAutoConnect].
+     */
+    CONNECT_AFTER_PAIRING_FAILED,
+
     /** Sudah pernah pairing, tapi adbd menolak koneksi shell — biasanya
      * karena pengguna mencabut akses USB debugging secara manual di
      * Pengaturan ("Cabut semua izin debugging"), sehingga key lama tidak

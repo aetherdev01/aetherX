@@ -29,6 +29,11 @@ enum class RequestFailureReason {
     ADB_AUTO_DISCOVERY_TIMEOUT,
     ADB_PAIRING_CODE_INVALID_OR_EXPIRED,
     ADB_HOST_UNREACHABLE,
+    // FIX (Android 12/13 — "kode pairing benar tapi tetap 'Tidak bisa
+    // terhubung'"): reason khusus kegagalan connect PERTAMA KALI tepat
+    // setelah pairing sukses — lihat KDoc lengkap di
+    // [com.aether.x.core.adb.AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED].
+    ADB_CONNECT_AFTER_PAIRING_FAILED,
     ADB_SHELL_REJECTED_NEEDS_REPAIR,
     ADB_UNKNOWN,
     ADB_ALREADY_IN_PROGRESS,
