@@ -195,7 +195,7 @@ fun GameActivitySection(
             )
             Text(
                 text = stringResource(R.string.dashboard_section_game_activity),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }

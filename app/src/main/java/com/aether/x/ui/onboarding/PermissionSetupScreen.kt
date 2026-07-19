@@ -144,10 +144,39 @@ fun PermissionSetupScreen(
         }
     }
 
+    var pendingAutoPairAfterNotificationGrant by remember { mutableStateOf(false) }
+    var pendingReconnectAfterNotificationGrant by remember { mutableStateOf(false) }
+
     val notificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-    ) {
+    ) { granted ->
         PrivilegeManager.refreshSupportingPermissions(context)
+        if (granted && pendingAutoPairAfterNotificationGrant) {
+            PrivilegeManager.startAutoPairAdb(context)
+        }
+        if (granted && pendingReconnectAfterNotificationGrant) {
+            PrivilegeManager.reconnectAdb(context)
+        }
+        pendingAutoPairAfterNotificationGrant = false
+        pendingReconnectAfterNotificationGrant = false
+    }
+
+    val startAutoPairingGuarded: () -> Unit = {
+        if (status.notificationsGranted) {
+            PrivilegeManager.startAutoPairAdb(context)
+        } else {
+            pendingAutoPairAfterNotificationGrant = true
+            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    val reconnectAdbGuarded: () -> Unit = {
+        if (status.notificationsGranted) {
+            PrivilegeManager.reconnectAdb(context)
+        } else {
+            pendingReconnectAfterNotificationGrant = true
+            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -165,6 +194,14 @@ fun PermissionSetupScreen(
 
     LaunchedEffect(Unit) {
         PrivilegeManager.refreshSupportingPermissions(context)
+    }
+
+    LaunchedEffect(Unit) {
+        if (requireAccessToContinue && !status.notificationsGranted &&
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+        ) {
+            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     LaunchedEffect(status.adbGranted, status.rootGranted) {
@@ -221,6 +258,8 @@ fun PermissionSetupScreen(
                         0 -> AccessMethodPage(
                             status = status,
                             context = context,
+                            onStartAutoPairing = startAutoPairingGuarded,
+                            onReconnect = reconnectAdbGuarded,
                         )
                         1 -> WriteSettingsPage(status = status, context = context)
                         2 -> OverlayPage(status = status, context = context)
@@ -296,6 +335,8 @@ fun PermissionSetupScreen(
 private fun AccessMethodPage(
     status: com.aether.x.core.permission.PrivilegeStatus,
     context: android.content.Context,
+    onStartAutoPairing: () -> Unit,
+    onReconnect: () -> Unit,
 ) {
     PageIcon(icon = Icons.Outlined.Shield, tint = AccentBlue)
     PageTitle(
@@ -324,8 +365,8 @@ private fun AccessMethodPage(
             locked = adbLocked,
             lockedHint = stringResource(R.string.setup_locked_by_root_hint),
             onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
-            onStartAutoPairing = { PrivilegeManager.startAutoPairAdb(context) },
-            onReconnect = { PrivilegeManager.reconnectAdb(context) },
+            onStartAutoPairing = onStartAutoPairing,
+            onReconnect = onReconnect,
             onForget = { PrivilegeManager.forgetAdbPairing() },
         )
 
