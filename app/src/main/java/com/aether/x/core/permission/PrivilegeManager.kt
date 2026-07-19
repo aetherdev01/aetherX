@@ -82,7 +82,10 @@ object PrivilegeManager {
             when (adbState) {
                 is AdbConnectionState.SearchingForPairing -> AdbPairingNotifier.showSearching(appContext)
                 is AdbConnectionState.PairingFound -> AdbPairingNotifier.showCodeInput(appContext)
-                is AdbConnectionState.Pairing, is AdbConnectionState.Connecting -> AdbPairingNotifier.showBusy(appContext)
+                is AdbConnectionState.Pairing -> AdbPairingNotifier.showBusy(appContext)
+                is AdbConnectionState.Connecting -> {
+                    if (wasRequesting) AdbPairingNotifier.showBusy(appContext)
+                }
                 is AdbConnectionState.Failed -> {
 
                     if (wasRequesting) {

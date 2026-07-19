@@ -235,36 +235,41 @@ object AdbConnectionManager {
     }
 
     fun autoReconnect() {
-        scope.launch {
-            val saved = preferences.getSavedHostPort() ?: return@launch
-            if (_state.value == AdbConnectionState.Connected) return@launch
+        scope.launch { autoReconnectSuspend() }
+    }
 
-            val firstAttempt = connectMutex.withLock { connectLocked(saved.first, saved.second) }
-            if (firstAttempt is AdbConnectionState.Connected) return@launch
+    suspend fun autoReconnectAndAwait(): Boolean = autoReconnectSuspend()
 
-            _state.value = AdbConnectionState.Connecting
+    private suspend fun autoReconnectSuspend(): Boolean {
+        val saved = preferences.getSavedHostPort() ?: return false
+        if (_state.value == AdbConnectionState.Connected) return true
 
-            val maxRediscoveryAttempts = 3
-            var rediscovered: AdbAutoPairingDiscovery.DiscoveredService? = null
-            for (attempt in 1..maxRediscoveryAttempts) {
-                rediscovered = withContext(Dispatchers.IO) {
-                    runCatching { AdbAutoPairingDiscovery.discoverConnectService(appContext, timeoutMs = 6_000) }
-                }.getOrNull()
-                if (rediscovered != null) break
-            }
-            if (rediscovered == null) {
+        val firstAttempt = connectMutex.withLock { connectLocked(saved.first, saved.second) }
+        if (firstAttempt is AdbConnectionState.Connected) return true
 
-                _state.value = firstAttempt
-                return@launch
-            }
+        _state.value = AdbConnectionState.Connecting
 
-            if (rediscovered.port == saved.second && rediscovered.host == saved.first) {
-
-                _state.value = firstAttempt
-                return@launch
-            }
-            connectMutex.withLock { connectLocked(rediscovered.host, rediscovered.port) }
+        val maxRediscoveryAttempts = 3
+        var rediscovered: AdbAutoPairingDiscovery.DiscoveredService? = null
+        for (attempt in 1..maxRediscoveryAttempts) {
+            rediscovered = withContext(Dispatchers.IO) {
+                runCatching { AdbAutoPairingDiscovery.discoverConnectService(appContext, timeoutMs = 6_000) }
+            }.getOrNull()
+            if (rediscovered != null) break
         }
+        if (rediscovered == null) {
+
+            _state.value = firstAttempt
+            return false
+        }
+
+        if (rediscovered.port == saved.second && rediscovered.host == saved.first) {
+
+            _state.value = firstAttempt
+            return false
+        }
+        val secondAttempt = connectMutex.withLock { connectLocked(rediscovered.host, rediscovered.port) }
+        return secondAttempt is AdbConnectionState.Connected
     }
 
     suspend fun execShell(command: String): Pair<Int, String> = withContext(Dispatchers.IO) {
@@ -294,6 +299,13 @@ object AdbConnectionManager {
             _state.value = AdbConnectionState.PairedNotConnected
         }
         autoReconnect()
+    }
+
+    suspend fun markStreamFailureAndReconnectAndAwait(): Boolean {
+        if (_state.value == AdbConnectionState.Connected) {
+            _state.value = AdbConnectionState.PairedNotConnected
+        }
+        return autoReconnectAndAwait()
     }
 
     fun forgetPairing() {

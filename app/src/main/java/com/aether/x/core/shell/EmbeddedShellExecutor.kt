@@ -1,7 +1,6 @@
 package com.aether.x.core.shell
 
 import com.aether.x.core.adb.AdbConnectionManager
-import kotlinx.coroutines.delay
 
 class EmbeddedShellExecutor : ShellExecutor {
 
@@ -11,14 +10,13 @@ class EmbeddedShellExecutor : ShellExecutor {
         val first = execOnce(command)
         if (first != null) return first
 
-        AdbConnectionManager.markStreamFailureAndReconnect()
-        delay(1500)
+        val reconnected = AdbConnectionManager.markStreamFailureAndReconnectAndAwait()
 
-        if (!AdbConnectionManager.isConnected()) {
-            return ShellResult.failure("Belum terhubung ke ADB tertanam AetherX.")
+        if (!reconnected || !AdbConnectionManager.isConnected()) {
+            return ShellResult.failure("Belum terhubung ke Wireless Debugging.")
         }
         return execOnce(command) ?: ShellResult.failure(
-            "Koneksi ADB tertanam terputus di tengah eksekusi dan gagal disambungkan ulang.",
+            "Koneksi Wireless Debugging terputus di tengah eksekusi dan gagal disambungkan ulang.",
         )
     }
 
