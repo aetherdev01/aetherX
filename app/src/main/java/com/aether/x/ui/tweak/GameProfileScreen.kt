@@ -72,19 +72,6 @@ import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 
-/**
- * Layar Game Profile — KHUSUS ROOT (lihat perintah pengguna): daftar game
- * dari `assets/gamelist.txt` yang terpasang di perangkat ditampilkan sebagai
- * sidebar di sisi kiri, dengan panel detail tweak root per-game di sisi
- * kanan/bawah. Tweak yang disimpan di sini diterapkan/direset otomatis oleh
- * [com.aether.x.core.monitor.GameProfileMonitorService] saat game terkait
- * dibuka/ditutup dari recent apps — layar ini murni tempat mengatur data,
- * tidak menjalankan shell apa pun secara langsung.
- *
- * Kalau backend privilese aktif BUKAN Root, seluruh layar diganti dengan
- * pesan "Butuh Akses Root" — konsisten dengan pemisahan fitur root/non-root
- * yang sudah ada di section "Root" pada TweakScreen.
- */
 @Composable
 fun GameProfileScreen(
     modifier: Modifier = Modifier,
@@ -160,7 +147,6 @@ private fun GameProfileRootRequiredNotice(
     }
 }
 
-/** Panel kiri: search box + daftar game terpasang sebagai sidebar list. */
 @Composable
 private fun GameProfileListPane(
     state: GameProfileUiState,
@@ -168,10 +154,7 @@ private fun GameProfileListPane(
     onSelectGame: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        // Judul besar "Game Profile" TIDAK diulang di sini — sudah jelas
-        // dari drawer navigasi mana sub-tab yang sedang aktif, dan
-        // TweakHeader ("AetherX" + pill ID) tetap tampil permanen di
-        // puncak layar terlepas dari sub-tab mana yang dipilih.
+
         Text(
             text = stringResource(R.string.game_profile_subtitle),
             style = MaterialTheme.typography.bodyMedium,
@@ -268,10 +251,7 @@ private fun GameListRow(
                 color = TextPrimary,
                 maxLines = 1,
             )
-            // Nama paket ditampilkan kecil di bawah nama game — identitas
-            // pasti (dua game bisa punya label sama tapi package name selalu
-            // unik) sekaligus memenuhi permintaan rework: package name ikut
-            // tampil di info aplikasi, bukan cuma di panel detail.
+
             Text(
                 text = entry.packageName,
                 style = MaterialTheme.typography.bodySmall,
@@ -298,17 +278,6 @@ private fun GameListRow(
     }
 }
 
-/**
- * Panel kanan/detail (rework total — lihat perintah pengguna): dulu cuma
- * header ringkas + satu SectionCard datar berisi 6 toggle berurutan tanpa
- * pengelompokan. Sekarang:
- * 1. Kartu identitas game (icon besar, badge status/jumlah tweak aktif).
- * 2. Section "Info Aplikasi" — menampilkan nama paket (package name), yang
- *    sebelumnya tidak ditampilkan sama sekali di info aplikasi manapun pada
- *    layar ini.
- * 3. Toggle tweak dikelompokkan per kategori (CPU, GPU & Termal, Sistem)
- *    alih-alih satu daftar datar — lebih mudah dipindai sekilas.
- */
 @Composable
 private fun GameProfileDetailPane(
     state: GameProfileUiState,
@@ -320,12 +289,6 @@ private fun GameProfileDetailPane(
     val activeTweakCount = countEnabledTweaks(profile)
     val totalTweakCount = 6
 
-    // Dipakai HANYA untuk parameter transient onGameModeChange di bawah
-    // (interstitial ad setelah preset Game Mode diterapkan) — lihat KDoc
-    // GameProfileViewModel.onGameModeChange untuk alasan lengkapnya, pola
-    // identik dengan TweakScreen.kt untuk onKillBackgroundAppsChange.
-    // LocalContext di sini selalu berupa Activity karena GameProfileScreen
-    // (layar ini) hanya pernah dirender dari MainActivity.
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -362,10 +325,6 @@ private fun GameProfileDetailPane(
             }
         }
 
-        // FITUR BARU (lihat perintah rework — "tambahkan fitur baru Game
-        // Mode : Low, Mid, Boost"): preset yang mengisi ke-6 toggle di
-        // bawahnya sekaligus, tapi tetap membiarkan tiap toggle diubah
-        // manual sesudahnya — lihat KDoc GameMode/GameProfile.withGameMode.
         SectionCard(title = stringResource(R.string.game_profile_mode_label), watermarkIcon = Icons.Outlined.SportsEsports) {
             GameModeSelector(
                 selected = profile.gameMode,
@@ -405,8 +364,7 @@ private fun GameProfileDetailPane(
                 onCheckedChange = viewModel::onThermalThrottleOverrideChange,
                 icon = Icons.Outlined.Thermostat,
             )
-            // FITUR BARU — tweak ke-7 Game Profile: GPU Rendering Priority
-            // (SurfaceFlinger) — lihat KDoc TweakRepository.applyGpuRenderingPriority.
+
             TweakSwitch(
                 label = stringResource(R.string.tweak_gpu_rendering_priority),
                 description = stringResource(R.string.tweak_gpu_rendering_priority_desc),
@@ -450,11 +408,6 @@ private fun GameProfileDetailPane(
     }
 }
 
-/**
- * Kartu identitas game di puncak panel detail: icon besar, nama game, dan
- * ringkasan status dalam satu pandangan — menggantikan header baris tunggal
- * yang sebelumnya cuma icon kecil + nama + badge kecil di sampingnya.
- */
 @Composable
 private fun GameIdentityCard(
     entry: InstalledGameEntry,
@@ -501,13 +454,6 @@ private fun GameIdentityCard(
     }
 }
 
-/** Baris info sederhana label/value — dipakai section "Info Aplikasi" (nama paket). */
-/**
- * Segmented chip 3-opsi (Low/Mid/Boost) untuk memilih [GameMode] preset —
- * memakai pola visual yang mirip [StatusPill] (chip dengan border accent
- * saat terpilih) yang sudah dipakai di layar ini, supaya konsisten secara
- * visual alih-alih memakai komponen baru yang berbeda gaya.
- */
 @Composable
 private fun GameModeSelector(
     selected: GameMode,

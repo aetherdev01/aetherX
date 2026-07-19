@@ -44,26 +44,6 @@ import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.ui.theme.AccentAmber
 import com.aether.x.ui.theme.AccentAmberContainer
 
-/**
- * Dipasang SEKALI di root aplikasi (lihat [com.aether.x.MainActivity]),
- * bukan di dalam satu tab tertentu — supaya mode maintenance menutupi
- * SELURUH layar aplikasi kapan pun admin mengaktifkannya lewat bot
- * Telegram, di halaman manapun pengguna sedang berada.
- *
- * Dialog ini SENGAJA TIDAK BISA di-dismiss dengan cara apa pun selain
- * mengetuk tombol "Hubungi Admin via Telegram":
- * - [DialogProperties.dismissOnBackPress] = false -> tombol back sistem tidak
- *   menutup dialog.
- * - [DialogProperties.dismissOnClickOutside] = false -> tap di luar area
- *   dialog (di scrim gelap) tidak menutupnya.
- * - `onDismissRequest` di [Dialog] sengaja diisi lambda kosong (bukan yang
- *   menutup dialog) sebagai lapis pertahanan terakhir kalau ada jalur lain
- *   yang memicu dismiss request.
- *
- * Dialog ini TIDAK punya state "tertutup" lokal sama sekali — satu-satunya
- * cara dialog ini hilang adalah admin mematikan `enabled` di Firestore lewat
- * bot, yang langsung terpantau realtime oleh [MaintenanceViewModel].
- */
 @Composable
 fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
     val status by viewModel.status.collectAsState()
@@ -72,16 +52,6 @@ fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
     val defaultTitle = stringResource(R.string.maintenance_default_title)
     val notifText = stringResource(R.string.notif_maintenance_text)
 
-    // Notifikasi SISTEM (tray Android — FITUR BARU, lihat perintah rework)
-    // dipicu setiap kali `enabled` BERUBAH jadi true (key = status.enabled),
-    // bukan tiap recomposition — supaya pengguna yang sedang di background
-    // atau di layar lain tetap tahu maintenance dimulai, bukan cuma yang
-    // sedang membuka aplikasi saat itu juga. Ongoing = true karena
-    // maintenance adalah kondisi berkelanjutan (bukan kejadian sekali lewat
-    // seperti update tersedia), jadi notifikasi tidak bisa di-swipe hilang
-    // sendiri, konsisten dengan dialog blocking-nya yang juga tidak bisa
-    // di-dismiss. Notifikasi dibatalkan otomatis begitu admin mematikan
-    // status maintenance dari Firestore.
     LaunchedEffect(status.enabled) {
         if (status.enabled) {
             AetherXNotifier.notify(
@@ -99,7 +69,7 @@ fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
     if (!status.enabled) return
 
     Dialog(
-        onDismissRequest = { /* sengaja kosong — dialog ini tidak bisa ditutup selain lewat tombol admin */ },
+        onDismissRequest = {  },
         properties = DialogProperties(
             dismissOnBackPress = false,
             dismissOnClickOutside = false,
@@ -152,9 +122,7 @@ fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
                     try {
                         context.startActivity(intent)
                     } catch (e: ActivityNotFoundException) {
-                        // Tidak ada aplikasi/browser yang bisa menangani tautan Telegram —
-                        // abaikan dengan aman daripada membuat aplikasi crash. Dialog TETAP
-                        // tampil (sengaja tidak ada state lokal untuk menyembunyikannya).
+
                     }
                 },
                 modifier = Modifier

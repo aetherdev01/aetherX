@@ -79,14 +79,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Tab Membership tersendiri di bottom navigation — sebelumnya berupa satu
- * kartu di dalam tab Pengaturan (lihat riwayat [MembershipViewModel]),
- * sekarang jadi layar penuh dengan hero status card + form aktivasi + daftar
- * keuntungan, supaya lebih jelas terpisah dari pengaturan umum aplikasi dan
- * lebih rapi secara visual (badge & warna teks konsisten dengan palet resmi
- * di ui/theme/Color.kt, bukan lagi warna mentah yang ditulis inline).
- */
 @Composable
 fun MembershipScreen(
     modifier: Modifier = Modifier,
@@ -126,10 +118,7 @@ fun MembershipScreen(
 
         if (status != MembershipUiStatus.ACTIVE) {
             SectionCard(title = stringResource(R.string.membership_key_label), watermarkIcon = Icons.Outlined.VpnKey) {
-                // Kode lisensi diperlakukan seperti sandi: tersembunyi (•••) secara
-                // default supaya tidak "bocor" kelihatan orang lain lewat bahu
-                // (shoulder-surfing) saat diketik di tempat umum, dengan ikon mata
-                // di ujung kanan field untuk show/hide sesuai kebutuhan pengguna.
+
                 var isKeyVisible by remember { mutableStateOf(false) }
 
                 OutlinedTextField(
@@ -144,11 +133,7 @@ fun MembershipScreen(
                     },
                     singleLine = true,
                     enabled = !isSubmitting,
-                    // Format lisensi sekarang bebas: huruf besar/kecil dan angka apa
-                    // pun (tidak dipaksa satu pola AETX-XXXX-XXXX-XXXX saja seperti
-                    // sebelumnya). Kapitalisasi keyboard "Sentences" dipakai murni
-                    // supaya keyboard tidak otomatis mengubah huruf jadi UPPERCASE —
-                    // apa pun yang diketik pengguna disimpan apa adanya.
+
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                     visualTransformation = if (isKeyVisible) {
                         VisualTransformation.None
@@ -202,13 +187,7 @@ fun MembershipScreen(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
                 ) {
-                    // Crossfade dikunci ke pasangan (isSubmitting, stage) supaya
-                    // bukan cuma transisi teks<->spinner yang halus, tapi juga
-                    // perpindahan ANTAR tahap (mis. "Menghubungkan..." ->
-                    // "Memverifikasi...") ikut fade, bukan berganti mendadak.
-                    // Label tahap mengikuti progres NYATA di MembershipViewModel
-                    // (guard lokal -> transaksi Firestore -> evaluasi hasil),
-                    // bukan animasi berbasis delay buatan.
+
                     Crossfade(
                         targetState = isSubmitting to activationStage,
                         label = "membership_activate_button_state",
@@ -254,11 +233,6 @@ fun MembershipScreen(
             }
         }
 
-        // Begitu membership AKTIF, kartu promo "Langganan Membership Pro"
-        // tidak relevan lagi (pengguna sudah berlangganan) — disembunyikan,
-        // digantikan kartu Device ID + tombol Logout supaya pengguna tetap
-        // punya cara melihat identitas perangkat yang terkunci ke lisensinya
-        // dan (kalau perlu) melepas sesi lisensi ini dari perangkat.
         if (status == MembershipUiStatus.ACTIVE) {
             DeviceAccountCard(deviceId = viewModel.deviceId, onLogout = viewModel::logout)
         } else {
@@ -267,13 +241,6 @@ fun MembershipScreen(
     }
 }
 
-/**
- * Dua paket berlangganan yang bisa dipilih pengguna sebelum menghubungi
- * admin Telegram (lihat perintah rework — "tambahkan opsi harga Rp10.000 /
- * 1 Minggu, 60.000 / 1 bulan"). Murni untuk tampilan/pesan prefill — tidak
- * ada logic aktivasi otomatis yang bergantung pada pilihan ini karena
- * pembelian tetap manual lewat admin (lihat KDoc [MembershipProCard]).
- */
 private enum class MembershipPlan(
     val labelRes: Int,
     val priceRes: Int,
@@ -282,17 +249,6 @@ private enum class MembershipPlan(
     MONTHLY(R.string.membership_pro_plan_monthly_label, R.string.membership_pro_plan_monthly_price),
 }
 
-/**
- * Kartu promo "Langganan Membership Pro": SEKARANG menampilkan DUA paket
- * pilihan (Mingguan Rp10.000 / Bulanan Rp60.000 — lihat [MembershipPlan])
- * yang bisa dipilih pengguna sebelum menekan tombol, dan tombol yang
- * membuka chat Telegram admin (bukan pembelian/aktivasi otomatis di dalam
- * app — kode lisensi tetap diberikan manual oleh admin lewat bot setelah
- * pembeli menghubungi lewat tautan ini, sesuai alur yang sudah ada di
- * README bot Telegram). Pesan chat Telegram OTOMATIS TERISI (prefill)
- * menyebutkan paket yang dipilih, supaya admin langsung tahu tanpa
- * pengguna perlu mengetik ulang secara manual.
- */
 @Composable
 private fun MembershipProCard() {
     val context = LocalContext.current
@@ -334,11 +290,7 @@ private fun MembershipProCard() {
                         selectedLabel,
                         selectedPrice,
                     )
-                    // Telegram membaca parameter query "text" pada deep-link
-                    // t.me sebagai isi kolom chat yang sudah terisi otomatis
-                    // (belum terkirim, pengguna tetap bisa edit sebelum
-                    // kirim) — encode dulu supaya spasi/tanda baca pesan
-                    // tidak merusak parsing URL.
+
                     val uri = Uri.parse(telegramUrl).buildUpon()
                         .appendQueryParameter("text", prefillMessage)
                         .build()
@@ -346,10 +298,7 @@ private fun MembershipProCard() {
                     try {
                         context.startActivity(intent)
                     } catch (e: ActivityNotFoundException) {
-                        // Tidak ada aplikasi/browser yang bisa menangani tautan Telegram —
-                        // abaikan dengan aman daripada membuat aplikasi crash. Pesan
-                        // membership_pro_telegram_error tersedia kalau nanti mau
-                        // ditampilkan lewat Snackbar/Toast di sini.
+
                     }
                 },
                 modifier = Modifier
@@ -382,15 +331,6 @@ private fun MembershipProCard() {
     }
 }
 
-/**
- * Satu kartu pilihan paket (mis. "1 Minggu — Rp10.000") di dalam
- * [MembershipProCard] — border & warna teks berubah [AccentBlue] saat
- * [selected], badge "Lebih Hemat" ditampilkan khusus untuk
- * [MembershipPlan.MONTHLY] supaya pengguna condong memilih paket bulanan
- * (harga per-hari jauh lebih murah: Rp2.000/hari vs Rp1.428/hari — TAPI
- * secara nominal total Rp60.000 vs Rp10.000, badge ini membantu konteks
- * kenapa paket bulanan tetap lebih hemat meski angkanya lebih besar).
- */
 @Composable
 private fun MembershipPlanOption(
     plan: MembershipPlan,
@@ -442,12 +382,6 @@ private fun MembershipPlanOption(
     }
 }
 
-/**
- * Kartu identitas perangkat, ditampilkan sebagai pengganti promo "Langganan
- * Membership Pro" begitu membership perangkat ini aktif — menampilkan Device
- * ID (ANDROID_ID, sama seperti yang dikunci ke lisensi ini di Firestore) dan
- * tombol Logout untuk melepas cache lisensi lokal dari perangkat ini.
- */
 @Composable
 private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit) {
     val context = LocalContext.current
@@ -540,11 +474,6 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit) {
     }
 }
 
-/**
- * Kartu hero besar di puncak tab Membership: ikon mahkota, badge status warna
- * konsisten (hijau = aktif, kuning = kedaluwarsa, netral = belum aktif), dan
- * subjudul tanggal berlaku/berakhir.
- */
 @Composable
 private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long?) {
     Column(

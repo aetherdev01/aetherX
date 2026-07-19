@@ -50,28 +50,11 @@ import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
 
-/**
- * Dipasang SEKALI di root aplikasi (lihat [com.aether.x.MainActivity]),
- * mengikuti pola [com.aether.x.ui.maintenance.MaintenanceGate] — supaya
- * dialog bisa muncul di layar mana pun begitu admin publish versi baru
- * lewat bot Telegram (menu "🚀 Update Versi").
- *
- * BERBEDA dari MaintenanceGate: dialog ini SELALU BISA di-dismiss (tombol
- * back, tap di luar, atau tombol "Nanti") — update di AetherX sepenuhnya
- * opsional, tidak pernah memblokir pemakaian aplikasi. Field `mandatory` di
- * Firestore disiapkan untuk kebutuhan masa depan tapi belum memengaruhi
- * perilaku gate ini.
- */
 @Composable
 fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
-    // Notifikasi SISTEM (tray Android, terpisah dari dialog in-app di bawah
-    // — FITUR BARU, lihat perintah rework) dipicu setiap kali versi terbaru
-    // yang terdeteksi BERUBAH (key = latestVersionCode), bukan setiap kali
-    // recomposition biasa — supaya tidak spam notifikasi berulang selama
-    // pengguna berada di layar yang sama dengan versi yang sama.
     LaunchedEffect(state.info.latestVersionCode) {
         if (state.visible && state.info.latestVersionCode > state.currentVersionCode) {
             AetherXNotifier.notify(
@@ -133,9 +116,6 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
                 )
             }
 
-            // Garis pembatas: menutup blok info versi (ikon + judul + versi)
-            // dan membuka blok deskripsi/changelog di bawahnya, supaya kedua
-            // area itu terasa terpisah secara visual alih-alih menyatu.
             HorizontalDivider(
                 modifier = Modifier.fillMaxWidth(),
                 thickness = 1.dp,
@@ -145,9 +125,6 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
             if (state.info.description.isNotBlank()) {
                 UpdateDescriptionBlock(description = state.info.description)
 
-                // Garis pembatas: menutup blok deskripsi/changelog dan
-                // memisahkannya secara visual dari area aksi (tombol
-                // download + "Nanti") tepat di bawahnya.
                 HorizontalDivider(
                     modifier = Modifier.fillMaxWidth(),
                     thickness = 1.dp,
@@ -162,9 +139,7 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
                         try {
                             context.startActivity(intent)
                         } catch (e: ActivityNotFoundException) {
-                            // Tidak ada browser yang bisa menangani link ini — abaikan
-                            // dengan aman, dialog tetap tampil supaya pengguna bisa
-                            // coba lagi atau salin link secara manual nanti.
+
                         }
                     }
                 },
@@ -202,17 +177,6 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
     }
 }
 
-/**
- * Baris "v1.5 → v2.0": versi yang sedang terpasang (redup/muted) di kiri,
- * panah di tengah, versi baru (aksen biru, ditekankan) di kanan. Dipakai
- * di [UpdateGate] supaya pengguna langsung paham dari-versi-berapa dia
- * akan pindah, bukan cuma melihat angka versi tujuan saja.
- *
- * Kalau nama versi saat ini tidak diketahui (mis. `BuildConfig.VERSION_NAME`
- * kosong pada build tertentu), baris ini turun jadi tampilan lama: hanya
- * versi tujuan, tanpa panah — supaya tidak menampilkan "→ v2.0" yang
- * menggantung tanpa asal.
- */
 @Composable
 private fun VersionTransitionRow(currentVersionName: String, newVersionName: String) {
     Row(
@@ -243,17 +207,8 @@ private fun VersionTransitionRow(currentVersionName: String, newVersionName: Str
     }
 }
 
-/** Tinggi maksimum blok deskripsi sebelum konten bisa di-scroll. */
 private val DESCRIPTION_MAX_HEIGHT = 180.dp
 
-/**
- * Blok deskripsi/changelog di [UpdateGate]. Menerapkan markdown ringan lewat
- * [parseUpdateDescription] (bold/italic/warna/bullet). Tinggi dibatasi ke
- * [DESCRIPTION_MAX_HEIGHT] dan selalu bisa di-scroll kalau kontennya lebih
- * panjang dari itu — tidak ada lagi mode expand/collapse maupun tombol
- * "Selengkapnya"/"Sembunyikan"; scroll saja sudah cukup untuk melihat
- * seluruh isi deskripsi.
- */
 @Composable
 private fun UpdateDescriptionBlock(description: String) {
     val lines = parseUpdateDescription(description)

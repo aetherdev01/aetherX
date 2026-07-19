@@ -33,15 +33,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/**
- * Foreground service yang menggambar panel Monitor FPS sebagai overlay di atas
- * semua aplikasi lain, mirip [CrosshairOverlayService] tapi untuk statistik
- * performa (FPS, CPU, GPU, suhu).
- *
- * Gaya ROG bisa digeser bebas oleh pengguna (offset disimpan & dipulihkan).
- * Gaya Classic SENGAJA tidak menerima sentuhan sama sekali dan selalu
- * dikunci ke pojok kiri bawah layar — sesuai permintaan desain "posisi tetap".
- */
 class FpsMonitorOverlayService : Service() {
 
     companion object {
@@ -162,10 +153,6 @@ class FpsMonitorOverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-    /**
-     * Gaya Classic TIDAK PERNAH menerima drag — permintaannya "posisi tetap".
-     * Hanya gaya ROG yang boleh digeser bebas oleh pengguna.
-     */
     private fun handleDragTouch(event: MotionEvent): Boolean {
         if (currentStyle != FpsMonitorStyle.ROG) return false
         val params = layoutParams ?: return false
@@ -207,8 +194,7 @@ class FpsMonitorOverlayService : Service() {
                     view.fps = if (executor != null) {
                         readFpsForForegroundApp(executor)
                     } else {
-                        // Tanpa Shizuku/Root, FPS asli tidak bisa dibaca — tampilkan 0
-                        // apa adanya daripada memalsukan angka Hz layar.
+
                         0
                     }
                     view.cpuPercent = statsProvider.readCpuLoadPercent()
@@ -220,24 +206,11 @@ class FpsMonitorOverlayService : Service() {
         }
     }
 
-    /**
-     * Deteksi ulang aplikasi yang sedang di foreground di TIAP siklus, lalu baca
-     * FPS render sungguhan untuk package itu lewat `dumpsys gfxinfo`.
-     *
-     * Sebelumnya AetherX hanya mengecek APK mana yang terpasang satu kali saat
-     * overlay pertama kali dinyalakan (lewat [GameLauncher.detectInstalled]) —
-     * kalau game belum dibuka saat itu, atau pengguna sedang di aplikasi lain,
-     * `dumpsys gfxinfo` dijalankan ke package yang tidak sedang merender apapun
-     * sehingga selalu menghasilkan 0. Dengan deteksi foreground berulang, target
-     * pembacaan FPS otomatis mengikuti aplikasi yang benar-benar aktif di layar.
-     */
     private suspend fun readFpsForForegroundApp(executor: ShellExecutor): Int {
         val foregroundPackage = foregroundAppReader.readForegroundPackage(executor)
             ?: fallbackInstalledGamePackage()
             ?: return 0
 
-        // AetherX sendiri, launcher, atau system UI tidak punya frame game untuk
-        // dibaca — tampilkan 0 apa adanya daripada angka yang menyesatkan.
         if (foregroundPackage == packageName) return 0
 
         if (fpsReader == null || fpsReaderPackage != foregroundPackage) {
@@ -248,7 +221,6 @@ class FpsMonitorOverlayService : Service() {
         return fpsReader?.readFps(executor) ?: 0
     }
 
-    /** Fallback kalau deteksi foreground gagal: pakai game yang terpasang, kalau ada. */
     private fun fallbackInstalledGamePackage(): String? =
         GameLauncher.detectInstalled(applicationContext).firstOrNull()?.packageName
 
@@ -260,10 +232,7 @@ class FpsMonitorOverlayService : Service() {
             if (view.style != prefs.fpsMonitorStyle) {
                 view.style = prefs.fpsMonitorStyle
             }
-            // temperatureUnit TIDAK diambil dari prefs — sudah dihapus dari
-            // AppPreferences (fitur "Satuan Suhu" di-rollback). FpsMonitorView
-            // tetap punya field temperatureUnit tapi selalu default CELSIUS
-            // (lihat KDoc di FpsMonitorView.kt), jadi tidak perlu di-set di sini.
+
             currentStyle = prefs.fpsMonitorStyle
 
             applyGravityAndPosition(params, prefs.fpsMonitorStyle, prefs.fpsMonitorOffsetX, prefs.fpsMonitorOffsetY)
@@ -274,11 +243,6 @@ class FpsMonitorOverlayService : Service() {
         }.launchIn(serviceScope)
     }
 
-    /**
-     * ROG: gravity default kiri-atas + offset yang pengguna geser sendiri (persist).
-     * Classic: SELALU gravity kiri-bawah dengan margin tetap, tidak pernah dipengaruhi
-     * offset tersimpan — ini yang membuat posisinya benar-benar "tetap".
-     */
     private fun applyGravityAndPosition(
         params: WindowManager.LayoutParams,
         style: FpsMonitorStyle,

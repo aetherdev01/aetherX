@@ -39,29 +39,6 @@ import com.aether.x.ui.theme.TextPrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Splash screen di dalam aplikasi (tampil setelah splash sistem Android 12+).
- *
- * REWORK: splash TIDAK LAGI memicu dialog/prompt izin apapun (Shizuku, root,
- * overlay, tulis pengaturan sistem, notifikasi). Sebelumnya semua dialog itu
- * ditembakkan bertubi-tubi secara diam-diam di sini, yang justru membuat
- * pengguna kaget dengan banyak popup sistem beruntun tanpa konteks. Sekarang
- * splash murni loading singkat: baca status root/Shizuku yang SUDAH ada
- * secara silent (tanpa dialog) dan sambungkan ke database. Permintaan izin
- * yang sesungguhnya (dengan penjelasan & kontrol per-izin) dipindah ke
- * [com.aether.x.ui.onboarding.PermissionSetupScreen] sebagai langkah
- * tersendiri langsung setelah Splash (Guide sudah dihapus dari alur),
- * supaya pengguna tahu APA yang diminta dan KENAPA sebelum dialog sistem
- * muncul.
- *
- * Koneksi database (Firestore) tetap dilakukan di sini: memanggil
- * [UserIdRepository.resolveUserId] SUNGGUHAN, bukan delay kosmetik — kalau
- * device sudah pernah dapat ID pengguna, panggilan ini langsung selesai dari
- * cache lokal; kalau belum, splash menunggu Firestore (dibatasi timeout
- * supaya tidak menggantung selamanya saat offline). Hasilnya tersimpan di
- * [AetherXPreferences] begitu berhasil, jadi TweakScreen tinggal membacanya
- * tanpa perlu resolve ulang.
- */
 @Composable
 fun SplashScreen(
     onDone: () -> Unit,
@@ -72,18 +49,11 @@ fun SplashScreen(
     var finished by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        // 1. Cek status akses yang SUDAH ada secara silent — tidak memicu
-        //    dialog/prompt apapun. Ini hanya membaca kondisi terkini supaya
-        //    layar-layar berikutnya (Permission, Main) mulai dengan status
-        //    yang akurat, bukan menunda-nunda meminta izin baru.
+
         statusLabel = context.getString(R.string.splash_status_checking)
         PrivilegeManager.refreshAll()
         PrivilegeManager.refreshSupportingPermissions(context)
 
-        // 2. Koneksi database (Firestore) — betulan menunggu resolveUserId(),
-        //    bukan cuma delay kosmetik. Dibatasi timeout supaya splash tetap
-        //    lanjut kalau perangkat offline; TweakScreen akan otomatis coba
-        //    lagi lewat retryResolveUserIdIfMissing() begitu koneksi pulih.
         statusLabel = context.getString(R.string.splash_status_database)
         val preferences = AetherXPreferences(context)
         val deviceId = DeviceId.read(context)
@@ -92,7 +62,6 @@ fun SplashScreen(
             userIdRepository.resolveUserId()
         }
 
-        // Beri sedikit jeda supaya splash tidak berkedip sekilas di perangkat cepat.
         statusLabel = context.getString(R.string.splash_status_ready)
         delay(350)
         finished = true
@@ -105,15 +74,6 @@ fun SplashScreen(
     SplashScreenContent(statusLabel = statusLabel)
 }
 
-/**
- * Konten visual splash: logo [R.drawable.ic_aetherx_logo] (ikon AetherX
- * terbaru) muncul dengan animasi scale+fade "pop in" sederhana (overshoot
- * halus lewat [EaseOutBack]) — TANPA efek glow/cahaya tambahan di
- * belakangnya (dihapus atas permintaan: splash cukup ikon + teks polos,
- * tidak perlu efek visual tambahan). Judul & status loading muncul
- * menyusul dengan fade-in supaya urutan animasi terasa bertahap (logo
- * dulu, baru teks), bukan semua elemen muncul sekaligus.
- */
 @Composable
 private fun SplashScreenContent(statusLabel: String) {
     val logoScale = remember { Animatable(0.6f) }

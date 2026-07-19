@@ -20,20 +20,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.theme.Spacing
 
-/**
- * Pill kecil gaya AetherX (mis. "ID-76957", "Disconnected"): latar gelap,
- * sudut penuh, teks bold kecil, dengan titik indikator warna opsional.
- *
- * [leadingIcon] (FITUR BARU — lihat perintah rework: "untuk badge user
- * Membership ada Logo VIP di sisi kiri badge ID dan itu real icon"):
- * ikon nyata (bukan bentuk/placeholder) yang digambar di ujung kiri pill,
- * SEBELUM dot (kalau ada) dan teks. Dipakai badge ID pengguna di
- * [com.aether.x.ui.tweak.TweakHeader.TweakHeader] untuk menampilkan logo
- * mahkota/VIP saat status membership pengguna aktif. `null` (default)
- * berarti tidak ada ikon sama sekali — perilaku lama tidak berubah untuk
- * semua pemanggilan StatusPill lain yang sudah ada (mis. status Game
- * Profile aktif/nonaktif).
- */
 @Composable
 fun StatusPill(
     text: String,

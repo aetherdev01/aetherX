@@ -31,16 +31,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 
-/**
- * Baris gaya AetherX untuk tweak yang punya beberapa pilihan (List Item +
- * dropdown), mengikuti tata letak [TweakSwitch]: ikon kecil di kiri
- * (opsional), judul bold + deskripsi abu di tengah, dan di kanan sebuah
- * "chip" berisi label pilihan yang sedang aktif + panah — diketuk untuk
- * membuka [DropdownMenu] daftar pilihan.
- *
- * Dipakai mis. untuk pemilihan Governor CPU (Schedutil/Performance/Ondemand/
- * Battery/Universal) di section Root pada layar Tweak.
- */
 @Composable
 fun <T> TweakDropdown(
     label: String,

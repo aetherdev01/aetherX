@@ -41,42 +41,6 @@ import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import kotlinx.coroutines.delay
 
-/**
- * Section "Kernel Manager": baca-tulis nilai kernel MENTAH (frekuensi
- * per-core CPU, governor per-core, frekuensi & governor GPU). BEDA dari
- * section "Root" yang sudah ada di TweakScreen (toggle bernama dengan mode
- * terbatas) — lihat KDoc [KernelManagerViewModel] untuk perbandingan
- * lengkap.
- *
- * REWORK TOTAL TAMPILAN (lihat perintah rework):
- * 1. Section suhu (live)/thermal zones DIHAPUS SEPENUHNYA dari sini — sejak
- *    rework total Dashboard, monitor suhu/CPU/GPU real-time TIDAK LAGI
- *    ditampilkan di tab Dashboard sama sekali (Dashboard sekarang murni
- *    identitas app + Aktivitas Game + Info Device statis, lihat
- *    [com.aether.x.ui.dashboard.DashboardMonitorCards]) — monitoring
- *    performa real-time sekarang jadi domain KHUSUS
- *    [com.aether.x.ui.booster.GameBoosterScreen] (Game Booster), dipakai
- *    SELAMA sesi bermain. Section ini pun sudah tidak relevan lagi
- *    menampilkannya sendiri di sini; [KernelManagerViewModel] juga sudah
- *    tidak lagi melakukan polling thermal sama sekali.
- * 2. CPU dan GPU sekarang masing-masing SectionCard TERPISAH (dulu satu
- *    Column panjang dengan HorizontalDivider sebagai pemisah semua
- *    kategori) — lebih mudah dipindai sekilas, konsisten secara visual
- *    dengan pengelompokan kategori yang sudah dipakai di GameProfileScreen.
- * 3. Kartu info kernel (versi + tombol refresh) sekarang jadi strip
- *    ringkas tersendiri di puncak, terpisah dari card CPU/GPU di
- *    bawahnya — bukan menyatu jadi header dalam satu SectionCard besar.
- * 4. Tiap core CPU ditampilkan dalam sub-card berlatar sedikit beda
- *    (`surfaceVariant` tipis) dengan badge nomor core, supaya batas
- *    antar-core jelas tanpa harus mengandalkan HorizontalDivider tipis
- *    yang mudah terlewat.
- *
- * DIPASANG DI TweakScreen dengan gating IDENTIK dengan section "Root" yang
- * sudah ada: hanya tampil kalau `privilegeStatus.activeBackend ==
- * PrivilegeBackend.ROOT`, karena baca/tulis sysfs mentah di sini butuh
- * akses root sungguhan (Shizuku/adb shell tidak diberi izin tulis ke
- * /sys/devices/system/cpu maupun /sys/class/devfreq).
- */
 @Composable
 fun KernelManagerSection(
     modifier: Modifier = Modifier,
@@ -85,7 +49,7 @@ fun KernelManagerSection(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Strip info kernel + refresh — ringkas, bukan bagian dari card CPU/GPU.
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -128,7 +92,6 @@ fun KernelManagerSection(
             return@Column
         }
 
-        // Card CPU — terpisah dari GPU (dulu satu Column sama dengan divider tipis).
         SectionCard(title = stringResource(R.string.kernel_manager_section_cpu), watermarkIcon = Icons.Outlined.Memory) {
             state.cpuCores.forEachIndexed { index, core ->
                 CpuCoreCard(
@@ -145,8 +108,6 @@ fun KernelManagerSection(
             }
         }
 
-        // Card GPU — hanya dirender kalau data GPU tersedia (chipset tanpa
-        // devfreq GPU yang bisa dibaca akan membuat state.gpu tetap null).
         state.gpu?.let { gpu ->
             SectionCard(title = stringResource(R.string.kernel_manager_section_gpu), watermarkIcon = Icons.Outlined.DeveloperBoard) {
                 GpuRow(
@@ -157,9 +118,6 @@ fun KernelManagerSection(
             }
         }
 
-        // Pesan error ditampilkan INLINE (bukan lewat SnackbarHost milik
-        // TweakScreen) supaya KernelManagerSection tetap independen dari
-        // TweakScreen/TweakViewModel — lihat KDoc KernelManagerViewModel.
         state.message?.let { message ->
             LaunchedEffect(message) {
                 delay(3000)
@@ -175,13 +133,6 @@ fun KernelManagerSection(
     }
 }
 
-/**
- * Sub-card satu core CPU: badge index core (lingkaran kecil bernomor) +
- * frekuensi saat ini di kanan, lalu slider rentang frekuensi & dropdown
- * governor di bawahnya kalau tersedia. Latar sedikit beda dari card
- * induknya (`surfaceVariant` tipis) supaya batas antar-core terlihat jelas
- * tanpa mengandalkan garis divider tipis saja.
- */
 @Composable
 private fun CpuCoreCard(
     core: CpuCoreInfo,
@@ -249,7 +200,6 @@ private fun CpuCoreCard(
     }
 }
 
-/** Badge lingkaran kecil berisi nomor index core — pengganti ikon Memory generik supaya tiap core mudah dibedakan sekilas. */
 @Composable
 private fun CoreIndexBadge(index: Int) {
     Box(
@@ -324,19 +274,6 @@ private fun GpuRow(
     }
 }
 
-/**
- * Slider ganda (min & max) berbasis INDEX ke [availableFrequenciesKhz],
- * BUKAN nilai KHz linear bebas — frekuensi kernel hanya boleh salah satu
- * dari step yang benar-benar didukung (mis. 300000, 576000, 748800, ...
- * tidak linear), jadi slider dengan `steps = size - 1` pada domain index
- * dijamin selalu berhenti tepat di step valid, lalu di-map balik ke KHz
- * saat ditampilkan/diterapkan.
- *
- * DUA SLIDER TERPISAH (bukan satu range slider) karena [TweakSlider] yang
- * sudah ada di app ini adalah slider nilai TUNGGAL — dipakai dua kali
- * (min lalu max) alih-alih menulis komponen range-slider baru, konsisten
- * dengan komponen yang sudah ada di codebase ini.
- */
 @Composable
 private fun FrequencyRangeSlider(
     availableFrequenciesKhz: List<Int>,

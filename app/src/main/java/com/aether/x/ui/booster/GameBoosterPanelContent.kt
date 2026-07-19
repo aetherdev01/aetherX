@@ -74,36 +74,6 @@ import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 
-/**
- * REWORK TOTAL tampilan Game Booster (lihat perintah rework: "ui GB lebih
- * mirip Game Booster ROG/Lainnya... ui bukan klasik, berwarna gelap gitu,
- * lebih modern lah... lengkap dengan fitur Monitoring, mode Boost, Low,
- * banyak quick tile/panel"), MENGGANTIKAN [GameBoosterSidebarContent] card
- * horizontal sebelumnya. Layout SEKARANG dua kolom persis referensi foto:
- *
- * - **Rail kiri sempit** ([GameBoosterAppRail]): daftar ikon quick-app dari
- *   recent apps ([RecentAppEntry]) — tap untuk pindah cepat ke app lain
- *   tanpa menutup panel.
- * - **Panel kanan lebar**: tab "Gaming tools" / "Games", grafik monitoring
- *   FPS (Average/Jitter/Real-time persis referensi), selector
- *   Balanced|Performance (dipetakan ke [GameMode]), grid tile
- *   pengaturan (mode performa, bersihkan memori), lalu grid quick-tile
- *   gaya system tray (voice changer, screenshot, record, DND, dst).
- *
- * Composable ini MURNI presentasional (semua state datang dari [session],
- * semua aksi lewat [actions]) — dipakai HANYA oleh
- * [com.aether.x.core.overlay.GameBoosterOverlayService] sebagai konten
- * window panel edge-swipe yang baru (lihat KDoc service tsb untuk gesture
- * trigger-nya).
- *
- * CATATAN STRING RESOURCE: seluruh label di file ini SUDAH dipindah ke
- * `res/values/strings.xml` lewat key `game_booster_panel_*` (tab, judul
- * panel, monitoring, mode selector, tile pengaturan, quick tile, tombol
- * buka game) — riwayat: rework awal file ini ditulis sebelum folder
- * `res/` ikut ter-upload, jadi labelnya sempat berupa string literal
- * hardcoded sementara (ditandai komentar "// STRING BARU") sampai
- * dipindah ke sini.
- */
 @Composable
 fun GameBoosterPanelContent(
     session: GameBoosterSession,
@@ -130,16 +100,6 @@ fun GameBoosterPanelContent(
     }
 }
 
-// ============================ Rail kiri: quick app ============================
-
-/**
- * Rail vertikal sempit di sisi kiri panel (lihat perintah rework: "sisi
- * kiri list untuk quick app atau membuka apps") — daftar ikon app yang
- * MASIH punya task hidup di recent apps ([RecentAppEntry], dimuat lewat
- * [com.aether.x.core.monitor.RecentTasksReader.listRecentPackages]), tap
- * ikon manapun langsung membawa fokus ke app itu tanpa perlu menutup panel
- * atau kembali ke recent apps sistem secara manual.
- */
 @Composable
 private fun GameBoosterAppRail(
     recentApps: List<RecentAppEntry>,
@@ -201,8 +161,6 @@ private fun RailAppIcon(app: RecentAppEntry, onClick: () -> Unit) {
         }
     }
 }
-
-// ============================ Panel kanan utama ============================
 
 private enum class GameBoosterTab { GAMING_TOOLS, GAMES }
 
@@ -266,10 +224,7 @@ private fun PanelHeader(onMinimize: (() -> Unit)?, onEndSession: () -> Unit) {
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // FITUR BARU (lihat perintah rework: "bisa di minimize dengan
-            // mudah"): tombol minimize KEMBALI ke edge-trigger tersembunyi
-            // (lihat GameBoosterOverlayService.collapsePanel) — BEDA dari
-            // onEndSession yang menghentikan sesi boost sepenuhnya.
+
             onMinimize?.let { minimize ->
                 HeaderIconButton(icon = Icons.Outlined.Remove, contentDescription = stringResource(R.string.game_booster_panel_minimize), onClick = minimize)
             }
@@ -336,8 +291,6 @@ private fun TabChip(label: String, selected: Boolean, onClick: () -> Unit, modif
     }
 }
 
-// ============================ Tab "Gaming tools" ============================
-
 @Composable
 private fun GamingToolsTab(session: GameBoosterSession, actions: GameBoosterActions) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -348,15 +301,6 @@ private fun GamingToolsTab(session: GameBoosterSession, actions: GameBoosterActi
     }
 }
 
-/**
- * Card monitoring persis referensi foto: baris atas "Average X FPS · Jitter
- * Y" kiri dan "Real-time Z FPS" kanan (hijau), grafik garis di bawahnya,
- * lalu baris bawah selector Balanced|Performance. Data FPS dari
- * [GameBoosterMetrics] — "Jitter" dihitung sebagai deviasi rata-rata antar
- * sampel FPS berurutan dalam [GameBoosterMetrics.fpsHistory] (semakin
- * stabil frame time, semakin kecil angkanya), metric yang TIDAK ada di
- * model sebelumnya tapi tampil eksplisit di referensi foto.
- */
 @Composable
 private fun MonitoringGraphCard(metrics: GameBoosterMetrics) {
     Column(
@@ -415,8 +359,7 @@ private fun FpsHistoryGraph(history: List<Int>) {
             .fillMaxWidth()
             .height(64.dp),
     ) {
-        // Garis grid horizontal ringan (0 / 30 / 60-ish) — meniru sumbu Y
-        // tipis pada referensi foto tanpa perlu label angka penuh.
+
         val gridColor = Color.White.copy(alpha = 0.06f)
         for (fraction in listOf(0f, 0.5f, 1f)) {
             val y = size.height * (1f - fraction)
@@ -436,22 +379,12 @@ private fun FpsHistoryGraph(history: List<Int>) {
     }
 }
 
-/** Deviasi rata-rata antar sampel FPS berurutan — proksi sederhana untuk "jitter" (stabilitas frame time). */
 private fun calculateJitter(history: List<Int>): Int {
     if (history.size < 2) return 0
     val deltas = history.zipWithNext { a, b -> kotlin.math.abs(a - b) }
     return deltas.average().toInt()
 }
 
-/**
- * Selector Balanced|Performance persis referensi foto — dipetakan ke
- * [GameMode] yang SUDAH ada (BUKAN enum baru): Balanced = [GameMode.MID],
- * Performance = [GameMode.BOOST]. [GameMode.LOW] ("Hemat") TETAP bisa
- * diakses lewat tile "Mode performa" di [SettingsTileRow] untuk pengguna
- * yang butuh preset hemat baterai — referensi foto hanya menampilkan dua
- * opsi di baris ini, jadi opsi ketiga TIDAK dihilangkan, hanya dipindah
- * supaya UI utama tetap ringkas seperti referensi.
- */
 @Composable
 private fun ModeSelector(currentMode: GameMode, onModeChange: (GameMode) -> Unit) {
     Row(
@@ -494,7 +427,6 @@ private fun ModeUnderlineOption(label: String, selected: Boolean, onClick: () ->
     }
 }
 
-/** Dua tile besar (mode performa, bersihkan memori) persis referensi foto baris tile atas. */
 @Composable
 private fun SettingsTileRow(actions: GameBoosterActions) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -561,15 +493,6 @@ private fun SettingsTile(
     }
 }
 
-/**
- * Grid quick-tile gaya system tray persis referensi foto (Voice changer,
- * Screenshot, Record, DND, On-screen (kunci rotasi), Brightness, Wi-Fi,
- * More tools) — 4 kolom, ikon di atas label kecil di bawah. "More tools"
- * SENGAJA jadi tile terakhir (bukan aksi nyata) — placeholder untuk
- * pengguna berpindah ke [GameBoosterScreen] layar penuh yang punya menu
- * lebih lengkap, konsisten dengan pola "More" pada Game Booster ROG/OEM
- * lain.
- */
 @Composable
 private fun QuickToolsGrid(session: GameBoosterSession, actions: GameBoosterActions) {
     val tiles = quickTiles(session, actions)
@@ -648,13 +571,6 @@ private fun QuickTile(tile: QuickToolTile) {
     }
 }
 
-// ============================ Tab "Games" ============================
-
-/**
- * Tab kedua — daftar game yang terdeteksi (dari sesi aktif untuk saat ini;
- * lihat KDoc [GameBoosterActions.onLaunchGame]) dengan tombol luncurkan,
- * MENGGANTIKAN posisi "GameLaunchCard" pada card lama.
- */
 @Composable
 private fun GamesTab(session: GameBoosterSession, onLaunchGame: (() -> Unit)?) {
     Row(

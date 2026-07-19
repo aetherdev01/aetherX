@@ -29,13 +29,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         initialValue = AppPreferences(),
     )
 
-    // setAppLanguage() dan resetAllSettings() DIHAPUS TOTAL (fitur "pemilih
-    // Bahasa" + "Reset Semua Pengaturan" di-rollback atas permintaan
-    // pengguna — "kurang cocok"). Lihat juga SettingsScreen.kt yang sudah
-    // tidak lagi memanggil kedua fungsi ini, dan AetherXPreferences.kt yang
-    // sudah tidak lagi punya setAppLanguage()/resetAll().
-
-    /** true kalau izin "Tampil di atas aplikasi lain" sudah diberikan. */
     fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(getApplication())
 
     fun openOverlayPermissionSettings() {
@@ -53,11 +46,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val app = getApplication<Application>()
             if (enabled && canDrawOverlays()) {
                 CrosshairOverlayService.start(app)
-                // FITUR BARU (lihat perintah rework — "perbaiki notifikasi
-                // ... setiap aktifkan fitur"): notifikasi heads-up HANYA
-                // dikirim kalau service BENAR-BENAR jadi start (permission
-                // overlay sudah ada) — mencegah notifikasi "diaktifkan" yang
-                // menyesatkan padahal servicenya sendiri gagal jalan.
+
                 AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = true)
             } else {
                 CrosshairOverlayService.stop(app)
@@ -86,24 +75,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.setCrosshairOffset(0, 0) }
     }
 
-    /**
-     * OPSI BARU: kunci/buka kunci posisi crosshair. CATATAN: memanggil
-     * preferences.setCrosshairPositionLocked(Boolean) — method ini perlu
-     * ditambahkan ke AetherXPreferences (modul `data`), dengan pola persist
-     * yang sama seperti setCrosshairOffset di atasnya (DataStore key baru,
-     * mis. "crosshair_position_locked").
-     */
     fun setCrosshairPositionLocked(locked: Boolean) {
         viewModelScope.launch { preferences.setCrosshairPositionLocked(locked) }
     }
 
-    /**
-     * FITUR BARU (lihat perintah rework — "Samakan Section Crosshair
-     * Persis seperti foto ke dua dari UI"): dipanggil dari [PositionJoystick]
-     * di CrosshairSettingsSection saat pengguna menyeret handle joystick —
-     * update posisi X/Y secara langsung (bukan lewat drag-mode overlay di
-     * layar lain seperti sebelumnya).
-     */
     fun setCrosshairOffset(x: Int, y: Int) {
         viewModelScope.launch { preferences.setCrosshairOffset(x, y) }
     }

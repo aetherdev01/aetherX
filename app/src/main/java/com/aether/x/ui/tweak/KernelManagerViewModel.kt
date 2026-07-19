@@ -25,29 +25,6 @@ data class KernelManagerUiState(
     val message: String? = null,
 )
 
-/**
- * ViewModel section "Kernel Manager" (khusus backend Root — lihat gating
- * di TweakScreen, section ini TIDAK ditampilkan untuk Shizuku/NONE karena
- * baca-tulis sysfs mentah di sini butuh akses root sungguhan).
- *
- * BEDA DENGAN [TweakViewModel]: [TweakViewModel] mengelola toggle "mode"
- * bernama (GPU Performance Mode, dst.) yang di baliknya menerapkan
- * nilai/governor TERBATAS dan SUDAH DITENTUKAN. ViewModel ini menampilkan
- * dan menulis nilai MENTAH langsung dari kernel (frekuensi per-core,
- * daftar governor lengkap yang didukung) — dua sistem independen yang
- * boleh dipakai bersamaan (lihat KDoc [KernelManagerRepository]).
- *
- * REWORK: section suhu (live) DIHAPUS dari Kernel Manager — dulu di sini
- * ada polling thermal zone berkala, tapi itu duplikat dengan suhu yang
- * sudah ditampilkan di tab Dashboard ([com.aether.x.ui.dashboard.DashboardViewModel]),
- * yang justru sumber datanya lebih ringan (tidak perlu baca semua zona
- * termal mentah). CPU/GPU di sini TIDAK di-poll otomatis (hanya dibaca
- * ulang manual lewat [refresh] atau setelah
- * [applyCoreFrequency]/[applyCoreGovernor]/[applyGpuFrequency]/[applyGpuGovernor]
- * berhasil) karena frekuensi CPU/GPU berubah sangat cepat (tiap beberapa
- * milidetik mengikuti beban) — menampilkannya live akan membuat angka
- * "bergetar" terus dan sulit dibaca.
- */
 class KernelManagerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val reader = KernelInfoReader()
@@ -60,7 +37,6 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         refresh()
     }
 
-    /** Baca ulang snapshot CPU + GPU + versi kernel. Dipanggil saat pertama dibuka dan lewat tombol refresh manual di UI. */
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
@@ -83,7 +59,6 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    /** Terapkan frekuensi min/max ke satu core, lalu baca ulang snapshot core itu supaya UI menampilkan nilai yang BENAR-BENAR tersimpan di kernel (bisa berbeda dari yang diminta kalau kernel menolak sebagian). */
     fun applyCoreFrequency(coreIndex: Int, minKhz: Int?, maxKhz: Int?) {
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutor() ?: return@launch
@@ -107,12 +82,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private suspend fun refreshSingleCore(executor: ShellExecutor, coreIndex: Int) {
-        // Baca ulang SEMUA core (bukan cuma satu) karena readCpuCores() satu
-        // panggilan shell untuk semua core sekaligus lebih efisien daripada
-        // menambah fungsi baca-satu-core terpisah hanya untuk kasus ini —
-        // lihat KDoc KernelInfoReader soal alasan "satu panggilan shell per
-        // fungsi baca". coreIndex dipakai murni untuk dokumentasi intent di
-        // pemanggil, tidak memengaruhi logika di sini.
+
         val cores = reader.readCpuCores(executor)
         _state.update { it.copy(cpuCores = cores) }
     }
@@ -141,7 +111,6 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    /** FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur"): lihat KDoc appString di TweakViewModel. */
     private fun appString(resId: Int, vararg args: Any): String {
         val text = getApplication<Application>().getString(resId, *args)
         getApplication<Application>().showAetherToast(text)

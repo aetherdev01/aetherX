@@ -26,15 +26,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/**
- * Foreground service yang menggambar crosshair sebagai overlay di atas semua
- * aplikasi lain (mis. saat main game), memakai [WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY].
- * Butuh izin "Tampil di atas aplikasi lain" (SYSTEM_ALERT_WINDOW / Settings.canDrawOverlays).
- *
- * Posisi crosshair defaultnya tepat di tengah layar, dan bisa digeser oleh
- * pengguna lewat mode "atur posisi" (long-press + drag), lalu offset-nya
- * disimpan supaya persist antar sesi.
- */
 class CrosshairOverlayService : Service() {
 
     companion object {
@@ -159,7 +150,6 @@ class CrosshairOverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-    /** Saat mode "atur posisi" aktif, view boleh menerima sentuhan untuk digeser. */
     private fun handleDragTouch(event: MotionEvent): Boolean {
         if (!dragModeEnabled) return false
         val params = layoutParams ?: return false

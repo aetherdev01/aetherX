@@ -34,22 +34,6 @@ import com.aether.x.ui.theme.AetherXTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Splash singkat Game Booster (lihat perintah rework: "saat buka gamenya
- * ada animasi splash dari game boosternya") — activity transparan (tema
- * `Theme.AetherX.Transparent`, lihat AndroidManifest) yang menampilkan
- * animasi logo AetherX (scale-in + fade-in, MENIRU semangat prompt animasi
- * lightning-strike yang sebelumnya dibuat untuk intro logo AetherX) selama
- * kurang lebih 1.4 detik, lalu OTOMATIS:
- * 1. Membuka game lewat [GameLaunchTracker] (tercatat sebagai "terakhir
- *    dipakai" sekaligus, konsisten dengan Dashboard "Aktivitas Game").
- * 2. Memulai [GameBoosterOverlayService] untuk package itu (floating
- *    sidebar akan muncul begitu game selesai loading dan splash ini
- *    ditutup sendiri lewat [finish]).
- *
- * TIDAK menunggu konfirmasi apa pun dari pengguna — activity ini SEPENUHNYA
- * otomatis, murni for-show sebelum transisi ke game.
- */
 class GameBoosterSplashActivity : ComponentActivity() {
 
     companion object {

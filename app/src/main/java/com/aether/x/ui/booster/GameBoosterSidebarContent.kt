@@ -56,49 +56,23 @@ import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 
-/**
- * Kumpulan aksi yang bisa dipicu dari [GameBoosterSidebarContent] — satu
- * data class supaya tanda tangan fungsi Composable tidak membengkak dengan
- * banyak parameter lambda terpisah, dan supaya floating sidebar
- * ([com.aether.x.core.overlay.GameBoosterOverlayService]) & layar penuh
- * ([GameBoosterScreen]) menyambungkan aksi yang SAMA PERSIS ke
- * [com.aether.x.core.booster.GameBoosterActionHandler] tanpa duplikasi.
- */
 data class GameBoosterActions(
     val onModeChange: (GameMode) -> Unit,
     val onDndToggle: (Boolean) -> Unit,
     val onFpsOverlayToggle: (Boolean) -> Unit,
     val onScreenshot: () -> Unit,
     val onEndSession: () -> Unit,
-    // FITUR BARU: tutup sidebar KEMBALI KE BUBBLE tanpa mengakhiri sesi
-    // boost — beda dari onEndSession (yang menghentikan Game Booster
-    // sepenuhnya, mode kembali normal, DND mati). Null berarti tombol
-    // tutup tidak ditampilkan sama sekali — dipakai oleh GameBoosterScreen
-    // (layar penuh dari drawer) yang memang tidak punya konsep "collapse ke
-    // bubble" karena dia bukan floating overlay.
-    val onClose: (() -> Unit)? = null,
-    // FITUR BARU (lihat perintah rework floating booster foto 2): tombol
-    // "LUNCURKAN" di card game membawa pengguna kembali ke game yang
-    // sedang di-boost (mis. kalau pengguna sempat berpindah ke AetherX
-    // tanpa menutup game). Null berarti tombol tidak ditampilkan —
-    // GameBoosterScreen (layar penuh) tidak memerlukan aksi ini karena
-    // sudah punya cara sendiri untuk membuka game dari daftar.
-    val onLaunchGame: (() -> Unit)? = null,
-    // ======================= REWORK TOTAL — panel baru =======================
-    // Seluruh field di bawah ini BARU (lihat perintah rework: "bisa di
-    // minimize dengan mudah", "sisi kiri list untuk quick app", "banyak
-    // quick tile/panel") — dipakai [GameBoosterPanelContent], SEMUA
-    // default null/no-op supaya [GameBoosterScreen] (layar penuh, yang
-    // belum tentu punya semua aksi ini) tetap compile tanpa perlu
-    // disentuh sama sekali.
 
-    /** Sembunyikan panel kembali ke edge-trigger tersembunyi TANPA mengakhiri sesi boost. Null = tombol minimize tidak ditampilkan. */
+    val onClose: (() -> Unit)? = null,
+
+    val onLaunchGame: (() -> Unit)? = null,
+
     val onMinimize: (() -> Unit)? = null,
-    /** Tap ikon app di rail kiri ([GameBoosterAppRail]) — bawa app itu ke foreground. */
+
     val onOpenApp: ((String) -> Unit)? = null,
-    /** Tile "Pengaturan" (performa app) di [SettingsTileRow]. */
+
     val onOpenPerformanceSettings: (() -> Unit)? = null,
-    /** Tile "Bersihkan memori" di [SettingsTileRow]. */
+
     val onClearMemory: (() -> Unit)? = null,
     val onVoiceChanger: (() -> Unit)? = null,
     val onRecord: (() -> Unit)? = null,
@@ -108,55 +82,13 @@ data class GameBoosterActions(
     val onMoreTools: (() -> Unit)? = null,
 )
 
-/**
- * REWORK TOTAL (lihat perintah rework — "rework total juga untuk floating
- * game booster nya seperti foto ke 2"): SEBELUMNYA Column vertikal berisi
- * daftar menu panjang (mode selector, toggle FPS/DND, tombol screenshot,
- * panel metrics, tombol akhiri sesi) dalam satu panel sempit mepet-kanan.
- *
- * SEKARANG mengikuti referensi foto 2 — card KOMPAK LEBAR HORIZONTAL:
- * - Baris header: judul "Game Corner" kiri, indikator baterai kanan.
- * - Baris utama TIGA KOLOM: suhu CPU (kiri) — card game dengan ikon asli +
- *   tombol Luncurkan (tengah, lebih menonjol) — beban GPU (kanan). Kolom
- *   kanan SENGAJA memakai beban GPU (bukan "ping/interval" seperti pada
- *   referensi foto) karena model data Game Booster saat ini
- *   ([GameBoosterMetrics]) tidak memiliki data ping jaringan — menambah
- *   field ping dummy akan menyesatkan, jadi kolom ini diisi metric yang
- *   BENAR-BENAR tersedia datanya.
- * - Baris footer: tombol akhiri sesi (kiri) dan mode/menu toggle ringkas
- *   (kanan) — mode selector & panel grafik FPS lengkap TETAP dipertahankan
- *   di bawahnya untuk pengguna yang ingin detail lebih (composable ini
- *   masih Composable MURNI yang sama, dipakai baik oleh floating overlay
- *   MAUPUN GameBoosterScreen, supaya satu implementasi tetap konsisten di
- *   kedua tempat — lihat KDoc [GameBoosterActions] di atas).
- */
 @Composable
 fun GameBoosterSidebarContent(
     session: GameBoosterSession,
     actions: GameBoosterActions,
     modifier: Modifier = Modifier,
 ) {
-    // BUG FIX (lihat perintah rework — "saat mode lanskap banyak opsi yang
-    // terpotong, tidak bisa discroll"): panel ini digambar oleh
-    // [com.aether.x.core.overlay.GameBoosterOverlayService] sebagai window
-    // WindowManager WRAP_CONTENT/WRAP_CONTENT yang ditumpuk DI ATAS game —
-    // WindowManager TIDAK PERNAH otomatis meng-clip/scroll kontennya sendiri
-    // seperti Activity biasa. SEBELUMNYA Column di bawah ini tidak punya
-    // verticalScroll maupun batas tinggi sama sekali — saat game berjalan
-    // landscape (tinggi layar fisik jauh lebih pendek, mis. ~360-411dp),
-    // konten panel (header + baris 3-kolom + mode selector + 2 toggle +
-    // tombol screenshot + panel metrics+grafik + tombol akhiri sesi) yang
-    // totalnya SELALU sama, bisa dengan mudah melebihi tinggi layar itu —
-    // hasilnya sebagian menu digambar DI LUAR batas layar oleh OS, dan
-    // karena tidak ada scroll, pengguna tidak punya cara menjangkaunya sama
-    // sekali (persis "opsi terpotong, tidak bisa discroll").
-    //
-    // Sekarang tinggi Column dibatasi ke maksimum 85% tinggi layar TERSEDIA
-    // (dihitung dinamis lewat LocalConfiguration, bukan angka dp hardcode —
-    // supaya tetap benar di berbagai ukuran layar/lipat orientasi) dan
-    // verticalScroll dipasang supaya begitu konten melebihi batas itu,
-    // pengguna tinggal geser jari untuk melihat sisanya alih-alih terpotong
-    // permanen.
+
     val configuration = LocalConfiguration.current
     val maxPanelHeight = (configuration.screenHeightDp * 0.85f).dp
     Column(
@@ -168,7 +100,7 @@ fun GameBoosterSidebarContent(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        // Header: "Game Corner" kiri, baterai + tombol tutup kanan.
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -205,7 +137,6 @@ fun GameBoosterSidebarContent(
             }
         }
 
-        // Baris utama tiga-kolom: suhu CPU — card game — beban GPU.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -232,12 +163,8 @@ fun GameBoosterSidebarContent(
             )
         }
 
-        // Preset mode: Hemat / Normal / Boost (dipertahankan, referensi
-        // foto 2 tidak menampilkannya tapi menu ini tetap penting untuk
-        // kontrol cepat dan tidak diminta untuk dihapus).
         ModeSelector(currentMode = session.mode, onModeChange = actions.onModeChange)
 
-        // Menu toggle: FPS overlay, DND
         GameBoosterMenuToggleRow(
             icon = Icons.Outlined.Speed,
             label = stringResource(R.string.game_booster_menu_fps),
@@ -251,16 +178,12 @@ fun GameBoosterSidebarContent(
             onCheckedChange = actions.onDndToggle,
         )
 
-        // Aksi sekali-ketuk: Screenshot
         GameBoosterActionRow(
             icon = Icons.Outlined.PhotoCamera,
             label = stringResource(R.string.game_booster_menu_screenshot),
             onClick = actions.onScreenshot,
         )
 
-        // Monitoring: FPS/CPU/GPU/Suhu + grafik (dipertahankan penuh, ini
-        // fitur "ada monitoring seperti grafik" dari rework sebelumnya dan
-        // tidak diminta untuk dihapus/diubah oleh perintah rework ini).
         GameBoosterMetricsPanel(metrics = session.metrics)
 
         GameBoosterActionRow(
@@ -272,11 +195,6 @@ fun GameBoosterSidebarContent(
     }
 }
 
-/**
- * Kolom kiri/kanan compact di baris utama card floating (suhu CPU / beban
- * GPU) — meniru "36,6°C / Kecepatan CPU" dan "44,2 / Interval Ping" pada
- * referensi foto 2, disusun ikon kecil + angka besar + label kecil.
- */
 @Composable
 private fun SidebarSideMetric(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -306,15 +224,6 @@ private fun SidebarSideMetric(
     }
 }
 
-/**
- * Card game tengah pada baris utama — ikon ASLI game (lihat
- * [GameBoosterSession.icon], dimuat dari PackageManager oleh
- * [com.aether.x.core.overlay.GameBoosterOverlayService]) + nama game +
- * tombol "Luncurkan", meniru card "Among Us" pada referensi foto 2. Kalau
- * [icon] masih null (belum selesai dimuat, atau package sudah
- * di-uninstall), fallback ke ikon generik [Icons.Outlined.SportsEsports]
- * supaya card tidak pernah tampil dengan area kosong.
- */
 @Composable
 private fun GameLaunchCard(
     session: GameBoosterSession,
@@ -541,14 +450,6 @@ private fun severityColor(percent: Int?): Color = when {
     else -> AccentRed
 }
 
-/**
- * Grafik garis sederhana riwayat FPS (lihat perintah rework: "ada
- * monitoring seperti grafik") — digambar manual lewat [Canvas] (bukan
- * library chart eksternal) karena kebutuhannya sangat sederhana (satu
- * garis, tanpa sumbu/label interaktif) dan project ini belum punya
- * dependency chart apa pun; menambahkannya untuk satu grafik kecil ini
- * tidak sepadan dengan cost APK size/waktu build tambahan.
- */
 @Composable
 private fun FpsHistoryGraph(history: List<Int>) {
     val maxFps = (history.maxOrNull() ?: 60).coerceAtLeast(30)

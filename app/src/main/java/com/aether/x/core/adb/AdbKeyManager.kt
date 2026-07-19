@@ -28,36 +28,6 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Date
 import java.util.Random
 
-/**
- * REWORK TOTAL PERMISSION — ADB tertanam (lihat perintah rework "buatkan
- * sistem seperti shizuku langsung tertanam dalam aplikasinya... hapus
- * semua yang bersangkutan dengan shizuku").
- *
- * KOREKSI ARSITEKTUR (setelah dua percobaan sebelumnya gagal): "dadb"
- * (dev.mobile:dadb) TIDAK punya wireless pairing sama sekali, dan menulis
- * protokol pairing (SPAKE2 + TLS) sendiri dari nol terlalu berisiko tanpa
- * bisa diverifikasi/dites di sini. Sekarang memakai **libadb-android**
- * (io.github.muntashirakon.adb, oleh pembuat App Manager) yang SUDAH
- * mengimplementasikan wireless pairing Android 11+ secara lengkap & teruji
- * di production — lihat [AdbConnectionManager] untuk pemakaiannya.
- *
- * Pengelola keypair RSA 2048-bit + sertifikat X.509 self-signed yang
- * dipakai AetherX untuk mengautentikasi dirinya sendiri ke `adbd` — persis
- * seperti keypair `~/.android/adbkey`/`adbkey.pub` yang dipakai
- * command-line `adb` di komputer. Disimpan sekali di penyimpanan internal
- * privat app (`filesDir`, tidak bisa diakses app lain tanpa root) dan
- * dipakai ulang selamanya — INILAH kunci utama kenapa pairing "tidak
- * gampang ter-reset": begitu satu kali di-pair, adbd di perangkat
- * mengingat PUBLIC KEY/certificate ini secara permanen, sehingga sesi ADB
- * berikutnya tidak perlu pairing ulang — hanya connect biasa.
- *
- * Generate certificate X.509 di Android BUKAN hal sepele — Android
- * standar TIDAK expose `sun.security.x509` (dipakai command-line `adb`
- * yang jalan di JVM penuh) — karena itu dipakai dependency
- * `com.github.MuntashirAkon:sun-security-android`, port dari OpenJDK
- * `sun.security.x509` khusus Android, PERSIS seperti dicontohkan resmi
- * di README libadb-android.
- */
 class AdbKeyManager(context: Context) {
 
     private val keyDir = File(context.filesDir, "adb_key").apply { mkdirs() }
@@ -66,23 +36,12 @@ class AdbKeyManager(context: Context) {
 
     data class AdbIdentity(val privateKey: PrivateKey, val certificate: Certificate)
 
-    /**
-     * Ambil keypair+certificate yang sudah tersimpan, atau bikin baru
-     * sekali kalau ini pertama kalinya AetherX dipasang/dijalankan.
-     * Identitas yang sama ini dipakai TERUS-MENERUS untuk semua percobaan
-     * pairing & connect berikutnya — mengganti keypair akan membuat adbd
-     * menganggap AetherX sebagai klien baru yang belum dikenal, sehingga
-     * wajib pairing ulang. Karena itu SENGAJA tidak pernah di-regenerate
-     * otomatis oleh AetherX sendiri.
-     */
     @Synchronized
     fun getOrCreateIdentity(): AdbIdentity {
         if (privateKeyFile.exists() && certificateFile.exists()) {
             val loaded = runCatching { loadIdentity() }.getOrNull()
             if (loaded != null) return loaded
-            // Berkas korup (mis. penyimpanan penuh saat menulis
-            // sebelumnya) — regenerasi adalah satu-satunya pilihan aman,
-            // meski konsekuensinya pengguna wajib pairing ulang sekali lagi.
+
         }
         return generateAndSaveIdentity()
     }
@@ -99,10 +58,7 @@ class AdbKeyManager(context: Context) {
     }
 
     private fun generateAndSaveIdentity(): AdbIdentity {
-        // Persis mengikuti contoh resmi README libadb-android (lihat
-        // https://github.com/MuntashirAkon/libadb-android) — generate
-        // RSA 2048-bit, lalu bungkus jadi X509CertImpl self-signed lewat
-        // sun-security-android karena Android standar tidak punya API ini.
+
         val keySize = 2048
         val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
         keyPairGenerator.initialize(keySize, SecureRandom.getInstance("SHA1PRNG"))
@@ -112,12 +68,7 @@ class AdbKeyManager(context: Context) {
 
         val subject = "CN=AetherX"
         val algorithmName = "SHA512withRSA"
-        // Sertifikat berumur sangat panjang (~27 tahun) — BUKAN sertifikat
-        // sesi sekali pakai. Ini penting: kalau umurnya pendek, adbd akan
-        // menolak koneksi setelah sertifikat kedaluwarsa walau key pair-nya
-        // masih sama persis, memaksa pairing ulang padahal seharusnya
-        // tidak perlu — bertentangan dengan tujuan "tidak gampang
-        // ter-reset" yang diminta.
+
         val expiryDate = System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 365 * 27
 
         val certificateExtensions = CertificateExtensions()
@@ -152,14 +103,6 @@ class AdbKeyManager(context: Context) {
         return AdbIdentity(privateKey, x509CertImpl)
     }
 
-    /**
-     * Hapus keypair+certificate secara eksplisit — dipanggil HANYA oleh
-     * aksi pengguna "Lupakan perangkat ini" di layar Izin Akses, BUKAN
-     * dipanggil otomatis oleh alur mana pun. Setelah ini, pairing wireless
-     * debugging wajib diulang dari awal karena adbd di perangkat masih
-     * mengingat certificate LAMA yang sudah tidak lagi cocok dengan
-     * private key yang baru akan dibuat.
-     */
     fun forgetIdentity() {
         privateKeyFile.delete()
         certificateFile.delete()

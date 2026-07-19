@@ -11,16 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-/**
- * State yang dipakai [UpdateGate] untuk memutuskan apakah dialog update
- * perlu ditampilkan. Berbeda dari [MaintenanceGate] yang TIDAK BISA
- * di-dismiss, dialog update ini opsional (lihat [UpdateGate]) — begitu
- * pengguna menekan "Nanti", [dismissedVersionCode] disimpan supaya dialog
- * yang SAMA tidak muncul berulang-ulang selama sesi aplikasi ini masih
- * berjalan. Dismiss ini murni di memori (bukan DataStore/preferences) jadi
- * akan muncul lagi kalau aplikasi benar-benar ditutup dan dibuka ulang —
- * ini disengaja, supaya update yang tertunda tidak terlupakan selamanya.
- */
 data class UpdateUiState(
     val visible: Boolean,
     val info: UpdateInfo,
@@ -28,11 +18,6 @@ data class UpdateUiState(
     val currentVersionName: String,
 )
 
-/**
- * ViewModel tunggal untuk info update, dipasang di root aplikasi (lihat
- * [com.aether.x.MainActivity]/AetherXRoot) — bukan per-tab — supaya dialog
- * update bisa muncul di layar mana pun, mengikuti pola [MaintenanceGate].
- */
 class UpdateViewModel : ViewModel() {
 
     private val repository = UpdateRepository()
@@ -66,7 +51,6 @@ class UpdateViewModel : ViewModel() {
         }
     }
 
-    /** Dipanggil saat pengguna menekan "Nanti" — sembunyikan dialog untuk versi ini saja. */
     fun dismiss() {
         _dismissedVersionCode.value = _state.value.info.latestVersionCode
     }

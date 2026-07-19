@@ -8,32 +8,8 @@ import android.graphics.RectF
 import android.view.View
 import com.aether.x.data.FpsMonitorStyle
 
-/**
- * Satuan tampilan suhu di [FpsMonitorView] — DIPINDAHKAN dari modul `data`
- * (sebelumnya com.aether.x.data.TemperatureUnit) ke sini karena opsi
- * "Satuan Suhu" di Settings sudah dihapus total (permintaan "hapus opsi
- * suhu"). Enum ini TETAP ada karena [FpsMonitorView] tetap menampilkan
- * suhu overlay (fitur intinya dipertahankan) — hanya saja SEKARANG SELALU
- * [CELSIUS] (tidak lagi bisa diganti pengguna lewat preferensi), jadi enum
- * ini murni detail implementasi internal formatting suhu milik View ini
- * sendiri, bukan lagi bagian dari [com.aether.x.data.AppPreferences].
- */
 enum class TemperatureUnit { CELSIUS, FAHRENHEIT }
 
-/**
- * View kustom yang menggambar panel Monitor FPS, dengan dua gaya visual:
- *
- * - [FpsMonitorStyle.ROG]: kartu gelap translusen ala ROG Phone Game Genie —
- *   menampilkan FPS + baris kecil CPU/GPU/Suhu, dan BISA digeser bebas
- *   oleh pengguna (posisi disimpan).
- * - [FpsMonitorStyle.CLASSIC]: pil kompak satu baris "FPS · CPU · Suhu" ala
- *   game booster jadul, SELALU terkunci di pojok kiri bawah layar (tidak bisa
- *   digeser, tidak ada logika drag untuk gaya ini).
- *
- * Kedua gaya sengaja dibuat dalam skala ukuran yang mirip (selisih kecil,
- * bukan beberapa kali lipat) supaya keduanya terasa satu keluarga desain,
- * hanya beda tata letak & aksen warna.
- */
 class FpsMonitorView(context: Context) : View(context) {
 
     var style: FpsMonitorStyle = FpsMonitorStyle.CLASSIC
@@ -51,12 +27,6 @@ class FpsMonitorView(context: Context) : View(context) {
     var temperatureCelsius: Float? = null
         set(value) { field = value; invalidate() }
 
-    /** Satuan tampilan suhu. Nilai sumber selalu disimpan dalam Celsius
-     *  ([temperatureCelsius]); konversi hanya terjadi saat digambar.
-     *  SELALU [TemperatureUnit.CELSIUS] sekarang (lihat KDoc enum di atas)
-     *  — var+setter dipertahankan apa adanya (bukan val) supaya minim
-     *  perubahan pada logika formattedTemperature() di bawah, walau saat
-     *  ini tidak ada lagi caller yang mengubah nilainya dari CELSIUS. */
     var temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS
         set(value) { field = value; invalidate() }
 
@@ -101,9 +71,7 @@ class FpsMonitorView(context: Context) : View(context) {
     private val rect = RectF()
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // Ukuran ROG & Classic sengaja dibuat berdekatan (selisih kecil), tidak
-        // lagi jauh berbeda seperti sebelumnya, dan keduanya jauh lebih ringkas
-        // supaya tidak menutupi layar game.
+
         val (w, h) = when (style) {
             FpsMonitorStyle.ROG -> dp(116f) to dp(46f)
             FpsMonitorStyle.CLASSIC -> dp(128f) to dp(28f)
@@ -124,20 +92,17 @@ class FpsMonitorView(context: Context) : View(context) {
         val h = height.toFloat()
         val corner = dp(10f)
 
-        // Kartu gelap semi-transparan dengan aksen garis di kiri, mirip Game Genie,
-        // tapi jauh lebih ringkas dari versi sebelumnya.
         bgPaint.color = Color.argb(220, 18, 18, 22)
         rect.set(0f, 0f, w, h)
         canvas.drawRoundRect(rect, corner, corner, bgPaint)
 
-        accentPaint.color = Color.parseColor("#FF2C4BFF") // aksen biru khas ROG
+        accentPaint.color = Color.parseColor("#FF2C4BFF")
         val accentWidth = dp(3f)
         val accentRect = RectF(0f, dp(6f), accentWidth, h - dp(6f))
         canvas.drawRoundRect(accentRect, accentWidth / 2, accentWidth / 2, accentPaint)
 
         val leftPad = accentWidth + dp(8f)
 
-        // Baris besar: FPS
         bigTextPaint.textSize = dp(15f)
         val fpsLabel = "$fps"
         canvas.drawText(fpsLabel, leftPad, dp(19f), bigTextPaint)
@@ -146,7 +111,6 @@ class FpsMonitorView(context: Context) : View(context) {
         val fpsLabelWidth = bigTextPaint.measureText(fpsLabel)
         canvas.drawText("FPS", leftPad + fpsLabelWidth + dp(3f), dp(19f), labelTextPaint)
 
-        // Baris kecil: CPU · GPU · Suhu
         smallTextPaint.textSize = dp(9f)
         val cpuText = "CPU ${cpuPercent?.let { "$it%" } ?: "-"}"
         val gpuText = "GPU ${gpuPercent?.let { "$it%" } ?: "-"}"
@@ -159,7 +123,6 @@ class FpsMonitorView(context: Context) : View(context) {
         x += smallTextPaint.measureText(gpuText) + dp(7f)
         canvas.drawText(tempText, x, lineY, smallTextPaint)
 
-        // Indikator kecil "bisa digeser" di baris paling bawah.
         labelTextPaint.textSize = dp(7f)
         canvas.drawText("• geser", leftPad, h - dp(5f), labelTextPaint)
     }
@@ -184,7 +147,7 @@ class FpsMonitorView(context: Context) : View(context) {
         val baseline = h / 2f + dp(3.8f)
         var x = padding
 
-        bigTextPaint.color = Color.parseColor("#FF7CFC00") // hijau klasik game booster
+        bigTextPaint.color = Color.parseColor("#FF7CFC00")
         canvas.drawText(fpsText, x, baseline, bigTextPaint)
         x += bigTextPaint.measureText(fpsText) + dp(6f)
 

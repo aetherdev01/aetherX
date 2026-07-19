@@ -11,40 +11,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 
-/**
- * Membaca FPS/CPU/GPU/Suhu secara berkala (interval [POLL_INTERVAL_MS])
- * SELAMA sebuah [GameBoosterSession] aktif — dipakai
- * [com.aether.x.core.overlay.GameBoosterOverlayService] untuk mengisi
- * [GameBoosterSession.metrics] (lihat perintah rework: "ada monitoring
- * seperti grafik").
- *
- * SUMBER DATA (MENIRU pola [com.aether.x.ui.dashboard.DashboardViewModel]
- * versi LAMA sebelum monitor CPU/GPU/Suhu dipindah ke sini — lihat KDoc
- * versi terbaru [com.aether.x.ui.dashboard.DashboardViewModel] soal
- * kenapa monitoring itu dipindah): backend Shizuku/Root aktif → baca lewat
- * [KernelInfoReader] (shell, reliable); backend NONE → fallback
- * [SystemStatsProvider] (baca langsung proses app, GPU load kemungkinan
- * besar tetap null karena keterbatasan permission Android biasa).
- *
- * FPS SELALU lewat [GfxInfoFpsReader] (`dumpsys gfxinfo`) — TIDAK ADA
- * fallback non-shell untuk FPS (data ini memang tidak tersedia sama sekali
- * tanpa shell), jadi [GameBoosterMetrics.fps] akan tetap null kalau backend
- * NONE — UI booster HARUS menampilkan hint "aktifkan Root/Shizuku untuk
- * FPS real-time" dalam kondisi ini, bukan menampilkan angka palsu.
- */
 class GameBoosterMonitor(private val packageName: String) {
 
     private val kernelInfoReader = KernelInfoReader()
     private val fallbackStatsProvider = SystemStatsProvider()
     private val fpsReader = GfxInfoFpsReader(packageName)
 
-    /**
-     * Flow tak berkesudahan (sampai collector-nya di-cancel) yang meng-emit
-     * [GameBoosterMetrics] baru setiap [POLL_INTERVAL_MS]. [GameBoosterMetrics.fpsHistory]
-     * dikelola INTERNAL oleh flow ini (bukan oleh pemanggil) supaya jendela
-     * riwayat konsisten terlepas dari berapa kali/di mana flow ini
-     * di-collect ulang.
-     */
     fun metricsFlow(context: Context): Flow<GameBoosterMetrics> = flow {
         val fpsHistory = ArrayDeque<Int>()
         while (true) {
@@ -66,10 +38,7 @@ class GameBoosterMonitor(private val packageName: String) {
                 gpu = withContext(Dispatchers.IO) { fallbackStatsProvider.readGpuLoadPercent() }
                 temp = withContext(Dispatchers.IO) { fallbackStatsProvider.readTemperatureCelsius(context) }
             }
-            // RAM SELALU lewat ActivityManager.getMemoryInfo standar,
-            // TIDAK LEWAT executor Root/Shizuku sama sekali — API publik
-            // Android biasa ini tersedia terlepas dari status backend
-            // privilege, beda dari cpu/gpu/temp di atas.
+
             val ram = withContext(Dispatchers.IO) {
                 runCatching {
                     val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager

@@ -50,28 +50,6 @@ import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.Spacing
 
-/**
- * REWORK TOTAL (lihat perintah rework — "rework total tampilan Dashboard...
- * karena text AetherX terlalu banyak"): kartu hero SEBELUMNYA menampilkan
- * kicker "AETHERX" + judul besar "AetherX" LAGI — redundan dengan
- * [com.aether.x.ui.tweak.TweakHeader] yang SUDAH menampilkan logo + "AetherX"
- * secara permanen tepat di atas kartu ini (untuk SEMUA sub-tab). Sekarang
- * hero card ini HANYA menampilkan logo bulat kecil + versi + pill mode akses
- * dalam SATU baris ramping — tidak lagi mengulang nama aplikasi sama sekali.
- *
- * Logo SEKARANG memakai [R.drawable.ic_aetherx_logo] (PNG logo resmi
- * lengkap, bulat) mengikuti permintaan eksplisit — BUKAN lagi
- * [R.drawable.ic_aetherx_mark] (vector mark "X" dekoratif transparan besar
- * yang dipakai versi sebelumnya).
- *
- * WARNA SEKARANG MENGIKUTI TEMA DEFAULT (lihat perintah rework — "warna
- * card ... default mengikuti warna tema bawaan"): gradient
- * DashboardHeroStart/DashboardHeroEnd (coklat-terracotta custom, terpisah
- * dari identitas warna app) DIHAPUS — kartu ini sekarang memakai
- * `MaterialTheme.colorScheme.surfaceVariant`/`primary` (biru [AccentBlue],
- * warna aksen utama app di seluruh layar lain), konsisten dengan kartu
- * Membership/Game Profile/dll yang semuanya sudah biru.
- */
 @Composable
 fun AetherXInfoCard(
     activeBackend: PrivilegeBackend,
@@ -113,11 +91,6 @@ fun AetherXInfoCard(
     }
 }
 
-/**
- * Pill status mode akses — SEKARANG memakai `MaterialTheme.colorScheme.primary`
- * (biru tema default) untuk Root, bukan lagi DashboardPillBrown custom —
- * lihat KDoc [AetherXInfoCard] soal alasan warna mengikuti tema bawaan.
- */
 @Composable
 private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
     val (label, bgColor) = when (backend) {
@@ -144,36 +117,6 @@ private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
     }
 }
 
-/**
- * FITUR BARU — perbaikan alur "server Wireless debugging mati" (lihat
- * perintah rework: "ketika server wireless debugging mati, di AXKM ga
- * perlu setup isi kode 6 digit lagi biar ga ribet / buatkan opsi
- * aktifkan Wireless Debugging di tab Settings/Dashboard khusus no root &
- * muncul ketika Wireless Debugging belum aktif dan hilangkan saat
- * aktif").
- *
- * Kartu pintasan ini KHUSUS untuk mode No Root/ADB ([PrivilegeBackend.ADB]
- * atau [PrivilegeBackend.NONE] — TIDAK pernah tampil untuk
- * [PrivilegeBackend.ROOT], karena backend Root tidak bergantung sama
- * sekali pada toggle Wireless debugging). Sengaja ditempatkan di
- * Dashboard (bukan hanya di layar Izin Akses) karena Dashboard adalah
- * layar yang paling sering dilihat pengguna sehari-hari — begitu server
- * Wireless debugging mati (mis. Wi-Fi sempat putus, atau toggle-nya
- * sendiri dimatikan sistem/pengguna), kartu ini langsung terlihat tanpa
- * perlu membuka layar Izin Akses secara khusus.
- *
- * Tombolnya HANYA membuka halaman Pengaturan > Wireless debugging —
- * TIDAK memicu alur pairing/kode 6-digit apa pun. Begitu pengguna
- * menyalakan toggle-nya kembali di sana, [WirelessDebuggingMonitor]
- * (dipantau reaktif lewat ContentObserver sejak app dibuka, lihat
- * AetherXApp) otomatis memicu `AdbConnectionManager.autoReconnect()` dari
- * pairing tersimpan — TIDAK PERNAH meminta kode 6-digit lagi selama
- * pairing sebelumnya masih tersimpan (hanya pairing pertama kali / setelah
- * "Lupakan perangkat" yang tetap butuh kode). Kartu ini sendiri otomatis
- * hilang begitu status [wirelessDebuggingEnabled] berubah jadi true,
- * murni reaktif terhadap parameter — tidak ada logic tampil/sembunyi lain
- * yang tersembunyi di sini.
- */
 @Composable
 fun WirelessDebuggingQuickCard(
     activeBackend: PrivilegeBackend,
@@ -181,10 +124,9 @@ fun WirelessDebuggingQuickCard(
     onOpenWirelessDebugging: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Root tidak butuh Wireless debugging sama sekali -> kartu ini tidak
-    // relevan dan tidak pernah ditampilkan untuk backend itu.
+
     if (activeBackend == PrivilegeBackend.ROOT) return
-    // Sudah aktif -> kartu langsung hilang (lihat KDoc di atas).
+
     if (wirelessDebuggingEnabled) return
 
     Row(
@@ -231,16 +173,6 @@ fun WirelessDebuggingQuickCard(
     }
 }
 
-/**
- * FITUR BARU — section "Aktivitas Game" di Dashboard (lihat perintah rework):
- * daftar game terpasang sebagai kartu vertikal (ikon besar + nama) yang
- * bisa di-scroll horizontal kiri-kanan ([LazyRow]). Game yang TERAKHIR
- * dipakai ditampilkan PALING KIRI dengan chip "Terakhir dipakai" di bawah
- * ikonnya (lihat [DashboardViewModel.reorderByLastPlayed]) — sisanya
- * alfabet seperti urutan asli [com.aether.x.core.apps.GameProfileCatalog].
- * Mengetuk kartu manapun langsung membuka game itu lewat
- * [com.aether.x.core.apps.GameLaunchTracker].
- */
 @Composable
 fun GameActivitySection(
     games: List<InstalledGameEntry>,
@@ -339,13 +271,6 @@ private fun GameActivityCard(
     }
 }
 
-/**
- * Section "Info Device": model, chipset/board, versi Android, RAM, dan
- * penyimpanan — SEMUA tersedia tanpa Shizuku/Root, jadi section ini selalu
- * tampil terlepas dari backend akses yang aktif. Tidak berubah dari versi
- * sebelumnya (statis, tidak butuh polling — lihat KDoc [DashboardViewModel]
- * soal kenapa monitor CPU/GPU/Suhu dihapus dari Dashboard, bukan section ini).
- */
 @Composable
 fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) {
     SectionCard(title = stringResource(R.string.dashboard_section_device_info), modifier = modifier, watermarkIcon = Icons.Outlined.PhoneAndroid) {

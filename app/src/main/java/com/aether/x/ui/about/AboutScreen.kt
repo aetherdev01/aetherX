@@ -41,14 +41,6 @@ import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.Spacing
 
-/**
- * Tab "About" tersendiri (dulu section "Tentang" ditumpuk di paling bawah
- * tab Settings — lihat perintah rework: dipindah TOTAL ke sini, sudah
- * tidak ada lagi di SettingsScreen). Berisi identitas aplikasi, info
- * maintainer, dan tiga tombol komunitas (WhatsApp, Telegram, YouTube)
- * dengan ikon berwarna resmi masing-masing platform — menggantikan baris
- * tautan GitHub/Telegram polos yang dipakai sebelumnya.
- */
 @Composable
 fun AboutScreen(
     modifier: Modifier = Modifier,
@@ -97,17 +89,6 @@ fun AboutScreen(
     }
 }
 
-/**
- * Kartu HERO paling atas tab About (REWORK — sebelumnya fokus utamanya
- * identitas aplikasi dengan foto maintainer cuma jadi baris kecil kedua;
- * sekarang dibalik total): foto besar Maintainer ([R.drawable.logo], BUKAN
- * [R.drawable.ic_aetherx_logo] — logo.png ini secara khusus adalah foto
- * yang mewakili Aldi Ahmad Khoirudin selaku maintainer, dipakai di sini
- * SEBAGAI FOTO PROFIL utama, bukan sebagai logo brand aplikasi) jadi
- * elemen pertama yang dilihat, dengan nama & handle di bawahnya sebagai
- * judul utama kartu. Identitas aplikasi (judul, tagline, versi) dipindah
- * jadi info SEKUNDER di baris bawah, dipisah divider.
- */
 @Composable
 private fun MaintainerHeroCard(versionName: String) {
     SectionCard(title = null, watermarkIcon = Icons.Outlined.Code) {
@@ -181,13 +162,6 @@ private fun MaintainerHeroCard(versionName: String) {
     }
 }
 
-/**
- * Baris tombol tautan komunitas (WhatsApp/Telegram/YouTube) dengan ikon
- * berwarna resmi masing-masing platform (lihat ic_social_whatsapp.xml,
- * ic_social_telegram.xml, ic_social_youtube.xml) — TIDAK di-tint satu warna
- * seperti perlakuan logo GitHub sebelumnya, karena ketiga logo ini memang
- * dirancang multi-warna sesuai brand resminya masing-masing.
- */
 @Composable
 private fun CommunityLinkRow(
     iconRes: Int,
@@ -205,21 +179,14 @@ private fun CommunityLinkRow(
                 try {
                     context.startActivity(intent)
                 } catch (e: ActivityNotFoundException) {
-                    // Tidak ada aplikasi/browser yang bisa menangani intent ini — abaikan
-                    // dengan aman daripada membuat aplikasi crash.
+
                 }
             }
             .padding(vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        // REWORK: ikon dibungkus Box putih dengan sedikit inset (padding
-        // 6dp) sebelum digambar, alih-alih Image di-crop CircleShape secara
-        // langsung menempel tepi lingkaran — kalau ada asset vector yang
-        // bounding box-nya tidak sempurna simetris (mis. ic_social_whatsapp),
-        // inset ini menyerap sedikit ketidaksempurnaan itu sehingga logo
-        // tetap terlihat center secara visual, bukan mepet/terpotong ke
-        // salah satu sisi.
+
         Box(
             modifier = Modifier
                 .size(36.dp)

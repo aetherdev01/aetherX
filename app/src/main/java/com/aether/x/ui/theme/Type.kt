@@ -8,9 +8,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.aether.x.R
 
-// Font "GF" — dibundel langsung (bukan Downloadable Fonts) supaya
-// tampilan konsisten tanpa bergantung koneksi/Google Play. Semua weight
-// dipetakan ke file gf*.ttf yang sesuai.
 val PoppinsFamily = FontFamily(
     Font(R.font.gfthin, FontWeight.Thin),
     Font(R.font.gfextralight, FontWeight.ExtraLight),

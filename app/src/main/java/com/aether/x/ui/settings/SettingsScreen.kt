@@ -44,8 +44,6 @@ fun SettingsScreen(
     var dragModeActive by remember { mutableStateOf(false) }
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
 
-    // FITUR BARU — kartu pintasan "Aktifkan Wireless Debugging" (khusus No
-    // Root/ADB, lihat KDoc WirelessDebuggingQuickCard di DashboardMonitorCards.kt).
     val context = LocalContext.current
     val wirelessDebuggingEnabled by WirelessDebuggingMonitor.state.collectAsStateWithLifecycle()
 
@@ -75,32 +73,12 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        // FITUR BARU — lihat KDoc WirelessDebuggingQuickCard: kartu ini
-        // sendiri yang memutuskan untuk tidak merender apa pun kalau backend
-        // aktif Root atau toggle Wireless debugging sedang menyala.
         WirelessDebuggingQuickCard(
             activeBackend = privilegeStatus.activeBackend,
             wirelessDebuggingEnabled = wirelessDebuggingEnabled,
             onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
         )
 
-        // Section "Tampilan" (pemilih tema) dihapus total — aplikasi hanya
-        // mendukung Mode Gelap (lihat AetherXPreferences.preferences yang
-        // selalu mengembalikan DarkModePref.DARK), jadi tidak ada lagi
-        // pengaturan tema yang perlu ditampilkan ke pengguna sama sekali.
-
-        // Section "Umum" (pemilih Bahasa + tombol Reset Semua Pengaturan)
-        // DIHAPUS TOTAL atas permintaan pengguna ("kurang cocok"). Lihat
-        // AppLanguage.kt yang juga dihapus, dan AetherXPreferences.kt /
-        // SettingsViewModel.kt yang rollback ke state sebelum fitur ini
-        // ditambahkan (appLanguage, setAppLanguage, resetAll dihapus).
-
-        // REWORK TOTAL (lihat perintah rework terbaru — "Samakan Section
-        // Crosshair Persis seperti foto ke dua dari UI"): CrosshairSettingsSection
-        // SEKARANG menggambar kartu besarnya SENDIRI (watermark logo,
-        // toggle besar di pojok kanan atas, dst. — lihat KDoc di
-        // CrosshairSettingsSection.kt), BUKAN lagi konten polos di dalam
-        // SectionCard generik seperti section lain di layar ini.
         CrosshairSettingsSection(
             enabled = prefs.crosshairEnabled,
             style = prefs.crosshairStyle,
@@ -112,11 +90,7 @@ fun SettingsScreen(
             offsetY = prefs.crosshairOffsetY,
             overlayPermissionGranted = overlayGranted,
             dragModeActive = dragModeActive,
-            // OPSI BARU: kunci posisi crosshair — lihat KDoc parameter di
-            // CrosshairSettingsSection.kt. prefs.crosshairPositionLocked
-            // HARUS ditambahkan ke data class AppPreferences (modul `data`),
-            // begitu juga setCrosshairPositionLocked(Boolean) di
-            // AetherXPreferences.
+
             positionLocked = prefs.crosshairPositionLocked,
             onPositionLockedChange = viewModel::setCrosshairPositionLocked,
             onEnabledChange = viewModel::setCrosshairEnabled,
@@ -146,8 +120,5 @@ fun SettingsScreen(
             )
         }
 
-        // Section "Tentang" (identitas app + tautan komunitas) dipindah TOTAL
-        // ke tab About tersendiri (lihat AboutScreen) — lihat perintah
-        // rework. Tidak ada lagi apa pun soal "Tentang" di tab Settings.
     }
 }

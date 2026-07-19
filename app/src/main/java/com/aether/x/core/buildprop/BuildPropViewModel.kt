@@ -21,13 +21,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * Permintaan edit yang sedang menunggu konfirmasi pengguna lewat dialog —
- * TIDAK langsung diterapkan begitu pengguna menekan simpan pada satu baris.
- * Lihat KDoc [BuildPropViewModel] soal kenapa konfirmasi ini wajib, tidak
- * bisa dilewati walau [BuildPropUiState.pendingEdit] terlihat seperti
- * langkah tambahan yang bisa disederhanakan.
- */
 data class PendingBuildPropEdit(
     val partition: BuildPropPartition,
     val entry: BuildPropEntry,
@@ -45,7 +38,7 @@ data class BuildPropUiState(
     val pendingRestore: BuildPropBackup? = null,
     val message: String? = null,
 ) {
-    /** Entri partisi terpilih, difilter [searchQuery] terhadap key (case-insensitive) — dipakai langsung oleh UI, tidak perlu logika filter terpisah di Composable. */
+
     val visibleEntries: List<BuildPropEntry>
         get() {
             val snapshot = snapshots.firstOrNull { it.partition == selectedPartition } ?: return emptyList()
@@ -54,38 +47,11 @@ data class BuildPropUiState(
         }
 }
 
-/**
- * ViewModel untuk "Build.prop Editor" (khusus backend Root, sub-tab baru di
- * drawer Tweak — lihat gating `PrivilegeBackend.ROOT` yang sama dengan
- * Kernel Manager/App Manager di TweakScreen).
- *
- * KENAPA ALUR EDIT PUNYA DUA LANGKAH (pilih value baru lalu KONFIRMASI
- * TERPISAH lewat [pendingEdit], bukan langsung tulis saat pengguna menekan
- * "simpan" di baris): berbeda dari toggle switch tweak biasa yang aman
- * dibalik kapan saja, mengedit build.prop BISA menyebabkan bootloop kalau
- * value salah untuk key tertentu (terutama namespace `ro.*` yang dibaca
- * SEKALI saat boot dan tidak bisa diubah lagi sampai reboot berikutnya).
- * Dialog konfirmasi (dirender di [com.aether.x.ui.tweak.BuildPropEditorSection])
- * menjelaskan risiko ini secara eksplisit setiap kali, TIDAK ada opsi
- * "jangan tampilkan lagi" — pengulangan peringatan ini disengaja, bukan
- * oversight.
- *
- * BACKUP WAJIB SEBELUM EDIT PERTAMA PER PARTISI PER SESI: [backedUpThisSession]
- * melacak partisi mana yang sudah dibackup sejak ViewModel ini dibuat (mis.
- * sejak layar Build.prop Editor dibuka) — [confirmEdit] MENOLAK menerapkan
- * perubahan (mengembalikan awal ke alur backup, bukan diam-diam melewati)
- * kalau partisi terkait belum pernah dibackup di sesi ini. Ini ditegakkan
- * DI VIEWMODEL (bukan cuma di UI) supaya tidak ada jalur pemanggilan yang
- * bisa melewati backup, termasuk kalau composable dipanggil ulang dengan
- * urutan tidak terduga.
- */
 class BuildPropViewModel(application: Application) : AndroidViewModel(application) {
 
     private val reader = BuildPropReader()
     private val repository = BuildPropRepository()
-    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya
-    // muncul di fitur tutup semua apps, jadikan lebih konsisten di semua
-    // fitur"): lihat KDoc parameter activity di confirmEdit di bawah.
+
     private val preferences = AetherXPreferences(application)
 
     private val _state = MutableStateFlow(BuildPropUiState())
@@ -95,7 +61,6 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
         refresh()
     }
 
-    /** Baca ulang semua partisi. Dipanggil saat pertama dibuka, lewat tombol refresh manual, dan otomatis setelah apply/restore berhasil (menampilkan nilai yang BENAR-BENAR tersimpan di file). */
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
@@ -119,15 +84,8 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(searchQuery = query) }
     }
 
-    /**
-     * Langkah 1: pengguna menekan "simpan" pada satu baris di UI. INI BELUM
-     * MENULIS APAPUN — hanya menyimpan niat ke [BuildPropUiState.pendingEdit]
-     * supaya UI menampilkan dialog konfirmasi. Penulisan sungguhan ada di
-     * [confirmEdit], dipanggil terpisah setelah pengguna menekan "Ya, saya
-     * paham risikonya" di dialog itu.
-     */
     fun requestEdit(entry: BuildPropEntry, newValue: String) {
-        if (newValue == entry.value) return // tidak ada perubahan, tidak perlu dialog konfirmasi maupun backup
+        if (newValue == entry.value) return
         _state.update {
             it.copy(pendingEdit = PendingBuildPropEdit(it.selectedPartition, entry, newValue))
         }
@@ -137,19 +95,6 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(pendingEdit = null) }
     }
 
-    /**
-     * Langkah 2: dipanggil hanya dari tombol konfirmasi di dialog. Kalau
-     * partisi terkait belum dibackup di sesi ini, fungsi ini membuat backup
-     * DULU secara otomatis sebelum menulis perubahan — pengguna tidak perlu
-     * langkah manual terpisah untuk "backup dulu baru edit", tapi backup
-     * tetap selalu terjadi tanpa bisa dilewati.
-     *
-     * @param activity RILIS v2.0 (lihat perintah rework — "perbaiki iklan
-     * yang hanya muncul di fitur tutup semua apps, jadikan lebih konsisten
-     * di semua fitur"): lihat KDoc parameter sama di
-     * [com.aether.x.ui.appmanager.AppManagerViewModel.forceStopApp] untuk
-     * penjelasan lengkap pola ini.
-     */
     fun confirmEdit(activity: Activity?) {
         val pending = _state.value.pendingEdit ?: return
         viewModelScope.launch {
@@ -168,7 +113,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                             message = appString(R.string.buildprop_error_backup_failed, pending.partition.displayLabel),
                         )
                     }
-                    return@launch // TIDAK lanjut menulis kalau backup gagal — ini syarat keras, bukan best-effort
+                    return@launch
                 }
                 _state.update { it.copy(backedUpThisSession = it.backedUpThisSession + pending.partition) }
             }
@@ -194,7 +139,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                 val isMember = preferences.preferences.first().isMembershipActive
                 AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
             }
-            refresh() // baca ulang supaya UI menampilkan isi file yang sebenarnya, termasuk kalau sed gagal sebagian
+            refresh()
         }
     }
 
@@ -214,7 +159,6 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(pendingRestore = null) }
     }
 
-    /** Pulihkan file dari backup yang dipilih pengguna di dialog konfirmasi restore — overwrite penuh, lihat KDoc [BuildPropRepository.restore]. */
     fun confirmRestore() {
         val backup = _state.value.pendingRestore ?: return
         viewModelScope.launch {

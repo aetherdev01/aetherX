@@ -9,8 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// Skema gelap kustom AetherX — dasar hitam kecoklatan + aksen terracotta
-// pucat, dipakai sebagai default (bukan lagi Material You bawaan Android).
 private val AetherXDarkScheme = darkColorScheme(
     primary = AccentBlue,
     onPrimary = OnAccentBlue,
@@ -35,7 +33,6 @@ private val AetherXDarkScheme = darkColorScheme(
     onError = Color(0xFF2B0704),
 )
 
-// Skema terang tetap disediakan (fallback), tapi referensi desain fokus ke dark.
 private val AetherXLightScheme = lightColorScheme(
     primary = Color(0xFFA85A2E),
     onPrimary = Color(0xFFFFFFFF),
@@ -60,23 +57,9 @@ private val AetherXShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp),
 )
 
-/**
- * Tema utama AetherX.
- *
- * UI direwrite total mengikuti referensi desain: dasar gelap pekat + aksen
- * biru pucat, tipografi tebal, kartu besar dengan sudut membulat. Dynamic
- * color (Material You) telah dihapus sepenuhnya supaya tampilan konsisten
- * dengan identitas AetherX dan tidak mengikuti wallpaper sistem.
- */
 @Composable
 fun AetherXTheme(
-    // Tema bawaan aplikasi SELALU gelap, apa pun setelan sistem (light/dark)
-    // di HP pengguna — sebelumnya memakai isSystemInDarkTheme(), jadi kalau
-    // HP disetel mode terang, aplikasi ikut terbuka terang meski seluruh
-    // desain (warna, kontras, ikon) dibuat untuk skema gelap. Parameter
-    // darkTheme tetap ada (dipertahankan default true) supaya masih bisa
-    // dioverride manual dari pemanggil kalau suatu saat mau ditambah toggle
-    // tema di halaman Pengaturan.
+
     darkTheme: Boolean = true,
     content: @Composable () -> Unit,
 ) {

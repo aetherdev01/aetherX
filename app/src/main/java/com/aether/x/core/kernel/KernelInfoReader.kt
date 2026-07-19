@@ -3,36 +3,10 @@ package com.aether.x.core.kernel
 import com.aether.x.core.shell.ShellExecutor
 import kotlin.math.roundToInt
 
-/**
- * Membaca (read-only) state kernel mentah langsung dari sysfs/procfs lewat
- * [ShellExecutor] — dipakai oleh section "Kernel Manager" (khusus backend
- * Root, lihat gating di TweakScreen) untuk menampilkan nilai NYATA
- * perangkat, bukan asumsi tetap. Semua fungsi di kelas ini murni MEMBACA,
- * tidak pernah menulis — penulisan ada di
- * [com.aether.x.data.KernelManagerRepository], mengikuti pemisahan yang
- * sama seperti [com.aether.x.data.TweakRepository] (repository menulis)
- * vs sumber data lain yang membaca.
- *
- * SATU PANGGILAN SHELL PER FUNGSI BACA: tiap fungsi `cat` semua file sysfs
- * yang relevan dalam SATU perintah shell (dipisah marker unik per file),
- * bukan satu `exec()` per file — [ShellExecutor.exec] tiap panggilan punya
- * overhead proses (`su -c` baru), jadi membaca 8 core CPU misalnya akan
- * 8x lebih lambat kalau dipanggil satu-satu, apalagi dipoll berkala untuk
- * thermal (lihat [com.aether.x.ui.tweak.KernelManagerViewModel]).
- */
 class KernelInfoReader {
 
-    /**
-     * Baca info seluruh core CPU yang terdeteksi. Core yang gagal dibaca
-     * total (mis. sedang di-offline-kan sistem) tetap muncul di hasil
-     * dengan [CpuCoreInfo.isUnavailable] true, supaya UI bisa menampilkan
-     * "Core N: tidak tersedia" alih-alih diam-diam menghilangkannya dari
-     * daftar (yang akan membingungkan kalau jumlah core terlihat berubah).
-     */
     suspend fun readCpuCores(executor: ShellExecutor): List<CpuCoreInfo> {
-        // Deteksi dulu berapa banyak core ada (indeks 0..N-1) dari daftar
-        // direktori cpufreq yang benar-benar ada — TIDAK diasumsikan tetap
-        // (mis. 8), karena jumlah core beda-beda tiap chipset.
+
         val countResult = executor.exec(
             "ls -d /sys/devices/system/cpu/cpu[0-9]*/cpufreq 2>/dev/null | wc -l",
         )
@@ -61,16 +35,14 @@ class KernelInfoReader {
     }
 
     private fun parseCoreBlocks(lines: List<String>, coreCount: Int): List<CpuCoreInfo> {
-        // Setiap blok core dipisah marker "===CORE_i===", field di dalamnya
-        // dipisah "---" — parsing sederhana berbasis pemisah teks ini, tidak
-        // perlu regex karena formatnya kita kontrol sendiri dari script di atas.
+
         val cores = mutableListOf<CpuCoreInfo>()
         var currentIndex = -1
         var fields = mutableListOf<MutableList<String>>()
 
         fun flush() {
             if (currentIndex < 0) return
-            // fields[0]=curFreq, [1]=minFreq, [2]=maxFreq, [3]=availFreq, [4]=governor, [5]=availGovernors
+
             val curFreq = fields.getOrNull(0)?.firstOrNull()?.trim()?.toIntOrNull()
             val minFreq = fields.getOrNull(1)?.firstOrNull()?.trim()?.toIntOrNull()
             val maxFreq = fields.getOrNull(2)?.firstOrNull()?.trim()?.toIntOrNull()
@@ -122,9 +94,6 @@ class KernelInfoReader {
         }
         flush()
 
-        // Jaga-jaga: kalau parsing gagal total untuk sebagian core (mis. output
-        // shell tidak lengkap), tetap kembalikan entri kosong untuk core itu
-        // supaya jumlah baris di UI konsisten dengan coreCount yang terdeteksi.
         val byIndex = cores.associateBy { it.coreIndex }
         return (0 until coreCount).map { i ->
             byIndex[i] ?: CpuCoreInfo(
@@ -139,16 +108,6 @@ class KernelInfoReader {
         }
     }
 
-    /**
-     * Baca info GPU. Mencoba beberapa jalur sysfs dikenal secara berurutan
-     * (Adreno/Qualcomm -> Mali devfreq generik -> Mali via node misc),
-     * mengikuti chipset yang sama dengan yang sudah ditangani
-     * [com.aether.x.data.TweakRepository.applyGpuPerformanceMode]. Jalur
-     * GED MediaTek (frequency bound, bukan devfreq governor) SENGAJA tidak
-     * dibaca di sini karena tidak punya konsep "governor" sama sekali —
-     * GPU Performance Mode toggle yang sudah ada tetap menanganinya lewat
-     * jalurnya sendiri, terpisah dari kernel manager baca/tulis mentah ini.
-     */
     suspend fun readGpuInfo(executor: ShellExecutor): GpuInfo {
         val script = """
             for p in /sys/class/kgsl/kgsl-3d0/devfreq /sys/devices/platform/*/kgsl-3d0/devfreq \
@@ -208,13 +167,6 @@ class KernelInfoReader {
         )
     }
 
-    /**
-     * Baca suhu semua zona termal (`/sys/class/thermal/thermal_zone*`).
-     * Nilai mentah kernel dalam MILIDERAJAT Celsius (mis. 45000 = 45.0°C)
-     * di HAMPIR SEMUA perangkat modern — dibagi 1000 di sini. Beberapa
-     * perangkat lawas kadang melaporkan langsung dalam derajat (nilai < 1000),
-     * itu ditangani sebagai kasus khusus supaya tidak menampilkan "0.045°C".
-     */
     suspend fun readThermalZones(executor: ShellExecutor): List<ThermalZoneInfo> {
         val script = """
             for z in /sys/class/thermal/thermal_zone*; do
@@ -229,37 +181,17 @@ class KernelInfoReader {
             val match = Regex("^===ZONE_(\\d+)===(.*)===(-?\\d+)$").find(line.trim()) ?: return@mapNotNull null
             val (idxStr, type, tempStr) = match.destructured
             val rawTemp = tempStr.toIntOrNull() ?: return@mapNotNull null
-            // Kasus khusus: sebagian kecil perangkat/driver melaporkan sudah
-            // dalam derajat (bukan miliderajat) — nilai mentah realistis untuk
-            // suhu perangkat (0-150) hampir tidak pernah terjadi dalam skala
-            // miliderajat, jadi dipakai sebagai heuristik pembeda.
+
             val celsius = if (rawTemp in 0..150) rawTemp.toFloat() else rawTemp / 1000f
             ThermalZoneInfo(zoneIndex = idxStr.toInt(), type = type.trim(), temperatureCelsius = celsius)
         }.sortedBy { it.zoneIndex }
     }
 
-    /**
-     * Baca ulang versi kernel dari `uname -r` — murni informasi, tidak dipakai logika apa pun.
-     */
     suspend fun readKernelVersion(executor: ShellExecutor): String? {
         val result = executor.exec("uname -r")
         return result.output.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
     }
 
-    /**
-     * Load CPU rata-rata seluruh core dalam persen (0-100), dibaca DUA KALI
-     * berturut-turut dengan jeda singkat DALAM SATU panggilan shell (bukan
-     * dua panggilan `exec()` terpisah — lihat KDoc kelas ini soal kenapa
-     * satu panggilan shell per fungsi baca) supaya bisa dihitung delta
-     * busy/idle tanpa bergantung pada state instance dipanggil berkali-kali
-     * dari luar (beda dari [com.aether.x.core.monitor.SystemStatsProvider.readCpuLoadPercent]
-     * yang butuh method itu sendiri dipanggil berkali-kali untuk simpan
-     * sampel sebelumnya). Dibaca lewat [executor] (root/Shizuku), BUKAN
-     * langsung `File("/proc/stat").readText()` dari proses AetherX — di
-     * sebagian ROM, `/proc/stat` per-app dibatasi SELinux sehingga baca
-     * langsung dari proses app bisa gagal walau sebenarnya datanya publik;
-     * lewat shell (terutama root) baris ini nyaris selalu berhasil.
-     */
     suspend fun readCpuLoadPercent(executor: ShellExecutor): Int? {
         val script = """
             cat /proc/stat | head -1
@@ -289,17 +221,6 @@ class KernelInfoReader {
         return busyPercent.roundToIntClamped()
     }
 
-    /**
-     * Load GPU dalam persen, dibaca lewat [executor] (root/Shizuku) — node
-     * `gpu_busy_percentage` di kebanyakan perangkat Adreno HANYA bisa dibaca
-     * shell dengan privilese, `File.canRead()` dari proses app biasa hampir
-     * selalu gagal (`Permission denied`) walau file itu ada, itulah kenapa
-     * pembacaan ini TIDAK dilakukan langsung dari
-     * [com.aether.x.core.monitor.SystemStatsProvider] untuk device dengan
-     * Shizuku/Root aktif. Kembalikan null kalau semua jalur tidak terbaca —
-     * UI akan menampilkan "-" alih-alih angka palsu (chipset non-Adreno,
-     * mis. Mali/PowerVR, umumnya tidak punya node persentase langsung).
-     */
     suspend fun readGpuBusyPercent(executor: ShellExecutor): Int? {
         val script = """
             for p in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage \

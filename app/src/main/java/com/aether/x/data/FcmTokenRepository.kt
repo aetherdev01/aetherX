@@ -8,44 +8,10 @@ import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-/**
- * Mengelola sisi Android dari integrasi Firebase Cloud Messaging (FCM) —
- * lihat juga [com.aether.x.core.messaging.AetherXFirebaseMessagingService]
- * untuk sisi PENERIMA notifikasinya.
- *
- * Ada dua mekanisme pengiriman berbeda yang SENGAJA keduanya dipakai (bukan
- * saling menggantikan):
- *
- * 1. **Topic broadcast** (dipakai repository ini): device otomatis
- *    subscribe ke topic `maintenance`, `update`, dan `membership` sekali
- *    saat app pertama kali start (lihat [subscribeToDefaultTopics]) — bot
- *    Telegram sisi admin cukup kirim SATU notifikasi FCM ke topic tsb dan
- *    otomatis sampai ke SEMUA device yang subscribe, tanpa admin perlu tahu
- *    daftar token device satu-satu. Ini yang dipakai untuk notifikasi
- *    maintenance/update yang sifatnya broadcast ke semua pengguna.
- *
- * 2. **Token per-device** (disimpan lewat [syncTokenToFirestore] ke
- *    `devices/{deviceId}.fcmToken`): dipakai untuk kasus admin ingin kirim
- *    push ke SATU device tertentu saja (mis. peringatan lisensi device
- *    tertentu akan kedaluwarsa) — bot bisa query token dari dokumen device
- *    itu di Firestore lalu kirim FCM target token tunggal, bukan topic.
- *
- * Token FCM BUKAN rahasia yang perlu diproteksi ketat seperti kunci lisensi
- * (token ini cuma alamat pengiriman push, tidak bisa dipakai untuk
- * membaca/mengubah data), jadi disimpan sebagai field biasa di dokumen
- * `devices/{deviceId}` yang sudah ada (sama seperti `licenseActive` dsb),
- * BUKAN koleksi terpisah.
- */
 object FcmTokenRepository {
 
     private const val TAG = "FcmTokenRepository"
 
-    /**
-     * Topic yang di-subscribe SEMUA install AetherX secara default — nama
-     * topic ini HARUS sama persis dengan yang dipakai sisi bot Telegram
-     * (lihat lib/fcmClient.js, fungsi sendToTopic) saat mengirim notifikasi
-     * maintenance/update/membership massal.
-     */
     object Topics {
         const val MAINTENANCE = "maintenance"
         const val UPDATE = "update"
@@ -60,16 +26,6 @@ object FcmTokenRepository {
         Topics.GENERAL,
     )
 
-    /**
-     * Subscribe device ini ke semua topic broadcast default. Aman dipanggil
-     * berulang kali (mis. tiap [com.aether.x.AetherXApp.onCreate]) —
-     * subscribe ke topic yang sudah pernah di-subscribe sebelumnya adalah
-     * no-op di sisi FCM, tidak menghasilkan subscription duplikat maupun
-     * efek samping lain. Best-effort: kegagalan (mis. offline saat app
-     * pertama dibuka) hanya di-log, TIDAK melempar exception ke pemanggil —
-     * FCM SDK otomatis mencoba lagi sendiri di background saat konektivitas
-     * pulih, jadi tidak perlu retry manual di sini.
-     */
     fun subscribeToDefaultTopics() {
         val messaging = FirebaseMessaging.getInstance()
         for (topic in ALL_DEFAULT_TOPICS) {
@@ -80,32 +36,6 @@ object FcmTokenRepository {
         }
     }
 
-    /**
-     * Ambil token FCM saat ini (dari sistem, kalau [token] tidak diisi) lalu
-     * simpan ke `devices/{deviceId}.fcmToken` di Firestore.
-     *
-     * Dipanggil sekali saat app start ([com.aether.x.AetherXApp.onCreate])
-     * DAN setiap kali token berganti (lihat
-     * [com.aether.x.core.messaging.AetherXFirebaseMessagingService.onNewToken])
-     * — token FCM bisa berubah sewaktu-waktu (reinstall, clear data Google
-     * Play Services, rotasi token berkala oleh sistem), jadi tidak cukup
-     * hanya disimpan sekali di awal saja.
-     *
-     * Sengaja pakai `update` (BUKAN `set(merge=true)`), sama pola dengan
-     * [LicenseRepository.recordLicenseStatus]: dokumen `devices/{deviceId}`
-     * seharusnya sudah dibuat lebih dulu oleh [UserIdRepository] (yang
-     * mengisi field wajib `deviceId`/`firstLoginAt`/`userId` sesuai
-     * firestore.rules saat CREATE). Kalau dipaksa `set(merge=true)` padahal
-     * dokumennya belum ada sama sekali, Firestore memperlakukannya sebagai
-     * operasi CREATE BARU yang isinya cuma `fcmToken` — field wajib yang
-     * disyaratkan rules jadi tidak lengkap dan kemungkinan besar DITOLAK
-     * (PERMISSION_DENIED). Kalau dokumennya memang belum ada (mis. token FCM
-     * datang duluan sebelum tab mana pun sempat memicu
-     * [UserIdRepository.resolveUserId]), `update` di sini gagal dengan
-     * NOT_FOUND — di-log lalu dilewati begitu saja (best-effort, TIDAK
-     * pernah dilempar sebagai error yang mengganggu alur startup app); token
-     * akan tersinkron belakangan lewat pemanggilan berikutnya.
-     */
     suspend fun syncTokenToFirestore(context: Context, token: String? = null) {
         runCatching {
             val fcmToken = token ?: resolveCurrentToken()

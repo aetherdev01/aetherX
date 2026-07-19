@@ -23,29 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/**
- * REWORK TOTAL — Auto-Pairing (lihat perintah rework: "jadikan sistem
- * pairing AetherX ... tinggal klik Start lalu ada notifikasi mengambang
- * Searching for Pairing, lalu buka opsi developer pilih Debug Nirkabel
- * lalu muncul notifikasi Pairing found ... tidak perlu isi alamat ip dll
- * secara manual").
- *
- * UI kartu ini sekarang HANYA punya satu tombol aksi ("Mulai Penyandingan"
- * / "Start") — TIDAK ADA field IP, port pairing, atau port koneksi sama
- * sekali. Host+port didapat otomatis lewat mDNS (lihat
- * [com.aether.x.core.adb.AdbAutoPairingDiscovery]).
- *
- * REWORK — notifikasi "Searching for Pairing…" dan kode 6-digit TIDAK
- * LAGI ditampilkan lewat komponen Compose di file ini maupun lewat window
- * overlay (dialog/bubble yang terikat ke Activity AetherX memaksa
- * split-screen kalau pengguna ingin melihat kode di Pengaturan sambil
- * mengisinya, dan window overlay butuh izin "Tampil di atas aplikasi
- * lain"). Keduanya sekarang ditangani
- * [com.aether.x.core.notification.AdbPairingNotifier] — notifikasi sistem
- * heads-up biasa dengan aksi **Balas** (RemoteInput) tertanam untuk
- * mengisi kode 6-digit langsung dari notification tray, tanpa window
- * overlay maupun izin tambahan apa pun.
- */
 @Composable
 fun AdbPairingCard(
     connected: Boolean,
@@ -117,9 +94,7 @@ fun AdbPairingCard(
                     }
                 }
                 paired -> {
-                    // Sudah pernah pairing tapi sesi shell belum aktif (mis.
-                    // baru buka app, atau Wireless debugging sempat mati) —
-                    // TIDAK perlu pairing ulang, cukup tombol sambungkan ulang.
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -143,12 +118,7 @@ fun AdbPairingCard(
                     TextButton(onClick = onForget) { Text("Pairing") }
                 }
                 else -> {
-                    // Sama persis dengan referensi UI: satu link teks untuk
-                    // membuka Pengaturan, lalu satu tombol besar "Mulai
-                    // Penyandingan" — TIDAK ADA form IP/port apa pun di sini.
-                    // Begitu ditekan, seluruh proses (cari service pairing,
-                    // notifikasi mengambang, dialog kode) ditangani otomatis
-                    // lewat AdbAutoPairingFloatingNotice di root layar.
+
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = onOpenWirelessDebugging) {
                             Text("Buka Pengaturan Wireless Debugging")

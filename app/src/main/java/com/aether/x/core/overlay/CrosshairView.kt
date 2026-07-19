@@ -8,24 +8,17 @@ import android.view.View
 import com.aether.x.data.CrosshairStyle
 import kotlin.math.roundToInt
 
-/**
- * View kustom yang menggambar crosshair (garis silang/titik/lingkaran) sesuai
- * gaya, warna, ukuran, ketebalan, dan opasitas yang dipilih pengguna.
- * Dipakai oleh [CrosshairOverlayService] sebagai konten window overlay.
- */
 class CrosshairView(context: Context) : View(context) {
 
     var style: CrosshairStyle = CrosshairStyle.CROSS
         set(value) { field = value; invalidate() }
 
-    /** Ukuran "jangkauan" crosshair dalam px, dari pusat ke ujung garis/lingkaran. */
     var crosshairSizePx: Float = 48f
         set(value) { field = value; requestLayout(); invalidate() }
 
     var thicknessPx: Float = 6f
         set(value) { field = value; invalidate() }
 
-    /** Warna dasar ARGB (opacity 0-100 diaplikasikan terpisah lewat [opacityPercent]). */
     var colorArgb: Long = 0xFF00FF66
         set(value) { field = value; updatePaintColor() }
 
@@ -55,7 +48,7 @@ class CrosshairView(context: Context) : View(context) {
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // View selalu persegi, cukup besar untuk memuat crosshair + sedikit padding.
+
         val dimension = ((crosshairSizePx + thicknessPx) * 2.4f).toInt().coerceAtLeast(1)
         setMeasuredDimension(dimension, dimension)
     }
@@ -95,9 +88,7 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawCircle(cx, cy, thicknessPx * 1.6f, fillPaint)
             }
             CrosshairStyle.CROSS_DOT -> {
-                // Model baru: silang dengan gap (mirip PLUS_GAP) + titik solid
-                // di tengah — populer di game FPS mobile karena titik tengah
-                // membantu akurasi bidik tanpa menutupi target kecil.
+
                 val gap = r * 0.35f
                 canvas.drawLine(cx - r, cy, cx - gap, cy, paint)
                 canvas.drawLine(cx + gap, cy, cx + r, cy, paint)
@@ -106,17 +97,12 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawCircle(cx, cy, thicknessPx * 1.4f, fillPaint)
             }
             CrosshairStyle.T_SHAPE -> {
-                // Model baru: bentuk "T" terbalik (garis horizontal penuh +
-                // satu garis vertikal ke bawah saja, TANPA garis ke atas) —
-                // umum dipakai di game battle royale supaya area di atas
-                // titik bidik tidak tertutup crosshair.
+
                 canvas.drawLine(cx - r, cy, cx + r, cy, paint)
                 canvas.drawLine(cx, cy, cx, cy + r, paint)
             }
             CrosshairStyle.DIAMOND -> {
-                // FITUR BARU: belah ketupat terbuka — implementasi HARUS
-                // identik dengan StyleIconButton (CrosshairSettingsSection.kt)
-                // dan CrosshairPreview.kt supaya WYSIWYG.
+
                 val gap = r * 0.3f
                 val d = r * 0.7071f
                 val gapD = gap * 0.7071f
@@ -130,8 +116,7 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawLine(cx - d, cy + d, cx - gapD, cy + gapD, paint)
             }
             CrosshairStyle.SQUARE -> {
-                // FITUR BARU: kotak bracket 4 sudut — implementasi HARUS
-                // identik dengan StyleIconButton & CrosshairPreview.
+
                 val s = r * 0.85f
                 val corner = s * 0.5f
                 canvas.drawLine(cx - s, cy - s, cx - s + corner, cy - s, paint)
@@ -144,31 +129,25 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawLine(cx + s, cy + s, cx + s, cy + s - corner, paint)
             }
             CrosshairStyle.CHEVRON -> {
-                // FITUR BARU: 4 chevron "V" dari tiap sisi mengarah ke pusat
-                // (gaya populer di crosshair custom PUBG Mobile/Free Fire) —
-                // implementasi HARUS identik dengan StyleIconButton
-                // (CrosshairSettingsSection.kt) & CrosshairPreview.kt supaya
-                // WYSIWYG.
+
                 val gap = r * 0.35f
                 val arm = r * 0.45f
                 val tip = r * 0.9f
-                // Chevron atas.
+
                 canvas.drawLine(cx - arm, cy - tip, cx, cy - gap, paint)
                 canvas.drawLine(cx, cy - gap, cx + arm, cy - tip, paint)
-                // Chevron bawah.
+
                 canvas.drawLine(cx - arm, cy + tip, cx, cy + gap, paint)
                 canvas.drawLine(cx, cy + gap, cx + arm, cy + tip, paint)
-                // Chevron kiri.
+
                 canvas.drawLine(cx - tip, cy - arm, cx - gap, cy, paint)
                 canvas.drawLine(cx - gap, cy, cx - tip, cy + arm, paint)
-                // Chevron kanan.
+
                 canvas.drawLine(cx + tip, cy - arm, cx + gap, cy, paint)
                 canvas.drawLine(cx + gap, cy, cx + tip, cy + arm, paint)
             }
             CrosshairStyle.DOUBLE_RING -> {
-                // FITUR BARU: dua lingkaran konsentris, gaya sniper-scope —
-                // implementasi HARUS identik dengan StyleIconButton &
-                // CrosshairPreview.kt supaya WYSIWYG.
+
                 canvas.drawCircle(cx, cy, r, paint)
                 canvas.drawCircle(cx, cy, r * 0.55f, paint)
             }

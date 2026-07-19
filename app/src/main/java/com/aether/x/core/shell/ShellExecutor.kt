@@ -1,8 +1,5 @@
 package com.aether.x.core.shell
 
-/**
- * Hasil eksekusi satu perintah shell, dari backend manapun (Shizuku atau root).
- */
 data class ShellResult(
     val success: Boolean,
     val output: List<String> = emptyList(),
@@ -16,10 +13,6 @@ data class ShellResult(
     }
 }
 
-/**
- * Abstraksi sumber privilese untuk menjalankan perintah shell (wm, settings, dll).
- * Implementasinya bisa lewat Shizuku (ADB) atau root (su).
- */
 interface ShellExecutor {
     val backendName: String
 

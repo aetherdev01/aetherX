@@ -34,22 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
 
-/**
- * Dialog color picker HSV bebas untuk warna crosshair — FITUR BARU (lihat
- * perintah rework: "opsi warna untuk sesuai selera sendiri pakai picker"),
- * melengkapi 6 swatch preset yang sudah ada di [CrosshairSettingsSection]
- * (tetap dipertahankan sebagai pintasan cepat). Terdiri dari:
- * 1. Area saturation/value persegi (geser untuk memilih kecerahan & saturasi
- *    pada hue yang sedang aktif).
- * 2. Slider hue horizontal (gradasi penuh 0-360°).
- * 3. Preview warna hasil pilihan + kode HEX-nya.
- *
- * Warna akhir dikembalikan sebagai ARGB [Long] lewat [onColorConfirmed]
- * supaya konsisten dengan tipe `colorArgb` yang sudah dipakai di seluruh
- * alur crosshair yang ada (DataStore, [com.aether.x.core.overlay.CrosshairView],
- * dst.) — TIDAK memperkenalkan tipe warna baru yang butuh konversi tambahan
- * di tempat lain.
- */
 @Composable
 fun CrosshairColorPickerDialog(
     initialColorArgb: Long,
@@ -106,9 +90,7 @@ fun CrosshairColorPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                // Simpan sebagai ARGB penuh opacity (0xFF______) — opacity
-                // crosshair sendiri diatur terpisah lewat slider Opacity yang
-                // sudah ada, supaya picker ini murni untuk memilih warna dasar.
+
                 val argb = 0xFF000000L or (currentColor.toArgb().toLong() and 0xFFFFFFL)
                 onColorConfirmed(argb)
             }) {
@@ -123,23 +105,6 @@ fun CrosshairColorPickerDialog(
     )
 }
 
-/**
- * Area persegi saturation (kiri→kanan: putih→hue murni) x value (atas→bawah:
- * terang→gelap) untuk hue yang sedang dipilih di [HueSlider]. Ketuk atau
- * seret di mana pun pada area untuk memilih titik saturation/value.
- *
- * BUG FIX (lihat perintah rework — "warna custom yang penanda warna nya
- * bug"): sebelumnya indikator posisi dihitung dengan
- * `offsetX = panelSizeDp * saturation`, memakai `panelSizeDp` (220.dp, nilai
- * TINGGI panel) untuk KEDUA sumbu X dan Y. Padahal panel ini
- * `.fillMaxWidth()` — lebar sebenarnya HAMPIR PASTI BUKAN 220dp (biasanya
- * jauh lebih lebar dari layar ponsel), jadi posisi horizontal indikator
- * selalu meleset dari titik yang benar-benar diketuk/digeser pengguna.
- * Sekarang dibungkus [BoxWithConstraints] supaya lebar & tinggi AKTUAL
- * panel diukur langsung dari `maxWidth`/`maxHeight`, dipakai konsisten baik
- * untuk kalkulasi drag (`pointerInput`) maupun posisi indikator — kedua
- * arah dijamin sinkron dengan ukuran box yang sesungguhnya dirender.
- */
 @Composable
 private fun SaturationValuePanel(
     hue: Float,
@@ -164,23 +129,14 @@ private fun SaturationValuePanel(
                     val v = 1f - (offset.y / size.height).coerceIn(0f, 1f)
                     onSaturationValueChange(s, v)
                 }
-                // detectDragGestures juga menangani tap tunggal (drag dengan
-                // delta nol memicu onDragStart) — jadi SATU detector ini
-                // cukup untuk tap maupun geser, tidak perlu detectTapGestures
-                // terpisah yang berisiko berebut event pointer dengan
-                // detector drag di Compose.
+
                 detectDragGestures(
                     onDragStart = { offset -> updateFromOffset(offset) },
                     onDrag = { change, _ -> updateFromOffset(change.position) },
                 )
             },
     ) {
-        // Indikator posisi saturation/value saat ini — lingkaran kecil
-        // dengan border putih supaya terlihat di atas warna apa pun.
-        // offsetX memakai maxWidth (lebar AKTUAL box, dari
-        // BoxWithConstraints), offsetY memakai maxHeight — masing-masing
-        // sumbu memakai ukuran sungguhan miliknya sendiri, bukan satu nilai
-        // konstan yang dipakai untuk keduanya seperti sebelumnya.
+
         val indicatorColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value)))
         val offsetX = maxWidth * saturation
         val offsetY = maxHeight * (1f - value)
@@ -195,10 +151,6 @@ private fun SaturationValuePanel(
     }
 }
 
-/**
- * Slider horizontal gradasi hue penuh (0°-360°) — geser untuk mengganti hue
- * dasar yang lalu memengaruhi warna di [SaturationValuePanel].
- */
 @Composable
 private fun HueSlider(
     hue: Float,

@@ -59,41 +59,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/**
- * REWORK TOTAL tampilan & interaksi Game Booster (lihat perintah rework:
- * "diakses dengan geser dari kiri layar ke kanan layar untuk memunculkan
- * floating GB... tidak bisa dipindah dan posisi tetap dikiri... bisa di
- * minimize dengan mudah... animasi show/hide smooth"), MENGGANTIKAN
- * pendekatan bubble draggable + tap-to-expand sebelumnya SEPENUHNYA:
- *
- * 1. **Edge-trigger (tersembunyi)**: strip tipis TANPA GAMBAR APA PUN,
- *    SELALU menempel di tepi kiri layar (posisi TETAP, TIDAK BISA
- *    digeser — beda total dari bubble lama yang draggable), lebar
- *    [EDGE_TRIGGER_WIDTH_DP]. Satu-satunya fungsinya menangkap gesture
- *    swipe kiri->kanan untuk memicu [showPanelExpanded] — window-nya
- *    SENGAJA dibuat SESEMPIT itu (bukan lewat `FLAG_NOT_TOUCHABLE` yang
- *    membuat window TIDAK PERNAH menerima sentuhan sama sekali seperti
- *    pada fix [CrosshairOverlayService]; di sini window tetap harus bisa
- *    menerima gesture-nya sendiri) sehingga area yang berpotensi
- *    menghalangi kontrol game di baliknya sangat kecil dan bisa diprediksi
- *    (selalu strip [EDGE_TRIGGER_WIDTH_DP] di tepi kiri, bukan area besar
- *    berubah-ubah seperti bubble draggable lama).
- * 2. **Panel (expanded)**: [GameBoosterPanelContent] gaya ROG — muncul
- *    dengan animasi slide-in dari kiri + fade ([AnimatedVisibility]),
- *    posisi TETAP mepet kiri (gravity START, x=0, TIDAK draggable sama
- *    sekali — user secara eksplisit minta "tidak bisa dipindah dan posisi
- *    tetap dikiri"). Tombol minimize ATAU tap di luar panel
- *    mengembalikan ke state edge-trigger dengan animasi slide-out.
- *
- * BEDA ARSITEKTUR UTAMA dari versi bubble sebelumnya: HANYA SATU window
- * overlay yang pernah aktif dalam satu waktu (edge-trigger ATAU panel,
- * tidak pernah dua-duanya), diatur lewat satu [ComposeView] + state
- * `panelVisible` di dalam Compose itu sendiri (bukan dua window terpisah
- * yang di-add/remove — supaya transisi collapse<->expand bisa dianimasikan
- * mulus lewat [AnimatedVisibility], yang MUSTAHIL dilakukan mulus kalau
- * setiap transisi berarti window WindowManager dibongkar-pasang seperti
- * pola bubble/sidebar terpisah sebelumnya).
- */
 class GameBoosterOverlayService : Service() {
 
     companion object {
@@ -105,18 +70,10 @@ class GameBoosterOverlayService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "aetherx_game_booster_overlay"
         private const val NOTIFICATION_ID = 4103
 
-        // FITUR BARU (lihat perintah rework — "ukuran Diameter: sekitar
-        // 48-56 dp"): dipakai sebagai LEBAR strip edge-trigger tersembunyi
-        // (bukan diameter bubble bulat lagi, karena bubble sudah dihapus),
-        // supaya area tangkapan gesture swipe tetap konsisten dengan
-        // ukuran yang diminta.
         private const val EDGE_TRIGGER_WIDTH_DP = 24
-        private const val PANEL_WIDTH_DP = 430 // rail (52dp + 10dp gap) + panel utama (360dp) + padding (10dp*2)
+        private const val PANEL_WIDTH_DP = 430
         private const val SWIPE_OPEN_THRESHOLD_PX = 60f
 
-        // Batas jumlah ikon yang ditampilkan di rail quick-app kiri (lihat
-        // refreshRecentApps()) — dibatasi supaya rail tidak melebihi
-        // tinggi layar pada perangkat dengan sangat banyak recent tasks.
         private const val MAX_RAIL_APPS = 8
 
         fun start(context: Context, packageName: String, gameLabel: String) {
@@ -142,10 +99,6 @@ class GameBoosterOverlayService : Service() {
     private var overlayLifecycleOwner: ComposeOverlayLifecycleOwner? = null
     private var layoutParams: WindowManager.LayoutParams? = null
 
-    // Pegangan mutable ke state Compose panelVisible — diperbarui dari
-    // sisi Service (di luar scope Compose) setiap kali showPanelExpanded()/
-    // collapsePanel() dipanggil dari luar (mis. dari gesture handler yang
-    // dipasang lewat setOnTouchListener, bukan dari dalam composable).
     private var panelVisibleState: androidx.compose.runtime.MutableState<Boolean>? = null
 
     private var monitorJob: Job? = null
@@ -175,8 +128,7 @@ class GameBoosterOverlayService : Service() {
     }
 
     private fun startSession(packageName: String, gameLabel: String) {
-        // Sesi baru menimpa sesi lama kalau ada (mis. pengguna berpindah
-        // game tanpa menutup panel dulu) — bersihkan view lama dulu.
+
         if (currentPackageName != null && currentPackageName != packageName) {
             removeOverlay()
         }
@@ -225,21 +177,10 @@ class GameBoosterOverlayService : Service() {
             .launchIn(serviceScope)
     }
 
-    /**
-     * FITUR BARU (rail quick-app — lihat perintah rework "sisi kiri list
-     * untuk quick app atau membuka apps"): dimuat ULANG setiap kali panel
-     * dibuka ([showPanelExpanded]) supaya daftarnya tidak basi, BUKAN
-     * hanya sekali di awal sesi — pengguna bisa membuka app lain lewat
-     * rail ini KAPAN SAJA selama sesi boost berjalan.
-     */
     private fun refreshRecentApps() {
         serviceScope.launch {
             val executor = PrivilegeManager.getExecutor() ?: return@launch
-            // `packageName` di sini adalah Context.getPackageName() bawaan
-            // Service (package AetherX SENDIRI, BUKAN package game yang
-            // sedang di-boost) — dikecualikan supaya AetherX tidak muncul
-            // sebagai salah satu "quick app" di rail-nya sendiri (lihat
-            // KDoc listRecentPackages soal parameter excludingPackage).
+
             val ownPackageName = packageName
             val packages = recentTasksReader.listRecentPackages(executor, excludingPackage = ownPackageName) ?: return@launch
             val entries = packages.take(MAX_RAIL_APPS).map { pkg ->
@@ -267,15 +208,6 @@ class GameBoosterOverlayService : Service() {
         removeOverlay()
     }
 
-    // ============================ Window tunggal (edge-trigger <-> panel) ============================
-
-    /**
-     * Memasang SATU window WindowManager yang berisi DUA state Compose
-     * (edge-trigger tersembunyi & panel penuh), diatur lewat
-     * [panelVisibleState] internal — lihat KDoc kelas untuk alasan
-     * pendekatan window tunggal ini (supaya transisi bisa dianimasikan
-     * mulus lewat AnimatedVisibility).
-     */
     private fun showOverlay() {
         if (overlayView != null) return
 
@@ -293,13 +225,7 @@ class GameBoosterOverlayService : Service() {
             baseWindowFlags(),
             PixelFormat.TRANSLUCENT,
         ).apply {
-            // FITUR BARU (lihat perintah rework: "tidak bisa dipindah dan
-            // posisi tetap dikiri"): gravity TOP|START + x=0 SELALU, TIDAK
-            // PERNAH diubah lewat drag apa pun (beda total dari bubble
-            // lama yang punya dragStartX/Y & updateViewLayout saat
-            // ACTION_MOVE) — satu-satunya cara window ini berubah lebar
-            // adalah toggle antara edgeTriggerWidthPx <-> panelWidthPx
-            // saat show/hide panel, POSISI x tetap 0 selalu.
+
             gravity = Gravity.TOP or Gravity.START
             x = 0
             y = 0
@@ -313,15 +239,6 @@ class GameBoosterOverlayService : Service() {
                     panelVisibleState = panelVisible
 
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Edge-trigger: window ini SENGAJA hanya selebar
-                        // EDGE_TRIGGER_WIDTH_DP saat panel tertutup (lihat
-                        // showOverlay()/showPanelExpanded()), jadi Box ini
-                        // tidak pernah menggambar apa pun terlihat di sini
-                        // — satu-satunya perannya menyediakan permukaan
-                        // untuk gesture swipe kiri->kanan yang ditangkap
-                        // installEdgeSwipeGesture() lewat setOnTouchListener
-                        // di bawah, PERSIS permintaan "diakses dengan geser
-                        // dari kiri layar ke kanan layar".
 
                         AnimatedVisibility(
                             visible = panelVisible.value,
@@ -356,20 +273,6 @@ class GameBoosterOverlayService : Service() {
         overlayView = view
     }
 
-    /**
-     * Gesture handler manual lewat `setOnTouchListener` (BUKAN
-     * `Modifier.pointerInput` Compose, yang lebih rumit dipadukan dengan
-     * window WindowManager mentah di luar Activity) — window ini HANYA
-     * selebar [EDGE_TRIGGER_WIDTH_DP] saat panel tertutup (lihat
-     * [showOverlay]), jadi `event.x` di listener ini SELALU relatif
-     * terhadap strip sempit itu saja, tidak perlu pengecekan area
-     * tambahan.
-     *
-     * Swipe kiri->kanan sejauh >= [SWIPE_OPEN_THRESHOLD_PX] dari titik
-     * ACTION_DOWN langsung membuka panel — TIDAK menunggu ACTION_UP,
-     * supaya terasa responsif ("smooth" sesuai perintah rework) alih-alih
-     * terasa delay.
-     */
     private fun installEdgeSwipeGesture(view: ComposeView, params: WindowManager.LayoutParams) {
         var startX = 0f
         var opened = false
@@ -409,10 +312,7 @@ class GameBoosterOverlayService : Service() {
         onOpenApp = { packageName -> GameLauncher.launch(applicationContext, packageName) },
         onRotationLockToggle = ::onRotationLockToggle,
         onMoreTools = {
-            // "More tools" membuka GameBoosterScreen layar penuh (drawer)
-            // untuk menu lengkap — lihat KDoc GamesTab/QuickToolsGrid di
-            // GameBoosterPanelContent soal alasan tile ini bukan aksi
-            // shell langsung.
+
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
@@ -420,15 +320,6 @@ class GameBoosterOverlayService : Service() {
         },
     )
 
-    /**
-     * Buka panel: lebarkan window dari [EDGE_TRIGGER_WIDTH_DP] ke
-     * [PANEL_WIDTH_DP] (WAJIB, karena window edge-trigger sengaja dibuat
-     * sempit supaya tidak menghalangi game — panel butuh lebar penuh untuk
-     * digambar), aktifkan touchable flag (panel butuh menerima tap semua
-     * tombolnya), lalu set [panelVisibleState] true untuk memicu animasi
-     * slide-in [AnimatedVisibility]. Rail quick-app dimuat ulang setiap
-     * kali ini dipanggil (lihat [refreshRecentApps]).
-     */
     private fun showPanelExpanded() {
         val params = layoutParams ?: return
         val view = overlayView ?: return
@@ -440,20 +331,12 @@ class GameBoosterOverlayService : Service() {
         refreshRecentApps()
     }
 
-    /**
-     * Tutup panel kembali ke strip edge-trigger tersembunyi — dipicu oleh
-     * tombol minimize (lihat perintah rework: "bisa di minimize dengan
-     * mudah"). Window disempitkan LAGI ke [EDGE_TRIGGER_WIDTH_DP] SETELAH
-     * animasi slide-out selesai (bukan langsung) — supaya animasi
-     * [AnimatedVisibility] sempat terlihat penuh sebelum window
-     * benar-benar menyempit, alih-alih terpotong di tengah animasi.
-     */
     private fun collapsePanel() {
         panelVisibleState?.value = false
         val params = layoutParams ?: return
         val view = overlayView ?: return
         serviceScope.launch {
-            kotlinx.coroutines.delay(240) // >= durasi exit animation (220ms) di showOverlay()
+            kotlinx.coroutines.delay(240)
             val edgeTriggerWidthPx = (EDGE_TRIGGER_WIDTH_DP * resources.displayMetrics.density).roundToInt()
             params.width = edgeTriggerWidthPx
             params.flags = baseWindowFlags()
@@ -470,24 +353,10 @@ class GameBoosterOverlayService : Service() {
         panelVisibleState = null
     }
 
-    /**
-     * Flag window — SAMA PERSIS baik saat edge-trigger tersembunyi maupun
-     * saat panel terbuka (`FLAG_NOT_TOUCH_MODAL` supaya sentuhan DI LUAR
-     * bounds window ini selalu diteruskan ke game di bawahnya, lihat fix
-     * serupa di [CrosshairOverlayService]). Yang BERUBAH antara dua state
-     * itu BUKAN flag-nya, melainkan LEBAR window itu sendiri
-     * ([EDGE_TRIGGER_WIDTH_DP] vs [PANEL_WIDTH_DP], lihat
-     * [showPanelExpanded]/[collapsePanel]) — window sempit secara alami
-     * hanya bisa menangkap sentuhan di area sempit itu, tidak perlu
-     * `FLAG_NOT_TOUCHABLE` terpisah untuk mengatur area mana yang
-     * touchable.
-     */
     private fun baseWindowFlags(): Int =
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-
-    // ============================ Aksi menu ============================
 
     private fun onModeChange(mode: GameMode) {
         serviceScope.launch {
@@ -538,8 +407,6 @@ class GameBoosterOverlayService : Service() {
             }
         }
     }
-
-    // ============================ Notifikasi foreground ============================
 
     private fun buildNotification(gameLabel: String): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

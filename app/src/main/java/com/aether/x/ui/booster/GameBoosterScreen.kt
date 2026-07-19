@@ -73,49 +73,12 @@ import com.aether.x.ui.theme.TextOnCard
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 
-/**
- * REWORK TOTAL (lihat perintah rework — "rework total tampilan game
- * booster seperti di foto pertama"): SEBELUMNYA layar ini dua-kolom ala
- * ROG (list game kiri sempit, GameBoosterSidebarContent kanan lebar) —
- * lihat riwayat git / GameBoosterScreen.kt.OLD_BACKUP untuk versi lama.
- *
- * SEKARANG dua STATE terpisah:
- * - BELUM ada sesi aktif -> [GameBoosterPickerContent] — list pemilihan
- *   game sederhana (dipertahankan dari versi lama, disederhanakan),
- *   karena foto referensi 1 TIDAK menampilkan state pemilihan game sama
- *   sekali (foto itu adalah tampilan SETELAH game dipilih/booster aktif).
- * - SUDAH ada sesi aktif -> [GameBoosterRadialContent] — tampilan radial
- *   PENUH meniru foto referensi 1: avatar besar di tengah-bawah, gauge
- *   CPU (kiri) & RAM (kanan) vertikal di tepi layar, grid menu icon
- *   melingkari avatar (2 baris x 3 kolom per sisi = 12 menu total).
- *
- * MENU YANG SENGAJA TIDAK DIIMPLEMENTASIKAN (dikonfirmasi user — lihat
- * histori percakapan rework ini): "Tuner Ping" (butuh target host ping
- * jaringan yang belum ditentukan) dan "Kalibrasi Gyro" (butuh akses
- * sensor-level yang tidak selalu tersedia lewat shell command biasa).
- * Kedua slot ini SENGAJA diisi ulang dengan menu lain yang datanya
- * benar-benar tersedia (Crosshair toggle & Boost Cepat) alih-alih
- * dibiarkan kosong atau diisi data dummy yang menyesatkan.
- *
- * Tetap dipaksa LANDSCAPE selama layar ini terbuka, sama seperti versi
- * lama (lihat DisposableEffect di bawah) — perilaku ini TIDAK diminta
- * untuk diubah oleh perintah rework ini.
- */
 @Composable
 fun GameBoosterScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: GameBoosterScreenViewModel = viewModel(),
-    // BUG FIX (lihat perintah rework — "banyak bug", "tidak bisa minimize"):
-    // SEBELUMNYA layar ini tidak menerima cara keluar APA PUN dari
-    // pemanggilnya (lihat MainActivity.kt sebelum fix — composable(GAME_BOOSTER)
-    // memanggil GameBoosterScreen() tanpa argumen sama sekali) — satu-satunya
-    // jalan keluar adalah tombol back sistem, yang PUN tidak ditangani
-    // khusus di sini sehingga perilakunya bergantung NavHost default (tidak
-    // selalu jelas/konsisten). Sekarang WAJIB diisi pemanggil (lihat
-    // MainActivity.kt: onBack = { navController.popBackStack() }) dan
-    // dipakai baik oleh BackHandler di bawah maupun tombol close di header
-    // radial (lihat GameBoosterRadialContent).
+
     onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -128,13 +91,6 @@ fun GameBoosterScreen(
         }
     }
 
-    // Tombol back sistem SEKARANG konsisten dengan tombol close di header
-    // (lihat GameBoosterRadialContent) — keduanya sama-sama memanggil onBack,
-    // BUKAN onEndSession: menutup layar TIDAK otomatis menghentikan sesi
-    // boost/overlay yang sedang berjalan (perilaku ini konsisten dengan
-    // GameBoosterOverlayService.collapseSidebar yang juga membedakan
-    // "tutup panel" dari "akhiri sesi" — lihat GameBoosterActions.onClose
-    // vs onEndSession).
     androidx.activity.compose.BackHandler(onBack = onBack)
 
     val state by viewModel.state.collectAsState()
@@ -162,8 +118,6 @@ fun GameBoosterScreen(
         }
     }
 }
-
-// ============================ State: pemilihan game ============================
 
 @Composable
 private fun GameBoosterPickerContent(
@@ -262,34 +216,16 @@ private fun GameBoosterGameRow(
     }
 }
 
-// ============================ State: radial booster (foto referensi 1) ============================
-
-/**
- * Tampilan radial penuh SETELAH sesi Game Booster aktif — meniru foto
- * referensi 1: avatar besar tengah-bawah, gauge CPU (kiri) & RAM (kanan)
- * vertikal di tepi layar, grid 2x3 menu icon di kiri & kanan avatar.
- */
 @Composable
 private fun GameBoosterRadialContent(
     session: com.aether.x.core.booster.GameBoosterSession,
     viewModel: GameBoosterScreenViewModel,
     onBack: () -> Unit,
 ) {
-    // State UI murni (BUKAN bagian dari GameBoosterSession/preferences —
-    // lihat perintah rework foto referensi 1, menu "Information Monitor"):
-    // panel detail metrics expand/collapse, hilang begitu layar ini
-    // ditutup/di-recompose ulang dari awal — tidak perlu persist antar
-    // sesi seperti rotationLocked/touchBoostEnabled di atas.
+
     var infoMonitorExpanded by remember { mutableStateOf(false) }
     val onInfoMonitorToggle: (Boolean) -> Unit = { infoMonitorExpanded = it }
 
-    // BUG FIX (lihat perintah rework — "banyak bug", menu Crosshair
-    // sebelumnya onClick = {} kosong total, tidak melakukan apa pun sama
-    // sekali): sekarang toggle nyata yang start/stop
-    // [com.aether.x.core.overlay.CrosshairOverlayService] — pola state
-    // lokal SAMA seperti infoMonitorExpanded di atas (bukan bagian
-    // GameBoosterSession, murni cerminan status service overlay crosshair
-    // yang independen dari sesi booster ini).
     val context = LocalContext.current
     var crosshairActive by remember { mutableStateOf(false) }
     val onCrosshairToggle: () -> Unit = {
@@ -306,15 +242,7 @@ private fun GameBoosterRadialContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        // Header atas: judul "AXERON GAME CORNER" tengah, tombol tutup kanan.
-        // BUG FIX (lihat perintah rework — "tidak bisa minimize"): SEBELUMNYA
-        // header ini HANYA berisi pill judul di tengah, tidak ada elemen lain
-        // sama sekali — layar radial penuh ini (destination NavHost terpisah,
-        // lihat KDoc GameBoosterScreen soal onBack) tidak punya tombol keluar
-        // apa pun. Box sekarang membungkus DUA elemen bertumpuk: pill judul
-        // (tetap actually centered lewat Modifier.align pada Row-nya) dan
-        // tombol close di ujung kanan (Alignment.CenterEnd) — target sentuh
-        // 48dp penuh, konsisten dengan fix serupa di GameBoosterSidebarContent.
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -350,7 +278,6 @@ private fun GameBoosterRadialContent(
             }
         }
 
-        // Baris utama: gauge CPU (kiri) — avatar + label game (tengah) — gauge RAM (kanan).
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -403,17 +330,10 @@ private fun GameBoosterRadialContent(
             )
         }
 
-        // FITUR BARU (lihat perintah rework foto referensi 1, menu
-        // "Information Monitor"): panel detail metrics yang expand/collapse
-        // lewat infoMonitorExpanded di atas — muncul TEPAT di atas grid
-        // menu supaya tidak mendorong avatar/gauge yang sudah dilihat
-        // pengguna, hanya area di bawahnya yang bergeser saat toggle.
         androidx.compose.animation.AnimatedVisibility(visible = infoMonitorExpanded) {
             InfoMonitorPanel(metrics = session.metrics)
         }
 
-        // Grid menu bawah: kiri 6 menu, kanan 6 menu, avatar di antaranya
-        // (secara visual sudah "mengelilingi" avatar lewat baris di atas).
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -437,15 +357,7 @@ private fun GameBoosterRadialContent(
                     RadialMenuItemData(
                         icon = Icons.Outlined.Bolt,
                         label = stringResource(R.string.game_booster_radial_quick_preset),
-                        // BUG FIX (ditemukan saat implementasi): SEBELUMNYA
-                        // onClick di sini identik dengan "Boost Cepat" di
-                        // kolom sebelah (dua tombol beda label, efek
-                        // sama-sama langsung ke GameMode.BOOST) — sekarang
-                        // "Preset Cepat" MEMUTAR mode Hemat->Normal->Boost
-                        // secara berurutan setiap tap (lihat nextGameMode
-                        // di bawah), sedangkan "Boost Cepat" tetap shortcut
-                        // LANGSUNG ke Boost — dua perilaku yang benar-benar
-                        // berbeda, sesuai nama masing-masing.
+
                         onClick = { viewModel.onModeChange(nextGameMode(session.mode)) },
                     ),
                 ),
@@ -515,7 +427,6 @@ private fun GameBoosterRadialContent(
     }
 }
 
-/** Gauge vertikal read-only (BUKAN slider interaktif — murni display) untuk CPU/RAM di tepi layar. */
 @Composable
 private fun RadialSideGauge(
     label: String,
@@ -551,19 +462,9 @@ private fun RadialSideGauge(
 }
 
 private data class RadialMenuItemData(
-    // BUG FIX (lihat perintah rework — "fix ikon whatsapp yang tidak
-    // pas"): SEBELUMNYA field ini WAJIB diisi ImageVector generik untuk
-    // semua item termasuk WhatsApp (Icons.Outlined.Chat, bubble chat
-    // generik yang tidak merepresentasikan WhatsApp sama sekali) —
-    // sekarang nullable, dan item WhatsApp memakai [brandedIconRes] di
-    // bawah alih-alih ini.
+
     val icon: ImageVector? = null,
-    // FITUR BARU: logo BRANDED resmi (drawable vector multi-warna, mis.
-    // R.drawable.ic_social_whatsapp — SAMA PERSIS aset yang dipakai
-    // AboutScreen.CommunityLinkRow) untuk item yang punya identitas
-    // visual resmi sendiri dan TIDAK BOLEH di-tint jadi satu warna
-    // (lihat KDoc CommunityLinkRow soal kenapa). Kalau diisi, ini
-    // dipakai MENGGANTIKAN [icon] sepenuhnya — lihat RadialMenuIcon.
+
     val brandedIconRes: Int? = null,
     val label: String,
     val active: Boolean = false,
@@ -593,10 +494,7 @@ private fun RadialMenuIcon(item: RadialMenuItemData, modifier: Modifier = Modifi
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                // Logo branded (mis. WhatsApp) SELALU dapat latar putih
-                // netral (SAMA seperti CommunityLinkRow di AboutScreen)
-                // supaya warna resmi logo (hijau WhatsApp, dst.) kontras
-                // dan tidak "tenggelam" di latar gelap SurfaceCard.
+
                 .background(if (item.brandedIconRes != null) TextOnCard else if (item.active) AccentBlue.copy(alpha = 0.18f) else SurfaceCard),
             contentAlignment = Alignment.Center,
         ) {
@@ -629,13 +527,6 @@ private fun severityColor(percent: Int?): androidx.compose.ui.graphics.Color = w
     else -> AccentRed
 }
 
-/**
- * FITUR BARU (lihat perintah rework foto referensi 1, menu "Information
- * Monitor"): panel ringkas semua metrics sekaligus (FPS/CPU/GPU/RAM/Suhu)
- * dalam satu baris — nilai null ditampilkan sebagai "-" (BUKAN "0", supaya
- * tidak menyesatkan seolah nilainya benar-benar 0 padahal sebenarnya
- * belum terbaca/butuh Root, lihat KDoc GameBoosterMetrics.cpuLoadPercent).
- */
 @Composable
 private fun InfoMonitorPanel(metrics: com.aether.x.core.booster.GameBoosterMetrics) {
     Row(
@@ -666,12 +557,6 @@ private fun InfoMonitorStat(label: String, value: String?) {
     }
 }
 
-/**
- * FITUR BARU (lihat perintah rework foto referensi 1, menu "Preset
- * Cepat"): urutan tetap Hemat -> Normal -> Boost -> Hemat -> ...,
- * dipakai supaya "Preset Cepat" MEMUTAR mode alih-alih menduplikasi
- * "Boost Cepat" (lihat komentar BUG FIX di pemanggilnya).
- */
 private fun nextGameMode(current: GameMode): GameMode = when (current) {
     GameMode.LOW -> GameMode.MID
     GameMode.MID -> GameMode.BOOST

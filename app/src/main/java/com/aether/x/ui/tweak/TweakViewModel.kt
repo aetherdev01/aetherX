@@ -45,12 +45,6 @@ data class TweakUiState(
     val isMembershipActive: Boolean = false,
 )
 
-/**
- * Semua tweak di layar ini sekarang aktif LANGSUNG saat diubah (slider dilepas /
- * switch ditoggle) — tidak ada lagi tombol "Terapkan" terpisah. Setiap perubahan
- * langsung dieksekusi lewat [ShellExecutor] yang aktif (Shizuku/Root) dan disimpan
- * ke preferences supaya tetap tersimpan walau aplikasi ditutup.
- */
 class TweakViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = TweakRepository()
@@ -89,28 +83,8 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // ID lokal pengguna (mis. "ID-67128") ditampilkan di header tab Tweak,
-        // menggantikan pill status Shizuku/Root sebelumnya. Angkanya sekarang
-        // dialokasikan dari counter Firestore supaya benar-benar berurutan —
-        // TIDAK ADA fallback acak; kalau alokasi gagal total (lihat
-        // UserIdRepository), `id` adalah null dan pill ID pengguna di header
-        // otomatis tidak ditampilkan (lihat TweakHeader) sampai berhasil di
-        // percobaan berikutnya.
-        //
-        // Pendataan perangkat ke koleksi `devices` (deviceId, firstLoginAt,
-        // lastLoginAt, userId) sudah dilakukan SEKALIGUS di dalam transaksi
-        // atomik yang sama oleh UserIdRepository.resolveUserId() — tidak
-        // perlu panggilan terpisah lagi di sini (sebelumnya ini dua langkah
-        // terpisah yang berisiko: kalau langkah kedua gagal, counter global
-        // sudah kadung naik tapi device tidak pernah tercatat).
         resolveAndRecordUserId()
 
-        // Status membership (FITUR BARU — lihat perintah rework: "badge
-        // user Membership ada Logo VIP di sisi kiri badge ID") DI-COLLECT
-        // BERKELANJUTAN (bukan cuma .first() sekali) supaya badge VIP di
-        // header langsung update begitu pengguna aktivasi/logout lisensi di
-        // tab Membership lalu kembali ke tab ini, tanpa perlu restart
-        // ViewModel.
         viewModelScope.launch {
             preferences.preferences.collect { prefs ->
                 _state.update { it.copy(isMembershipActive = prefs.isMembershipActive) }
@@ -119,8 +93,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun resolveAndRecordUserId() {
-        // Kalau ID sudah ada di state (mis. percobaan sebelumnya berhasil),
-        // tidak perlu ke jaringan lagi.
+
         if (_state.value.userId != null) return
 
         viewModelScope.launch {
@@ -129,20 +102,10 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Dipanggil ulang setiap kali layar Tweak kembali aktif (ON_RESUME) DAN
-     * saat pengguna mengetuk pill ID secara manual. Sebelumnya alokasi ID
-     * hanya dicoba sekali saat ViewModel pertama dibuat — kalau percobaan
-     * itu gagal total (mis. dibuka pertama kali saat jaringan belum siap),
-     * badge "ID-…" akan tetap kosong selamanya sampai app di-restart penuh
-     * (ViewModel baru). Dengan retry di resume/tap, badge akan otomatis
-     * terisi begitu jaringan tersedia, tanpa perlu restart aplikasi.
-     */
     fun retryResolveUserIdIfMissing() {
         resolveAndRecordUserId()
     }
 
-    /** Dipanggil ulang saat layar kembali aktif, untuk menangkap kalau game baru dipasang/dihapus. */
     fun refreshDetectedGames() {
         val app = getApplication<Application>()
         _state.update { it.copy(detectedGames = GameLauncher.detectInstalled(app)) }
@@ -156,8 +119,6 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Slider hanya update tampilan sambil digeser; eksekusi shell dipicu saat dilepas
-     *  lewat [onPointerSpeedChangeFinished] supaya tidak spam perintah shell tiap piksel. */
     fun onPointerSpeedChange(value: Float) {
         _state.update { it.copy(pointerSpeed = value.toInt()) }
     }
@@ -179,57 +140,36 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Mode Game: mengaktifkan Do Not Disturb sistem supaya notifikasi tidak
-     *  mengganggu saat bermain. Dinonaktifkan lagi lewat switch yang sama. */
     fun onGameModeChange(checked: Boolean) {
         _state.update { it.copy(gameModeEnabled = checked) }
         applyAndPersist { executor -> repository.applyGameMode(executor, checked) }
     }
 
-    /** Khusus root: terapkan governor CPU yang dipilih pengguna dari dropdown. */
     fun onCpuGovernorChange(governor: CpuGovernor) {
         _state.update { it.copy(cpuGovernor = governor) }
         applyAndPersist { executor -> repository.applyCpuGovernor(executor, governor) }
     }
 
-    /** Khusus root: turunkan swappiness kernel supaya game tetap di RAM. */
     fun onRamPriorityModeChange(checked: Boolean) {
         _state.update { it.copy(ramPriorityMode = checked) }
         applyAndPersist { executor -> repository.applyRamPriority(executor, checked) }
     }
 
-    /** Khusus root: naikkan batas suhu throttle supaya CPU/GPU tidak buru-buru diturunkan clock-nya. */
     fun onThermalThrottleOverrideChange(checked: Boolean) {
         _state.update { it.copy(thermalThrottleOverride = checked) }
         applyAndPersist { executor -> repository.applyThermalThrottleOverride(executor, checked) }
     }
 
-    /** Khusus root: kunci frekuensi GPU ke governor performance selama bermain. */
     fun onGpuPerformanceModeChange(checked: Boolean) {
         _state.update { it.copy(gpuPerformanceMode = checked) }
         applyAndPersist { executor -> repository.applyGpuPerformanceMode(executor, checked) }
     }
 
-    /** Khusus root: ganti I/O scheduler storage ke mode latensi rendah untuk baca aset game. */
     fun onIoSchedulerBoostChange(checked: Boolean) {
         _state.update { it.copy(ioSchedulerBoost = checked) }
         applyAndPersist { executor -> repository.applyIoSchedulerBoost(executor, checked) }
     }
 
-    /**
-     * Khusus root: aksi sekali jalan (bukan kondisi permanen) — hentikan
-     * proses aplikasi pihak ketiga yang berjalan di background lalu switch
-     * otomatis kembali OFF sesaat kemudian supaya jelas ini bukan status
-     * yang "menyala terus", melainkan tombol pembersih RAM instan.
-     *
-     * [activity] dipakai HANYA untuk menampilkan interstitial ad SETELAH
-     * aksi kill background apps selesai (lihat [InterstitialAdGate]) —
-     * tidak disimpan sebagai field ViewModel (menghindari leak), cukup
-     * lewat sebagai parameter transient dari Composable pemanggil (lihat
-     * pemanggilan di TweakScreen). Boleh null (mis. context bukan Activity)
-     * — kalau null, interstitial otomatis dilewati tanpa efek lain; aksi
-     * kill background apps sendiri tetap berjalan normal.
-     */
     fun onKillBackgroundAppsChange(checked: Boolean, activity: Activity? = null) {
         if (!checked) return
         _state.update { it.copy(killBackgroundApps = true) }
@@ -251,11 +191,6 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
             }
             _state.update { it.copy(killBackgroundApps = false) }
 
-            // Interstitial TIDAK PERNAH memblokir aksi di atas — sudah
-            // selesai dijalankan duluan, ini murni transisi sesudahnya.
-            // InterstitialAdGate sendiri sudah skip otomatis untuk member
-            // dan menjaga cooldown 1 menit, jadi tidak perlu dicek ulang
-            // di sini.
             if (activity != null) {
                 val isMember = preferences.preferences.first().isMembershipActive
                 AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
@@ -263,19 +198,11 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Khusus root: perbesar heap Dalvik/ART supaya GC lebih jarang jeda saat bermain. */
     fun onVmHeapBoostChange(checked: Boolean) {
         _state.update { it.copy(vmHeapBoost = checked) }
         applyAndPersist { executor -> repository.applyVmHeapBoost(executor, checked) }
     }
 
-    /**
-     * FITUR BARU — khusus root: nonaktifkan Doze/App Standby sistem supaya
-     * game & service background-nya (voice chat, download aset) tidak
-     * dibekukan OS saat perangkat idle sesaat. Lihat KDoc
-     * [TweakRepository.applyDozeDisable] untuk detail kenapa ini butuh
-     * root sungguhan.
-     */
     fun onDozeDisabledChange(checked: Boolean) {
         _state.update { it.copy(dozeDisabled = checked) }
         applyAndPersist { executor -> repository.applyDozeDisable(executor, checked) }
@@ -322,12 +249,6 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Menjalankan satu perintah tweak lewat executor aktif lalu langsung menyimpan
-     *  state tweak saat ini ke preferences. Kalau belum ada akses (Shizuku/Root),
-     *  perubahan tetap tersimpan di UI/preferences tapi menampilkan toast peringatan.
-     *  Kalau perintah shell-nya sendiri gagal (mis. `cmd notification set_dnd` ditolak
-     *  perangkat), itu juga ditampilkan sebagai toast alih-alih diam-diam diabaikan —
-     *  sebelumnya hasil [ShellResult] tidak pernah dicek sama sekali di sini. */
     private fun applyAndPersist(action: suspend (ShellExecutor) -> ShellResult) {
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutor()
@@ -357,22 +278,6 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * BUG FIX (lihat perintah rework — "fix toast di tweak dobel"): toast
-     * native sebelumnya dipicu DI SINI, di dalam fungsi yang sama yang
-     * juga mengisi `state.message` (dibaca SnackbarHost di TweakScreen) —
-     * akibatnya SETIAP aksi (reset berhasil, command gagal, dst.)
-     * menampilkan Snackbar Compose DAN Toast native sekaligus untuk pesan
-     * yang identik, terlihat seperti notifikasi dobel.
-     *
-     * Panggilan [com.aether.x.ui.components.showAetherToast] DIHAPUS dari
-     * sini — Snackbar (lewat `state.message`, sudah terintegrasi rapi
-     * dengan SnackbarHost di TweakScreen) dipertahankan sebagai SATU-
-     * SATUNYA channel feedback aksi, karena sudah konsisten dengan layar
-     * lain di app ini. `showAetherToast` sendiri TIDAK dihapus dari
-     * ToastHelper.kt (masih dipakai layar lain seperti MembershipScreen)
-     * — perbaikan ini hanya menghapus pemakaian ganda di TweakViewModel.
-     */
     private fun appString(resId: Int): String {
         val text = getApplication<Application>().getString(resId)
         return text

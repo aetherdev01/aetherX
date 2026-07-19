@@ -7,7 +7,14 @@
     <string name="splash_status_database">Menyambungkan ke database…</string>
     <string name="splash_status_ready">Siap!</string>
 
-    <!-- Onboarding Setup Permission (dipakai ulang sebagai "Kelola Akses" di halaman utama) -->
+    <!-- REWORK TOTAL — Onboarding Setup Permission jadi 5 halaman slide
+         (HorizontalPager): (1) ADB/Root, (2) Write Settings, (3) Overlay,
+         (4) Notifikasi, (5) Peringatan Kernel DWYOR. SEMUA EMPAT IZIN
+         (halaman 1-4) sekarang WAJIB granted untuk lanjut — bukan lagi
+         cuma ADB/Root yang wajib sementara 3 izin lain opsional seperti
+         versi sebelumnya. Dipakai ulang juga sebagai "Kelola Akses" di
+         halaman utama (requireAccessToContinue=false: navigasi bebas,
+         tidak dikunci). -->
     <string name="setup_title">Izin Akses</string>
     <string name="setup_subtitle">Pilih metode akses agar AetherX bisa mengontrol performa dan tweak sistem di perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
@@ -19,14 +26,59 @@
     <string name="setup_status_checking">Memeriksa…</string>
     <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
-    <string name="setup_action_continue">Lanjutkan</string>
-    <string name="setup_locked_hint">Aktifkan Wireless Debugging atau Root dulu untuk membuka tombol Lanjutkan.</string>
+    <string name="setup_action_continue">Selesai</string>
+    <!-- FITUR BARU — tombol "Lanjut" per halaman (BEDA dari "Selesai" yang
+         hanya muncul di halaman TERAKHIR, lihat setup_action_continue di
+         atas — teksnya sekarang "Selesai" bukan lagi "Lanjutkan" supaya
+         tidak rancu dengan tombol Lanjut di halaman 1-4). -->
+    <string name="setup_action_next">Lanjut</string>
+    <string name="setup_locked_hint">Selesaikan izin di halaman ini dulu untuk melanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
     <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Wireless Debugging.</string>
     <string name="setup_locked_by_adb_hint">Wireless Debugging sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Root.</string>
     <string name="setup_switch_method">Ganti metode</string>
 
-    <!-- Onboarding Izin pendukung (Write Settings, Overlay, Notifikasi) -->
+    <!-- Halaman 1 — Metode akses (ADB tertanam / Root) -->
+    <string name="setup_page_access_title">Metode Akses</string>
+    <string name="setup_page_access_subtitle">Pilih salah satu: Wireless Debugging (tanpa root) atau akses Root penuh lewat Magisk/KernelSU/APatch.</string>
+
+    <!-- Halaman 2 — Ubah Pengaturan Sistem (WRITE_SETTINGS) -->
+    <string name="setup_page_write_settings_title">Ubah Pengaturan Sistem</string>
+    <string name="setup_page_write_settings_subtitle">Dibutuhkan supaya AetherX bisa membaca dan mengubah sebagian setelan sistem, seperti DPI dan kecepatan pointer.</string>
+    <string name="setup_page_write_settings_banner">Aktifkan izin Ubah Pengaturan Sistem untuk melanjutkan</string>
+
+    <!-- Halaman 3 — Tampil di Atas Aplikasi Lain (SYSTEM_ALERT_WINDOW) -->
+    <string name="setup_page_overlay_title">Tampil di Atas Aplikasi Lain</string>
+    <string name="setup_page_overlay_subtitle">Dibutuhkan untuk menampilkan crosshair dan monitor FPS mengambang saat kamu sedang bermain game.</string>
+    <string name="setup_page_overlay_banner">Aktifkan izin Tampil di Atas Aplikasi Lain untuk melanjutkan</string>
+
+    <!-- Halaman 4 — Notifikasi (POST_NOTIFICATIONS) -->
+    <string name="setup_page_notifications_title">Izin Notifikasi</string>
+    <string name="setup_page_notifications_subtitle">Dibutuhkan supaya AetherX bisa memberi tahu status pairing, update, dan layanan overlay yang berjalan di latar belakang.</string>
+    <string name="setup_page_notifications_banner">Aktifkan izin Notifikasi untuk melanjutkan</string>
+
+    <!-- Halaman 5 — Peringatan Kernel (DWYOR — "Do With Your Own Risk").
+         FITUR BARU (lihat perintah rework: "ada peringatan, harus hati'
+         dalam mengatur kernel core CPU/GPU DWYOR"). BUKAN permission
+         Android — murni checkbox acknowledgment, tapi diwajibkan sebelum
+         tombol "Selesai" aktif supaya benar-benar dibaca. -->
+    <string name="setup_page_kernel_warning_title">Sebelum Lanjut, Baca Ini</string>
+    <string name="setup_page_kernel_warning_subtitle">Kernel Manager memberi kontrol penuh atas CPU dan GPU perangkatmu. Gunakan dengan hati-hati.</string>
+    <string name="setup_kernel_warning_point_governor">Mengubah governor CPU/GPU dan frekuensi per-core secara sembarangan bisa membuat sistem tidak stabil atau restart sendiri.</string>
+    <string name="setup_kernel_warning_point_thermal">Menonaktifkan thermal throttling dalam waktu lama bisa memperpendek umur komponen akibat panas berlebih.</string>
+    <string name="setup_kernel_warning_point_responsibility">Segala risiko kerusakan akibat pengaturan kernel yang tidak sesuai sepenuhnya menjadi tanggung jawab pengguna (DWYOR — Do With Your Own Risk).</string>
+    <string name="setup_kernel_warning_acknowledge">Saya mengerti risikonya dan akan mengatur kernel dengan hati-hati.</string>
+
+    <!-- Onboarding Izin pendukung (Write Settings, Overlay, Notifikasi) —
+         string method/desc INI TETAP DIPAKAI (kartu PermissionMethodCard
+         yang sama dipakai ulang di halaman 2-4 yang baru), hanya
+         setup_supporting_header/subtitle yang SUDAH TIDAK DIPAKAI lagi
+         (dulu jadi judul section "Izin Tambahan" di halaman scroll
+         tunggal — sekarang masing-masing punya halaman sendiri dengan
+         judul dari setup_page_*_title di atas). Dibiarkan ada (tidak
+         dihapus) untuk berjaga-jaga kalau ada pemakaian lain yang belum
+         ditelusuri, sesuai kebiasaan menjaga string lama tetap ada
+         kecuali dipastikan benar-benar tidak dipakai di mana pun. -->
     <string name="setup_supporting_header">Izin Tambahan</string>
     <string name="setup_supporting_subtitle">Membantu tweak dan overlay berjalan lebih stabil.</string>
     <string name="setup_method_write_settings">Ubah Pengaturan Sistem</string>

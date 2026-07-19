@@ -54,31 +54,13 @@ import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
-/**
- * Layar "Build.prop Editor": edit PERSISTEN properti sistem lewat file
- * (BEDA dari toggle `setprop` runtime yang sudah ada di
- * [com.aether.x.data.TweakRepository.applyVmHeapBoost] — lihat KDoc
- * [com.aether.x.data.BuildPropRepository] untuk perbandingan risiko
- * lengkap). Dipasang di drawer TweakScreen sebagai item terpisah, khusus
- * backend Root, mengikuti struktur yang sama seperti
- * [com.aether.x.ui.appmanager.AppManagerScreen] (search field + LazyColumn,
- * ViewModel & layar sendiri).
- *
- * SATU-SATUNYA cara menulis di layar ini adalah lewat dua langkah:
- * ketuk baris -> edit value di dialog -> KONFIRMASI TERPISAH di dialog
- * peringatan bootloop ([EditConfirmDialog]). Tidak ada tombol simpan
- * langsung di baris list yang melewati dialog peringatan ini.
- */
 @Composable
 fun BuildPropScreen(
     modifier: Modifier = Modifier,
     viewModel: BuildPropViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya
-    // muncul di fitur tutup semua apps, jadikan lebih konsisten di semua
-    // fitur"): parameter transient untuk viewModel.confirmEdit di bawah —
-    // pola sama seperti TweakScreen.kt/AppManagerScreen.kt.
+
     val activity = LocalContext.current as? Activity
     var showBackupSheet by remember { mutableStateOf(false) }
 
@@ -110,9 +92,6 @@ fun BuildPropScreen(
             }
         }
 
-        // Chip pemilih partisi — hanya partisi yang benar-benar ADA di
-        // perangkat ini yang ditampilkan (lihat BuildPropSnapshot.exists),
-        // supaya pengguna tidak bisa memilih partisi kosong/tidak relevan.
         val availablePartitions = state.snapshots.filter { it.exists }
         Row(
             modifier = Modifier
@@ -278,13 +257,6 @@ private fun BuildPropRow(
     }
 }
 
-/**
- * Dialog konfirmasi wajib sebelum penulisan sungguhan terjadi (dipanggil
- * [BuildPropViewModel.confirmEdit], BUKAN langsung dari tombol "simpan" di
- * [BuildPropRow]). Peringatan risiko bootloop ditampilkan LENGKAP setiap
- * kali, tanpa opsi "jangan tampilkan lagi" — lihat KDoc [BuildPropViewModel]
- * untuk alasan pengulangan ini disengaja.
- */
 @Composable
 private fun EditConfirmDialog(
     key: String,

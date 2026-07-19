@@ -20,11 +20,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 
-/**
- * Baris toggle gaya AetherX: ikon kecil di kiri (opsional), judul bold +
- * deskripsi abu di tengah, switch besar di kanan — mengikuti tata letak
- * pada referensi (mis. "Input Response Boost", "UI Speed Accelerator").
- */
 @Composable
 fun TweakSwitch(
     label: String,

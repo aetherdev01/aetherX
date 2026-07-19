@@ -15,21 +15,10 @@ data class DisplayInfo(
     val aspectRatio: Float get() = heightPx.toFloat() / widthPx.toFloat()
 }
 
-/**
- * Membaca resolusi, densitas, dan refresh rate yang didukung layar fisik
- * memakai API Android biasa (tidak butuh Shizuku/root). Ini dipakai sebagai
- * acuan "default pabrik" untuk slider Tweak dan untuk tombol Reset.
- */
 object DisplayInfoProvider {
 
     fun read(context: Context): DisplayInfo {
-        // PENTING: jangan pakai context.display / WindowManager.defaultDisplay di sini.
-        // TweakViewModel memanggil fungsi ini dengan Application context (getApplication()),
-        // dan mulai Android R (API 30), context.display akan langsung melempar
-        // UnsupportedOperationException kalau context-nya bukan context "visual"
-        // (Activity / WindowContext). Application context BUKAN context visual,
-        // jadi ini menyebabkan force close instan saat home screen dibuka.
-        // DisplayManager aman dipakai dari context jenis apa pun.
+
         val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
         val display: Display? = displayManager?.getDisplay(Display.DEFAULT_DISPLAY)
 

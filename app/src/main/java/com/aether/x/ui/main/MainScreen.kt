@@ -49,35 +49,6 @@ fun MainScreen(
 
     val tweakViewModel: TweakViewModel = viewModel()
 
-    // FITUR BARU (dialog adblock — lihat perintah rework "Deteksi-nya
-    // sendiri tetap bisa... dijalankan kapan? Keduanya" [app dibuka +
-    // sebelum interstitial]): titik PERTAMA dari dua titik pemicu — jalan
-    // SEKALI setiap MainScreen pertama kali masuk komposisi (yaitu tiap
-    // app dibuka, karena MainScreen adalah layar utama setelah onboarding
-    // selesai). Titik KEDUA ada di
-    // [com.aether.x.core.ads.InterstitialAdGate.maybeShow]. Kedua titik
-    // pemicu SAMA-SAMA hanya memanggil [AdBlockDialogState.requestShow] —
-    // dialog aktualnya (lihat [AdBlockDialog] di bawah) yang benar-benar
-    // menentukan kapan tampil, jadi di sini TIDAK perlu cast ke Activity
-    // sama sekali.
-    //
-    // BUG FIX (lihat perintah rework — "fix AdBlock tidak berfungsi", kasus
-    // root-mode AdAway/hosts Magisk module tidak terdeteksi): SEBELUMNYA
-    // detect() langsung dipanggil begitu MainScreen pertama kali masuk
-    // komposisi, TANPA menunggu PrivilegeManager.status.checkingRoot selesai
-    // — checkRootSilently() di PrivilegeManager.init() (dipanggil dari
-    // AetherXApp.onCreate, JAUH sebelum MainScreen tampil secara urutan
-    // kode, tapi Shell.getShell() di dalamnya ASYNC dan bisa makan waktu
-    // signifikan tergantung solusi root device) punya kemungkinan nyata
-    // BELUM SELESAI saat baris ini sempat jalan duluan — kalau begitu,
-    // activeBackend masih terbaca NONE, dan
-    // AdBlockDetector.detectMagiskModule() (yang HANYA jalan kalau backend
-    // aktif persis ROOT) langsung di-skip walau root SUDAH granted,
-    // sehingga modul Magisk root-mode AdAway (kata kunci "adaway" sudah
-    // benar ada di adblockguard.cpp) tidak pernah benar-benar dicek sama
-    // sekali. Sekarang menunggu checkingRoot selesai dulu (dengan timeout
-    // wajar) sebelum detect() dipanggil, supaya sinyal backend yang dibaca
-    // sudah settled/akurat.
     val privilegeStatus by PrivilegeManager.status.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(Unit) {
@@ -90,18 +61,12 @@ fun MainScreen(
         }
     }
 
-    // Dengarkan permintaan pindah tab Membership dari tombol "Lihat
-    // Membership" di dialog adblock — lihat KDoc [AdBlockDialogState] soal
-    // kenapa event bus ini dibutuhkan (tombol yang sama bisa dipicu dari
-    // luar Composable tree ini, lewat InterstitialAdGate).
     LaunchedEffect(Unit) {
         AdBlockDialogState.openMembershipRequests.collect {
             selectedTab = MainTab.MEMBERSHIP
         }
     }
 
-    // Dipasang SEKALI di sini (bukan di dalam salah satu tab) supaya tetap
-    // bisa tampil terlepas tab mana yang aktif — lihat KDoc [AdBlockDialog].
     AdBlockDialog()
 
     Scaffold(
@@ -112,28 +77,7 @@ fun MainScreen(
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 tonalElevation = 0.dp,
             ) {
-                // RILIS v2.0 (lihat perintah rework — "di tab Tweak itu
-                // harusnya Textnya Dashboard Bukan Tweak, ganti beserta
-                // ikonnya"): label & ikon tab bottom-nav paling kiri diganti
-                // dari "Tweak" (Icons.Outlined.Tune) jadi "Dashboard"
-                // (Icons.Outlined.SpaceDashboard — SAMA PERSIS dengan ikon
-                // item drawer "Dashboard" di dalam TweakScreen, supaya
-                // konsisten secara visual).
-                //
-                // PENTING — TIDAK mengubah string nav_tweak: string itu
-                // JUGA dipakai untuk label item drawer KEDUA di dalam
-                // TweakScreen ("Tweak", sub-tab kontrol tweak — BEDA dari
-                // sub-tab "Dashboard" pertama, lihat TweakDrawerContent).
-                // Mengubah nilai nav_tweak langsung akan membuat DUA item
-                // drawer sama-sama bertuliskan "Dashboard" — kesalahan
-                // yang sama persis dengan "percobaan rename sebelumnya...
-                // DIBATALKAN karena salah interpretasi" (lihat komentar
-                // riwayat di strings.xml dekat nav_tweak/nav_dashboard).
-                // Jadi dipakai string BARU (nav_bottom_dashboard) khusus
-                // label tab bottom-nav ini, tidak menyentuh nav_tweak sama
-                // sekali — MainTab.TWEAK (nama enum) & TweakScreen (nama
-                // composable/route) TIDAK diganti, murni perubahan teks+ikon
-                // yang tampil ke pengguna.
+
                 NavigationBarItem(
                     selected = selectedTab == MainTab.TWEAK,
                     onClick = { selectedTab = MainTab.TWEAK },

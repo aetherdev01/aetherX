@@ -7,15 +7,6 @@ import android.os.StatFs
 import java.io.File
 import java.util.Locale
 
-/**
- * Snapshot info dasar perangkat (model, chipset, RAM, penyimpanan, versi
- * Android) — SEMUA dibaca lewat API publik Android biasa
- * ([android.os.Build], [ActivityManager], [StatFs]), TIDAK butuh Shizuku
- * ataupun Root sama sekali. Ini yang membedakannya dari
- * [com.aether.x.core.kernel.KernelInfoReader] (baca sysfs mentah, khusus
- * Root) — section "Info Device" di tab Dashboard harus tetap berguna untuk
- * SEMUA pengguna, termasuk yang belum/tidak mengaktifkan Shizuku/Root.
- */
 data class DeviceInfoSnapshot(
     val manufacturer: String,
     val model: String,
@@ -58,7 +49,6 @@ object DeviceInfoProvider {
     }
 }
 
-/** Format byte ke GB dengan 1 angka desimal, mis. "7.4 GB". */
 fun Long.toGbLabel(): String {
     val gb = this / (1024.0 * 1024.0 * 1024.0)
     return String.format(Locale.US, "%.1f GB", gb)

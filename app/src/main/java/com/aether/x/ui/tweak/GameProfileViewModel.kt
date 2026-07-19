@@ -39,13 +39,6 @@ data class GameProfileUiState(
         get() = selectedPackage?.let { pkg -> profiles[pkg] ?: GameProfile.default(pkg) }
 }
 
-/**
- * Mengelola daftar game (dari [GameProfileCatalog], khusus yang terpasang)
- * dan CRUD [GameProfile] per game untuk layar Game Profile (sidebar di tab
- * Tweak). TIDAK bertanggung jawab menerapkan/mereset tweak secara real-time
- * ke sistem — itu sepenuhnya tugas [com.aether.x.core.monitor.GameProfileMonitorService]
- * yang berjalan independen di background begitu profil disimpan di sini.
- */
 class GameProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val preferences = AetherXPreferences(application)
@@ -67,9 +60,7 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
                 )
             }
         }
-        // Terus ikuti perubahan (mis. GameProfileMonitorService menandai
-        // game lain sedang aktif) supaya badge "Sedang Diterapkan" di
-        // sidebar selalu akurat walau layar ini sedang terbuka.
+
         viewModelScope.launch {
             preferences.preferences.collect { prefs ->
                 _state.update {
@@ -102,28 +93,6 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { preferences.saveGameProfile(updated) }
     }
 
-    /**
-     * Terapkan preset Game Mode (FITUR BARU — lihat perintah rework:
-     * "tambahkan fitur baru Game Mode : Low, Mid, Boost"). Mengganti ke-6
-     * toggle sekaligus sesuai kombinasi [mode] (lihat KDoc
-     * [GameProfile.withGameMode]) — pengguna tetap bisa mengubah toggle
-     * manual setelahnya, memilih mode lain lagi akan menimpa ulang semua
-     * toggle sesuai kombinasi mode yang baru dipilih.
-     *
-     * FITUR BARU (titik pemicu interstitial baru — lihat perintah rework
-     * "tambahkan pemicu lagi terutama di game profile"): [activity]
-     * OPSIONAL (default null, SAMA persis polanya dengan
-     * [com.aether.x.ui.tweak.TweakViewModel.onKillBackgroundAppsChange] —
-     * lihat KDoc di sana untuk alasan lengkap kenapa Activity tidak
-     * disimpan permanen di ViewModel), dipakai HANYA untuk menampilkan
-     * interstitial ad SETELAH preset benar-benar diterapkan & tersimpan —
-     * TIDAK PERNAH menunda penerapan preset itu sendiri (lihat KDoc
-     * [com.aether.x.core.ads.InterstitialAdGate]: interstitial murni
-     * transisi SESUDAH aksi, bukan gerbang SEBELUM aksi). Kalau [activity]
-     * null (pemanggil tidak menyediakannya) atau iklan belum siap, tidak
-     * ada yang terlihat pengguna selain preset yang tetap berhasil
-     * diterapkan seperti biasa.
-     */
     fun onGameModeChange(mode: GameMode, activity: Activity? = null) {
         val pkg = _state.value.selectedPackage ?: return
         val current = _state.value.profiles[pkg] ?: GameProfile.default(pkg)
@@ -156,20 +125,9 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
     fun onVmHeapBoostChange(checked: Boolean) =
         updateSelectedProfile { it.copy(vmHeapBoost = checked) }
 
-    /** FITUR BARU — tweak ke-7: GPU Rendering Priority (SurfaceFlinger). */
     fun onGpuRenderingPriorityChange(checked: Boolean) =
         updateSelectedProfile { it.copy(gpuRenderingPriority = checked) }
 
-    /**
-     * Menghapus seluruh tweak profil game yang sedang dipilih. Kalau game
-     * ini kebetulan sedang jadi profil AKTIF (dipantau
-     * GameProfileMonitorService), TIDAK langsung mereset sistem dari sini —
-     * cukup hapus data tersimpannya; poll berikutnya dari service akan
-     * mendeteksi profilnya sudah kosong lewat siklus normal saat game
-     * ditutup. Kalau ingin efek instan saat game masih terbuka, pengguna
-     * cukup mematikan toggle satu-satu (yang langsung tersimpan & akan
-     * disinkronkan poll berikutnya kalau game itu game yang sedang aktif).
-     */
     fun resetSelectedProfile() {
         val pkg = _state.value.selectedPackage ?: return
         _state.update { it.copy(profiles = it.profiles - pkg) }
@@ -183,7 +141,6 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(message = null) }
     }
 
-    /** FITUR BARU (lihat perintah rework — "tambahkan Toast di semua Fitur"): lihat KDoc appString di TweakViewModel. */
     private fun appString(resId: Int): String {
         val text = getApplication<Application>().getString(resId)
         getApplication<Application>().showAetherToast(text)

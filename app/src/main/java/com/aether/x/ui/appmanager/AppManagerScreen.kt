@@ -57,30 +57,6 @@ import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
-/**
- * Layar App Manager: freeze/unfreeze aplikasi PIHAK KETIGA (semua) dan
- * aplikasi sistem yang cocok whitelist bloatware terkurasi (lihat KDoc
- * [com.aether.x.core.appmanager.AppManagerCatalog] untuk alasan kenapa
- * TIDAK menampilkan semua app sistem secara bebas).
- *
- * Dipasang di drawer TweakScreen sebagai item terpisah, khusus backend
- * Root — mengikuti pola yang sama seperti KernelManagerSection/
- * GameProfileScreen (masing-masing ViewModel & layar sendiri, bukan
- * ditumpuk ke TweakViewModel).
- *
- * Struktur visual (search field + LazyColumn item row dengan ikon 44dp)
- * SENGAJA meniru [com.aether.x.ui.tweak.GameProfileScreen] persis supaya
- * konsisten secara visual dengan sub-halaman Root lain di drawer yang sama.
- *
- * FITUR BARU (lihat perintah rework — "tambahkan opsi baru selain
- * Nonaktifkan Aplikasi"): tiap [AppManagerRow] sekarang punya tombol menu
- * overflow (titik tiga vertikal) berisi "Force Stop" dan "Bersihkan Cache",
- * selain Switch freeze/unfreeze yang sudah ada. Force Stop langsung
- * dieksekusi (tidak destruktif — lihat KDoc [AppManagerRepository.forceStop]),
- * sedangkan Bersihkan Cache WAJIB lewat dialog konfirmasi terlebih dahulu
- * (lihat [ClearCacheConfirmDialog]) karena tetap menghapus data walau
- * dampaknya minor.
- */
 @Composable
 fun AppManagerScreen(
     modifier: Modifier = Modifier,
@@ -88,18 +64,8 @@ fun AppManagerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    // RILIS v2.0 (lihat perintah rework — "perbaiki iklan yang hanya
-    // muncul di fitur tutup semua apps, jadikan lebih konsisten di semua
-    // fitur"): dipakai HANYA untuk parameter transient forceStopApp/
-    // clearCacheApp di bawah (interstitial ad setelah aksi berhasil) —
-    // pola SAMA PERSIS dengan TweakScreen.kt (lihat KDoc di sana untuk
-    // alasan lengkap kenapa Activity tidak disimpan di ViewModel sendiri).
     val activity = LocalContext.current as? Activity
 
-    // Entry yang sedang menunggu konfirmasi "Bersihkan Cache" — null berarti
-    // dialog konfirmasi tidak tampil. Disimpan di level layar (bukan di
-    // dalam AppManagerRow) supaya dialog tetap satu instance walau row-nya
-    // di dalam LazyColumn yang bisa di-recompose/di-recycle.
     var pendingClearCacheEntry by remember { mutableStateOf<InstalledAppEntry?>(null) }
 
     LaunchedEffect(state.message) {
@@ -198,12 +164,6 @@ fun AppManagerScreen(
     }
 }
 
-/**
- * Dialog konfirmasi WAJIB sebelum "Bersihkan Cache" dieksekusi — aksi ini
- * tetap menghapus data (walau cuma cache, bukan seluruh data app seperti
- * `pm clear`), jadi tidak boleh langsung dieksekusi dari satu tap saja
- * (beda dari Force Stop yang tidak destruktif dan aman tanpa konfirmasi).
- */
 @Composable
 private fun ClearCacheConfirmDialog(
     appLabel: String,
@@ -283,11 +243,6 @@ private fun AppManagerRow(
             )
         }
 
-        // Menu overflow (FITUR BARU): Force Stop & Bersihkan Cache, selain
-        // Switch freeze/unfreeze yang sudah ada di ujung kanan. Dinonaktifkan
-        // bersamaan dengan Switch selama aksi lain sedang berjalan
-        // (isPending) supaya tidak ada dua aksi shell tumpang tindih untuk
-        // app yang sama.
         Box {
             IconButton(onClick = { menuExpanded = true }, enabled = !isPending) {
                 Icon(
@@ -316,10 +271,6 @@ private fun AppManagerRow(
             }
         }
 
-        // isFrozen == true berarti Switch OFF (app dinonaktifkan), isFrozen
-        // == false berarti Switch ON (app aktif normal) — arah switch
-        // mengikuti makna "aktif", bukan makna "frozen", supaya lebih
-        // intuitif bagi pengguna awam (ON = jalan seperti biasa).
         Switch(
             checked = !entry.isFrozen,
             onCheckedChange = { onToggle() },
