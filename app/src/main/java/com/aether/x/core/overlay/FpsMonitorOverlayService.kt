@@ -190,6 +190,12 @@ class FpsMonitorOverlayService : Service() {
         serviceScope.launch {
             while (true) {
                 monitorView?.let { view ->
+                    // SENGAJA non-suspend [getExecutor] di sini juga (lihat
+                    // alasan yang sama di [GameBoosterMonitor.metricsFlow]):
+                    // loop polling tiap [STATS_REFRESH_INTERVAL_MS] dengan
+                    // fallback ke 0/stats lain saat executor belum siap —
+                    // menunggu reconnect penuh di sini akan membuat overlay
+                    // FPS macet berkali-kali detik alih-alih tetap responsif.
                     val executor = PrivilegeManager.getExecutor()
                     view.fps = if (executor != null) {
                         readFpsForForegroundApp(executor)

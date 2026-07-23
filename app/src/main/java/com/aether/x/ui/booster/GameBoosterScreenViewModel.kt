@@ -63,7 +63,7 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
         viewModelScope.launch {
             GameBoosterSessionHolder.update { it.copy(mode = mode) }
             preferences.setGameBoosterMode(mode)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyMode(executor, mode)
         }
     }
@@ -72,7 +72,7 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
         viewModelScope.launch {
             GameBoosterSessionHolder.update { it.copy(dndEnabled = enabled) }
             preferences.setGameBoosterDndEnabled(enabled)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyDnd(executor, enabled)
         }
     }
@@ -88,7 +88,7 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
         viewModelScope.launch {
             GameBoosterSessionHolder.update { it.copy(rotationLocked = locked) }
             preferences.setGameBoosterRotationLocked(locked)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyRotationLock(executor, locked)
         }
     }
@@ -97,7 +97,7 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
         viewModelScope.launch {
             GameBoosterSessionHolder.update { it.copy(touchBoostEnabled = enabled) }
             preferences.setGameBoosterTouchBoostEnabled(enabled)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyTouchBoost(executor, enabled)
         }
     }
@@ -111,7 +111,7 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
 
     fun onForceMaxRefreshRate() {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val displayInfo = withContext(Dispatchers.IO) {
                 com.aether.x.core.display.DisplayInfoProvider.read(getApplication())
             }
@@ -121,7 +121,7 @@ class GameBoosterScreenViewModel(application: Application) : AndroidViewModel(ap
 
     fun onScreenshot() {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             val context = getApplication<Application>()
             if (executor == null) {
                 context.showAetherToast(context.getString(R.string.game_booster_screenshot_needs_privilege))

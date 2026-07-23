@@ -149,7 +149,7 @@ class GameBoosterOverlayService : Service() {
                 ),
             )
 
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor != null) {
                 actionHandler.applyMode(executor, initial.gameBoosterMode)
                 if (initial.gameBoosterDndEnabled) actionHandler.applyDnd(executor, true)
@@ -179,7 +179,7 @@ class GameBoosterOverlayService : Service() {
 
     private fun refreshRecentApps() {
         serviceScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
 
             val ownPackageName = packageName
             val packages = recentTasksReader.listRecentPackages(executor, excludingPackage = ownPackageName) ?: return@launch
@@ -196,7 +196,7 @@ class GameBoosterOverlayService : Service() {
 
     private fun endSession() {
         serviceScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor != null) {
                 actionHandler.applyMode(executor, GameMode.MID)
                 actionHandler.applyDnd(executor, false)
@@ -362,7 +362,7 @@ class GameBoosterOverlayService : Service() {
         serviceScope.launch {
             GameBoosterSessionHolder.update { it.copy(mode = mode) }
             preferences.setGameBoosterMode(mode)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyMode(executor, mode)
         }
     }
@@ -371,7 +371,7 @@ class GameBoosterOverlayService : Service() {
         serviceScope.launch {
             GameBoosterSessionHolder.update { it.copy(dndEnabled = enabled) }
             preferences.setGameBoosterDndEnabled(enabled)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyDnd(executor, enabled)
         }
     }
@@ -380,7 +380,7 @@ class GameBoosterOverlayService : Service() {
         serviceScope.launch {
             GameBoosterSessionHolder.update { it.copy(rotationLocked = locked) }
             preferences.setGameBoosterRotationLocked(locked)
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             actionHandler.applyRotationLock(executor, locked)
         }
     }
@@ -394,7 +394,7 @@ class GameBoosterOverlayService : Service() {
 
     private fun onScreenshot() {
         serviceScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 showAetherToast(getString(R.string.game_booster_screenshot_needs_privilege))
                 return@launch

@@ -76,7 +76,7 @@ object AdBlockDetector {
         if (PrivilegeManager.status.value.activeBackend != PrivilegeBackend.ROOT) {
             return false
         }
-        val executor = PrivilegeManager.getExecutor() ?: return false
+        val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return false
 
         val result = runCatching {
             executor.exec("ls $MAGISK_MODULES_PATH 2>/dev/null")

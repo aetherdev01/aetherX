@@ -436,6 +436,19 @@ object AdbConnectionManager {
     }
 
     /**
+     * Versi publik yang bisa DITUNGGU dari luar (dipakai
+     * [com.aether.x.core.permission.PrivilegeManager.getExecutorAwaitingConnection]
+     * — lihat KDoc di sana untuk bug yang diperbaiki: toast "Sambungkan
+     * ADB tertanam atau Root dulu" muncul palsu karena caller sebelumnya
+     * hanya membaca state APA ADANYA tanpa pernah menunggu reconnect
+     * sungguhan). Aman dipanggil berkali-kali beruntun — [autoReconnectSuspend]
+     * sudah idempotent (langsung kembali kalau memang sudah
+     * [AdbConnectionState.Connected], dan [connectMutex] mencegah dua
+     * reconnect berjalan bersamaan).
+     */
+    suspend fun awaitReconnect(): AdbConnectionState = autoReconnectSuspend()
+
+    /**
      * FIX (bug "toast 'Perintah gagal dijalankan' padahal cuma butuh
      * waktu lebih untuk reconnect", lihat laporan pengguna): versi
      * [autoReconnect] yang BISA DITUNGGU hasil akhirnya (bukan

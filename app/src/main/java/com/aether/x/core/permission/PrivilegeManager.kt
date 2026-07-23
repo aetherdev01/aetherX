@@ -285,6 +285,50 @@ object PrivilegeManager {
         PrivilegeBackend.NONE -> null
     }
 
+    /**
+     * FIX BUG: "Sambungkan ADB tertanam atau Root dulu di layar Izin
+     * Akses" muncul terus padahal server ADB SUDAH terhubung (atau baru
+     * saja putus sesaat dan sebenarnya bisa pulih sendiri).
+     *
+     * Akar masalah: [getExecutor] (non-suspend) HANYA membaca [status]
+     * StateFlow apa adanya saat dipanggil — kalau [PrivilegeStatus.activeBackend]
+     * kebetulan masih [PrivilegeBackend.NONE] di momen itu (mis. tepat
+     * setelah `onResume` ketika [AdbConnectionManager.autoReconnect]
+     * fire-and-forget masih berjalan di background, atau state baru saja
+     * turun ke [AdbConnectionState.PairedNotConnected] lewat
+     * [AdbConnectionManager.markStreamFailureAndReconnect] sesaat sebelum
+     * reconnect-nya sendiri selesai), caller (mis. TweakViewModel)
+     * langsung menyerah dan menampilkan toast gagal SEBELUM sempat
+     * mencoba tersambung sama sekali.
+     *
+     * Versi `suspend` ini dipakai sebagai GANTI [getExecutor] biasa oleh
+     * semua pemanggil tweak: kalau preferensi backend adalah ADB tapi
+     * belum [AdbConnectionState.Connected] persis saat ini, AKTIF
+     * menunggu satu putaran reconnect sungguhan lewat
+     * [AdbConnectionManager.awaitReconnect] sebelum benar-benar menyerah
+     * — sama seperti pola retry yang sudah terbukti di
+     * [EmbeddedShellExecutor], hanya dipindah lebih awal supaya toast
+     * "belum tersambung" tidak muncul palsu saat server ADB sebenarnya
+     * tersambung atau baru butuh sedikit waktu lagi. Preferensi ROOT
+     * tidak butuh ini (root tidak kenal reconnect async seperti ini).
+     */
+    suspend fun getExecutorAwaitingConnection(): ShellExecutor? {
+        val current = status.value
+        return when (current.preferredBackend) {
+            PrivilegeBackend.ADB -> {
+                if (current.adbGranted) return EmbeddedShellExecutor()
+                val reconnected = AdbConnectionManager.awaitReconnect()
+                if (reconnected is AdbConnectionState.Connected) EmbeddedShellExecutor() else null
+            }
+            PrivilegeBackend.ROOT -> if (current.rootGranted) RootShellExecutor() else null
+            PrivilegeBackend.NONE -> when {
+                current.adbGranted -> EmbeddedShellExecutor()
+                current.rootGranted -> RootShellExecutor()
+                else -> null
+            }
+        }
+    }
+
     fun refreshSupportingPermissions(context: Context) {
         val writeSettings = Settings.System.canWrite(context)
         val overlay = Settings.canDrawOverlays(context)

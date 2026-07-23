@@ -134,7 +134,7 @@ class GameProfileMonitorService : Service() {
             return
         }
 
-        val executor = PrivilegeManager.getExecutor() ?: return
+        val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return
 
         val foregroundPackage = foregroundAppReader.readForegroundPackage(executor)
 
@@ -178,7 +178,7 @@ class GameProfileMonitorService : Service() {
 
         if (!GameBoosterFeatureFlag.autoTriggerOnGameOpenEnabled) return
 
-        val executor = PrivilegeManager.getExecutor() ?: return
+        val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return
         val current = activeBoosterPackage
 
         when {
@@ -210,7 +210,7 @@ class GameProfileMonitorService : Service() {
             activeBoosterPackage = null
         }
         val current = activeProfilePackage ?: preferences.getActiveGameProfilePackage() ?: return
-        val executor: ShellExecutor = PrivilegeManager.getExecutor() ?: return
+        val executor: ShellExecutor = PrivilegeManager.getExecutorAwaitingConnection() ?: return
         repository.resetRootTweaksOnly(executor, packageName = current)
         activeProfilePackage = null
         preferences.setActiveGameProfilePackage(null)

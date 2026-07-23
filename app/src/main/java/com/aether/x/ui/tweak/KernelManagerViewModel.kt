@@ -40,7 +40,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(loading = false, message = appString(R.string.kernel_manager_error_root_unavailable)) }
                 return@launch
@@ -61,7 +61,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
 
     fun applyCoreFrequency(coreIndex: Int, minKhz: Int?, maxKhz: Int?) {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreFrequency(executor, coreIndex, minKhz, maxKhz)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_frequency, coreIndex)) }
@@ -72,7 +72,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
 
     fun applyCoreGovernor(coreIndex: Int, governorName: String) {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreGovernor(executor, coreIndex, governorName)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_governor, coreIndex)) }
@@ -90,7 +90,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
     fun applyGpuFrequency(minKhz: Int?, maxKhz: Int?) {
         val path = _state.value.gpu?.devfreqPath ?: return
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuFrequency(executor, path, minKhz, maxKhz)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_frequency)) }
@@ -102,7 +102,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
     fun applyGpuGovernor(governorName: String) {
         val path = _state.value.gpu?.devfreqPath ?: return
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuGovernor(executor, path, governorName)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_governor)) }

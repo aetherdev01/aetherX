@@ -56,7 +56,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(loading = false, message = appString(R.string.app_manager_error_root_unavailable)) }
                 return@launch
@@ -73,7 +73,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
     fun toggleFreeze(entry: InstalledAppEntry) {
         viewModelScope.launch {
             _state.update { it.copy(pendingPackageName = entry.packageName) }
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update {
                     it.copy(
@@ -110,7 +110,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
     fun forceStopApp(entry: InstalledAppEntry, activity: Activity?) {
         viewModelScope.launch {
             _state.update { it.copy(pendingPackageName = entry.packageName) }
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update {
                     it.copy(pendingPackageName = null, message = appString(R.string.app_manager_error_root_unavailable))
@@ -137,7 +137,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
     fun clearCacheApp(entry: InstalledAppEntry, activity: Activity?) {
         viewModelScope.launch {
             _state.update { it.copy(pendingPackageName = entry.packageName) }
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update {
                     it.copy(pendingPackageName = null, message = appString(R.string.app_manager_error_root_unavailable))

@@ -20,6 +20,16 @@ class GameBoosterMonitor(private val packageName: String) {
     fun metricsFlow(context: Context): Flow<GameBoosterMetrics> = flow {
         val fpsHistory = ArrayDeque<Int>()
         while (true) {
+            // SENGAJA tetap pakai [PrivilegeManager.getExecutor] (non-suspend,
+            // baca snapshot state saat ini) di sini, BUKAN
+            // [PrivilegeManager.getExecutorAwaitingConnection] — loop ini
+            // polling tiap [POLL_INTERVAL_MS] dan SUDAH punya fallback yang
+            // baik lewat [fallbackStatsProvider] saat executor null. Kalau
+            // dipaksa menunggu reconnect penuh (bisa puluhan detik saat
+            // perlu rediscovery mDNS) di setiap iterasi, overlay FPS/CPU/GPU
+            // akan macet berkali-kali detik alih-alih tetap menampilkan
+            // angka fallback yang responsif — beda kebutuhan dari aksi
+            // tweak sekali-klik yang memang lebih baik menunggu.
             val executor = PrivilegeManager.getExecutor()
             val fps = if (executor != null) {
                 withContext(Dispatchers.IO) { runCatching { fpsReader.readFps(executor) }.getOrNull() }

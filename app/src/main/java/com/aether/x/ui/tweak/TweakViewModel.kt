@@ -174,7 +174,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         if (!checked) return
         _state.update { it.copy(killBackgroundApps = true) }
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(message = appString(R.string.tweak_no_access_toast)) }
             } else {
@@ -214,7 +214,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetTweaks() {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor != null) {
                 repository.applyPointerSpeed(executor, 0)
                 repository.applyTouchBoost(executor, false)
@@ -251,7 +251,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun applyAndPersist(action: suspend (ShellExecutor) -> ShellResult) {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(message = appString(R.string.tweak_no_access_toast)) }
             } else {

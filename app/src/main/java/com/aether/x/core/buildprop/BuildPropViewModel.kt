@@ -64,7 +64,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(loading = false, message = appString(R.string.buildprop_error_root_unavailable)) }
                 return@launch
@@ -98,7 +98,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
     fun confirmEdit(activity: Activity?) {
         val pending = _state.value.pendingEdit ?: return
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(pendingEdit = null, message = appString(R.string.buildprop_error_root_unavailable)) }
                 return@launch
@@ -145,7 +145,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun refreshBackupList() {
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor() ?: return@launch
+            val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val backups = repository.listBackups(executor, _state.value.selectedPartition)
             _state.update { it.copy(backupsForSelectedPartition = backups) }
         }
@@ -162,7 +162,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
     fun confirmRestore() {
         val backup = _state.value.pendingRestore ?: return
         viewModelScope.launch {
-            val executor = PrivilegeManager.getExecutor()
+            val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor == null) {
                 _state.update { it.copy(pendingRestore = null, message = appString(R.string.buildprop_error_root_unavailable)) }
                 return@launch
