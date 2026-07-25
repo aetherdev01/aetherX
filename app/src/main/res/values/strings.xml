@@ -18,7 +18,7 @@
     <string name="setup_title">Izin Akses</string>
     <string name="setup_subtitle">Pilih metode akses agar AetherX bisa mengontrol performa dan tweak sistem di perangkatmu.</string>
     <string name="setup_required_header">Wajib Salah Satu</string>
-    <string name="setup_required_banner">Aktifkan Wireless Debugging atau Root untuk melanjutkan</string>
+    <string name="setup_required_banner">Aktifkan Shizuku atau Root untuk melanjutkan</string>
     <string name="setup_method_root">Magisk</string>
     <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser untuk fitur lanjutan.</string>
     <string name="setup_status_granted">Aktif</string>
@@ -34,13 +34,13 @@
     <string name="setup_action_next">Lanjut</string>
     <string name="setup_locked_hint">Selesaikan izin di halaman ini dulu untuk melanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
-    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Wireless Debugging.</string>
+    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Shizuku.</string>
     <string name="setup_locked_by_adb_hint">Shizuku sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Root.</string>
     <string name="setup_switch_method">Ganti metode</string>
 
     <!-- Halaman 1 — Metode akses (Shizuku / Root) -->
     <string name="setup_page_access_title">Metode Akses</string>
-    <string name="setup_page_access_subtitle">Pilih salah satu: Wireless Debugging (tanpa root) atau akses Root penuh lewat Magisk/KernelSU/APatch.</string>
+    <string name="setup_page_access_subtitle">Pilih salah satu: Shizuku (tanpa root) atau akses Root penuh lewat Magisk/KernelSU/APatch.</string>
 
     <!-- Halaman 2 — Ubah Pengaturan Sistem (WRITE_SETTINGS) -->
     <string name="setup_page_write_settings_title">Ubah Pengaturan Sistem</string>
@@ -54,7 +54,7 @@
 
     <!-- Halaman 4 — Notifikasi (POST_NOTIFICATIONS) -->
     <string name="setup_page_notifications_title">Izin Notifikasi</string>
-    <string name="setup_page_notifications_subtitle">Dibutuhkan supaya AetherX bisa memberi tahu status pairing, update, dan layanan overlay yang berjalan di latar belakang.</string>
+    <string name="setup_page_notifications_subtitle">Dibutuhkan supaya AetherX bisa memberi tahu status koneksi, update, dan layanan overlay yang berjalan di latar belakang.</string>
     <string name="setup_page_notifications_banner">Aktifkan izin Notifikasi untuk melanjutkan</string>
 
     <!-- Halaman 5 — Peringatan Kernel (DWYOR — "Do With Your Own Risk").
