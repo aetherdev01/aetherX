@@ -101,7 +101,12 @@ kotlinx-coroutines-android              = { group = "org.jetbrains.kotlinx",    
 # Shizuku Manager, BUKAN di AetherX). "provider" TIDAK dipakai (itu untuk
 # app yang mau MENYEDIAKAN Shizuku sebagai module Sui/Magisk, bukan untuk
 # app yang cuma jadi CLIENT/consumer seperti AetherX).
-shizuku-api                              = { group = "dev.rikka.shizuku",         name = "shizuku-api",                version.ref = "shizuku"             }
+# FIX BUILD — artifactId resmi Shizuku-API di Maven Central adalah "api"
+# saja (groupId dev.rikka.shizuku sudah cukup membedakannya), BUKAN
+# "shizuku-api" — nama terakhir itu tidak ada di Maven Central sama sekali
+# dan menyebabkan "Could not find dev.rikka.shizuku:shizuku-api:13.1.5".
+# Lihat https://mvnrepository.com/artifact/dev.rikka.shizuku/api
+shizuku-api                              = { group = "dev.rikka.shizuku",         name = "api",                        version.ref = "shizuku"             }
 
 # ── Privilege backends: root / Magisk / KernelSU / APatch) ───────────
 libsu-core                              = { group = "com.github.topjohnwu.libsu", name = "core",                       version.ref = "libsu"               }
