@@ -165,8 +165,11 @@ dependencies {
     // ── Privilege backend: Shizuku (mode non-root — client-only, service
     //    dijalankan pengguna sendiri lewat app Shizuku Manager terpisah).
     //    ROLLBACK dari ADB tertanam (libadb-android dkk, DIHAPUS TOTAL) —
-    //    lihat catatan di gradle/libs.versions.toml untuk alasannya. ────────
+    //    lihat catatan di gradle/libs.versions.toml untuk alasannya.
+    //    "provider" WAJIB ada (bukan opsional) — lihat KDoc ShizukuManager
+    //    dan komentar di libs.versions.toml. ────────
     implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
 
     // ── Privilege backend: libsu (mode root — Magisk / KernelSU / APatch) ───
     implementation(libs.libsu.core)

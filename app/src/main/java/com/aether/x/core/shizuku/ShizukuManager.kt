@@ -29,7 +29,9 @@ import rikka.shizuku.Shizuku
  *   1. Cek apakah binder Shizuku hidup ([Shizuku.pingBinder]).
  *   2. Kalau hidup, cek/minta izin ([Shizuku.checkSelfPermission] /
  *      [Shizuku.requestPermission]).
- *   3. Kalau diizinkan, jalankan command lewat [Shizuku.newProcess].
+ *   3. Kalau diizinkan, jalankan command lewat `Shizuku.newProcess`
+ *      (dipanggil via reflection di [com.aether.x.core.shell.ShizukuShellExecutor]
+ *      karena method itu private di shizuku-api 13.x — lihat KDoc di sana).
  * Tidak ada state machine pairing, tidak ada mDNS, tidak ada TLS custom —
  * jauh lebih sedikit yang bisa gagal, dan begitu Shizuku hidup, koneksinya
  * TIDAK PERNAH "basi" seperti port TCP ADB (binder Android yang dipakai
@@ -118,15 +120,20 @@ object ShizukuManager {
 
     fun isServiceRunning(): Boolean = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
 
+    /**
+     * FIX BUILD — cabang `Shizuku.isPreV11()` versi sebelumnya memakai
+     * `rikka.shizuku.ShizukuProvider.PERMISSION`, tapi class itu ada di
+     * artifact TERPISAH `dev.rikka.shizuku:provider` (bukan `:api` yang
+     * dipakai proyek ini sebagai client-only), sehingga gagal compile
+     * ("Unresolved reference"). Cabang pre-v11 SENGAJA dihapus total,
+     * bukan ditambah dependency baru: Shizuku pre-v11 sudah dirilis
+     * bertahun-tahun lalu, dan minSdk AetherX sendiri sudah 31 (Android
+     * 12) — praktis mustahil ada pengguna dengan Shizuku app sekuno itu.
+     * `Shizuku.checkSelfPermission()` (API >= v11) sudah cukup untuk semua
+     * kasus realistis.
+     */
     fun hasPermission(): Boolean = runCatching {
-        if (Shizuku.isPreV11()) {
-            // Versi Shizuku pra-11 pakai permission model lama (izin
-            // dicek lewat checkPermission, bukan checkSelfPermission).
-            @Suppress("DEPRECATION")
-            Shizuku.checkPermission(android.Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED
-        } else {
-            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-        }
+        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     }.getOrDefault(false)
 
     /** Minta izin ke pengguna lewat dialog resmi Shizuku (mirip dialog

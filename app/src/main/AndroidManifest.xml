@@ -92,14 +92,24 @@
             </intent-filter>
         </activity>
 
-        <!-- ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali
-             ke shizuku pure"): TIDAK ada <provider> ShizukuProvider di
-             sini — package ini adalah CLIENT Shizuku (`shizuku-api`), yang
-             MENYEDIAKAN provider adalah app Shizuku Manager itu sendiri
-             (moe.shizuku.privileged.api), bukan AetherX. AetherX hanya
-             bind ke service yang sudah berjalan lewat Shizuku.pingBinder()
-             / Shizuku.newProcess(), tidak butuh component manifest apa pun
-             untuk itu. -->
+        <!-- FIX BUILD — ROLLBACK ke Shizuku murni: <provider> ini WAJIB
+             ADA (asumsi awal saya bahwa ini opsional untuk client SALAH —
+             dikonfirmasi dari dokumentasi resmi RikkaApps/Shizuku-API).
+             ShizukuProvider menangani proses AWAL mendapatkan Binder dari
+             service Shizuku; tanpa ini, seluruh listener di ShizukuManager
+             (addBinderReceivedListenerSticky dkk) tidak akan pernah
+             terpanggil dan AetherX tidak akan pernah bisa terhubung ke
+             Shizuku sama sekali. android:permission harus permission yang
+             dimiliki Shell/Root tapi TIDAK dimiliki app biasa (persis
+             seperti dokumentasi resmi), supaya ContentProvider ini tidak
+             bisa diakses sembarang app lain. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <!-- Overlay crosshair: foreground service, "specialUse" karena menampilkan
              elemen bantu di atas aplikasi lain (bukan media/lokasi/dll bawaan Android). -->
