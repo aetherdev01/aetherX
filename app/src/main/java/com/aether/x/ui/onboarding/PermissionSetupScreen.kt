@@ -49,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -175,15 +176,56 @@ fun PermissionSetupScreen(
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
-    LaunchedEffect(pageSatisfied, pagerState.currentPage) {
+    // BUG FIX — "animasi slide macet di tengah / layar berikutnya cuma
+    // setengah" setelah mengaktifkan izin (Shizuku, overlay, dll).
+    //
+    // Penyebab #1: key LaunchedEffect auto-advance SEBELUMNYA menyertakan
+    // `pagerState.currentPage`. Dokumentasi resmi Compose Foundation
+    // mendefinisikan `currentPage` sebagai "halaman TERDEKAT ke posisi
+    // snap" — nilainya BISA BERUBAH DI TENGAH ANIMASI, begitu posisi
+    // scroll melewati titik tengah antar halaman, BUKAN cuma di akhir
+    // animasi. Karena nilai yang berubah itu ada di dalam key,
+    // LaunchedEffect restart di tengah animasi, MEMBATALKAN coroutine
+    // `animateScrollToPage` sebelum sempat selesai — pager berhenti di
+    // posisi transisi (parsial) alih-alih tuntas ke halaman berikutnya.
+    // Fix: pakai `settledPage`, properti yang SENGAJA didesain Compose
+    // Foundation supaya nilainya TETAP selama animasi berlangsung, hanya
+    // berubah SETELAH benar-benar tuntas (settle).
+    //
+    // Detail implementasi: closure `derivedStateOf` di bawah membaca
+    // `status` (StateFlow reaktif) langsung, BUKAN variabel lokal
+    // `pageSatisfied` yang dideklarasikan di atas — closure di dalam
+    // `remember { }` tanpa key hanya dibuat SEKALI seumur hidup composable
+    // ini, jadi kalau closure itu menangkap `pageSatisfied` (List biasa
+    // yang dibuat ulang tiap recomposition, bukan State), closure tersebut
+    // akan selamanya merujuk ke List versi pertama kali remember
+    // dieksekusi dan tidak pernah ter-update lagi.
+    val autoAdvanceTrigger by remember {
+        derivedStateOf {
+            val currentStatus = status
+            val satisfiedList = listOf(
+                currentStatus.hasAccess,
+                currentStatus.writeSettingsGranted,
+                currentStatus.overlayGranted,
+                currentStatus.notificationsGranted,
+                kernelWarningAcknowledged,
+            )
+            val page = pagerState.settledPage
+            val satisfied = satisfiedList.getOrNull(page) == true
+            val hasNextPage = page < satisfiedList.size - 1
+            if (satisfied && hasNextPage) page else -1
+        }
+    }
+    LaunchedEffect(autoAdvanceTrigger) {
         if (!requireAccessToContinue) return@LaunchedEffect
-        val currentSatisfied = pageSatisfied.getOrNull(pagerState.currentPage) == true
-        val hasNextPage = pagerState.currentPage < pageCount - 1
-        if (currentSatisfied && hasNextPage) {
-            kotlinx.coroutines.delay(600)
-            if (pageSatisfied.getOrNull(pagerState.currentPage) == true) {
-                pagerState.animateScrollToPage(pagerState.currentPage + 1)
-            }
+        val targetPage = autoAdvanceTrigger
+        if (targetPage < 0) return@LaunchedEffect
+        kotlinx.coroutines.delay(600)
+        // Cek ulang setelah delay: batalkan auto-advance kalau kondisinya
+        // sudah berubah lagi selama jeda 600ms itu (mis. pengguna sudah
+        // pindah halaman manual, atau justru izin barusan dicabut lagi).
+        if (autoAdvanceTrigger == targetPage) {
+            pagerState.animateScrollToPage(targetPage + 1)
         }
     }
 

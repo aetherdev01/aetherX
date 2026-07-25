@@ -230,7 +230,7 @@
     <string name="notif_license_revoked_text">Lisensi kamu tidak lagi aktif di perangkat ini. Ketuk untuk cek status di tab Membership.</string>
 
     <!-- Tweak screen -->
-    <string name="tweak_user_id_format">ID-%1$s</string>
+    <string name="tweak_user_id_format">%1$s</string>
     <string name="tweak_user_id_pending">Menyambungkan…</string>
     <string name="tweak_menu_open_cd">Buka menu navigasi</string>
     <string name="tweak_section_touch">Input Driver</string>
