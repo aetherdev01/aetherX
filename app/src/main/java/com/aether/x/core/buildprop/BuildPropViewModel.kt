@@ -159,7 +159,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(pendingRestore = null) }
     }
 
-    fun confirmRestore() {
+    fun confirmRestore(activity: Activity? = null) {
         val backup = _state.value.pendingRestore ?: return
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection()
@@ -177,6 +177,10 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                         appString(R.string.buildprop_error_restore_failed, backup.partition.displayLabel)
                     },
                 )
+            }
+            if (result.success && activity != null) {
+                val isMember = preferences.preferences.first().isMembershipActive
+                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
             }
             refresh()
         }

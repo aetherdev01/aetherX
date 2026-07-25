@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import com.aether.x.core.adb.AdbConnectionManager
 import com.aether.x.core.adb.AdbConnectionState
@@ -185,6 +186,7 @@ object PrivilegeManager {
         selectBackend(context, PrivilegeBackend.ADB)
         scope.launch {
             AdbConnectionManager.pair(
+                context = context,
                 pairingHost = pairingHost,
                 pairingPort = pairingPort,
                 pairingCode = pairingCode,
@@ -216,9 +218,13 @@ object PrivilegeManager {
         AdbConnectionManager.cancelAutoPairing()
     }
 
-    fun confirmAutoPairAdbCode(context: Context, pairingCode: String) {
+    fun confirmAutoPairAdbCode(context: Context, pairingCode: String, onComplete: () -> Unit = {}) {
         scope.launch {
-            AdbConnectionManager.confirmAutoPairingCode(context, pairingCode)
+            try {
+                AdbConnectionManager.confirmAutoPairingCode(context, pairingCode)
+            } finally {
+                onComplete()
+            }
         }
     }
 
@@ -369,6 +375,36 @@ object PrivilegeManager {
         val intent = Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fallback = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }
+            .recoverCatching { context.startActivity(fallback) }
+    }
+
+    /**
+     * FIX — pelengkap [com.aether.x.core.adb.AdbWakeLock]: dipakai layar
+     * Izin Akses untuk menampilkan status & tombol pengecualian battery
+     * optimization ke pengguna. TIDAK dipanggil otomatis — murni dialog
+     * sistem resmi yang pengguna putuskan sendiri, sesuai pedoman Android
+     * (permintaan otomatis/tersembunyi untuk exemption ini bisa ditolak
+     * Play Store). Relevan khusus untuk ROM agresif seperti MIUI di mana
+     * "Pairing Gagal / Tidak bisa terhubung" bisa berulang terus kalau
+     * AetherX masih berstatus "Restricted"/"Battery saver" di pengaturan
+     * baterai aplikasi bawaan ROM tersebut.
+     */
+    fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return true
+        return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    fun requestIgnoreBatteryOptimizations(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        if (isIgnoringBatteryOptimizations(context)) return
+        val intent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:${context.packageName}"),
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }
             .recoverCatching { context.startActivity(fallback) }

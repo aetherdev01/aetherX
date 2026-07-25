@@ -70,7 +70,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
         _state.update { it.copy(searchQuery = query) }
     }
 
-    fun toggleFreeze(entry: InstalledAppEntry) {
+    fun toggleFreeze(entry: InstalledAppEntry, activity: Activity? = null) {
         viewModelScope.launch {
             _state.update { it.copy(pendingPackageName = entry.packageName) }
             val executor = PrivilegeManager.getExecutorAwaitingConnection()
@@ -91,7 +91,8 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
 
             val actuallyFrozen = catalog.isPackageFrozen(executor, entry.packageName)
             val expectedFrozen = !entry.isFrozen
-            if (actuallyFrozen != expectedFrozen) {
+            val succeeded = actuallyFrozen == expectedFrozen
+            if (!succeeded) {
                 _state.update {
                     it.copy(
                         message = appString(
@@ -104,6 +105,8 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
 
             val refreshedApps = catalog.loadManageableApps(getApplication(), executor)
             _state.update { it.copy(apps = refreshedApps, pendingPackageName = null) }
+
+            if (succeeded) maybeShowAd(activity)
         }
     }
 
@@ -127,11 +130,14 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
                     ),
                 )
             }
-            if (result.success && activity != null) {
-                val isMember = preferences.preferences.first().isMembershipActive
-                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
-            }
+            if (result.success) maybeShowAd(activity)
         }
+    }
+
+    private suspend fun maybeShowAd(activity: Activity?) {
+        if (activity == null) return
+        val isMember = preferences.preferences.first().isMembershipActive
+        AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
     }
 
     fun clearCacheApp(entry: InstalledAppEntry, activity: Activity?) {
@@ -155,8 +161,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }
             if (result.success && activity != null) {
-                val isMember = preferences.preferences.first().isMembershipActive
-                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+                maybeShowAd(activity)
             }
         }
     }

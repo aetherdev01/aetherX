@@ -6,10 +6,19 @@ keduanya SENGAJA didesain "tidak mengganggu":
 - **Rewarded** (`RewardGate`) — fondasi generik "buka/pakai lagi dengan
   nonton iklan", BELUM dipasang ke fitur mana pun. Lihat KDoc `RewardGate`
   untuk contoh pemasangan.
-- **Interstitial** (`InterstitialAdGate`) — SUDAH dipasang di satu titik:
-  `TweakViewModel.onKillBackgroundAppsChange`, tampil SETELAH aksi kill
-  background apps selesai (bukan sebelum/memblokir), dibatasi cooldown 1
-  menit antar tampilan.
+- **Interstitial** (`InterstitialAdGate`) — dipasang KONSISTEN di semua
+  toggle/aksi tweak lintas `TweakViewModel`, `GameProfileViewModel`,
+  `BuildPropViewModel`, `KernelManagerViewModel`, `SettingsViewModel`
+  (toggle enable/disable crosshair & FPS monitor), dan `AppManagerViewModel`
+  (freeze/unfreeze, force stop, clear cache), tampil SETELAH aksi selesai
+  dan berhasil (bukan sebelum/memblokir), dibatasi cooldown 1 menit antar
+  tampilan (cooldown dibagi lintas semua titik pemasangan, bukan per fitur).
+  Dikecualikan dengan sengaja: sub-slider kosmetik (warna/ukuran/opacity
+  crosshair, style FPS monitor), search field, dan seluruh
+  `GameBoosterScreenViewModel` karena panelnya berjalan sebagai system
+  overlay window di atas game yang sedang dimainkan (bukan `Activity`) —
+  memaksa interstitial full-screen di sana akan mengganggu gameplay
+  langsung dan tidak ada `Activity` yang bisa dilempar ke `maybeShow()`.
 
 ## File yang terlibat
 
@@ -69,7 +78,11 @@ AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
 `activity` didapat dari Composable pemanggil (`LocalContext.current as?
 Activity`) dan dilempar sebagai parameter transient ke fungsi ViewModel —
 JANGAN disimpan sebagai field ViewModel (leak). Lihat pemasangan nyata di
-`TweakViewModel.onKillBackgroundAppsChange` + `TweakScreen.kt`.
+`TweakViewModel` (hampir semua fungsi `applyAndPersist`), `GameProfileViewModel.updateSelectedProfile`,
+`AppManagerViewModel` (`toggleFreeze`/`forceStopApp`/`clearCacheApp`), dan
+helper privat `maybeShowAd(activity)` yang direplikasi di tiap ViewModel
+tersebut (pola sengaja diduplikasi kecil-kecilan per file, bukan diekstrak
+ke kelas dasar bersama, supaya tiap ViewModel tetap independen).
 
 ## Yang SUDAH otomatis benar tanpa langkah tambahan
 

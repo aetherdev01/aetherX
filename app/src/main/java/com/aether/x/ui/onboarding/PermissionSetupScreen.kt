@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -44,6 +45,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -370,6 +372,37 @@ private fun AccessMethodPage(
             onForget = { PrivilegeManager.forgetAdbPairing() },
         )
 
+        // FIX — "Pairing Gagal / Tidak bisa terhubung" berulang di ROM
+        // agresif (MIUI dll, lihat KDoc com.aether.x.core.adb.AdbWakeLock):
+        // banner ini HANYA muncul kalau backend ADB relevan (tidak locked
+        // ke Root) DAN sistem melaporkan AetherX MASIH kena battery
+        // optimization — murni informatif + tombol ke dialog sistem resmi,
+        // tidak memaksa apa pun, dan otomatis hilang begitu pengguna
+        // mengizinkannya (status di-refresh tiap ON_RESUME lewat
+        // [refreshSupportingPermissions]-style check di [status]).
+        var ignoringBatteryOptimizations by remember {
+            mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
+        }
+        val batteryLifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(batteryLifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    ignoringBatteryOptimizations = PrivilegeManager.isIgnoringBatteryOptimizations(context)
+                }
+            }
+            batteryLifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+        AnimatedVisibility(
+            visible = !adbLocked && !ignoringBatteryOptimizations,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            BatteryOptimizationBanner(
+                onRequestExemption = { PrivilegeManager.requestIgnoreBatteryOptimizations(context) },
+            )
+        }
+
         if (!status.hasAccess) {
             OrDivider()
         }
@@ -689,6 +722,65 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
             fontWeight = FontWeight.Medium,
             color = if (canContinue) AccentGreen else TextSecondary,
         )
+    }
+}
+
+/**
+ * FIX — pelengkap [com.aether.x.core.adb.AdbWakeLock]: banner peringatan
+ * murni informatif (bukan blocker — pengguna tetap bisa lanjut tanpa
+ * mengizinkan ini) yang muncul kalau AetherX MASIH kena battery
+ * optimization sistem. Relevan khusus untuk ROM agresif seperti MIUI di
+ * Redmi Note 11 tempat gejala "Pairing Gagal / Tidak bisa terhubung"
+ * pertama kali dilaporkan — battery optimization adalah penyebab lain
+ * yang sama umumnya (di luar CPU sleep yang sudah ditangani WakeLock),
+ * karena ROM ini bisa memblokir akses radio/jaringan proses di background
+ * sepenuhnya untuk aplikasi yang belum dikecualikan.
+ *
+ * NOTE untuk asw: tambahkan string berikut ke strings.xml (belum ada di
+ * source yang di-share, jadi placeholder Indonesia berikut dipakai
+ * langsung apa adanya di kode sampai dipindah ke resource):
+ * - setup_battery_optimization_title
+ * - setup_battery_optimization_desc
+ * - setup_battery_optimization_action
+ */
+@Composable
+private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceCardAlt)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.BatteryAlert,
+                contentDescription = null,
+                tint = AccentRed,
+            )
+            Text(
+                text = "Optimasi baterai masih membatasi AetherX",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Text(
+            text = "Di sebagian perangkat (MIUI, ColorOS, dll), ini bisa membuat pairing wireless gagal terhubung setelah kode dimasukkan, walau Wireless debugging tetap aktif. Izinkan AetherX berjalan tanpa batasan supaya pairing lebih stabil.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
+        )
+        TextButton(
+            onClick = onRequestExemption,
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text(text = "Izinkan", fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

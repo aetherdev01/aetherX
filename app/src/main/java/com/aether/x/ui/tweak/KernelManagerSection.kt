@@ -1,5 +1,6 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +49,7 @@ fun KernelManagerSection(
     viewModel: KernelManagerViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
@@ -96,8 +99,8 @@ fun KernelManagerSection(
             state.cpuCores.forEachIndexed { index, core ->
                 CpuCoreCard(
                     core = core,
-                    onFrequencyChange = { minKhz, maxKhz -> viewModel.applyCoreFrequency(core.coreIndex, minKhz, maxKhz) },
-                    onGovernorChange = { governor -> viewModel.applyCoreGovernor(core.coreIndex, governor) },
+                    onFrequencyChange = { minKhz, maxKhz -> viewModel.applyCoreFrequency(core.coreIndex, minKhz, maxKhz, activity) },
+                    onGovernorChange = { governor -> viewModel.applyCoreGovernor(core.coreIndex, governor, activity) },
                 )
                 if (index != state.cpuCores.lastIndex) {
                     HorizontalDivider(
@@ -112,8 +115,8 @@ fun KernelManagerSection(
             SectionCard(title = stringResource(R.string.kernel_manager_section_gpu), watermarkIcon = Icons.Outlined.DeveloperBoard) {
                 GpuRow(
                     gpu = gpu,
-                    onFrequencyChange = { minKhz, maxKhz -> viewModel.applyGpuFrequency(minKhz, maxKhz) },
-                    onGovernorChange = { governor -> viewModel.applyGpuGovernor(governor) },
+                    onFrequencyChange = { minKhz, maxKhz -> viewModel.applyGpuFrequency(minKhz, maxKhz, activity) },
+                    onGovernorChange = { governor -> viewModel.applyGpuGovernor(governor, activity) },
                 )
             }
         }

@@ -85,55 +85,54 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(selectedPackage = null) }
     }
 
-    private fun updateSelectedProfile(transform: (GameProfile) -> GameProfile) {
+    private fun updateSelectedProfile(activity: Activity? = null, transform: (GameProfile) -> GameProfile) {
         val pkg = _state.value.selectedPackage ?: return
         val current = _state.value.profiles[pkg] ?: GameProfile.default(pkg)
         val updated = transform(current)
         _state.update { it.copy(profiles = it.profiles + (pkg to updated)) }
-        viewModelScope.launch { preferences.saveGameProfile(updated) }
-    }
-
-    fun onGameModeChange(mode: GameMode, activity: Activity? = null) {
-        val pkg = _state.value.selectedPackage ?: return
-        val current = _state.value.profiles[pkg] ?: GameProfile.default(pkg)
-        val updated = GameProfile.withGameMode(current, mode)
-        _state.update { it.copy(profiles = it.profiles + (pkg to updated)) }
         viewModelScope.launch {
             preferences.saveGameProfile(updated)
-            if (activity != null) {
-                val isMember = preferences.preferences.first().isMembershipActive
-                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
-            }
+            maybeShowAd(activity)
         }
     }
 
-    fun onCpuPerformanceModeChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(cpuPerformanceMode = checked) }
+    private suspend fun maybeShowAd(activity: Activity?) {
+        if (activity == null) return
+        val isMember = preferences.preferences.first().isMembershipActive
+        AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+    }
 
-    fun onRamPriorityModeChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(ramPriorityMode = checked) }
+    fun onGameModeChange(mode: GameMode, activity: Activity? = null) =
+        updateSelectedProfile(activity) { GameProfile.withGameMode(it, mode) }
 
-    fun onThermalThrottleOverrideChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(thermalThrottleOverride = checked) }
+    fun onCpuPerformanceModeChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(cpuPerformanceMode = checked) }
 
-    fun onGpuPerformanceModeChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(gpuPerformanceMode = checked) }
+    fun onRamPriorityModeChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(ramPriorityMode = checked) }
 
-    fun onIoSchedulerBoostChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(ioSchedulerBoost = checked) }
+    fun onThermalThrottleOverrideChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(thermalThrottleOverride = checked) }
 
-    fun onVmHeapBoostChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(vmHeapBoost = checked) }
+    fun onGpuPerformanceModeChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(gpuPerformanceMode = checked) }
 
-    fun onGpuRenderingPriorityChange(checked: Boolean) =
-        updateSelectedProfile { it.copy(gpuRenderingPriority = checked) }
+    fun onIoSchedulerBoostChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(ioSchedulerBoost = checked) }
 
-    fun resetSelectedProfile() {
+    fun onVmHeapBoostChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(vmHeapBoost = checked) }
+
+    fun onGpuRenderingPriorityChange(checked: Boolean, activity: Activity? = null) =
+        updateSelectedProfile(activity) { it.copy(gpuRenderingPriority = checked) }
+
+    fun resetSelectedProfile(activity: Activity? = null) {
         val pkg = _state.value.selectedPackage ?: return
         _state.update { it.copy(profiles = it.profiles - pkg) }
         viewModelScope.launch {
             preferences.deleteGameProfile(pkg)
             _state.update { it.copy(message = appString(R.string.game_profile_reset_toast)) }
+            maybeShowAd(activity)
         }
     }
 

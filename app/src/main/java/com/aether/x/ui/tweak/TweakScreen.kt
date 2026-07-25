@@ -262,13 +262,13 @@ fun TweakScreen(
                             range = -7f..7f,
                             steps = 13,
                             onValueChange = viewModel::onPointerSpeedChange,
-                            onValueChangeFinished = viewModel::onPointerSpeedChangeFinished,
+                            onValueChangeFinished = { viewModel.onPointerSpeedChangeFinished(activity) },
                         )
                         TweakSwitch(
                             label = stringResource(R.string.tweak_touch_boost),
                             description = stringResource(R.string.tweak_touch_boost_desc),
                             checked = state.touchBoost,
-                            onCheckedChange = viewModel::onTouchBoostChange,
+                            onCheckedChange = { checked -> viewModel.onTouchBoostChange(checked, activity) },
                             icon = Icons.Outlined.TouchApp,
                         )
                     }
@@ -281,7 +281,7 @@ fun TweakScreen(
                             R.string.tweak_force_refresh_desc,
                         ) + " (${state.displayInfo.maxRefreshRate.toInt()}Hz)",
                         checked = state.forceMaxRefreshRate,
-                        onCheckedChange = viewModel::onForceRefreshChange,
+                        onCheckedChange = { checked -> viewModel.onForceRefreshChange(checked, activity) },
                         icon = Icons.Outlined.Bolt,
                     )
                 }
@@ -291,7 +291,7 @@ fun TweakScreen(
                         label = stringResource(R.string.tweak_game_mode),
                         description = stringResource(R.string.tweak_game_mode_desc),
                         checked = state.gameModeEnabled,
-                        onCheckedChange = viewModel::onGameModeChange,
+                        onCheckedChange = { checked -> viewModel.onGameModeChange(checked, activity) },
                     )
                 }
 
@@ -309,28 +309,28 @@ fun TweakScreen(
                             ),
                             selected = state.cpuGovernor,
                             optionLabel = { governor -> cpuGovernorLabel(governor) },
-                            onOptionSelected = viewModel::onCpuGovernorChange,
+                            onOptionSelected = { governor -> viewModel.onCpuGovernorChange(governor, activity) },
                             icon = Icons.Outlined.Speed,
                         )
                         TweakSwitch(
                             label = stringResource(R.string.tweak_ram_priority),
                             description = stringResource(R.string.tweak_ram_priority_desc),
                             checked = state.ramPriorityMode,
-                            onCheckedChange = viewModel::onRamPriorityModeChange,
+                            onCheckedChange = { checked -> viewModel.onRamPriorityModeChange(checked, activity) },
                             icon = Icons.Outlined.Memory,
                         )
                         TweakSwitch(
                             label = stringResource(R.string.tweak_gpu_performance),
                             description = stringResource(R.string.tweak_gpu_performance_desc),
                             checked = state.gpuPerformanceMode,
-                            onCheckedChange = viewModel::onGpuPerformanceModeChange,
+                            onCheckedChange = { checked -> viewModel.onGpuPerformanceModeChange(checked, activity) },
                             icon = Icons.Outlined.DeveloperBoard,
                         )
                         TweakSwitch(
                             label = stringResource(R.string.tweak_thermal_throttle),
                             description = stringResource(R.string.tweak_thermal_throttle_desc),
                             checked = state.thermalThrottleOverride,
-                            onCheckedChange = viewModel::onThermalThrottleOverrideChange,
+                            onCheckedChange = { checked -> viewModel.onThermalThrottleOverrideChange(checked, activity) },
                             icon = Icons.Outlined.Thermostat,
                         )
                     }
@@ -340,14 +340,14 @@ fun TweakScreen(
                             label = stringResource(R.string.tweak_io_scheduler_boost),
                             description = stringResource(R.string.tweak_io_scheduler_boost_desc),
                             checked = state.ioSchedulerBoost,
-                            onCheckedChange = viewModel::onIoSchedulerBoostChange,
+                            onCheckedChange = { checked -> viewModel.onIoSchedulerBoostChange(checked, activity) },
                             icon = Icons.Outlined.SdStorage,
                         )
                         TweakSwitch(
                             label = stringResource(R.string.tweak_vm_heap_boost),
                             description = stringResource(R.string.tweak_vm_heap_boost_desc),
                             checked = state.vmHeapBoost,
-                            onCheckedChange = viewModel::onVmHeapBoostChange,
+                            onCheckedChange = { checked -> viewModel.onVmHeapBoostChange(checked, activity) },
                             icon = Icons.Outlined.Memory,
                         )
 
@@ -355,7 +355,7 @@ fun TweakScreen(
                             label = stringResource(R.string.tweak_doze_disabled),
                             description = stringResource(R.string.tweak_doze_disabled_desc),
                             checked = state.dozeDisabled,
-                            onCheckedChange = viewModel::onDozeDisabledChange,
+                            onCheckedChange = { checked -> viewModel.onDozeDisabledChange(checked, activity) },
                             icon = Icons.Outlined.BatteryChargingFull,
                         )
                         TweakSwitch(
@@ -369,7 +369,7 @@ fun TweakScreen(
                 }
 
                 OutlinedButton(
-                    onClick = viewModel::resetTweaks,
+                    onClick = { viewModel.resetTweaks(activity) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(

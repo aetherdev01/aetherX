@@ -337,14 +337,14 @@ private fun GameProfileDetailPane(
                 label = stringResource(R.string.tweak_cpu_performance),
                 description = stringResource(R.string.tweak_cpu_performance_desc),
                 checked = profile.cpuPerformanceMode,
-                onCheckedChange = viewModel::onCpuPerformanceModeChange,
+                onCheckedChange = { checked -> viewModel.onCpuPerformanceModeChange(checked, activity) },
                 icon = Icons.Outlined.Speed,
             )
             TweakSwitch(
                 label = stringResource(R.string.tweak_ram_priority),
                 description = stringResource(R.string.tweak_ram_priority_desc),
                 checked = profile.ramPriorityMode,
-                onCheckedChange = viewModel::onRamPriorityModeChange,
+                onCheckedChange = { checked -> viewModel.onRamPriorityModeChange(checked, activity) },
                 icon = Icons.Outlined.Memory,
             )
         }
@@ -354,14 +354,14 @@ private fun GameProfileDetailPane(
                 label = stringResource(R.string.tweak_gpu_performance),
                 description = stringResource(R.string.tweak_gpu_performance_desc),
                 checked = profile.gpuPerformanceMode,
-                onCheckedChange = viewModel::onGpuPerformanceModeChange,
+                onCheckedChange = { checked -> viewModel.onGpuPerformanceModeChange(checked, activity) },
                 icon = Icons.Outlined.DeveloperBoard,
             )
             TweakSwitch(
                 label = stringResource(R.string.tweak_thermal_throttle),
                 description = stringResource(R.string.tweak_thermal_throttle_desc),
                 checked = profile.thermalThrottleOverride,
-                onCheckedChange = viewModel::onThermalThrottleOverrideChange,
+                onCheckedChange = { checked -> viewModel.onThermalThrottleOverrideChange(checked, activity) },
                 icon = Icons.Outlined.Thermostat,
             )
 
@@ -369,7 +369,7 @@ private fun GameProfileDetailPane(
                 label = stringResource(R.string.tweak_gpu_rendering_priority),
                 description = stringResource(R.string.tweak_gpu_rendering_priority_desc),
                 checked = profile.gpuRenderingPriority,
-                onCheckedChange = viewModel::onGpuRenderingPriorityChange,
+                onCheckedChange = { checked -> viewModel.onGpuRenderingPriorityChange(checked, activity) },
                 icon = Icons.Outlined.Bolt,
             )
         }
@@ -379,20 +379,20 @@ private fun GameProfileDetailPane(
                 label = stringResource(R.string.tweak_io_scheduler_boost),
                 description = stringResource(R.string.tweak_io_scheduler_boost_desc),
                 checked = profile.ioSchedulerBoost,
-                onCheckedChange = viewModel::onIoSchedulerBoostChange,
+                onCheckedChange = { checked -> viewModel.onIoSchedulerBoostChange(checked, activity) },
                 icon = Icons.Outlined.SdStorage,
             )
             TweakSwitch(
                 label = stringResource(R.string.tweak_vm_heap_boost),
                 description = stringResource(R.string.tweak_vm_heap_boost_desc),
                 checked = profile.vmHeapBoost,
-                onCheckedChange = viewModel::onVmHeapBoostChange,
+                onCheckedChange = { checked -> viewModel.onVmHeapBoostChange(checked, activity) },
                 icon = Icons.Outlined.Memory,
             )
         }
 
         OutlinedButton(
-            onClick = viewModel::resetSelectedProfile,
+            onClick = { viewModel.resetSelectedProfile(activity) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.outlinedButtonColors(

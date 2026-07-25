@@ -164,13 +164,31 @@ object AdbPairingNotifier {
 }
 
 class AdbPairingReplyReceiver : BroadcastReceiver() {
+
+    /**
+     * FIX (lihat KDoc [AdbWakeLock]): [goAsync] memberi tahu sistem Android
+     * secara EKSPLISIT bahwa receiver ini masih punya kerjaan pending
+     * setelah `onReceive()` return — tanpa ini, sistem (terutama ROM
+     * agresif seperti MIUI) bisa menganggap broadcast ini "selesai
+     * ditangani" begitu `onReceive()` kembali, padahal
+     * [PrivilegeManager.confirmAutoPairAdbCode] baru saja MEMULAI
+     * coroutine fire-and-forget yang prosesnya (pairing + discovery mDNS +
+     * connect) masih berjalan beberapa detik lagi di background. Bersama
+     * [AdbWakeLock] yang dipegang di dalam [AdbConnectionManager], ini
+     * menutup dua celah sekaligus: sistem tahu ada kerjaan pending
+     * (goAsync) DAN CPU-nya benar-benar tidak dibekukan selama kerjaan itu
+     * berjalan (wake lock).
+     */
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             AdbPairingNotifier.ACTION_REPLY_CODE -> {
                 val results = RemoteInput.getResultsFromIntent(intent)
                 val code = results?.getCharSequence(AdbPairingNotifier.REMOTE_INPUT_KEY)?.toString()?.trim().orEmpty()
                 if (code.length == 6 && code.all { it.isDigit() }) {
-                    PrivilegeManager.confirmAutoPairAdbCode(context.applicationContext, code)
+                    val pendingResult = goAsync()
+                    PrivilegeManager.confirmAutoPairAdbCode(context.applicationContext, code, onComplete = {
+                        pendingResult.finish()
+                    })
                 } else {
                     AdbPairingNotifier.showError(
                         context.applicationContext,

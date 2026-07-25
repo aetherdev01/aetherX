@@ -1,5 +1,6 @@
 package com.aether.x.ui.settings
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,6 +46,7 @@ fun SettingsScreen(
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
 
     val context = LocalContext.current
+    val activity = context as? Activity
     val wirelessDebuggingEnabled by WirelessDebuggingMonitor.state.collectAsStateWithLifecycle()
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -93,7 +95,7 @@ fun SettingsScreen(
 
             positionLocked = prefs.crosshairPositionLocked,
             onPositionLockedChange = viewModel::setCrosshairPositionLocked,
-            onEnabledChange = viewModel::setCrosshairEnabled,
+            onEnabledChange = { enabled -> viewModel.setCrosshairEnabled(enabled, activity) },
             onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
             onStyleChange = viewModel::setCrosshairStyle,
             onColorChange = viewModel::setCrosshairColor,
@@ -114,7 +116,7 @@ fun SettingsScreen(
                 style = prefs.fpsMonitorStyle,
                 overlayPermissionGranted = overlayGranted,
                 hasShellAccess = privilegeStatus.hasAccess,
-                onEnabledChange = viewModel::setFpsMonitorEnabled,
+                onEnabledChange = { enabled -> viewModel.setFpsMonitorEnabled(enabled, activity) },
                 onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
                 onStyleChange = viewModel::setFpsMonitorStyle,
             )

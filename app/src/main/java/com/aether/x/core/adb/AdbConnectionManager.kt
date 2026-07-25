@@ -102,32 +102,35 @@ object AdbConnectionManager {
      * permanen supaya sesi berikutnya tidak perlu pairing ulang.
      */
     suspend fun pair(
+        context: Context,
         pairingHost: String,
         pairingPort: Int,
         pairingCode: String,
         connectPort: Int,
-    ): AdbConnectionState = connectMutex.withLock {
-        _state.value = AdbConnectionState.Pairing
+    ): AdbConnectionState = AdbWakeLock.withWakeLock(context) {
+        connectMutex.withLock {
+            _state.value = AdbConnectionState.Pairing
 
-        val paired = withContext(Dispatchers.IO) {
-            runCatching {
-                connection.pair(pairingHost, pairingPort, pairingCode)
+            val paired = withContext(Dispatchers.IO) {
+                runCatching {
+                    connection.pair(pairingHost, pairingPort, pairingCode)
+                }
             }
-        }
 
-        if (paired.isFailure) {
-            val failure = AdbConnectionState.Failed(
-                reason = AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED,
-                detail = paired.exceptionOrNull()?.message ?: "Pairing ke $pairingHost:$pairingPort gagal atau kode kedaluwarsa.",
-            )
-            _state.value = failure
-            return failure
-        }
+            if (paired.isFailure) {
+                val failure = AdbConnectionState.Failed(
+                    reason = AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED,
+                    detail = paired.exceptionOrNull()?.message ?: "Pairing ke $pairingHost:$pairingPort gagal atau kode kedaluwarsa.",
+                )
+                _state.value = failure
+                return@withWakeLock failure
+            }
 
-        // Pairing sukses — adbd sekarang mengenal certificate AetherX.
-        // Lanjut langsung connect pakai port KONEKSI (bukan port pairing).
-        preferences.saveHostPort(pairingHost, connectPort)
-        return connectLocked(pairingHost, connectPort)
+            // Pairing sukses — adbd sekarang mengenal certificate AetherX.
+            // Lanjut langsung connect pakai port KONEKSI (bukan port pairing).
+            preferences.saveHostPort(pairingHost, connectPort)
+            connectLocked(pairingHost, connectPort)
+        }
     }
 
     /**
@@ -239,90 +242,101 @@ object AdbConnectionManager {
         pairingHost: String,
         pairingPort: Int,
         pairingCode: String,
-    ): AdbConnectionState = connectMutex.withLock {
-        _state.value = AdbConnectionState.Pairing
+    ): AdbConnectionState = AdbWakeLock.withWakeLock(context) {
+        connectMutex.withLock {
+            _state.value = AdbConnectionState.Pairing
 
-        val paired = withContext(Dispatchers.IO) {
-            runCatching { connection.pair(pairingHost, pairingPort, pairingCode) }
-        }
+            val paired = withContext(Dispatchers.IO) {
+                runCatching { connection.pair(pairingHost, pairingPort, pairingCode) }
+            }
 
-        if (paired.isFailure) {
-            val failure = AdbConnectionState.Failed(
-                reason = AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED,
-                detail = paired.exceptionOrNull()?.message ?: "Pairing ke $pairingHost:$pairingPort gagal atau kode kedaluwarsa.",
-            )
-            _state.value = failure
-            return failure
-        }
+            if (paired.isFailure) {
+                val failure = AdbConnectionState.Failed(
+                    reason = AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED,
+                    detail = paired.exceptionOrNull()?.message ?: "Pairing ke $pairingHost:$pairingPort gagal atau kode kedaluwarsa.",
+                )
+                _state.value = failure
+                return@withWakeLock failure
+            }
 
-        // Pairing sukses — sekarang cari port KONEKSI secara otomatis juga
-        // (mDNS "_adb-tls-connect._tcp"), supaya pengguna TIDAK PERNAH
-        // diminta mengetik port koneksi secara manual. Wireless debugging
-        // selalu mem-broadcast service ini selama fiturnya aktif, jadi
-        // timeout singkat (beberapa detik) sudah cukup — TAPI dicoba
-        // BEBERAPA KALI (bukan sekali), lihat FIX di bawah.
-        _state.value = AdbConnectionState.Connecting
+            // Pairing sukses — sekarang cari port KONEKSI secara otomatis juga
+            // (mDNS "_adb-tls-connect._tcp"), supaya pengguna TIDAK PERNAH
+            // diminta mengetik port koneksi secara manual. Wireless debugging
+            // selalu mem-broadcast service ini selama fiturnya aktif, jadi
+            // timeout singkat (beberapa detik) sudah cukup — TAPI dicoba
+            // BEBERAPA KALI (bukan sekali), lihat FIX di bawah.
+            _state.value = AdbConnectionState.Connecting
 
-        // FIX (Android 12/13 — "kode pairing benar tapi tetap 'Tidak bisa
-        // terhubung'", lihat KDoc [AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED]):
-        // SEBELUMNYA discoverConnectService HANYA dicoba SEKALI dengan
-        // timeout default (15 detik) di titik ini — beda perlakuan dari
-        // [autoReconnect] yang sudah retry 3x untuk masalah mDNS yang
-        // persis sama. Tepat setelah tahap pairing selesai, radio Wi-Fi
-        // baru saja dipakai intensif (handshake TLS pairing) — di banyak
-        // build Android 12/13, NsdManager pada kondisi ini sering tidak
-        // langsung mem-resolve service pertama yang muncul, BUKAN karena
-        // service-nya tidak ada, murni butuh percobaan discovery baru.
-        // Sekarang dicoba sampai maxConnectServiceAttempts kali, berhenti
-        // begitu salah satu percobaan berhasil — sama persis pola yang
-        // sudah terbukti di [autoReconnect].
-        val maxConnectServiceAttempts = 3
-        var connectService: AdbAutoPairingDiscovery.DiscoveredService? = null
-        for (attempt in 1..maxConnectServiceAttempts) {
-            connectService = withContext(Dispatchers.IO) {
-                runCatching { AdbAutoPairingDiscovery.discoverConnectService(context, timeoutMs = 6_000) }
-            }.getOrNull()
-            if (connectService != null) break
-        }
+            // FIX (Android 12/13 — "kode pairing benar tapi tetap 'Tidak bisa
+            // terhubung'", lihat KDoc [AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED]):
+            // SEBELUMNYA discoverConnectService HANYA dicoba SEKALI dengan
+            // timeout default (15 detik) di titik ini — beda perlakuan dari
+            // [autoReconnect] yang sudah retry 3x untuk masalah mDNS yang
+            // persis sama. Tepat setelah tahap pairing selesai, radio Wi-Fi
+            // baru saja dipakai intensif (handshake TLS pairing) — di banyak
+            // build Android 12/13, NsdManager pada kondisi ini sering tidak
+            // langsung mem-resolve service pertama yang muncul, BUKAN karena
+            // service-nya tidak ada, murni butuh percobaan discovery baru.
+            // Sekarang dicoba sampai maxConnectServiceAttempts kali, berhenti
+            // begitu salah satu percobaan berhasil — sama persis pola yang
+            // sudah terbukti di [autoReconnect].
+            //
+            // FIX 2 (lihat KDoc [AdbWakeLock]): seluruh blok ini (discovery +
+            // connect) sekarang dibungkus PARTIAL_WAKE_LOCK — sebelumnya,
+            // kalau kode pairing dibalas dari notifikasi lalu layar mati/idle
+            // (skenario paling umum), ROM agresif (MIUI/ColorOS dll) bisa
+            // membekukan CPU proses AetherX PERSIS di tengah proses ini,
+            // membuat pairing certificate-nya sendiri sukses terkirim tapi
+            // tahap connect sesudahnya gagal — persis gejala "Pairing Gagal /
+            // Tidak bisa terhubung" walau Wireless debugging tetap aktif.
+            val maxConnectServiceAttempts = 3
+            var connectService: AdbAutoPairingDiscovery.DiscoveredService? = null
+            for (attempt in 1..maxConnectServiceAttempts) {
+                connectService = withContext(Dispatchers.IO) {
+                    runCatching { AdbAutoPairingDiscovery.discoverConnectService(context, timeoutMs = 6_000) }
+                }.getOrNull()
+                if (connectService != null) break
+            }
 
-        val connectPort = connectService?.port
-        if (connectPort == null) {
+            val connectPort = connectService?.port
+            if (connectPort == null) {
+                val failure = AdbConnectionState.Failed(
+                    reason = AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED,
+                    detail = "Pairing berhasil, tapi port koneksi tidak ditemukan otomatis. Coba \"Sambungkan\" lagi.",
+                )
+                _state.value = failure
+                return@withWakeLock failure
+            }
+
+            preferences.saveHostPort(pairingHost, connectPort)
+
+            // FIX (bagian kedua dari fix Android 12/13 di atas): connectLocked
+            // pertama di sini JUGA sebelumnya hanya dicoba sekali — kalau
+            // socket TLS pertama gagal terbentuk (race serupa: radio baru saja
+            // sibuk, atau adbd di sisi device belum sepenuhnya siap menerima
+            // koneksi baru tepat setelah pairing), kegagalan itu SEBELUMNYA
+            // langsung dilaporkan sebagai [AdbFailureReason.HOST_UNREACHABLE]
+            // — pesan yang salah konteks untuk connect PERTAMA KALI (lihat
+            // KDoc [AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED]). Sekarang
+            // retry beberapa kali dengan jeda singkat sebelum benar-benar
+            // dilaporkan gagal, dan kalau semua percobaan tetap gagal, reason
+            // yang dipakai adalah CONNECT_AFTER_PAIRING_FAILED (bukan
+            // HOST_UNREACHABLE) supaya pesannya akurat untuk konteks ini.
+            val maxConnectAttempts = 3
+            var lastResult: AdbConnectionState = AdbConnectionState.Connecting
+            for (attempt in 1..maxConnectAttempts) {
+                lastResult = connectLocked(pairingHost, connectPort)
+                if (lastResult is AdbConnectionState.Connected) return@withWakeLock lastResult
+                if (attempt < maxConnectAttempts) delay(1_500)
+            }
+
             val failure = AdbConnectionState.Failed(
                 reason = AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED,
-                detail = "Pairing berhasil, tapi port koneksi tidak ditemukan otomatis. Coba \"Sambungkan\" lagi.",
+                detail = "Pairing berhasil, tapi koneksi shell belum bisa dibentuk. Coba \"Sambungkan\" lagi — pairing tidak perlu diulang.",
             )
             _state.value = failure
-            return failure
+            failure
         }
-
-        preferences.saveHostPort(pairingHost, connectPort)
-
-        // FIX (bagian kedua dari fix Android 12/13 di atas): connectLocked
-        // pertama di sini JUGA sebelumnya hanya dicoba sekali — kalau
-        // socket TLS pertama gagal terbentuk (race serupa: radio baru saja
-        // sibuk, atau adbd di sisi device belum sepenuhnya siap menerima
-        // koneksi baru tepat setelah pairing), kegagalan itu SEBELUMNYA
-        // langsung dilaporkan sebagai [AdbFailureReason.HOST_UNREACHABLE]
-        // — pesan yang salah konteks untuk connect PERTAMA KALI (lihat
-        // KDoc [AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED]). Sekarang
-        // retry beberapa kali dengan jeda singkat sebelum benar-benar
-        // dilaporkan gagal, dan kalau semua percobaan tetap gagal, reason
-        // yang dipakai adalah CONNECT_AFTER_PAIRING_FAILED (bukan
-        // HOST_UNREACHABLE) supaya pesannya akurat untuk konteks ini.
-        val maxConnectAttempts = 3
-        var lastResult: AdbConnectionState = AdbConnectionState.Connecting
-        for (attempt in 1..maxConnectAttempts) {
-            lastResult = connectLocked(pairingHost, connectPort)
-            if (lastResult is AdbConnectionState.Connected) return lastResult
-            if (attempt < maxConnectAttempts) delay(1_500)
-        }
-
-        val failure = AdbConnectionState.Failed(
-            reason = AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED,
-            detail = "Pairing berhasil, tapi koneksi shell belum bisa dibentuk. Coba \"Sambungkan\" lagi — pairing tidak perlu diulang.",
-        )
-        _state.value = failure
-        return failure
     }
 
     private suspend fun connectLocked(host: String, port: Int): AdbConnectionState {
@@ -468,12 +482,12 @@ object AdbConnectionManager {
      * lewat [state] StateFlow yang mungkin sudah "menimpa dirinya sendiri"
      * kalau ada aksi lain menyusul.
      */
-    private suspend fun autoReconnectSuspend(): AdbConnectionState {
-        val saved = preferences.getSavedHostPort() ?: return _state.value
-        if (_state.value == AdbConnectionState.Connected) return AdbConnectionState.Connected
+    private suspend fun autoReconnectSuspend(): AdbConnectionState = AdbWakeLock.withWakeLock(appContext) {
+        val saved = preferences.getSavedHostPort() ?: return@withWakeLock _state.value
+        if (_state.value == AdbConnectionState.Connected) return@withWakeLock AdbConnectionState.Connected
 
         val firstAttempt = connectMutex.withLock { connectLocked(saved.first, saved.second) }
-        if (firstAttempt is AdbConnectionState.Connected) return firstAttempt
+        if (firstAttempt is AdbConnectionState.Connected) return@withWakeLock firstAttempt
 
         // Port lama basi (paling sering setelah Wireless debugging
         // dimatikan-nyalakan ulang/reboot) — coba cari port terbaru
@@ -508,7 +522,7 @@ object AdbConnectionManager {
             // pengguna (state publik jatuh ke Failed di sini, bukan
             // lebih awal).
             _state.value = firstAttempt
-            return firstAttempt
+            return@withWakeLock firstAttempt
         }
 
         if (rediscovered.port == saved.second && rediscovered.host == saved.first) {
@@ -518,9 +532,9 @@ object AdbConnectionManager {
             // pengguna (biasanya berarti Wireless debugging memang
             // sedang mati, bukan cuma port basi).
             _state.value = firstAttempt
-            return firstAttempt
+            return@withWakeLock firstAttempt
         }
-        return connectMutex.withLock { connectLocked(rediscovered.host, rediscovered.port) }
+        connectMutex.withLock { connectLocked(rediscovered.host, rediscovered.port) }
     }
 
     /**

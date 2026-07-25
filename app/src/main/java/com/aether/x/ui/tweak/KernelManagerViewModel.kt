@@ -1,19 +1,23 @@
 package com.aether.x.ui.tweak
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.AetherXApp
 import com.aether.x.R
 import com.aether.x.core.kernel.CpuCoreInfo
 import com.aether.x.core.kernel.GpuInfo
 import com.aether.x.core.kernel.KernelInfoReader
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
+import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.KernelManagerRepository
 import com.aether.x.ui.components.showAetherToast
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -29,6 +33,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
 
     private val reader = KernelInfoReader()
     private val repository = KernelManagerRepository()
+    private val preferences = AetherXPreferences(application)
 
     private val _state = MutableStateFlow(KernelManagerUiState())
     val state: StateFlow<KernelManagerUiState> = _state.asStateFlow()
@@ -59,7 +64,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun applyCoreFrequency(coreIndex: Int, minKhz: Int?, maxKhz: Int?) {
+    fun applyCoreFrequency(coreIndex: Int, minKhz: Int?, maxKhz: Int?, activity: Activity? = null) {
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreFrequency(executor, coreIndex, minKhz, maxKhz)
@@ -67,10 +72,11 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_frequency, coreIndex)) }
             }
             refreshSingleCore(executor, coreIndex)
+            if (result.success) maybeShowAd(activity)
         }
     }
 
-    fun applyCoreGovernor(coreIndex: Int, governorName: String) {
+    fun applyCoreGovernor(coreIndex: Int, governorName: String, activity: Activity? = null) {
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreGovernor(executor, coreIndex, governorName)
@@ -78,6 +84,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_governor, coreIndex)) }
             }
             refreshSingleCore(executor, coreIndex)
+            if (result.success) maybeShowAd(activity)
         }
     }
 
@@ -87,7 +94,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         _state.update { it.copy(cpuCores = cores) }
     }
 
-    fun applyGpuFrequency(minKhz: Int?, maxKhz: Int?) {
+    fun applyGpuFrequency(minKhz: Int?, maxKhz: Int?, activity: Activity? = null) {
         val path = _state.value.gpu?.devfreqPath ?: return
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
@@ -96,10 +103,11 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_frequency)) }
             }
             _state.update { it.copy(gpu = reader.readGpuInfo(executor)) }
+            if (result.success) maybeShowAd(activity)
         }
     }
 
-    fun applyGpuGovernor(governorName: String) {
+    fun applyGpuGovernor(governorName: String, activity: Activity? = null) {
         val path = _state.value.gpu?.devfreqPath ?: return
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
@@ -108,7 +116,14 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_governor)) }
             }
             _state.update { it.copy(gpu = reader.readGpuInfo(executor)) }
+            if (result.success) maybeShowAd(activity)
         }
+    }
+
+    private suspend fun maybeShowAd(activity: Activity?) {
+        if (activity == null) return
+        val isMember = preferences.preferences.first().isMembershipActive
+        AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
     }
 
     private fun appString(resId: Int, vararg args: Any): String {

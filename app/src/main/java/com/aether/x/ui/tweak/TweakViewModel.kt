@@ -123,51 +123,51 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(pointerSpeed = value.toInt()) }
     }
 
-    fun onPointerSpeedChangeFinished() {
+    fun onPointerSpeedChangeFinished(activity: Activity? = null) {
         val speed = _state.value.pointerSpeed
-        applyAndPersist { executor -> repository.applyPointerSpeed(executor, speed) }
+        applyAndPersist(activity) { executor -> repository.applyPointerSpeed(executor, speed) }
     }
 
-    fun onTouchBoostChange(checked: Boolean) {
+    fun onTouchBoostChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(touchBoost = checked) }
-        applyAndPersist { executor -> repository.applyTouchBoost(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyTouchBoost(executor, checked) }
     }
 
-    fun onForceRefreshChange(checked: Boolean) {
+    fun onForceRefreshChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(forceMaxRefreshRate = checked) }
-        applyAndPersist { executor ->
+        applyAndPersist(activity) { executor ->
             repository.applyRefreshRate(executor, checked, _state.value.displayInfo.maxRefreshRate)
         }
     }
 
-    fun onGameModeChange(checked: Boolean) {
+    fun onGameModeChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(gameModeEnabled = checked) }
-        applyAndPersist { executor -> repository.applyGameMode(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyGameMode(executor, checked) }
     }
 
-    fun onCpuGovernorChange(governor: CpuGovernor) {
+    fun onCpuGovernorChange(governor: CpuGovernor, activity: Activity? = null) {
         _state.update { it.copy(cpuGovernor = governor) }
-        applyAndPersist { executor -> repository.applyCpuGovernor(executor, governor) }
+        applyAndPersist(activity) { executor -> repository.applyCpuGovernor(executor, governor) }
     }
 
-    fun onRamPriorityModeChange(checked: Boolean) {
+    fun onRamPriorityModeChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(ramPriorityMode = checked) }
-        applyAndPersist { executor -> repository.applyRamPriority(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyRamPriority(executor, checked) }
     }
 
-    fun onThermalThrottleOverrideChange(checked: Boolean) {
+    fun onThermalThrottleOverrideChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(thermalThrottleOverride = checked) }
-        applyAndPersist { executor -> repository.applyThermalThrottleOverride(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyThermalThrottleOverride(executor, checked) }
     }
 
-    fun onGpuPerformanceModeChange(checked: Boolean) {
+    fun onGpuPerformanceModeChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(gpuPerformanceMode = checked) }
-        applyAndPersist { executor -> repository.applyGpuPerformanceMode(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyGpuPerformanceMode(executor, checked) }
     }
 
-    fun onIoSchedulerBoostChange(checked: Boolean) {
+    fun onIoSchedulerBoostChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(ioSchedulerBoost = checked) }
-        applyAndPersist { executor -> repository.applyIoSchedulerBoost(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyIoSchedulerBoost(executor, checked) }
     }
 
     fun onKillBackgroundAppsChange(checked: Boolean, activity: Activity? = null) {
@@ -191,28 +191,25 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
             }
             _state.update { it.copy(killBackgroundApps = false) }
 
-            if (activity != null) {
-                val isMember = preferences.preferences.first().isMembershipActive
-                AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
-            }
+            maybeShowAd(activity)
         }
     }
 
-    fun onVmHeapBoostChange(checked: Boolean) {
+    fun onVmHeapBoostChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(vmHeapBoost = checked) }
-        applyAndPersist { executor -> repository.applyVmHeapBoost(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyVmHeapBoost(executor, checked) }
     }
 
-    fun onDozeDisabledChange(checked: Boolean) {
+    fun onDozeDisabledChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(dozeDisabled = checked) }
-        applyAndPersist { executor -> repository.applyDozeDisable(executor, checked) }
+        applyAndPersist(activity) { executor -> repository.applyDozeDisable(executor, checked) }
     }
 
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
     }
 
-    fun resetTweaks() {
+    fun resetTweaks(activity: Activity? = null) {
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection()
             if (executor != null) {
@@ -246,16 +243,19 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     message = appString(R.string.tweak_reset_toast),
                 )
             }
+            maybeShowAd(activity)
         }
     }
 
-    private fun applyAndPersist(action: suspend (ShellExecutor) -> ShellResult) {
+    private fun applyAndPersist(activity: Activity? = null, action: suspend (ShellExecutor) -> ShellResult) {
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection()
+            var succeeded = false
             if (executor == null) {
                 _state.update { it.copy(message = appString(R.string.tweak_no_access_toast)) }
             } else {
                 val result = action(executor)
+                succeeded = result.success
                 if (!result.success) {
                     _state.update { it.copy(message = appString(R.string.tweak_command_failed_toast)) }
                 }
@@ -275,7 +275,16 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 vmHeapBoost = s.vmHeapBoost,
                 dozeDisabled = s.dozeDisabled,
             )
+            if (succeeded) {
+                maybeShowAd(activity)
+            }
         }
+    }
+
+    private suspend fun maybeShowAd(activity: Activity?) {
+        if (activity == null) return
+        val isMember = preferences.preferences.first().isMembershipActive
+        AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
     }
 
     private fun appString(resId: Int): String {

@@ -51,6 +51,29 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <!-- FIX — "Pairing Gagal / Tidak bisa terhubung" di ROM agresif
+         (MIUI/ColorOS dll, terutama saat kode pairing dibalas lewat
+         notifikasi dan layar lalu mati/idle): tanpa WAKE_LOCK, proses
+         AetherX bisa dibekukan sistem PERSIS di tengah proses mDNS
+         discovery + connect (yang butuh CPU+radio aktif beberapa detik)
+         begitu BroadcastReceiver.onReceive() dianggap selesai — walau
+         pairing certificate-nya sendiri sudah berhasil dikirim. Lihat
+         AdbConnectionManager (pairAndAutoConnect) dan
+         AdbPairingReplyReceiver untuk pemakaiannya. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- FIX (lanjutan fix pairing di atas): WAKE_LOCK saja menjaga CPU
+         tetap menyala, tapi TIDAK menjamin akses radio/jaringan proses
+         tetap terbuka di background kalau ROM (terutama MIUI) menaruh
+         AetherX dalam mode battery-saver/restricted — penyebab lain yang
+         sama umumnya untuk gejala "Pairing Gagal" di perangkat seperti
+         itu. Dipakai HANYA untuk menampilkan dialog sistem resmi
+         (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) supaya pengguna bisa
+         mengecualikan AetherX dari pembatasan itu secara eksplisit dan
+         sadar — BUKAN dipaksakan otomatis. Lihat
+         PrivilegeManager.requestIgnoreBatteryOptimizations. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <application
         android:name=".AetherXApp"
         android:allowBackup="false"

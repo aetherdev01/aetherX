@@ -126,7 +126,7 @@ fun AppManagerScreen(
                                 AppManagerRow(
                                     entry = entry,
                                     isPending = entry.packageName == state.pendingPackageName,
-                                    onToggle = { viewModel.toggleFreeze(entry) },
+                                    onToggle = { viewModel.toggleFreeze(entry, activity) },
                                     onForceStop = { viewModel.forceStopApp(entry, activity) },
                                     onRequestClearCache = { pendingClearCacheEntry = entry },
                                 )
@@ -140,7 +140,7 @@ fun AppManagerScreen(
                                 AppManagerRow(
                                     entry = entry,
                                     isPending = entry.packageName == state.pendingPackageName,
-                                    onToggle = { viewModel.toggleFreeze(entry) },
+                                    onToggle = { viewModel.toggleFreeze(entry, activity) },
                                     onForceStop = { viewModel.forceStopApp(entry, activity) },
                                     onRequestClearCache = { pendingClearCacheEntry = entry },
                                 )

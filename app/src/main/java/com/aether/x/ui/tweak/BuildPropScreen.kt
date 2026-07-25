@@ -171,7 +171,7 @@ fun BuildPropScreen(
     state.pendingRestore?.let { backup ->
         RestoreConfirmDialog(
             backup = backup,
-            onConfirm = viewModel::confirmRestore,
+            onConfirm = { viewModel.confirmRestore(activity) },
             onDismiss = viewModel::cancelPendingRestore,
         )
     }
