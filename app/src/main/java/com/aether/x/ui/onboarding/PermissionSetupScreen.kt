@@ -66,13 +66,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
-import com.aether.x.core.adb.AdbConnectionState
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
-import com.aether.x.ui.components.AdbPairingCard
+import com.aether.x.ui.components.ShizukuCard
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
@@ -125,19 +124,14 @@ fun PermissionSetupScreen(
         PrivilegeManager.events.collect { feedback ->
             val message = when (feedback) {
                 is RequestFeedback.Granted -> when (feedback.backend) {
-                    PrivilegeBackend.ADB -> context.getString(R.string.permission_feedback_adb_granted)
+                    PrivilegeBackend.SHIZUKU -> context.getString(R.string.permission_feedback_shizuku_granted)
                     PrivilegeBackend.ROOT -> context.getString(R.string.permission_feedback_root_granted)
                     PrivilegeBackend.NONE -> null
                 }
                 is RequestFeedback.Failed -> when (feedback.reason) {
-                    RequestFailureReason.ADB_WIRELESS_DEBUGGING_OFF -> context.getString(R.string.permission_feedback_adb_wireless_debugging_off)
-                    RequestFailureReason.ADB_AUTO_DISCOVERY_TIMEOUT -> context.getString(R.string.permission_feedback_adb_auto_discovery_timeout)
-                    RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED -> context.getString(R.string.permission_feedback_adb_pairing_invalid)
-                    RequestFailureReason.ADB_HOST_UNREACHABLE -> context.getString(R.string.permission_feedback_adb_host_unreachable)
-                    RequestFailureReason.ADB_CONNECT_AFTER_PAIRING_FAILED -> context.getString(R.string.permission_feedback_adb_connect_after_pairing_failed)
-                    RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR -> context.getString(R.string.permission_feedback_adb_shell_rejected)
-                    RequestFailureReason.ADB_UNKNOWN -> context.getString(R.string.permission_feedback_adb_unknown)
-                    RequestFailureReason.ADB_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_adb_in_progress)
+                    RequestFailureReason.SHIZUKU_NOT_INSTALLED -> context.getString(R.string.permission_feedback_shizuku_not_installed)
+                    RequestFailureReason.SHIZUKU_SERVICE_NOT_RUNNING -> context.getString(R.string.permission_feedback_shizuku_service_not_running)
+                    RequestFailureReason.SHIZUKU_PERMISSION_DENIED -> context.getString(R.string.permission_feedback_shizuku_permission_denied)
                     RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE -> context.getString(R.string.permission_feedback_root_denied)
                     RequestFailureReason.ROOT_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_root_in_progress)
                 }
@@ -146,39 +140,10 @@ fun PermissionSetupScreen(
         }
     }
 
-    var pendingAutoPairAfterNotificationGrant by remember { mutableStateOf(false) }
-    var pendingReconnectAfterNotificationGrant by remember { mutableStateOf(false) }
-
     val notificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         PrivilegeManager.refreshSupportingPermissions(context)
-        if (granted && pendingAutoPairAfterNotificationGrant) {
-            PrivilegeManager.startAutoPairAdb(context)
-        }
-        if (granted && pendingReconnectAfterNotificationGrant) {
-            PrivilegeManager.reconnectAdb(context)
-        }
-        pendingAutoPairAfterNotificationGrant = false
-        pendingReconnectAfterNotificationGrant = false
-    }
-
-    val startAutoPairingGuarded: () -> Unit = {
-        if (status.notificationsGranted) {
-            PrivilegeManager.startAutoPairAdb(context)
-        } else {
-            pendingAutoPairAfterNotificationGrant = true
-            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    val reconnectAdbGuarded: () -> Unit = {
-        if (status.notificationsGranted) {
-            PrivilegeManager.reconnectAdb(context)
-        } else {
-            pendingReconnectAfterNotificationGrant = true
-            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -206,7 +171,7 @@ fun PermissionSetupScreen(
         }
     }
 
-    LaunchedEffect(status.adbGranted, status.rootGranted) {
+    LaunchedEffect(status.shizukuGranted, status.rootGranted) {
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
@@ -260,8 +225,6 @@ fun PermissionSetupScreen(
                         0 -> AccessMethodPage(
                             status = status,
                             context = context,
-                            onStartAutoPairing = startAutoPairingGuarded,
-                            onReconnect = reconnectAdbGuarded,
                         )
                         1 -> WriteSettingsPage(status = status, context = context)
                         2 -> OverlayPage(status = status, context = context)
@@ -337,8 +300,6 @@ fun PermissionSetupScreen(
 private fun AccessMethodPage(
     status: com.aether.x.core.permission.PrivilegeStatus,
     context: android.content.Context,
-    onStartAutoPairing: () -> Unit,
-    onReconnect: () -> Unit,
 ) {
     PageIcon(icon = Icons.Outlined.Shield, tint = AccentBlue)
     PageTitle(
@@ -352,34 +313,38 @@ private fun AccessMethodPage(
 
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
 
-        val adbLocked = status.preferredBackend == PrivilegeBackend.ROOT
-        val rootLocked = status.preferredBackend == PrivilegeBackend.ADB
+        val shizukuLocked = status.preferredBackend == PrivilegeBackend.ROOT
+        val rootLocked = status.preferredBackend == PrivilegeBackend.SHIZUKU
 
-        AdbPairingCard(
-            connected = status.adbGranted && !adbLocked,
+        // ROLLBACK — status Shizuku di-refresh setiap layar ini kembali ke
+        // foreground (mis. pengguna baru kembali dari app Shizuku Manager
+        // setelah start service/pairing di sana). Lihat KDoc
+        // [com.aether.x.core.shizuku.ShizukuManager.refresh].
+        val shizukuLifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(shizukuLifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    PrivilegeManager.refreshShizuku()
+                }
+            }
+            shizukuLifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { shizukuLifecycleOwner.lifecycle.removeObserver(observer) }
+        }
 
-            paired = status.adbState.let {
-                it != AdbConnectionState.NotPaired &&
-                    it !is AdbConnectionState.SearchingForPairing &&
-                    it !is AdbConnectionState.PairingFound
-            },
-            isBusy = status.adbRequestState == RequestState.REQUESTING,
-            locked = adbLocked,
+        ShizukuCard(
+            state = status.shizukuState,
+            locked = shizukuLocked,
             lockedHint = stringResource(R.string.setup_locked_by_root_hint),
-            onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
-            onStartAutoPairing = onStartAutoPairing,
-            onReconnect = onReconnect,
-            onForget = { PrivilegeManager.forgetAdbPairing() },
+            onOpenShizukuManager = { PrivilegeManager.openShizukuManager(context) },
+            onRequestPermission = { PrivilegeManager.requestShizukuPermission() },
+            onRefresh = { PrivilegeManager.refreshShizuku() },
         )
 
-        // FIX — "Pairing Gagal / Tidak bisa terhubung" berulang di ROM
-        // agresif (MIUI dll, lihat KDoc com.aether.x.core.adb.AdbWakeLock):
-        // banner ini HANYA muncul kalau backend ADB relevan (tidak locked
-        // ke Root) DAN sistem melaporkan AetherX MASIH kena battery
-        // optimization — murni informatif + tombol ke dialog sistem resmi,
-        // tidak memaksa apa pun, dan otomatis hilang begitu pengguna
-        // mengizinkannya (status di-refresh tiap ON_RESUME lewat
-        // [refreshSupportingPermissions]-style check di [status]).
+        // Battery optimization tetap relevan untuk Shizuku: ROM agresif
+        // (MIUI dkk) bisa membunuh proses app Shizuku Manager di background
+        // walau service-nya sedang dipakai, memutus binder AetherX secara
+        // tiba-tiba. Sama seperti sebelumnya, murni informatif + tombol ke
+        // dialog sistem resmi, tidak memaksa apa pun.
         var ignoringBatteryOptimizations by remember {
             mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
         }
@@ -394,7 +359,7 @@ private fun AccessMethodPage(
             onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
         }
         AnimatedVisibility(
-            visible = !adbLocked && !ignoringBatteryOptimizations,
+            visible = !shizukuLocked && !ignoringBatteryOptimizations,
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
@@ -726,15 +691,11 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
 }
 
 /**
- * FIX — pelengkap [com.aether.x.core.adb.AdbWakeLock]: banner peringatan
- * murni informatif (bukan blocker — pengguna tetap bisa lanjut tanpa
- * mengizinkan ini) yang muncul kalau AetherX MASIH kena battery
- * optimization sistem. Relevan khusus untuk ROM agresif seperti MIUI di
- * Redmi Note 11 tempat gejala "Pairing Gagal / Tidak bisa terhubung"
- * pertama kali dilaporkan — battery optimization adalah penyebab lain
- * yang sama umumnya (di luar CPU sleep yang sudah ditangani WakeLock),
- * karena ROM ini bisa memblokir akses radio/jaringan proses di background
- * sepenuhnya untuk aplikasi yang belum dikecualikan.
+ * Banner peringatan murni informatif (bukan blocker — pengguna tetap bisa
+ * lanjut tanpa mengizinkan ini) yang muncul kalau AetherX MASIH kena
+ * battery optimization sistem. Relevan untuk ROM agresif seperti MIUI yang
+ * bisa membunuh proses app Shizuku Manager di background (memutus binder
+ * Shizuku secara tiba-tiba) kalau belum dikecualikan dari battery saver.
  *
  * NOTE untuk asw: tambahkan string berikut ke strings.xml (belum ada di
  * source yang di-share, jadi placeholder Indonesia berikut dipakai

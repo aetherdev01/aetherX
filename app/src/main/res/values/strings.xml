@@ -8,10 +8,10 @@
     <string name="splash_status_ready">Siap!</string>
 
     <!-- REWORK TOTAL — Onboarding Setup Permission jadi 5 halaman slide
-         (HorizontalPager): (1) ADB/Root, (2) Write Settings, (3) Overlay,
+         (HorizontalPager): (1) Shizuku/Root, (2) Write Settings, (3) Overlay,
          (4) Notifikasi, (5) Peringatan Kernel DWYOR. SEMUA EMPAT IZIN
          (halaman 1-4) sekarang WAJIB granted untuk lanjut — bukan lagi
-         cuma ADB/Root yang wajib sementara 3 izin lain opsional seperti
+         cuma Shizuku/Root yang wajib sementara 3 izin lain opsional seperti
          versi sebelumnya. Dipakai ulang juga sebagai "Kelola Akses" di
          halaman utama (requireAccessToContinue=false: navigasi bebas,
          tidak dikunci). -->
@@ -35,10 +35,10 @@
     <string name="setup_locked_hint">Selesaikan izin di halaman ini dulu untuk melanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
     <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Wireless Debugging.</string>
-    <string name="setup_locked_by_adb_hint">Wireless Debugging sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Root.</string>
+    <string name="setup_locked_by_adb_hint">Shizuku sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Root.</string>
     <string name="setup_switch_method">Ganti metode</string>
 
-    <!-- Halaman 1 — Metode akses (ADB tertanam / Root) -->
+    <!-- Halaman 1 — Metode akses (Shizuku / Root) -->
     <string name="setup_page_access_title">Metode Akses</string>
     <string name="setup_page_access_subtitle">Pilih salah satu: Wireless Debugging (tanpa root) atau akses Root penuh lewat Magisk/KernelSU/APatch.</string>
 
@@ -251,7 +251,7 @@
     <string name="dashboard_hero_kicker">AXKM</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
     <string name="dashboard_privilege_root">Root</string>
-    <string name="dashboard_privilege_adb">ADB</string>
+    <string name="dashboard_privilege_shizuku">Shizuku</string>
     <string name="dashboard_privilege_none">No Root</string>
     <string name="dashboard_section_device_info">Info Device</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
@@ -267,7 +267,7 @@
     <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
 
     <!-- FITUR BARU — kartu pintasan "Aktifkan Wireless Debugging" (khusus
-         No Root/ADB, lihat WirelessDebuggingQuickCard) — muncul HANYA
+         No Root/Shizuku, lihat WirelessDebuggingQuickCard) — muncul HANYA
          ketika toggle Wireless debugging sistem sedang mati, hilang
          otomatis begitu dinyalakan kembali. -->
     <string name="dashboard_wireless_debugging_off_title">Wireless Debugging Mati</string>
@@ -344,9 +344,9 @@
     <string name="app_manager_empty">Tidak ada aplikasi yang cocok</string>
     <string name="app_manager_status_frozen">Dinonaktifkan</string>
     <string name="app_manager_status_active">Aktif</string>
-    <string name="app_manager_error_root_unavailable">Sambungkan ADB tertanam atau Root dulu di layar Izin Akses</string>
-    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Coba pakai akses Root jika ADB tidak berhasil.</string>
-    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Coba pakai akses Root jika ADB tidak berhasil.</string>
+    <string name="app_manager_error_root_unavailable">Sambungkan Shizuku atau Root dulu di layar Izin Akses</string>
+    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Coba pakai akses Root jika Shizuku tidak berhasil.</string>
+    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Coba pakai akses Root jika Shizuku tidak berhasil.</string>
     <string name="app_manager_more_options_cd">Opsi lainnya</string>
     <string name="app_manager_action_force_stop">Force Stop</string>
     <string name="app_manager_action_clear_cache">Bersihkan Cache</string>
@@ -393,8 +393,8 @@
     <string name="tweak_doze_disabled_desc">Cegah sistem membekukan proses game atau service background (voice chat, download aset) saat perangkat idle sesaat. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
-    <string name="tweak_no_access_toast">Sambungkan ADB tertanam atau Root dulu di layar Izin Akses</string>
-    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Koneksi ADB sempat terputus dan sudah dicoba disambungkan ulang, coba tekan sekali lagi</string>
+    <string name="tweak_no_access_toast">Sambungkan Shizuku atau Root dulu di layar Izin Akses</string>
+    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Pastikan service Shizuku masih berjalan, lalu coba tekan sekali lagi</string>
     <string name="tweak_kill_background_toast">Aplikasi background dibersihkan</string>
 
     <!-- Tweak screen game launcher -->
@@ -516,29 +516,6 @@
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>
 
-    <!-- REWORK — sistem notifikasi Pairing (lihat perintah rework: "bukan
-         pakai floating window/dialog mengambang, tetapi pakai notifikasi
-         sistem dengan notifikasi mengambang"). Menggantikan
-         AdbPairingOverlayService (window WindowManager) SEPENUHNYA dengan
-         notifikasi heads-up biasa + aksi Balas (RemoteInput) tertanam untuk
-         kode pairing — lihat AdbPairingNotifier. -->
-    <string name="adb_pairing_notif_channel_name">Penyandingan ADB</string>
-    <string name="adb_pairing_notif_channel_desc">Notifikasi mengambang untuk proses penyandingan Wireless debugging, termasuk pengisian kode pairing</string>
-    <string name="adb_pairing_notif_reply_action">Isi kode pairing</string>
-    <string name="adb_pairing_notif_reply_label">Kode Pairing…</string>
-    <string name="adb_pairing_notif_cancel_action">Batalkan</string>
-    <string name="adb_pairing_notif_invalid_code">Kode harus 6 digit angka. Ketuk "Isi kode pairing" lagi untuk mencoba.</string>
-
-    <string name="adb_pairing_overlay_searching_title">Searching for Pairing…</string>
-    <string name="adb_pairing_overlay_searching_hint">Buka Opsi Developer &gt; Wireless debugging, lalu ketuk "Pasangkan perangkat dengan kode pairing"</string>
-    <string name="adb_pairing_overlay_found_title">Pairing found</string>
-    <string name="adb_pairing_overlay_code_hint">Kode pairing</string>
-    <string name="adb_pairing_overlay_code_hint_detail">Masukkan kode pairing yang tampil di dialog Wireless debugging</string>
-    <string name="adb_pairing_overlay_confirm">Sandingkan</string>
-    <string name="adb_pairing_overlay_connecting_title">Menyandingkan…</string>
-    <string name="adb_pairing_overlay_connecting_hint">Mohon tunggu, sedang menyambungkan ke perangkat</string>
-    <string name="adb_pairing_overlay_error_title">Pairing gagal</string>
-    
     <!-- ================= FITUR BARU: Game Booster ================= -->
     <!-- lihat perintah rework: "buatkan game booster screen dengan layar
          lanskap serta ada list game discroll atau gaya rog, ada pilihan
@@ -635,7 +612,7 @@
 
     <string name="game_booster_panel_monitor_average_jitter">Average %1$d FPS   Jitter %2$d</string>
     <string name="game_booster_panel_monitor_realtime">Real-time %1$d FPS</string>
-    <string name="game_booster_panel_monitor_fps_unavailable_hint">Aktifkan Root/ADB untuk FPS real-time</string>
+    <string name="game_booster_panel_monitor_fps_unavailable_hint">Aktifkan Root/Shizuku untuk FPS real-time</string>
 
     <string name="game_booster_panel_mode_balanced">Balanced</string>
     <string name="game_booster_panel_mode_performance">Performance</string>
@@ -663,30 +640,15 @@
     <string name="adblock_dialog_membership_button">Lihat Membership</string>
     <string name="adblock_dialog_dismiss_button">Tutup</string>
 
-    <!-- REWORK TOTAL PERMISSION (lihat perintah rework "buatkan sistem
-         seperti shizuku langsung tertanam dalam aplikasinya... hapus
-         semua yang bersangkutan dengan shizuku"): pesan feedback konkret
-         untuk setiap hasil aksi pairing/koneksi ADB tertanam & root,
-         ditampilkan lewat Snackbar menggantikan silent-fail yang
-         membuat tombol terasa "tidak merespon". -->
-    <string name="permission_feedback_adb_wireless_debugging_off">Wireless debugging belum aktif. Aktifkan di Pengaturan > Opsi Developer, lalu coba lagi.</string>
-    <!-- FITUR BARU — Auto-Pairing (lihat AdbConnectionState.AUTO_DISCOVERY_TIMEOUT):
-         string ini WAJIB ada, dipakai PermissionSetupScreen.kt untuk
-         menampilkan Snackbar saat proses "Searching for Pairing…" tidak
-         pernah menemukan service pairing dalam batas waktu. -->
-    <string name="permission_feedback_adb_auto_discovery_timeout">Tidak menemukan Wireless debugging di jaringan ini. Pastikan dialog pairing terbuka dan Wi-Fi sama, lalu tekan Start lagi.</string>
-    <string name="permission_feedback_adb_pairing_invalid">Kode pairing salah atau sudah kedaluwarsa. Buka lagi dialog pairing untuk kode baru.</string>
-    <string name="permission_feedback_adb_host_unreachable">Tidak bisa terhubung. Pastikan Wireless debugging masih aktif, lalu coba lagi. Pairing sebelumnya tetap tersimpan.</string>
-    <!-- FIX (Android 12/13 — "kode pairing benar tapi tetap 'Tidak bisa
-         terhubung'"): pesan KHUSUS untuk kegagalan connect PERTAMA KALI
-         tepat setelah pairing sukses — BEDA dari permission_feedback_adb_host_unreachable
-         di atas (yang menyiratkan "pairing sebelumnya", membingungkan untuk
-         percobaan pertama). Lihat KDoc AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED. -->
-    <string name="permission_feedback_adb_connect_after_pairing_failed">Kode pairing berhasil, tapi koneksi belum terbentuk. Tekan "Sambungkan" sekali lagi — tidak perlu pairing ulang.</string>
-    <string name="permission_feedback_adb_shell_rejected">Koneksi ditolak. Izin debugging mungkin pernah dicabut, lakukan pairing ulang.</string>
-    <string name="permission_feedback_adb_unknown">Terjadi kesalahan saat menghubungkan Wireless Debugging. Coba lagi.</string>
-    <string name="permission_feedback_adb_in_progress">Proses Wireless Debugging masih berjalan, tunggu sebentar.</string>
-    <string name="permission_feedback_adb_granted">Wireless Debugging terhubung.</string>
+    <!-- ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali ke
+         shizuku pure... hapus semua yang bersangkutan dengan adb
+         tertanam"): pesan feedback konkret untuk setiap hasil aksi
+         Shizuku & root, ditampilkan lewat Snackbar menggantikan
+         silent-fail yang membuat tombol terasa "tidak merespon". -->
+    <string name="permission_feedback_shizuku_not_installed">Shizuku Manager belum terinstal. Instal dulu dari Play Store, lalu start service-nya di sana.</string>
+    <string name="permission_feedback_shizuku_service_not_running">Service Shizuku belum berjalan. Buka Shizuku Manager dan start dulu (ADB wireless/USB, root, atau modul Sui).</string>
+    <string name="permission_feedback_shizuku_permission_denied">Izin Shizuku ditolak. Ketuk "Izinkan" lagi untuk memberi izin ke AetherX.</string>
+    <string name="permission_feedback_shizuku_granted">Shizuku terhubung.</string>
     <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch terpasang, lalu coba lagi.</string>
     <string name="permission_feedback_root_in_progress">Permintaan akses root masih diproses, tunggu sebentar.</string>
     <string name="permission_feedback_root_granted">Akses root aktif.</string>

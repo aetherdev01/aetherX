@@ -95,7 +95,7 @@ fun AetherXInfoCard(
 private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
     val (label, bgColor) = when (backend) {
         PrivilegeBackend.ROOT -> stringResource(R.string.dashboard_privilege_root) to MaterialTheme.colorScheme.primary
-        PrivilegeBackend.ADB -> stringResource(R.string.dashboard_privilege_adb) to MaterialTheme.colorScheme.surface
+        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.surface
         PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.surface
     }
     val textColor = if (backend == PrivilegeBackend.ROOT) {

@@ -1,21 +1,15 @@
 package com.aether.x.core.permission
 
-import com.aether.x.core.adb.AdbConnectionState
+import com.aether.x.core.shizuku.ShizukuConnectionState
 
-enum class PrivilegeBackend { ADB, ROOT, NONE }
+enum class PrivilegeBackend { SHIZUKU, ROOT, NONE }
 
 enum class RequestState { IDLE, REQUESTING }
 
 enum class RequestFailureReason {
-    ADB_WIRELESS_DEBUGGING_OFF,
-    ADB_AUTO_DISCOVERY_TIMEOUT,
-    ADB_PAIRING_CODE_INVALID_OR_EXPIRED,
-    ADB_HOST_UNREACHABLE,
-
-    ADB_CONNECT_AFTER_PAIRING_FAILED,
-    ADB_SHELL_REJECTED_NEEDS_REPAIR,
-    ADB_UNKNOWN,
-    ADB_ALREADY_IN_PROGRESS,
+    SHIZUKU_NOT_INSTALLED,
+    SHIZUKU_SERVICE_NOT_RUNNING,
+    SHIZUKU_PERMISSION_DENIED,
     ROOT_DENIED_OR_UNAVAILABLE,
     ROOT_ALREADY_IN_PROGRESS,
 }
@@ -26,7 +20,7 @@ sealed interface RequestFeedback {
 }
 
 data class PrivilegeStatus(
-    val adbState: AdbConnectionState = AdbConnectionState.NotPaired,
+    val shizukuState: ShizukuConnectionState = ShizukuConnectionState.ServiceNotRunning,
     val rootAvailable: Boolean? = null,
     val rootGranted: Boolean = false,
     val checkingRoot: Boolean = false,
@@ -35,17 +29,16 @@ data class PrivilegeStatus(
     val notificationsGranted: Boolean = false,
     val preferredBackend: PrivilegeBackend = PrivilegeBackend.NONE,
 
-    val adbRequestState: RequestState = RequestState.IDLE,
     val rootRequestState: RequestState = RequestState.IDLE,
 ) {
-    val adbGranted: Boolean get() = adbState == AdbConnectionState.Connected
+    val shizukuGranted: Boolean get() = shizukuState == ShizukuConnectionState.Connected
 
     val activeBackend: PrivilegeBackend
         get() = when (preferredBackend) {
-            PrivilegeBackend.ADB -> if (adbGranted) PrivilegeBackend.ADB else PrivilegeBackend.NONE
+            PrivilegeBackend.SHIZUKU -> if (shizukuGranted) PrivilegeBackend.SHIZUKU else PrivilegeBackend.NONE
             PrivilegeBackend.ROOT -> if (rootGranted) PrivilegeBackend.ROOT else PrivilegeBackend.NONE
             PrivilegeBackend.NONE -> when {
-                adbGranted -> PrivilegeBackend.ADB
+                shizukuGranted -> PrivilegeBackend.SHIZUKU
                 rootGranted -> PrivilegeBackend.ROOT
                 else -> PrivilegeBackend.NONE
             }

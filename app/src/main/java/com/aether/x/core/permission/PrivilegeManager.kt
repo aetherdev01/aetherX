@@ -7,13 +7,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import com.aether.x.core.adb.AdbConnectionManager
-import com.aether.x.core.adb.AdbConnectionState
-import com.aether.x.core.adb.AdbFailureReason
-import com.aether.x.core.notification.AdbPairingNotifier
-import com.aether.x.core.shell.EmbeddedShellExecutor
 import com.aether.x.core.shell.RootShellExecutor
 import com.aether.x.core.shell.ShellExecutor
+import com.aether.x.core.shell.ShizukuShellExecutor
+import com.aether.x.core.shizuku.ShizukuConnectionState
+import com.aether.x.core.shizuku.ShizukuManager
 import com.aether.x.data.AetherXPreferences
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +31,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+/**
+ * ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali ke shizuku
+ * pure... hapus semua yang bersangkutan dengan adb tertanam"): seluruh
+ * logic ADB tertanam (pairing, host/port, AdbConnectionManager) DIHAPUS.
+ * Backend non-root sekarang murni [ShizukuManager] — lihat KDoc di sana
+ * untuk konteks lengkap kenapa rollback ini dilakukan.
+ */
 object PrivilegeManager {
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate)
@@ -52,50 +57,22 @@ object PrivilegeManager {
         initialized = true
 
         val appContext = context.applicationContext
-        AdbConnectionManager.init(appContext)
+        ShizukuManager.init(appContext)
 
-        AdbConnectionManager.state.onEach { adbState ->
-            val wasRequesting = _status.value.adbRequestState == RequestState.REQUESTING
-            _status.update {
-                it.copy(
-                    adbState = adbState,
+        ShizukuManager.state.onEach { shizukuState ->
+            val wasConnected = _status.value.shizukuGranted
+            _status.update { it.copy(shizukuState = shizukuState) }
 
-                    adbRequestState = when (adbState) {
-                        is AdbConnectionState.Pairing,
-                        is AdbConnectionState.Connecting,
-                        is AdbConnectionState.SearchingForPairing,
-                        is AdbConnectionState.PairingFound,
-                        -> RequestState.REQUESTING
-                        else -> RequestState.IDLE
-                    },
-                )
-            }
-            if (wasRequesting) {
-                when (adbState) {
-                    is AdbConnectionState.Connected -> _events.tryEmit(RequestFeedback.Granted(PrivilegeBackend.ADB))
-                    is AdbConnectionState.Failed -> _events.tryEmit(
-                        RequestFeedback.Failed(PrivilegeBackend.ADB, adbState.reason.toRequestFailureReason()),
-                    )
-                    else -> Unit
-                }
-            }
-
-            when (adbState) {
-                is AdbConnectionState.SearchingForPairing -> AdbPairingNotifier.showSearching(appContext)
-                is AdbConnectionState.PairingFound -> AdbPairingNotifier.showCodeInput(appContext)
-                is AdbConnectionState.Pairing -> AdbPairingNotifier.showBusy(appContext)
-                is AdbConnectionState.Connecting -> {
-                    if (wasRequesting) AdbPairingNotifier.showBusy(appContext)
-                }
-                is AdbConnectionState.Failed -> {
-
-                    if (wasRequesting) {
-                        val message = adbState.reason.toOverlayErrorMessage(appContext)
-                        AdbPairingNotifier.showError(appContext, message)
-                    }
-                }
-                is AdbConnectionState.Connected, AdbConnectionState.NotPaired, AdbConnectionState.PairedNotConnected ->
-                    AdbPairingNotifier.stop(appContext)
+            if (shizukuState == ShizukuConnectionState.Connected && !wasConnected) {
+                _events.tryEmit(RequestFeedback.Granted(PrivilegeBackend.SHIZUKU))
+            } else if (shizukuState != ShizukuConnectionState.Connected && wasConnected) {
+                // Service Shizuku baru saja mati/binder putus setelah
+                // sebelumnya tersambung — bukan kegagalan permintaan aktif
+                // (tidak ada REQUESTING di Shizuku, semua state berubah
+                // instan lewat listener), jadi tidak perlu emit Failed di
+                // sini, cukup status yang diupdate untuk UI.
+            } else if (shizukuState == ShizukuConnectionState.PermissionDenied) {
+                _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.SHIZUKU, RequestFailureReason.SHIZUKU_PERMISSION_DENIED))
             }
         }.launchIn(scope)
 
@@ -105,8 +82,7 @@ object PrivilegeManager {
         scope.launch {
             val saved = preferences.getPreferredPrivilegeBackend()
             val backend = when (saved) {
-
-                "SHIZUKU", "ADB" -> PrivilegeBackend.ADB
+                "SHIZUKU", "ADB" -> PrivilegeBackend.SHIZUKU
                 "ROOT" -> PrivilegeBackend.ROOT
                 else -> PrivilegeBackend.NONE
             }
@@ -119,25 +95,13 @@ object PrivilegeManager {
         }
     }
 
-    private fun AdbFailureReason.toRequestFailureReason(): RequestFailureReason = when (this) {
-        AdbFailureReason.WIRELESS_DEBUGGING_OFF -> RequestFailureReason.ADB_WIRELESS_DEBUGGING_OFF
-        AdbFailureReason.AUTO_DISCOVERY_TIMEOUT -> RequestFailureReason.ADB_AUTO_DISCOVERY_TIMEOUT
-        AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED -> RequestFailureReason.ADB_PAIRING_CODE_INVALID_OR_EXPIRED
-        AdbFailureReason.HOST_UNREACHABLE -> RequestFailureReason.ADB_HOST_UNREACHABLE
-        AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED -> RequestFailureReason.ADB_CONNECT_AFTER_PAIRING_FAILED
-        AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR -> RequestFailureReason.ADB_SHELL_REJECTED_NEEDS_REPAIR
-        AdbFailureReason.UNKNOWN -> RequestFailureReason.ADB_UNKNOWN
-    }
-
-    private fun AdbFailureReason.toOverlayErrorMessage(context: Context): String = context.getString(
-        when (this) {
-            AdbFailureReason.WIRELESS_DEBUGGING_OFF -> com.aether.x.R.string.permission_feedback_adb_wireless_debugging_off
-            AdbFailureReason.AUTO_DISCOVERY_TIMEOUT -> com.aether.x.R.string.permission_feedback_adb_auto_discovery_timeout
-            AdbFailureReason.PAIRING_CODE_INVALID_OR_EXPIRED -> com.aether.x.R.string.permission_feedback_adb_pairing_invalid
-            AdbFailureReason.HOST_UNREACHABLE -> com.aether.x.R.string.permission_feedback_adb_host_unreachable
-            AdbFailureReason.CONNECT_AFTER_PAIRING_FAILED -> com.aether.x.R.string.permission_feedback_adb_connect_after_pairing_failed
-            AdbFailureReason.SHELL_REJECTED_NEEDS_REPAIR -> com.aether.x.R.string.permission_feedback_adb_shell_rejected
-            AdbFailureReason.UNKNOWN -> com.aether.x.R.string.permission_feedback_adb_unknown
+    fun toOverlayErrorMessage(context: Context, reason: RequestFailureReason): String = context.getString(
+        when (reason) {
+            RequestFailureReason.SHIZUKU_NOT_INSTALLED -> com.aether.x.R.string.permission_feedback_shizuku_not_installed
+            RequestFailureReason.SHIZUKU_SERVICE_NOT_RUNNING -> com.aether.x.R.string.permission_feedback_shizuku_service_not_running
+            RequestFailureReason.SHIZUKU_PERMISSION_DENIED -> com.aether.x.R.string.permission_feedback_shizuku_permission_denied
+            RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE -> com.aether.x.R.string.permission_feedback_root_denied
+            RequestFailureReason.ROOT_ALREADY_IN_PROGRESS -> com.aether.x.R.string.permission_feedback_root_in_progress
         },
     )
 
@@ -147,7 +111,7 @@ object PrivilegeManager {
                 if (_status.value.preferredBackend != PrivilegeBackend.NONE) return@withLock
 
                 val backend = when {
-                    _status.value.adbGranted -> PrivilegeBackend.ADB
+                    _status.value.shizukuGranted -> PrivilegeBackend.SHIZUKU
                     _status.value.rootGranted -> PrivilegeBackend.ROOT
                     else -> null
                 } ?: return@withLock
@@ -162,7 +126,7 @@ object PrivilegeManager {
         _status.update { it.copy(preferredBackend = backend) }
         val preferences = AetherXPreferences(context.applicationContext)
         scope.launch {
-            preferences.setPreferredPrivilegeBackend(if (backend == PrivilegeBackend.ADB) "ADB" else "ROOT")
+            preferences.setPreferredPrivilegeBackend(if (backend == PrivilegeBackend.SHIZUKU) "SHIZUKU" else "ROOT")
         }
     }
 
@@ -172,69 +136,40 @@ object PrivilegeManager {
         scope.launch { preferences.clearPreferredPrivilegeBackend() }
     }
 
-    fun pairAdb(
-        context: Context,
-        pairingHost: String,
-        pairingPort: Int,
-        pairingCode: String,
-        connectPort: Int,
-    ) {
-        if (_status.value.adbRequestState == RequestState.REQUESTING) {
-            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.ADB, RequestFailureReason.ADB_ALREADY_IN_PROGRESS))
-            return
-        }
-        selectBackend(context, PrivilegeBackend.ADB)
-        scope.launch {
-            AdbConnectionManager.pair(
-                context = context,
-                pairingHost = pairingHost,
-                pairingPort = pairingPort,
-                pairingCode = pairingCode,
-                connectPort = connectPort,
-            )
-        }
+    /** Refresh status Shizuku manual — dipanggil dari layar Izin Akses
+     *  saat ON_RESUME (mis. pengguna baru kembali dari app Shizuku Manager
+     *  setelah start service/pairing di sana) dan dari tombol refresh
+     *  eksplisit di [com.aether.x.ui.components.ShizukuCard]. */
+    fun refreshShizuku() {
+        ShizukuManager.refresh()
     }
 
-    fun reconnectAdb(context: Context) {
-        if (_status.value.adbRequestState == RequestState.REQUESTING) {
-            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.ADB, RequestFailureReason.ADB_ALREADY_IN_PROGRESS))
-            return
-        }
-        selectBackend(context, PrivilegeBackend.ADB)
-        AdbConnectionManager.autoReconnect()
+    fun openShizukuManager(context: Context) {
+        selectBackend(context, PrivilegeBackend.SHIZUKU)
+        ShizukuManager.openShizukuManager(context)
     }
 
-    fun startAutoPairAdb(context: Context) {
-        if (_status.value.adbRequestState == RequestState.REQUESTING) {
-            _events.tryEmit(RequestFeedback.Failed(PrivilegeBackend.ADB, RequestFailureReason.ADB_ALREADY_IN_PROGRESS))
-            return
-        }
-        selectBackend(context, PrivilegeBackend.ADB)
-        AdbConnectionManager.startAutoPairing(context)
-        openWirelessDebuggingSettings(context)
-    }
-
-    fun cancelAutoPairAdb() {
-        AdbConnectionManager.cancelAutoPairing()
-    }
-
-    fun confirmAutoPairAdbCode(context: Context, pairingCode: String, onComplete: () -> Unit = {}) {
-        scope.launch {
-            try {
-                AdbConnectionManager.confirmAutoPairingCode(context, pairingCode)
-            } finally {
-                onComplete()
-            }
-        }
-    }
-
-    fun forgetAdbPairing() {
-        AdbConnectionManager.forgetPairing()
+    fun requestShizukuPermission() {
+        ShizukuManager.requestPermission()
     }
 
     fun refreshAll() {
-        AdbConnectionManager.autoReconnect()
+        ShizukuManager.refresh()
         checkRootSilently()
+    }
+
+    /** Dipakai oleh `WirelessDebuggingQuickCard` (pengingat prasyarat umum
+     *  — banyak metode start Shizuku yang paling mudah, mis. lewat ADB
+     *  wireless sekali jalan, butuh Wireless debugging aktif dulu di Opsi
+     *  Developer). TIDAK terkait sistem pairing ADB tertanam yang sudah
+     *  dihapus — murni shortcut ke pengaturan sistem Android biasa. */
+    fun openWirelessDebuggingSettings(context: Context) {
+        val intent = Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val fallback = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }
+            .recoverCatching { context.startActivity(fallback) }
     }
 
     fun checkRootSilently() {
@@ -286,49 +221,35 @@ object PrivilegeManager {
     }
 
     fun getExecutor(): ShellExecutor? = when (status.value.activeBackend) {
-        PrivilegeBackend.ADB -> EmbeddedShellExecutor()
+        PrivilegeBackend.SHIZUKU -> ShizukuShellExecutor()
         PrivilegeBackend.ROOT -> RootShellExecutor()
         PrivilegeBackend.NONE -> null
     }
 
     /**
-     * FIX BUG: "Sambungkan ADB tertanam atau Root dulu di layar Izin
-     * Akses" muncul terus padahal server ADB SUDAH terhubung (atau baru
-     * saja putus sesaat dan sebenarnya bisa pulih sendiri).
-     *
-     * Akar masalah: [getExecutor] (non-suspend) HANYA membaca [status]
-     * StateFlow apa adanya saat dipanggil — kalau [PrivilegeStatus.activeBackend]
-     * kebetulan masih [PrivilegeBackend.NONE] di momen itu (mis. tepat
-     * setelah `onResume` ketika [AdbConnectionManager.autoReconnect]
-     * fire-and-forget masih berjalan di background, atau state baru saja
-     * turun ke [AdbConnectionState.PairedNotConnected] lewat
-     * [AdbConnectionManager.markStreamFailureAndReconnect] sesaat sebelum
-     * reconnect-nya sendiri selesai), caller (mis. TweakViewModel)
-     * langsung menyerah dan menampilkan toast gagal SEBELUM sempat
-     * mencoba tersambung sama sekali.
-     *
-     * Versi `suspend` ini dipakai sebagai GANTI [getExecutor] biasa oleh
-     * semua pemanggil tweak: kalau preferensi backend adalah ADB tapi
-     * belum [AdbConnectionState.Connected] persis saat ini, AKTIF
-     * menunggu satu putaran reconnect sungguhan lewat
-     * [AdbConnectionManager.awaitReconnect] sebelum benar-benar menyerah
-     * — sama seperti pola retry yang sudah terbukti di
-     * [EmbeddedShellExecutor], hanya dipindah lebih awal supaya toast
-     * "belum tersambung" tidak muncul palsu saat server ADB sebenarnya
-     * tersambung atau baru butuh sedikit waktu lagi. Preferensi ROOT
-     * tidak butuh ini (root tidak kenal reconnect async seperti ini).
+     * Versi `suspend` dipakai oleh semua pemanggil tweak (TweakViewModel,
+     * dkk) — beda dari [getExecutor] biasa, dipertahankan sebagai fungsi
+     * terpisah supaya signature caller tetap sama seperti sebelumnya
+     * (tidak perlu ubah seluruh ViewModel tweak). Untuk Shizuku TIDAK ada
+     * proses "menunggu reconnect" seperti ADB tertanam dulu — binder
+     * Shizuku begitu hidup langsung siap dipakai instan, jadi versi
+     * suspend ini cukup baca [ShizukuManager] sinkron tanpa perlu delay
+     * atau retry apa pun.
      */
     suspend fun getExecutorAwaitingConnection(): ShellExecutor? {
         val current = status.value
         return when (current.preferredBackend) {
-            PrivilegeBackend.ADB -> {
-                if (current.adbGranted) return EmbeddedShellExecutor()
-                val reconnected = AdbConnectionManager.awaitReconnect()
-                if (reconnected is AdbConnectionState.Connected) EmbeddedShellExecutor() else null
+            PrivilegeBackend.SHIZUKU -> {
+                ShizukuManager.refresh()
+                if (ShizukuManager.isServiceRunning() && ShizukuManager.hasPermission()) {
+                    ShizukuShellExecutor()
+                } else {
+                    null
+                }
             }
             PrivilegeBackend.ROOT -> if (current.rootGranted) RootShellExecutor() else null
             PrivilegeBackend.NONE -> when {
-                current.adbGranted -> EmbeddedShellExecutor()
+                current.shizukuGranted -> ShizukuShellExecutor()
                 current.rootGranted -> RootShellExecutor()
                 else -> null
             }
@@ -371,26 +292,6 @@ object PrivilegeManager {
         runCatching { context.startActivity(intent) }
     }
 
-    fun openWirelessDebuggingSettings(context: Context) {
-        val intent = Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val fallback = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(intent) }
-            .recoverCatching { context.startActivity(fallback) }
-    }
-
-    /**
-     * FIX — pelengkap [com.aether.x.core.adb.AdbWakeLock]: dipakai layar
-     * Izin Akses untuk menampilkan status & tombol pengecualian battery
-     * optimization ke pengguna. TIDAK dipanggil otomatis — murni dialog
-     * sistem resmi yang pengguna putuskan sendiri, sesuai pedoman Android
-     * (permintaan otomatis/tersembunyi untuk exemption ini bisa ditolak
-     * Play Store). Relevan khusus untuk ROM agresif seperti MIUI di mana
-     * "Pairing Gagal / Tidak bisa terhubung" bisa berulang terus kalau
-     * AetherX masih berstatus "Restricted"/"Battery saver" di pengaturan
-     * baterai aplikasi bawaan ROM tersebut.
-     */
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return true

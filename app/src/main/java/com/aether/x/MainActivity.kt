@@ -99,7 +99,7 @@ private fun AetherXRoot(
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshAll()
 
-                com.aether.x.core.adb.WirelessDebuggingMonitor.refresh(context)
+                com.aether.x.core.shizuku.WirelessDebuggingMonitor.refresh(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

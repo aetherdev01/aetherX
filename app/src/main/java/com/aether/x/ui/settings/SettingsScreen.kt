@@ -28,7 +28,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
-import com.aether.x.core.adb.WirelessDebuggingMonitor
+import com.aether.x.core.shizuku.WirelessDebuggingMonitor
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard

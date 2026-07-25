@@ -29,6 +29,18 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" />
         </intent>
+
+        <!-- ROLLBACK — WAJIB untuk Android 11+ (API 30) package visibility:
+             tanpa deklarasi ini, PackageManager.getPackageInfo/
+             getLaunchIntentForPackage untuk moe.shizuku.privileged.api
+             (dipakai ShizukuManager.isShizukuInstalled/openShizukuManager)
+             akan SELALU gagal seolah app-nya tidak terinstal, walau
+             sebenarnya terpasang. Catatan: QUERY_ALL_PACKAGES di atas
+             sebenarnya sudah cukup luas untuk ini juga, tapi entri eksplisit
+             ini dipertahankan sebagai dokumentasi + jaring pengaman kalau
+             suatu saat QUERY_ALL_PACKAGES dilepas (mis. demi kepatuhan Play
+             Store yang lebih ketat). -->
+        <package android:name="moe.shizuku.privileged.api" />
     </queries>
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -41,37 +53,20 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- FITUR BARU — Auto-Pairing ADB (lihat AdbAutoPairingDiscovery):
-         ACCESS_WIFI_STATE wajib untuk NsdManager melakukan discovery mDNS
-         yang stabil, dan CHANGE_WIFI_MULTICAST_STATE wajib untuk
-         WifiManager.MulticastLock — tanpa lock ini banyak ROM (MIUI,
-         ColorOS, dll) men-drop paket mDNS/Bonjour begitu layar idle,
-         membuat "Searching for Pairing…" tidak pernah menemukan service
-         walau Wireless debugging sudah aktif di perangkat yang sama. -->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali ke
+         shizuku pure... hapus semua yang bersangkutan dengan adb
+         tertanam"): permission khusus ADB tertanam (ACCESS_WIFI_STATE +
+         CHANGE_WIFI_MULTICAST_STATE untuk mDNS discovery, WAKE_LOCK untuk
+         menjaga proses pairing tetap hidup) SEMUA DIHAPUS — Shizuku murni
+         tidak melakukan discovery jaringan atau pairing apa pun di sisi
+         AetherX sama sekali, jadi permission ini tidak lagi dibutuhkan. -->
 
-    <!-- FIX — "Pairing Gagal / Tidak bisa terhubung" di ROM agresif
-         (MIUI/ColorOS dll, terutama saat kode pairing dibalas lewat
-         notifikasi dan layar lalu mati/idle): tanpa WAKE_LOCK, proses
-         AetherX bisa dibekukan sistem PERSIS di tengah proses mDNS
-         discovery + connect (yang butuh CPU+radio aktif beberapa detik)
-         begitu BroadcastReceiver.onReceive() dianggap selesai — walau
-         pairing certificate-nya sendiri sudah berhasil dikirim. Lihat
-         AdbConnectionManager (pairAndAutoConnect) dan
-         AdbPairingReplyReceiver untuk pemakaiannya. -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- FIX (lanjutan fix pairing di atas): WAKE_LOCK saja menjaga CPU
-         tetap menyala, tapi TIDAK menjamin akses radio/jaringan proses
-         tetap terbuka di background kalau ROM (terutama MIUI) menaruh
-         AetherX dalam mode battery-saver/restricted — penyebab lain yang
-         sama umumnya untuk gejala "Pairing Gagal" di perangkat seperti
-         itu. Dipakai HANYA untuk menampilkan dialog sistem resmi
-         (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) supaya pengguna bisa
-         mengecualikan AetherX dari pembatasan itu secara eksplisit dan
-         sadar — BUKAN dipaksakan otomatis. Lihat
-         PrivilegeManager.requestIgnoreBatteryOptimizations. -->
+    <!-- Battery optimization TETAP dipertahankan: ROM agresif (MIUI dkk)
+         bisa membunuh proses app Shizuku Manager di background walau
+         service-nya sedang dipakai AetherX, memutus binder secara
+         tiba-tiba. Dipakai HANYA untuk menampilkan dialog sistem resmi
+         (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) — BUKAN dipaksakan
+         otomatis. Lihat PrivilegeManager.requestIgnoreBatteryOptimizations. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
@@ -97,13 +92,14 @@
             </intent-filter>
         </activity>
 
-        <!-- REWORK TOTAL (lihat perintah rework — "hapus semua yang
-             bersangkutan dengan shizuku"): provider rikka.shizuku.ShizukuProvider
-             DIHAPUS. Privilese non-root sekarang ditangani sepenuhnya oleh
-             AetherX sendiri lewat com.aether.x.core.adb (ADB tertanam,
-             wireless pairing Android 11+), tidak butuh provider/manifest
-             component tambahan apa pun — koneksi ADB murni socket TCP
-             lokal ke adbd, tidak lewat ContentProvider/Binder cross-app. -->
+        <!-- ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali
+             ke shizuku pure"): TIDAK ada <provider> ShizukuProvider di
+             sini — package ini adalah CLIENT Shizuku (`shizuku-api`), yang
+             MENYEDIAKAN provider adalah app Shizuku Manager itu sendiri
+             (moe.shizuku.privileged.api), bukan AetherX. AetherX hanya
+             bind ke service yang sudah berjalan lewat Shizuku.pingBinder()
+             / Shizuku.newProcess(), tidak butuh component manifest apa pun
+             untuk itu. -->
 
         <!-- Overlay crosshair: foreground service, "specialUse" karena menampilkan
              elemen bantu di atas aplikasi lain (bukan media/lokasi/dll bawaan Android). -->
@@ -127,18 +123,6 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="fps_monitor_overlay" />
         </service>
-
-        <!-- REWORK — sistem notifikasi Pairing (lihat perintah rework: "bukan
-             pakai floating window/dialog mengambang, tetapi pakai notifikasi
-             sistem dengan notifikasi mengambang"). Kode 6-digit sekarang
-             diisi lewat aksi "Balas" (RemoteInput) langsung dari notifikasi
-             heads-up itu sendiri — BUKAN lagi window overlay, jadi TIDAK
-             butuh <service> foreground sama sekali, cukup BroadcastReceiver
-             biasa yang menangani balasan & aksi Batalkan (lihat
-             AdbPairingNotifier / AdbPairingReplyReceiver). -->
-        <receiver
-            android:name=".core.notification.AdbPairingReplyReceiver"
-            android:exported="false" />
 
         <!-- Pemantau Game Profile (khusus Root): TIDAK menggambar overlay,
              murni polling shell di background untuk menerapkan/mereset

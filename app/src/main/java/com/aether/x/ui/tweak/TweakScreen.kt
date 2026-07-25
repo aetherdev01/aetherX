@@ -81,7 +81,7 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
-import com.aether.x.core.adb.WirelessDebuggingMonitor
+import com.aether.x.core.shizuku.WirelessDebuggingMonitor
 import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel

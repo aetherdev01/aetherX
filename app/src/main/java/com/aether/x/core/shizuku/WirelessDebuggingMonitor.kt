@@ -1,4 +1,4 @@
-package com.aether.x.core.adb
+package com.aether.x.core.shizuku
 
 import android.content.Context
 import android.database.ContentObserver
@@ -9,6 +9,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * ROLLBACK — dipindah dari `core/adb/` (package DIHAPUS total) ke sini.
+ * Tetap dipertahankan sebagai monitor murni untuk setting "Wireless
+ * debugging" bawaan Android (Opsi Developer) — TIDAK terkait sistem
+ * pairing ADB tertanam yang sudah dihapus, ini murni prasyarat umum yang
+ * relevan karena metode paling gampang men-start service Shizuku adalah
+ * lewat ADB wireless sekali jalan (butuh Wireless debugging aktif dulu).
+ * Dipakai oleh `WirelessDebuggingQuickCard` sebagai pengingat.
+ *
+ * Beda dari versi ADB tertanam sebelumnya: TIDAK ada
+ * `AdbConnectionManager.autoReconnect()` di sini lagi (state machine itu
+ * sudah dihapus seluruhnya) — cukup [ShizukuManager.refresh] sebagai
+ * jaga-jaga ringan kalau pengguna baru saja start Shizuku lewat metode
+ * yang butuh Wireless debugging, supaya status di UI ikut ter-update.
+ */
 object WirelessDebuggingMonitor {
 
     private const val KEY_ADB_WIFI_ENABLED = "adb_wifi_enabled"
@@ -38,8 +53,7 @@ object WirelessDebuggingMonitor {
                 val nowEnabled = isEnabled(appContext)
                 _state.value = nowEnabled
                 if (!wasEnabled && nowEnabled) {
-
-                    AdbConnectionManager.autoReconnect()
+                    ShizukuManager.refresh()
                 }
             }
         }
