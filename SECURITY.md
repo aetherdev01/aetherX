@@ -15,7 +15,10 @@ match /licenses/{key} {
   ...
 }
 ```
-
+cd /storage/emulated/0/Download
+unzip -o bot-fixed.zip -d bot-fixed
+cp bot-fixed/index.js /data/data/com.termux/files/home/aetherX-cf/src/index.js
+cp -r bot-fixed/lib/* /data/data/com.termux/files/home/aetherX-cf/src/lib/
 `allow get: if true` artinya **siapa pun bisa mengakses Firestore REST API
 secara langsung** (bukan lewat app Android sama sekali) untuk cek
 `GET https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/licenses/{key}`

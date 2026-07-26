@@ -42,7 +42,6 @@ fun SettingsScreen(
 ) {
     val prefs by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
-    var dragModeActive by remember { mutableStateOf(false) }
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
 
     val context = LocalContext.current
@@ -86,28 +85,15 @@ fun SettingsScreen(
             style = prefs.crosshairStyle,
             colorArgb = prefs.crosshairColor,
             sizeDp = prefs.crosshairSize,
-            thicknessDp = prefs.crosshairThickness,
-            opacityPercent = prefs.crosshairOpacity,
-            offsetX = prefs.crosshairOffsetX,
-            offsetY = prefs.crosshairOffsetY,
+            rotationDegrees = prefs.crosshairRotationDegrees,
             overlayPermissionGranted = overlayGranted,
-            dragModeActive = dragModeActive,
 
-            positionLocked = prefs.crosshairPositionLocked,
-            onPositionLockedChange = viewModel::setCrosshairPositionLocked,
             onEnabledChange = { enabled -> viewModel.setCrosshairEnabled(enabled, activity) },
             onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
             onStyleChange = viewModel::setCrosshairStyle,
             onColorChange = viewModel::setCrosshairColor,
             onSizeChange = viewModel::setCrosshairSize,
-            onThicknessChange = viewModel::setCrosshairThickness,
-            onOpacityChange = viewModel::setCrosshairOpacity,
-            onToggleDragMode = { active ->
-                dragModeActive = active
-                viewModel.setDragMode(active)
-            },
-            onResetPosition = viewModel::resetCrosshairPosition,
-            onOffsetChange = viewModel::setCrosshairOffset,
+            onRotationChange = viewModel::setCrosshairRotation,
         )
 
         SectionCard(title = stringResource(R.string.settings_section_fps_monitor), watermarkIcon = Icons.Outlined.Speed) {

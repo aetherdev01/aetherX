@@ -67,25 +67,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setCrosshairSize(size: Int) = updateCrosshair { it.copy(crosshairSize = size) }
 
-    fun setCrosshairThickness(thickness: Int) = updateCrosshair { it.copy(crosshairThickness = thickness) }
-
-    fun setCrosshairOpacity(opacity: Int) = updateCrosshair { it.copy(crosshairOpacity = opacity) }
-
-    fun setDragMode(enabled: Boolean) {
-        CrosshairOverlayService.setDragMode(getApplication(), enabled)
-    }
-
-    fun resetCrosshairPosition() {
-        viewModelScope.launch { preferences.setCrosshairOffset(0, 0) }
-    }
-
-    fun setCrosshairPositionLocked(locked: Boolean) {
-        viewModelScope.launch { preferences.setCrosshairPositionLocked(locked) }
-    }
-
-    fun setCrosshairOffset(x: Int, y: Int) {
-        viewModelScope.launch { preferences.setCrosshairOffset(x, y) }
-    }
+    fun setCrosshairRotation(degrees: Int) = updateCrosshair { it.copy(crosshairRotationDegrees = degrees) }
 
     fun setFpsMonitorEnabled(enabled: Boolean, activity: Activity? = null) {
         viewModelScope.launch {
@@ -122,8 +104,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 style = updated.crosshairStyle,
                 color = updated.crosshairColor,
                 size = updated.crosshairSize,
-                thickness = updated.crosshairThickness,
-                opacity = updated.crosshairOpacity,
+                rotationDegrees = updated.crosshairRotationDegrees,
                 offsetX = updated.crosshairOffsetX,
                 offsetY = updated.crosshairOffsetY,
             )

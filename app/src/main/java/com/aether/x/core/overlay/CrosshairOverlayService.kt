@@ -188,8 +188,7 @@ class CrosshairOverlayService : Service() {
             view.style = prefs.crosshairStyle
             view.colorArgb = prefs.crosshairColor
             view.crosshairSizePx = prefs.crosshairSize.toFloat()
-            view.thicknessPx = prefs.crosshairThickness.toFloat()
-            view.opacityPercent = prefs.crosshairOpacity
+            view.rotationDegrees = prefs.crosshairRotationDegrees
 
             if (params.x != prefs.crosshairOffsetX || params.y != prefs.crosshairOffsetY) {
                 params.x = prefs.crosshairOffsetX

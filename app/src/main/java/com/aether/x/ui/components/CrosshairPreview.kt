@@ -11,16 +11,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 import com.aether.x.data.CrosshairStyle
+
+private const val PREVIEW_THICKNESS_DP = 3f
 
 @Composable
 fun CrosshairPreview(
     style: CrosshairStyle,
     color: Color,
     sizeDp: Float,
-    thicknessDp: Float,
-    opacityPercent: Int,
+    rotationDegrees: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Canvas(
@@ -31,10 +33,11 @@ fun CrosshairPreview(
         val cx = size.width / 2f
         val cy = size.height / 2f
         val r = sizeDp.coerceAtMost(size.minDimension / 2.4f)
-        val thickness = thicknessDp
-        val drawColor = color.copy(alpha = opacityPercent / 100f)
+        val thickness = PREVIEW_THICKNESS_DP
+        val drawColor = color
         val stroke = Stroke(width = thickness, cap = StrokeCap.Round)
 
+        rotate(degrees = rotationDegrees.toFloat(), pivot = Offset(cx, cy)) {
         when (style) {
             CrosshairStyle.CROSS -> {
                 drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
@@ -122,6 +125,16 @@ fun CrosshairPreview(
                 drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = stroke)
                 drawCircle(drawColor, radius = r * 0.55f, center = Offset(cx, cy), style = stroke)
             }
+
+            CrosshairStyle.PLUS -> {
+                drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+
+            CrosshairStyle.BULLET -> {
+                drawCircle(drawColor, radius = r * 0.5f, center = Offset(cx, cy))
+            }
+        }
         }
     }
 }

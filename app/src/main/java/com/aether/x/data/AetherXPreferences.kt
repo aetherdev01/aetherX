@@ -16,7 +16,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
-enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING }
+enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING, PLUS, BULLET }
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
 
@@ -43,8 +43,7 @@ data class AppPreferences(
     val crosshairStyle: CrosshairStyle = CrosshairStyle.CROSS,
     val crosshairColor: Long = 0xFF00FF66,
     val crosshairSize: Int = 32,
-    val crosshairThickness: Int = 3,
-    val crosshairOpacity: Int = 100,
+    val crosshairRotationDegrees: Int = 0,
     val crosshairOffsetX: Int = 0,
     val crosshairOffsetY: Int = 0,
 
@@ -110,8 +109,7 @@ class AetherXPreferences(private val context: Context) {
         val CROSSHAIR_STYLE = stringPreferencesKey("crosshair_style")
         val CROSSHAIR_COLOR = longPreferencesKey("crosshair_color")
         val CROSSHAIR_SIZE = intPreferencesKey("crosshair_size")
-        val CROSSHAIR_THICKNESS = intPreferencesKey("crosshair_thickness")
-        val CROSSHAIR_OPACITY = intPreferencesKey("crosshair_opacity")
+        val CROSSHAIR_ROTATION = intPreferencesKey("crosshair_rotation_degrees")
         val CROSSHAIR_OFFSET_X = intPreferencesKey("crosshair_offset_x")
         val CROSSHAIR_OFFSET_Y = intPreferencesKey("crosshair_offset_y")
         val CROSSHAIR_POSITION_LOCKED = booleanPreferencesKey("crosshair_position_locked")
@@ -180,8 +178,7 @@ class AetherXPreferences(private val context: Context) {
                 ?: CrosshairStyle.CROSS,
             crosshairColor = prefs[Keys.CROSSHAIR_COLOR] ?: 0xFF00FF66,
             crosshairSize = prefs[Keys.CROSSHAIR_SIZE] ?: 32,
-            crosshairThickness = prefs[Keys.CROSSHAIR_THICKNESS] ?: 3,
-            crosshairOpacity = prefs[Keys.CROSSHAIR_OPACITY] ?: 100,
+            crosshairRotationDegrees = prefs[Keys.CROSSHAIR_ROTATION] ?: 0,
             crosshairOffsetX = prefs[Keys.CROSSHAIR_OFFSET_X] ?: 0,
             crosshairOffsetY = prefs[Keys.CROSSHAIR_OFFSET_Y] ?: 0,
             crosshairPositionLocked = prefs[Keys.CROSSHAIR_POSITION_LOCKED] ?: false,
@@ -267,8 +264,7 @@ class AetherXPreferences(private val context: Context) {
         style: CrosshairStyle,
         color: Long,
         size: Int,
-        thickness: Int,
-        opacity: Int,
+        rotationDegrees: Int,
         offsetX: Int,
         offsetY: Int,
     ) {
@@ -276,8 +272,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.CROSSHAIR_STYLE] = style.name
             prefs[Keys.CROSSHAIR_COLOR] = color
             prefs[Keys.CROSSHAIR_SIZE] = size
-            prefs[Keys.CROSSHAIR_THICKNESS] = thickness
-            prefs[Keys.CROSSHAIR_OPACITY] = opacity
+            prefs[Keys.CROSSHAIR_ROTATION] = rotationDegrees
             prefs[Keys.CROSSHAIR_OFFSET_X] = offsetX
             prefs[Keys.CROSSHAIR_OFFSET_Y] = offsetY
         }

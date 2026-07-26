@@ -483,6 +483,11 @@
     <string name="crosshair_card_title">Crosshair</string>
     <string name="crosshair_card_subtitle">Titik referensi di layar untuk penyelarasan tampilan</string>
     <string name="crosshair_permission_needed">Butuh izin "Tampil di atas aplikasi lain". Ketuk saklar di atas untuk membuka pengaturan izin.</string>
+    <!-- REWORK Crosshair: style "+" polos dan "Bulat" (BULLET) ditambahkan
+         sesuai referensi UI baru — lihat styleOptions di
+         CrosshairSettingsSection.kt. -->
+    <string name="crosshair_style_plus">Silang +</string>
+    <string name="crosshair_style_bullet">Bulat</string>
     <string name="crosshair_style_cross">Silang</string>
     <string name="crosshair_style_plus_gap">Silang Celah</string>
     <string name="crosshair_style_x">Diagonal X</string>
@@ -503,15 +508,11 @@
     <string name="crosshair_custom_color_apply">Terapkan</string>
     <string name="crosshair_custom_color_cancel">Batal</string>
     <string name="crosshair_size_label">Ukuran</string>
-    <string name="crosshair_thickness_label">Ketebalan Garis</string>
-    <string name="crosshair_opacity_label">Transparansi</string>
-    <string name="crosshair_position_reset_center">Ke Tengah Layar</string>
-    <!-- FITUR BARU: tombol kunci posisi crosshair — lihat parameter
-         positionLocked di CrosshairSettingsSection.kt. -->
-    <string name="crosshair_position_lock">Kunci posisi crosshair</string>
-    <string name="crosshair_position_unlock">Buka kunci posisi crosshair</string>
-    <!-- FITUR BARU: label offset X/Y di bawah trackpad posisi (PositionJoystick) -->
-    <string name="crosshair_position_offset_format">X: %1$d · Y: %2$d</string>
+    <!-- REWORK Crosshair: fitur Transparansi dan Ketebalan Garis dihapus dari
+         UI (lihat rework CrosshairSettingsSection.kt) — trackpad posisi lama
+         (PositionJoystick, offset X/Y, kunci posisi) diganti dial rotary
+         yang mengatur rotasi bentuk crosshair. -->
+    <string name="crosshair_rotation_degrees_format">%1$d°</string>
     <string name="crosshair_notification_channel">Overlay Crosshair</string>
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>

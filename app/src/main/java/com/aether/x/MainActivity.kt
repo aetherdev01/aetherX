@@ -34,6 +34,7 @@ import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
+import com.aether.x.ui.shizuku.ShizukuFallbackGate
 import com.aether.x.ui.theme.AetherXTheme
 import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
@@ -164,4 +165,6 @@ private fun AetherXRoot(
     MaintenanceGate()
 
     UpdateGate()
+
+    ShizukuFallbackGate()
 }

@@ -24,11 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.LockOpen
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -42,27 +38,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.SurfaceRaised
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private val crosshairColorPalette = listOf(
     0xFFFFFFFFL,
@@ -76,6 +71,8 @@ private val crosshairColorPalette = listOf(
 private data class StyleOption(val style: CrosshairStyle, val labelRes: Int)
 
 private val styleOptions = listOf(
+    StyleOption(CrosshairStyle.PLUS, R.string.crosshair_style_plus),
+    StyleOption(CrosshairStyle.BULLET, R.string.crosshair_style_bullet),
     StyleOption(CrosshairStyle.CROSS, R.string.crosshair_style_cross),
     StyleOption(CrosshairStyle.PLUS_GAP, R.string.crosshair_style_plus_gap),
     StyleOption(CrosshairStyle.X_SHAPE, R.string.crosshair_style_x),
@@ -97,26 +94,15 @@ fun CrosshairSettingsSection(
     style: CrosshairStyle,
     colorArgb: Long,
     sizeDp: Int,
-    thicknessDp: Int,
-    opacityPercent: Int,
-    offsetX: Int,
-    offsetY: Int,
+    rotationDegrees: Int,
     overlayPermissionGranted: Boolean,
 
-    dragModeActive: Boolean,
-
-    positionLocked: Boolean = false,
-    onPositionLockedChange: (Boolean) -> Unit = {},
     onEnabledChange: (Boolean) -> Unit,
     onRequestOverlayPermission: () -> Unit,
     onStyleChange: (CrosshairStyle) -> Unit,
     onColorChange: (Long) -> Unit,
     onSizeChange: (Int) -> Unit,
-    onThicknessChange: (Int) -> Unit,
-    onOpacityChange: (Int) -> Unit,
-    onToggleDragMode: (Boolean) -> Unit,
-    onResetPosition: () -> Unit,
-    onOffsetChange: (x: Int, y: Int) -> Unit,
+    onRotationChange: (Int) -> Unit,
 ) {
 
     var showColorPicker by remember { mutableStateOf(false) }
@@ -201,47 +187,13 @@ fun CrosshairSettingsSection(
                     )
 
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                        ) {
-
-                            IconButton(onClick = { onPositionLockedChange(!positionLocked) }) {
-                                Icon(
-                                    imageVector = if (positionLocked) Icons.Outlined.Lock else Icons.Outlined.LockOpen,
-                                    contentDescription = stringResource(
-                                        if (positionLocked) R.string.crosshair_position_unlock else R.string.crosshair_position_lock,
-                                    ),
-                                    tint = if (positionLocked) AccentBlue else Color.White.copy(alpha = 0.5f),
-                                )
-                            }
-                            IconButton(onClick = onResetPosition, enabled = !positionLocked) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Refresh,
-                                    contentDescription = stringResource(R.string.crosshair_position_reset_center),
-                                    tint = Color.White.copy(alpha = if (positionLocked) 0.25f else 0.5f),
-                                )
-                            }
-                        }
-
-                        val configuration = LocalConfiguration.current
-                        val density = LocalDensity.current
-                        val screenBoundsPx = remember(configuration, density) {
-                            IntSize(
-                                width = with(density) { configuration.screenWidthDp.dp.roundToPx() },
-                                height = with(density) { configuration.screenHeightDp.dp.roundToPx() },
-                            )
-                        }
-                        PositionJoystick(
-                            offsetX = offsetX,
-                            offsetY = offsetY,
-                            screenBoundsPx = screenBoundsPx,
-                            locked = positionLocked,
-                            onOffsetChange = onOffsetChange,
-                            modifier = Modifier.padding(top = 8.dp),
+                        RotationDial(
+                            rotationDegrees = rotationDegrees,
+                            onRotationChange = onRotationChange,
                         )
                     }
 
@@ -254,24 +206,6 @@ fun CrosshairSettingsSection(
                         modifier = Modifier.width(56.dp),
                     )
                 }
-
-                HorizontalAccentSlider(
-                    label = stringResource(R.string.crosshair_opacity_label),
-                    valueText = "$opacityPercent%",
-                    value = opacityPercent.toFloat(),
-                    range = 20f..100f,
-                    onValueChange = { onOpacityChange(it.toInt()) },
-                    modifier = Modifier.padding(top = 20.dp),
-                )
-
-                HorizontalAccentSlider(
-                    label = stringResource(R.string.crosshair_thickness_label),
-                    valueText = "${thicknessDp}dp",
-                    value = thicknessDp.toFloat(),
-                    range = 1f..12f,
-                    onValueChange = { onThicknessChange(it.toInt()) },
-                    modifier = Modifier.padding(top = 16.dp),
-                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
@@ -359,6 +293,13 @@ private fun StyleIconButton(
                 CrosshairStyle.CROSS -> {
                     drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
                     drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                }
+                CrosshairStyle.PLUS -> {
+                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                }
+                CrosshairStyle.BULLET -> {
+                    drawCircle(drawColor, radius = r * 0.5f, center = Offset(cx, cy))
                 }
                 CrosshairStyle.PLUS_GAP -> {
                     val gap = r * 0.35f
@@ -449,127 +390,86 @@ private fun StyleIconButton(
     }
 }
 
+/**
+ * REWORK — pengganti `PositionJoystick` (trackpad drag X/Y untuk memindah
+ * posisi crosshair di layar; DIHAPUS bersama fitur transparansi & ketebalan
+ * garis — lihat permintaan rework Crosshair). UI meniru dial rotary
+ * lingkaran pada referensi: garis lingkar tipis, handle bulat merah kecil
+ * yang bisa digeser BERPUTAR mengelilingi tepi lingkaran, dan angka derajat
+ * di tengah. Menggeser handle mengubah [CrosshairStyle] rotation
+ * ([CrosshairView.rotationDegrees]) — memutar/memiringkan bentuk crosshair
+ * itu sendiri, BUKAN memindah posisinya di layar (posisi tetap diatur lewat
+ * drag langsung pada overlay saat mode geser aktif, terpisah dari kartu
+ * pengaturan ini).
+ */
 @Composable
-private fun PositionJoystick(
-    offsetX: Int,
-    offsetY: Int,
-    screenBoundsPx: IntSize,
-
-    locked: Boolean = false,
-    onOffsetChange: (x: Int, y: Int) -> Unit,
+private fun RotationDial(
+    rotationDegrees: Int,
+    onRotationChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val trackpadSize = 220.dp
+    val dialSize = 190.dp
+    val handleTrackInset = 16.dp
+    val latestRotation by rememberUpdatedState(rotationDegrees)
+    val density = LocalDensity.current
 
-    val maxOffsetX = (screenBoundsPx.width / 2).coerceAtLeast(1)
-    val maxOffsetY = (screenBoundsPx.height / 2).coerceAtLeast(1)
-
-    val latestOffsetX by rememberUpdatedState(offsetX)
-    val latestOffsetY by rememberUpdatedState(offsetY)
-
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(trackpadSize)
-                .clip(RoundedCornerShape(20.dp))
-                .background(SurfaceRaised.copy(alpha = 0.4f))
-                .border(1.dp, if (locked) AccentBlue.copy(alpha = 0.3f) else AccentBlueDim, RoundedCornerShape(20.dp))
-                .pointerInput(maxOffsetX, maxOffsetY, locked) {
-
-                    if (locked) return@pointerInput
-
-                    val scaleX = maxOffsetX.toFloat() * 2f / size.width.toFloat()
-                    val scaleY = maxOffsetY.toFloat() * 2f / size.height.toFloat()
-
-                    var runningX = 0f
-                    var runningY = 0f
-                    detectDragGestures(
-                        onDragStart = {
-                            runningX = latestOffsetX.toFloat()
-                            runningY = latestOffsetY.toFloat()
-                        },
-                    ) { change, dragAmount ->
-                        change.consume()
-                        runningX = (runningX + dragAmount.x * scaleX)
-                            .coerceIn(-maxOffsetX.toFloat(), maxOffsetX.toFloat())
-                        runningY = (runningY + dragAmount.y * scaleY)
-                            .coerceIn(-maxOffsetY.toFloat(), maxOffsetY.toFloat())
-                        onOffsetChange(runningX.roundToInt(), runningY.roundToInt())
-                    }
-                },
-        ) {
-
-            DirectionArrow(Alignment.TopCenter, rotationDeg = 0f)
-            DirectionArrow(Alignment.BottomCenter, rotationDeg = 180f)
-            DirectionArrow(Alignment.CenterStart, rotationDeg = 270f)
-            DirectionArrow(Alignment.CenterEnd, rotationDeg = 90f)
-
-            Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-                drawLine(
-                    color = AccentBlueDim.copy(alpha = 0.4f),
-                    start = Offset(size.width / 2f, size.height / 2f - 6.dp.toPx()),
-                    end = Offset(size.width / 2f, size.height / 2f + 6.dp.toPx()),
-                    strokeWidth = 1.5.dp.toPx(),
-                )
-                drawLine(
-                    color = AccentBlueDim.copy(alpha = 0.4f),
-                    start = Offset(size.width / 2f - 6.dp.toPx(), size.height / 2f),
-                    end = Offset(size.width / 2f + 6.dp.toPx(), size.height / 2f),
-                    strokeWidth = 1.5.dp.toPx(),
-                )
-            }
-
-            val handleFractionX = 0.5f + (offsetX.toFloat() / maxOffsetX.toFloat()) * 0.5f
-            val handleFractionY = 0.5f + (offsetY.toFloat() / maxOffsetY.toFloat()) * 0.5f
-            Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            x = (handleFractionX.coerceIn(0f, 1f) * trackpadSize.toPx() - HANDLE_SIZE_DP.dp.toPx() / 2f).roundToInt(),
-                            y = (handleFractionY.coerceIn(0f, 1f) * trackpadSize.toPx() - HANDLE_SIZE_DP.dp.toPx() / 2f).roundToInt(),
-                        )
-                    }
-                    .size(HANDLE_SIZE_DP.dp)
-                    .clip(CircleShape)
-                    .background(AccentBlue)
-                    .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+    Box(
+        modifier = modifier
+            .size(dialSize)
+            .pointerInput(Unit) {
+                detectDragGestures { change, _ ->
+                    change.consume()
+                    val centerX = size.width / 2f
+                    val centerY = size.height / 2f
+                    val dx = change.position.x - centerX
+                    val dy = change.position.y - centerY
+                    // atan2 dengan sumbu Y dibalik (koordinat layar Y ke
+                    // bawah) supaya 0° berada tepat di atas dial (jam 12),
+                    // sesuai posisi handle pada gambar referensi.
+                    val angleRad = atan2(dx, -dy)
+                    var degrees = Math.toDegrees(angleRad.toDouble()).roundToInt()
+                    if (degrees < 0) degrees += 360
+                    if (degrees >= 360) degrees -= 360
+                    onRotationChange(degrees)
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+            val strokeWidth = 2.dp.toPx()
+            drawCircle(
+                color = AccentBlueDim,
+                radius = size.minDimension / 2f - strokeWidth,
+                style = Stroke(strokeWidth),
             )
         }
 
+        val trackRadiusPx = with(density) { (dialSize / 2f - handleTrackInset).toPx() }
+        val angleRad = Math.toRadians((latestRotation - 90).toDouble())
+        val handleOffsetPx = IntOffset(
+            x = (cos(angleRad) * trackRadiusPx).roundToInt(),
+            y = (sin(angleRad) * trackRadiusPx).roundToInt(),
+        )
+
+        Box(
+            modifier = Modifier
+                .offset { handleOffsetPx }
+                .size(HANDLE_SIZE_DP.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFE8402F))
+                .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
+        )
+
         Text(
-            text = stringResource(R.string.crosshair_position_offset_format, offsetX, offsetY),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.padding(top = 10.dp),
+            text = stringResource(R.string.crosshair_rotation_degrees_format, rotationDegrees),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = AccentBlue,
         )
     }
 }
 
-private const val HANDLE_SIZE_DP = 22
-
-@Composable
-private fun DirectionArrow(alignment: Alignment, rotationDeg: Float) {
-    Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(), contentAlignment = alignment) {
-        Box(
-            modifier = Modifier
-                .padding(6.dp)
-                .size(20.dp)
-                .rotate(rotationDeg),
-            contentAlignment = Alignment.Center,
-        ) {
-            Canvas(modifier = Modifier.size(16.dp)) {
-                val path = Path().apply {
-                    moveTo(size.width / 2f, 0f)
-                    lineTo(size.width, size.height)
-                    lineTo(0f, size.height)
-                    close()
-                }
-                drawPath(path, color = AccentBlueDim)
-            }
-        }
-    }
-}
+private const val HANDLE_SIZE_DP = 18
 
 @Composable
 private fun VerticalAccentSlider(
@@ -633,74 +533,6 @@ private fun VerticalAccentSlider(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = (fraction * 200).dp.coerceAtMost(196.dp))
                         .size(width = 20.dp, height = 10.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(AccentBlue),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HorizontalAccentSlider(
-    label: String,
-    valueText: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.75f),
-            )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = AccentBlue,
-            )
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        val fraction = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .pointerInput(range) {
-                    detectDragGestures { change, _ ->
-                        change.consume()
-                        val newFraction = (change.position.x / size.width).coerceIn(0f, 1f)
-                        onValueChange(range.start + newFraction * (range.endInclusive - range.start))
-                    }
-                },
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(SurfaceRaised),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(AccentBlue),
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = (fraction * 280).dp.coerceAtMost(276.dp))
-                        .size(14.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(AccentBlue),
                 )

@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
 import com.aether.x.data.CrosshairStyle
-import kotlin.math.roundToInt
 
 class CrosshairView(context: Context) : View(context) {
 
@@ -16,14 +15,15 @@ class CrosshairView(context: Context) : View(context) {
     var crosshairSizePx: Float = 48f
         set(value) { field = value; requestLayout(); invalidate() }
 
-    var thicknessPx: Float = 6f
+    var rotationDegrees: Int = 0
         set(value) { field = value; invalidate() }
 
     var colorArgb: Long = 0xFF00FF66
         set(value) { field = value; updatePaintColor() }
 
-    var opacityPercent: Int = 100
-        set(value) { field = value.coerceIn(0, 100); updatePaintColor() }
+    /** Ketebalan garis tetap (fitur pengaturan ketebalan dihapus dari UI —
+     *  lihat rework Crosshair — cukup satu nilai wajar untuk semua style). */
+    private val thicknessPx: Float = 6f
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -40,8 +40,7 @@ class CrosshairView(context: Context) : View(context) {
 
     private fun updatePaintColor() {
         val baseColor = colorArgb.toInt()
-        val alpha = ((opacityPercent / 100f) * 255f).roundToInt().coerceIn(0, 255)
-        val withAlpha = Color.argb(alpha, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
+        val withAlpha = Color.argb(255, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
         paint.color = withAlpha
         fillPaint.color = withAlpha
         invalidate()
@@ -59,6 +58,11 @@ class CrosshairView(context: Context) : View(context) {
         val cx = width / 2f
         val cy = height / 2f
         val r = crosshairSizePx
+
+        val saveCount = canvas.save()
+        if (rotationDegrees != 0) {
+            canvas.rotate(rotationDegrees.toFloat(), cx, cy)
+        }
 
         when (style) {
             CrosshairStyle.CROSS -> {
@@ -151,6 +155,15 @@ class CrosshairView(context: Context) : View(context) {
                 canvas.drawCircle(cx, cy, r, paint)
                 canvas.drawCircle(cx, cy, r * 0.55f, paint)
             }
+            CrosshairStyle.PLUS -> {
+                canvas.drawLine(cx - r, cy, cx + r, cy, paint)
+                canvas.drawLine(cx, cy - r, cx, cy + r, paint)
+            }
+            CrosshairStyle.BULLET -> {
+                canvas.drawCircle(cx, cy, r * 0.5f, fillPaint)
+            }
         }
+
+        canvas.restoreToCount(saveCount)
     }
 }
