@@ -21,9 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,7 +35,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
 import com.aether.x.R
-import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.Spacing
 
 @Composable
@@ -56,42 +52,50 @@ fun AboutScreen(
     ) {
         Text(
             text = stringResource(R.string.nav_about),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = Spacing.xs),
         )
 
         MaintainerHeroCard(versionName = BuildConfig.VERSION_NAME)
 
-        SectionCard(title = stringResource(R.string.about_section_links), watermarkIcon = Icons.Outlined.Link) {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                CommunityLinkRow(
-                    iconRes = R.drawable.ic_social_whatsapp,
-                    title = stringResource(R.string.about_link_whatsapp_title),
-                    description = stringResource(R.string.about_link_whatsapp_desc),
-                    url = stringResource(R.string.about_link_whatsapp_url),
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                CommunityLinkRow(
-                    iconRes = R.drawable.ic_social_telegram,
-                    title = stringResource(R.string.about_link_telegram_title),
-                    description = stringResource(R.string.about_link_telegram_desc),
-                    url = stringResource(R.string.about_link_telegram_url),
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                CommunityLinkRow(
-                    iconRes = R.drawable.ic_social_youtube,
-                    title = stringResource(R.string.about_link_youtube_title),
-                    description = stringResource(R.string.about_link_youtube_desc),
-                    url = stringResource(R.string.about_link_youtube_url),
-                )
-            }
-        }
+        Text(
+            text = stringResource(R.string.about_section_links),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+
+        CommunityLinkRow(
+            iconRes = R.drawable.ic_social_whatsapp,
+            title = stringResource(R.string.about_link_whatsapp_title),
+            description = stringResource(R.string.about_link_whatsapp_desc),
+            url = stringResource(R.string.about_link_whatsapp_url),
+        )
+        CommunityLinkRow(
+            iconRes = R.drawable.ic_social_telegram,
+            title = stringResource(R.string.about_link_telegram_title),
+            description = stringResource(R.string.about_link_telegram_desc),
+            url = stringResource(R.string.about_link_telegram_url),
+        )
+        CommunityLinkRow(
+            iconRes = R.drawable.ic_social_youtube,
+            title = stringResource(R.string.about_link_youtube_title),
+            description = stringResource(R.string.about_link_youtube_desc),
+            url = stringResource(R.string.about_link_youtube_url),
+        )
     }
 }
 
 @Composable
 private fun MaintainerHeroCard(versionName: String) {
-    SectionCard(title = null, watermarkIcon = Icons.Outlined.Code) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -102,7 +106,7 @@ private fun MaintainerHeroCard(versionName: String) {
                 contentDescription = stringResource(R.string.about_maintainer_name),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
             )
@@ -116,22 +120,15 @@ private fun MaintainerHeroCard(versionName: String) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text(
-                    text = stringResource(R.string.about_maintainer_role),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Spacing.xs),
-                )
             }
         }
 
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.padding(vertical = Spacing.lg),
-        )
-
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -173,7 +170,8 @@ private fun CommunityLinkRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
             .clickable {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 try {
@@ -182,22 +180,22 @@ private fun CommunityLinkRow(
 
                 }
             }
-            .padding(vertical = Spacing.md),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
 
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface),
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = title,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {

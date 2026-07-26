@@ -58,16 +58,16 @@ fun AetherXInfoCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             painter = painterResource(id = R.drawable.ic_aetherx_logo),
             contentDescription = null,
             modifier = Modifier
-                .size(44.dp)
+                .size(40.dp)
                 .clip(CircleShape),
         )
         Column(
@@ -95,8 +95,8 @@ fun AetherXInfoCard(
 private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
     val (label, bgColor) = when (backend) {
         PrivilegeBackend.ROOT -> stringResource(R.string.dashboard_privilege_root) to MaterialTheme.colorScheme.primary
-        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.surface
-        PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.surface
+        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.surfaceVariant
+        PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.surfaceVariant
     }
     val textColor = if (backend == PrivilegeBackend.ROOT) {
         MaterialTheme.colorScheme.onPrimary
@@ -132,8 +132,8 @@ fun WirelessDebuggingQuickCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -141,7 +141,7 @@ fun WirelessDebuggingQuickCard(
             imageVector = Icons.Outlined.WifiTethering,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(26.dp),
         )
         Column(
             modifier = Modifier
@@ -312,7 +312,7 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
         }
 
         androidx.compose.material3.HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {

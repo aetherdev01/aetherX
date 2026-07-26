@@ -12,8 +12,8 @@ import androidx.compose.ui.unit.dp
 private val AetherXDarkScheme = darkColorScheme(
     primary = AccentBlue,
     onPrimary = OnAccentBlue,
-    primaryContainer = SurfaceCardAlt,
-    onPrimaryContainer = AccentBlue,
+    primaryContainer = AccentGreenIconContainer,
+    onPrimaryContainer = AccentBlueSoft,
     secondary = AccentBlue,
     onSecondary = OnAccentBlue,
     secondaryContainer = AccentBlueDim,
@@ -34,26 +34,26 @@ private val AetherXDarkScheme = darkColorScheme(
 )
 
 private val AetherXLightScheme = lightColorScheme(
-    primary = Color(0xFFA85A2E),
+    primary = Color(0xFF4A5E2D),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFF3DCC9),
-    onPrimaryContainer = Color(0xFF3D1F0A),
-    secondary = Color(0xFFA85A2E),
-    secondaryContainer = Color(0xFFF3DCC9),
-    background = Color(0xFFFAF6F3),
+    primaryContainer = Color(0xFFDBF6B3),
+    onPrimaryContainer = Color(0xFF1C2410),
+    secondary = Color(0xFF4A5E2D),
+    secondaryContainer = Color(0xFFDBF6B3),
+    background = Color(0xFFFAFAF8),
     surface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFFF0EAE4),
-    onBackground = Color(0xFF1C1817),
-    onSurface = Color(0xFF1C1817),
-    onSurfaceVariant = Color(0xFF54463C),
-    outline = Color(0xFFDDD2C8),
+    surfaceVariant = Color(0xFFF0F0EC),
+    onBackground = Color(0xFF17170F),
+    onSurface = Color(0xFF17170F),
+    onSurfaceVariant = Color(0xFF54544C),
+    outline = Color(0xFFDCDCD4),
 )
 
 private val AetherXShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(22.dp),
+    large = RoundedCornerShape(24.dp),
     extraLarge = RoundedCornerShape(28.dp),
 )
 

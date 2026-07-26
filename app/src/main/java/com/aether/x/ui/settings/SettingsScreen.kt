@@ -70,8 +70,8 @@ fun SettingsScreen(
     ) {
         Text(
             text = stringResource(R.string.nav_settings),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
         )
 
         WirelessDebuggingQuickCard(

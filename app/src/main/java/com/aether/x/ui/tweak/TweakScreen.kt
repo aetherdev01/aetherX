@@ -194,7 +194,6 @@ fun TweakScreen(
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
-
                     AetherXInfoCard(activeBackend = privilegeStatus.activeBackend)
 
                     WirelessDebuggingQuickCard(

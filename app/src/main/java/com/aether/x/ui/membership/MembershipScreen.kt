@@ -103,12 +103,12 @@ fun MembershipScreen(
         Column {
             Text(
                 text = stringResource(R.string.membership_headline),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
             Text(
                 text = stringResource(R.string.membership_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -480,7 +480,7 @@ private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
