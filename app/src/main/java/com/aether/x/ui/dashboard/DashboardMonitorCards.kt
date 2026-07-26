@@ -78,6 +78,7 @@ fun AetherXInfoCard(
             Text(
                 text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
@@ -195,7 +196,8 @@ fun GameActivitySection(
             )
             Text(
                 text = stringResource(R.string.dashboard_section_game_activity),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }

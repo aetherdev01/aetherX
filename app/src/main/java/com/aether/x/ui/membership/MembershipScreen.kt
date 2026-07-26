@@ -106,7 +106,8 @@ fun MembershipScreen(
         Column {
             Text(
                 text = stringResource(R.string.membership_headline),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
@@ -526,7 +527,7 @@ private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long
             Text(
                 text = statusHeadline(status),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(

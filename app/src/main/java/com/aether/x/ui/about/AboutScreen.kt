@@ -28,10 +28,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
 import com.aether.x.R
@@ -55,7 +57,8 @@ fun AboutScreen(
     ) {
         Text(
             text = stringResource(R.string.nav_about),
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = Spacing.xs),
         )
@@ -67,7 +70,8 @@ fun AboutScreen(
 
         Text(
             text = stringResource(R.string.about_section_links),
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
 
@@ -123,6 +127,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
                 Text(
                     text = stringResource(R.string.about_maintainer_name),
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = stringResource(R.string.about_maintainer_handle),
@@ -199,19 +204,25 @@ private fun CommunityLinkRow(
 
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = title,
-                modifier = Modifier.size(24.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                modifier = Modifier.size(22.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
