@@ -31,6 +31,7 @@ import com.aether.x.R
 import com.aether.x.core.shizuku.WirelessDebuggingMonitor
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard
 
 @Composable
@@ -78,6 +79,7 @@ fun SettingsScreen(
             activeBackend = privilegeStatus.activeBackend,
             wirelessDebuggingEnabled = wirelessDebuggingEnabled,
             onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
+            modifier = Modifier.cardEnterAnimation(index = 0),
         )
 
         CrosshairSettingsSection(
@@ -97,9 +99,14 @@ fun SettingsScreen(
             onSizeChange = viewModel::setCrosshairSize,
             onRotationChange = viewModel::setCrosshairRotation,
             onNudgePosition = viewModel::nudgeCrosshairPosition,
+            modifier = Modifier.cardEnterAnimation(index = 1),
         )
 
-        SectionCard(title = stringResource(R.string.settings_section_fps_monitor), watermarkIcon = Icons.Outlined.Speed) {
+        SectionCard(
+            title = stringResource(R.string.settings_section_fps_monitor),
+            watermarkIcon = Icons.Outlined.Speed,
+            modifier = Modifier.cardEnterAnimation(index = 2),
+        ) {
             FpsMonitorSettingsSection(
                 enabled = prefs.fpsMonitorEnabled,
                 style = prefs.fpsMonitorStyle,

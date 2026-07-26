@@ -69,6 +69,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
+import com.aether.x.ui.components.cardEnterAnimation
+import com.aether.x.ui.components.pressScale
+import com.aether.x.ui.components.rememberPressScaleInteractionSource
 import com.aether.x.ui.theme.AccentAmber
 import com.aether.x.ui.theme.AccentAmberContainer
 import com.aether.x.ui.theme.AccentBlue
@@ -114,10 +117,18 @@ fun MembershipScreen(
             )
         }
 
-        MembershipHeroCard(status = status, expiresAtMillis = expiresAtMillis)
+        MembershipHeroCard(
+            status = status,
+            expiresAtMillis = expiresAtMillis,
+            modifier = Modifier.cardEnterAnimation(index = 0),
+        )
 
         if (status != MembershipUiStatus.ACTIVE) {
-            SectionCard(title = stringResource(R.string.membership_key_label), watermarkIcon = Icons.Outlined.VpnKey) {
+            SectionCard(
+                title = stringResource(R.string.membership_key_label),
+                watermarkIcon = Icons.Outlined.VpnKey,
+                modifier = Modifier.cardEnterAnimation(index = 1),
+            ) {
 
                 var isKeyVisible by remember { mutableStateOf(false) }
 
@@ -224,7 +235,11 @@ fun MembershipScreen(
             }
         }
 
-        SectionCard(title = stringResource(R.string.membership_benefits_title), watermarkIcon = Icons.Outlined.CardGiftcard) {
+        SectionCard(
+            title = stringResource(R.string.membership_benefits_title),
+            watermarkIcon = Icons.Outlined.CardGiftcard,
+            modifier = Modifier.cardEnterAnimation(index = 2),
+        ) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 BenefitRow(text = stringResource(R.string.membership_benefit_1))
                 BenefitRow(text = stringResource(R.string.membership_benefit_2))
@@ -234,9 +249,13 @@ fun MembershipScreen(
         }
 
         if (status == MembershipUiStatus.ACTIVE) {
-            DeviceAccountCard(deviceId = viewModel.deviceId, onLogout = viewModel::logout)
+            DeviceAccountCard(
+                deviceId = viewModel.deviceId,
+                onLogout = viewModel::logout,
+                modifier = Modifier.cardEnterAnimation(index = 3),
+            )
         } else {
-            MembershipProCard()
+            MembershipProCard(modifier = Modifier.cardEnterAnimation(index = 3))
         }
     }
 }
@@ -250,14 +269,18 @@ private enum class MembershipPlan(
 }
 
 @Composable
-private fun MembershipProCard() {
+private fun MembershipProCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val telegramUrl = stringResource(R.string.membership_pro_telegram_url)
     var selectedPlan by remember { mutableStateOf(MembershipPlan.MONTHLY) }
     val selectedLabel = stringResource(selectedPlan.labelRes)
     val selectedPrice = stringResource(selectedPlan.priceRes)
 
-    SectionCard(title = stringResource(R.string.membership_pro_title), watermarkIcon = Icons.Outlined.WorkspacePremium) {
+    SectionCard(
+        title = stringResource(R.string.membership_pro_title),
+        watermarkIcon = Icons.Outlined.WorkspacePremium,
+        modifier = modifier,
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -340,12 +363,14 @@ private fun MembershipPlanOption(
 ) {
     val borderColor = if (selected) AccentBlue else MaterialTheme.colorScheme.outlineVariant
     val backgroundColor = if (selected) AccentBlue.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+    val interactionSource = rememberPressScaleInteractionSource()
     Column(
         modifier = modifier
+            .pressScale(interactionSource)
             .clip(RoundedCornerShape(14.dp))
             .background(backgroundColor)
             .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
@@ -383,12 +408,16 @@ private fun MembershipPlanOption(
 }
 
 @Composable
-private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit) {
+private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var showLogoutConfirm by remember { mutableStateOf(false) }
 
-    SectionCard(title = stringResource(R.string.membership_device_section_title), watermarkIcon = Icons.Outlined.PhoneAndroid) {
+    SectionCard(
+        title = stringResource(R.string.membership_device_section_title),
+        watermarkIcon = Icons.Outlined.PhoneAndroid,
+        modifier = modifier,
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -475,9 +504,9 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit) {
 }
 
 @Composable
-private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long?) {
+private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long?, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surface)

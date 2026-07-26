@@ -35,6 +35,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
 import com.aether.x.R
+import com.aether.x.ui.components.cardEnterAnimation
+import com.aether.x.ui.components.pressScale
+import com.aether.x.ui.components.rememberPressScaleInteractionSource
 import com.aether.x.ui.theme.Spacing
 
 @Composable
@@ -57,7 +60,10 @@ fun AboutScreen(
             modifier = Modifier.padding(bottom = Spacing.xs),
         )
 
-        MaintainerHeroCard(versionName = BuildConfig.VERSION_NAME)
+        MaintainerHeroCard(
+            versionName = BuildConfig.VERSION_NAME,
+            modifier = Modifier.cardEnterAnimation(index = 0),
+        )
 
         Text(
             text = stringResource(R.string.about_section_links),
@@ -70,26 +76,29 @@ fun AboutScreen(
             title = stringResource(R.string.about_link_whatsapp_title),
             description = stringResource(R.string.about_link_whatsapp_desc),
             url = stringResource(R.string.about_link_whatsapp_url),
+            modifier = Modifier.cardEnterAnimation(index = 1),
         )
         CommunityLinkRow(
             iconRes = R.drawable.ic_social_telegram,
             title = stringResource(R.string.about_link_telegram_title),
             description = stringResource(R.string.about_link_telegram_desc),
             url = stringResource(R.string.about_link_telegram_url),
+            modifier = Modifier.cardEnterAnimation(index = 2),
         )
         CommunityLinkRow(
             iconRes = R.drawable.ic_social_youtube,
             title = stringResource(R.string.about_link_youtube_title),
             description = stringResource(R.string.about_link_youtube_desc),
             url = stringResource(R.string.about_link_youtube_url),
+            modifier = Modifier.cardEnterAnimation(index = 3),
         )
     }
 }
 
 @Composable
-private fun MaintainerHeroCard(versionName: String) {
+private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surface)
@@ -165,14 +174,17 @@ private fun CommunityLinkRow(
     title: String,
     description: String,
     url: String,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val interactionSource = rememberPressScaleInteractionSource()
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .pressScale(interactionSource)
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .clickable {
+            .clickable(interactionSource = interactionSource, indication = null) {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 try {
                     context.startActivity(intent)

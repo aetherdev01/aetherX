@@ -116,12 +116,13 @@ fun CrosshairSettingsSection(
     onSizeChange: (Int) -> Unit,
     onRotationChange: (Int) -> Unit,
     onNudgePosition: (dx: Int, dy: Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
 
     var showColorPicker by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
 

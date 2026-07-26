@@ -81,6 +81,7 @@ import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
+import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.core.shizuku.WirelessDebuggingMonitor
 import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
@@ -194,12 +195,16 @@ fun TweakScreen(
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
-                    AetherXInfoCard(activeBackend = privilegeStatus.activeBackend)
+                    AetherXInfoCard(
+                        activeBackend = privilegeStatus.activeBackend,
+                        modifier = Modifier.cardEnterAnimation(index = 0),
+                    )
 
                     WirelessDebuggingQuickCard(
                         activeBackend = privilegeStatus.activeBackend,
                         wirelessDebuggingEnabled = wirelessDebuggingEnabled,
                         onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
+                        modifier = Modifier.cardEnterAnimation(index = 1),
                     )
 
                     GameActivitySection(
@@ -207,9 +212,13 @@ fun TweakScreen(
                         loading = dashboardState.loadingGames,
                         lastPlayedPackage = dashboardState.lastPlayedPackage,
                         onGameClick = dashboardViewModel::onGameClick,
+                        modifier = Modifier.cardEnterAnimation(index = 2),
                     )
 
-                    DeviceInfoSection(info = dashboardState.deviceInfo)
+                    DeviceInfoSection(
+                        info = dashboardState.deviceInfo,
+                        modifier = Modifier.cardEnterAnimation(index = 3),
+                    )
                     return@Column
                 }
 
