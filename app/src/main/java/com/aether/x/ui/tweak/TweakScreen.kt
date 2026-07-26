@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SdStorage
@@ -89,6 +90,7 @@ import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
 import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard
+import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
@@ -137,7 +139,8 @@ fun TweakScreen(
     LaunchedEffect(privilegeStatus.activeBackend) {
         val backend = privilegeStatus.activeBackend
         val needsRootOnly = selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
-            selectedSubTab == TweakSubTab.BUILD_PROP
+            selectedSubTab == TweakSubTab.BUILD_PROP ||
+            selectedSubTab == TweakSubTab.ROOT_MONITOR
         val needsAnyPrivilege = selectedSubTab == TweakSubTab.APP_MANAGER
         val shouldReset = (needsRootOnly && backend != PrivilegeBackend.ROOT) ||
             (needsAnyPrivilege && backend == PrivilegeBackend.NONE)
@@ -237,6 +240,12 @@ fun TweakScreen(
                 if (selectedSubTab == TweakSubTab.KERNEL_MANAGER) {
 
                     KernelManagerSection()
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.ROOT_MONITOR) {
+
+                    RootMonitorSection()
                     return@Column
                 }
 
@@ -409,7 +418,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP }
+private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR }
 
 private const val GAME_BOOSTER_DRAWER_LOCKED = true
 
@@ -520,6 +529,14 @@ private fun TweakDrawerContent(
             icon = { Icon(imageVector = Icons.Outlined.Code, contentDescription = null) },
             selected = selected == TweakSubTab.BUILD_PROP,
             onClick = { onSelect(TweakSubTab.BUILD_PROP) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_root_monitor)) },
+            icon = { Icon(imageVector = Icons.Outlined.MonitorHeart, contentDescription = null) },
+            selected = selected == TweakSubTab.ROOT_MONITOR,
+            onClick = { onSelect(TweakSubTab.ROOT_MONITOR) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )

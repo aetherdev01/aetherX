@@ -34,6 +34,18 @@ const JNINativeMethod kDeviceFingerprintMethods[] = {
     {"nativeDeriveFingerprint", "([B)[B", reinterpret_cast<void*>(nfgp)},
 };
 
+// Monitor CPU/GPU real-time root-only (lihat sysmonitor.h/.cpp,
+// sysmonitor_jni.cpp) — dipakai RootSystemMonitor.kt. Kegagalan registrasi
+// di sini TIDAK fatal (return JNI_ERR) seperti sigOk/integrityOk, karena
+// fitur ini murni tambahan UI (monitor grafik), bukan pemblokir keamanan
+// app — kalau gagal, RootSystemMonitor.kt cukup melaporkan monitor tidak
+// tersedia.
+const JNINativeMethod kSysMonitorMethods[] = {
+    {"nativeReadCpuSnapshot", "()[F", reinterpret_cast<void*>(nsmc)},
+    {"nativeReadGpuSnapshot", "()[F", reinterpret_cast<void*>(nsmg)},
+    {"nativeResetCpuDelta", "()V", reinterpret_cast<void*>(nsmr)},
+};
+
 bool registerClass(JNIEnv* env, const char* classBinaryName,
                     const JNINativeMethod* methods, int methodCount) {
     jclass clazz = env->FindClass(classBinaryName);
@@ -87,6 +99,16 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         __android_log_print(
             ANDROID_LOG_WARN, LOG_TAG,
             "DeviceFingerprint native registration failed");
+    }
+
+    const bool sysMonitorOk = registerClass(
+        env, "com/aether/x/core/monitor/RootSystemMonitor",
+        kSysMonitorMethods,
+        sizeof(kSysMonitorMethods) / sizeof(kSysMonitorMethods[0]));
+    if (!sysMonitorOk) {
+        __android_log_print(
+            ANDROID_LOG_WARN, LOG_TAG,
+            "RootSystemMonitor native registration failed");
     }
 
     return JNI_VERSION_1_6;

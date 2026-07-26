@@ -363,6 +363,22 @@
     <string name="buildprop_subtitle">Edit properti sistem langsung di file. Perubahan permanen, aktif penuh setelah reboot. Backup otomatis dibuat sebelum tulis pertama tiap sesi.</string>
     <string name="buildprop_search_hint">Cari key…</string>
     <string name="buildprop_empty">Tidak ada key yang cocok</string>
+
+    <!-- Root Monitor sub-drawer khusus Root, grafik CPU/GPU real-time (lihat RootMonitorSection.kt, RootSystemMonitor.kt) -->
+    <string name="nav_root_monitor">Monitor CPU/GPU</string>
+    <string name="root_monitor_title">Monitor CPU/GPU</string>
+    <string name="root_monitor_subtitle">Beban CPU per-core dan GPU secara real-time, dibaca langsung dari native (root diperlukan).</string>
+    <string name="root_monitor_section_cpu">CPU</string>
+    <string name="root_monitor_section_gpu">GPU</string>
+    <string name="root_monitor_cpu_aggregate">Semua Core</string>
+    <string name="root_monitor_cpu_core_format">Core %1$d</string>
+    <string name="root_monitor_gpu_load">Beban GPU</string>
+    <string name="root_monitor_gpu_freq_format">%1$.0f MHz</string>
+    <string name="root_monitor_gpu_freq_unknown">Frekuensi tidak terbaca</string>
+    <string name="root_monitor_gpu_unsupported">GPU tidak terbaca di perangkat ini</string>
+    <string name="root_monitor_native_unavailable">Modul monitor native tidak tersedia di build ini</string>
+    <string name="root_monitor_waiting_samples">Mengumpulkan sampel pertama…</string>
+
     <string name="buildprop_value_empty">(kosong)</string>
     <string name="buildprop_action_edit">Edit</string>
     <string name="buildprop_action_save">Simpan</string>

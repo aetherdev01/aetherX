@@ -33,6 +33,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     integrityguard.cpp
     adblockguard.cpp
     devicefingerprint.cpp
+    sysmonitor.cpp
+    sysmonitor_jni.cpp
     jni_onload.cpp
 )
 
