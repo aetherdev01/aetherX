@@ -80,6 +80,7 @@ class CrosshairOverlayService : Service() {
             }
             ACTION_SET_DRAG_MODE -> {
                 dragModeEnabled = intent.getBooleanExtra(EXTRA_DRAG_MODE, false)
+                setDragTouchable(dragModeEnabled)
                 return START_STICKY
             }
             else -> {
@@ -127,9 +128,7 @@ class CrosshairOverlayService : Service() {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayWindowType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            baseTouchFlags(),
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.CENTER
@@ -140,6 +139,38 @@ class CrosshairOverlayService : Service() {
         windowManager.addView(view, params)
         crosshairView = view
         layoutParams = params
+    }
+
+    /**
+     * Flag dasar window overlay crosshair. FLAG_NOT_TOUCHABLE disertakan
+     * secara DEFAULT supaya crosshair tidak mencegat sentuhan sama sekali
+     * — tanpa ini, tap tepat di titik crosshair terasa "tertutup"/tidak
+     * merespons karena window overlay ikut mengonsumsi event sentuh
+     * sebelum diteruskan ke game/aplikasi di baliknya. Flag ini dilepas
+     * sementara hanya saat drag mode (geser posisi) aktif — lihat
+     * [setDragTouchable] — lalu dipasang kembali begitu drag selesai.
+     */
+    private fun baseTouchFlags(): Int =
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+
+    /**
+     * Mengaktifkan/menonaktifkan kemampuan window overlay menerima
+     * sentuhan. Dipanggil saat drag mode diaktifkan (touchable = true,
+     * supaya jari bisa menggeser crosshair) dan saat drag berakhir atau
+     * dimatikan (touchable = false, kembali ke default tembus-sentuh).
+     */
+    private fun setDragTouchable(touchable: Boolean) {
+        val params = layoutParams ?: return
+        val view = crosshairView ?: return
+        params.flags = if (touchable) {
+            baseTouchFlags() and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        } else {
+            baseTouchFlags()
+        }
+        runCatching { windowManager.updateViewLayout(view, params) }
     }
 
     private fun overlayWindowType(): Int =

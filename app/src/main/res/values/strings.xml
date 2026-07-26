@@ -519,6 +519,10 @@
          (PositionJoystick, offset X/Y, kunci posisi) diganti dial rotary
          yang mengatur rotasi bentuk crosshair. -->
     <string name="crosshair_rotation_degrees_format">%1$d°</string>
+    <!-- FITUR BARU: label X/Y di atas widget dial gabungan rotasi+posisi
+         (CrosshairPositionDial) — menampilkan offset posisi crosshair
+         hasil geser D-pad segitiga. -->
+    <string name="crosshair_offset_format">X: %1$d   Y: %2$d</string>
     <string name="crosshair_notification_channel">Overlay Crosshair</string>
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>

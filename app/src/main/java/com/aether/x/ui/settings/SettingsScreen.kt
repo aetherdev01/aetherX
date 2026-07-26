@@ -86,6 +86,8 @@ fun SettingsScreen(
             colorArgb = prefs.crosshairColor,
             sizeDp = prefs.crosshairSize,
             rotationDegrees = prefs.crosshairRotationDegrees,
+            offsetX = prefs.crosshairOffsetX,
+            offsetY = prefs.crosshairOffsetY,
             overlayPermissionGranted = overlayGranted,
 
             onEnabledChange = { enabled -> viewModel.setCrosshairEnabled(enabled, activity) },

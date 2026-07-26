@@ -105,6 +105,8 @@ fun CrosshairSettingsSection(
     colorArgb: Long,
     sizeDp: Int,
     rotationDegrees: Int,
+    offsetX: Int,
+    offsetY: Int,
     overlayPermissionGranted: Boolean,
 
     onEnabledChange: (Boolean) -> Unit,
@@ -202,9 +204,16 @@ fun CrosshairSettingsSection(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        RotationDial(
+                        Text(
+                            text = stringResource(R.string.crosshair_offset_format, offsetX, offsetY),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                        CrosshairPositionDial(
                             rotationDegrees = rotationDegrees,
                             onRotationChange = onRotationChange,
+                            onNudgePosition = onNudgePosition,
                         )
                     }
 
@@ -217,13 +226,6 @@ fun CrosshairSettingsSection(
                         modifier = Modifier.width(56.dp),
                     )
                 }
-
-                PositionDPad(
-                    onNudge = onNudgePosition,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
@@ -447,27 +449,34 @@ private fun StyleIconButton(
 }
 
 /**
- * REWORK — pengganti `PositionJoystick` (trackpad drag X/Y untuk memindah
- * posisi crosshair di layar; DIHAPUS bersama fitur transparansi & ketebalan
- * garis — lihat permintaan rework Crosshair). UI meniru dial rotary
- * lingkaran pada referensi: garis lingkar tipis, handle bulat merah kecil
- * yang bisa digeser BERPUTAR mengelilingi tepi lingkaran, dan angka derajat
- * di tengah. Menggeser handle mengubah [CrosshairStyle] rotation
- * ([CrosshairView.rotationDegrees]) — memutar/memiringkan bentuk crosshair
- * itu sendiri, BUKAN memindah posisinya di layar (posisi tetap diatur lewat
- * drag langsung pada overlay saat mode geser aktif, terpisah dari kartu
- * pengaturan ini).
+ * Widget gabungan: ring rotasi (luar) + D-pad segitiga geser posisi
+ * (dalam), persis satu widget bulat seperti pada gambar referensi —
+ * bukan dua kontrol terpisah lagi.
+ *
+ * - Ring luar + handle bulat merah kecil yang bisa digeser BERPUTAR
+ *   mengelilingi tepi lingkaran mengatur rotasi bentuk crosshair
+ *   ([CrosshairView.rotationDegrees]), dengan angka derajat di tengah —
+ *   pengganti `PositionJoystick` lama untuk rotasi, sudah dikonfirmasi
+ *   benar sebelumnya dan TIDAK diubah cara kerjanya di sini.
+ * - 4 segitiga di dalam ring (atas/bawah/kiri/kanan) menggeser POSISI
+ *   crosshair di layar saat DITAHAN (repeat-loop selama jari menempel),
+ *   terpisah secara fungsi dari rotasi meski satu widget visual — nilai
+ *   X/Y hasil geser ditampilkan di label terpisah di atas widget ini
+ *   (lihat `crosshair_offset_format`), bukan di tengah dial (tengah
+ *   dial tetap menampilkan derajat rotasi).
  */
 @Composable
-private fun RotationDial(
+private fun CrosshairPositionDial(
     rotationDegrees: Int,
     onRotationChange: (Int) -> Unit,
+    onNudgePosition: (dx: Int, dy: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dialSize = 190.dp
     val handleTrackInset = 16.dp
     val latestRotation by rememberUpdatedState(rotationDegrees)
     val density = LocalDensity.current
+    val nudgeStep = 6
 
     Box(
         modifier = modifier
@@ -500,6 +509,36 @@ private fun RotationDial(
             )
         }
 
+        // D-pad segitiga geser posisi, ditata di dalam ring rotasi.
+        DPadTriangle(
+            direction = DPadDirection.UP,
+            onNudge = { onNudgePosition(0, -nudgeStep) },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 34.dp),
+        )
+        DPadTriangle(
+            direction = DPadDirection.DOWN,
+            onNudge = { onNudgePosition(0, nudgeStep) },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 34.dp),
+        )
+        DPadTriangle(
+            direction = DPadDirection.LEFT,
+            onNudge = { onNudgePosition(-nudgeStep, 0) },
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 34.dp),
+        )
+        DPadTriangle(
+            direction = DPadDirection.RIGHT,
+            onNudge = { onNudgePosition(nudgeStep, 0) },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 34.dp),
+        )
+
         val trackRadiusPx = with(density) { (dialSize / 2f - handleTrackInset).toPx() }
         val angleRad = Math.toRadians((latestRotation - 90).toDouble())
         val handleOffsetPx = IntOffset(
@@ -527,65 +566,13 @@ private fun RotationDial(
 
 private const val HANDLE_SIZE_DP = 18
 
-/**
- * D-pad segitiga untuk menggeser POSISI crosshair di layar (atas/bawah/
- * kiri/kanan) — kontrol terpisah dari [RotationDial] (rotasi bentuk
- * crosshair itu sendiri, tetap dipertahankan apa adanya). Menahan salah
- * satu segitiga menggeser posisi berulang kali selama ditekan lewat
- * `LaunchedEffect` + delay loop, hingga jari diangkat. Setiap nudge
- * memanggil [onNudge] yang di pemanggil disambungkan ke perubahan offset
- * X/Y crosshair, dibaca `CrosshairOverlayService` untuk memindah posisi
- * window overlay nyata di layar.
- */
-@Composable
-private fun PositionDPad(
-    onNudge: (dx: Int, dy: Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val step = 6
-
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(120.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceRaised),
-            )
-
-            DPadTriangle(
-                direction = DPadDirection.UP,
-                onNudge = { onNudge(0, -step) },
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
-            DPadTriangle(
-                direction = DPadDirection.DOWN,
-                onNudge = { onNudge(0, step) },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-            DPadTriangle(
-                direction = DPadDirection.LEFT,
-                onNudge = { onNudge(-step, 0) },
-                modifier = Modifier.align(Alignment.CenterStart),
-            )
-            DPadTriangle(
-                direction = DPadDirection.RIGHT,
-                onNudge = { onNudge(step, 0) },
-                modifier = Modifier.align(Alignment.CenterEnd),
-            )
-        }
-    }
-}
-
 private enum class DPadDirection { UP, DOWN, LEFT, RIGHT }
 
+/**
+ * Satu segitiga D-pad. Menahan (press-and-hold) memicu [onNudge] berulang
+ * kali lewat `LaunchedEffect` + delay loop sampai jari diangkat; ketuk
+ * singkat tetap menggeser 1 langkah.
+ */
 @Composable
 private fun DPadTriangle(
     direction: DPadDirection,
@@ -597,9 +584,6 @@ private fun DPadTriangle(
 
     LaunchedEffect(isHeld) {
         if (!isHeld) return@LaunchedEffect
-        // Ketuk sekali dulu supaya tap singkat tetap menggeser 1 langkah,
-        // lalu ulangi terus selama ditahan (delay awal lebih lama supaya
-        // tap cepat tidak terasa "loncat" dua kali).
         latestOnNudge()
         delay(350)
         while (isHeld) {
@@ -608,7 +592,7 @@ private fun DPadTriangle(
         }
     }
 
-    val rotationDegrees = when (direction) {
+    val triangleRotation = when (direction) {
         DPadDirection.UP -> 0f
         DPadDirection.RIGHT -> 90f
         DPadDirection.DOWN -> 180f
@@ -617,7 +601,7 @@ private fun DPadTriangle(
 
     Box(
         modifier = modifier
-            .size(40.dp)
+            .size(32.dp)
             .pointerInput(direction) {
                 awaitPointerEventScope {
                     while (true) {
@@ -632,8 +616,8 @@ private fun DPadTriangle(
     ) {
         Canvas(
             modifier = Modifier
-                .size(18.dp)
-                .rotate(rotationDegrees),
+                .size(14.dp)
+                .rotate(triangleRotation),
         ) {
             val path = Path().apply {
                 moveTo(size.width / 2f, 0f)
@@ -641,7 +625,7 @@ private fun DPadTriangle(
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(path, color = if (isHeld) AccentBlue else Color.White.copy(alpha = 0.65f))
+            drawPath(path, color = if (isHeld) AccentBlue else Color.White.copy(alpha = 0.55f))
         }
     }
 }
