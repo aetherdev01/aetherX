@@ -488,6 +488,12 @@
          CrosshairSettingsSection.kt. -->
     <string name="crosshair_style_plus">Silang +</string>
     <string name="crosshair_style_bullet">Bulat</string>
+    <!-- FITUR BARU: 4 style crosshair dari referensi UI (lingkaran + plus,
+         tick silang, lingkaran+titik+tick, lingkaran+silang+tick). -->
+    <string name="crosshair_style_circle_plus">Lingkaran Silang</string>
+    <string name="crosshair_style_tick_cross">Silang Tick</string>
+    <string name="crosshair_style_circle_dot_ticks">Lingkaran Titik Tick</string>
+    <string name="crosshair_style_circle_cross_ticks">Lingkaran Silang Tick</string>
     <string name="crosshair_style_cross">Silang</string>
     <string name="crosshair_style_plus_gap">Silang Celah</string>
     <string name="crosshair_style_x">Diagonal X</string>

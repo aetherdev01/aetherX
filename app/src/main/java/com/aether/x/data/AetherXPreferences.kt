@@ -16,7 +16,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
-enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING, PLUS, BULLET }
+enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING, PLUS, BULLET, CIRCLE_PLUS, TICK_CROSS, CIRCLE_DOT_TICKS, CIRCLE_CROSS_TICKS }
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
 

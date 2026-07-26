@@ -134,6 +134,47 @@ fun CrosshairPreview(
             CrosshairStyle.BULLET -> {
                 drawCircle(drawColor, radius = r * 0.5f, center = Offset(cx, cy))
             }
+
+            CrosshairStyle.CIRCLE_PLUS -> {
+                drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = stroke)
+                val armInner = r * 0.15f
+                drawLine(drawColor, Offset(cx - r * 0.75f, cy), Offset(cx - armInner, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx + armInner, cy), Offset(cx + r * 0.75f, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - r * 0.75f), Offset(cx, cy - armInner), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy + armInner), Offset(cx, cy + r * 0.75f), thickness, StrokeCap.Round)
+            }
+
+            CrosshairStyle.TICK_CROSS -> {
+                val tickOuter = r
+                val tickInner = r * 0.45f
+                drawLine(drawColor, Offset(cx - tickOuter, cy), Offset(cx - tickInner, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx + tickInner, cy), Offset(cx + tickOuter, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - tickOuter), Offset(cx, cy - tickInner), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy + tickInner), Offset(cx, cy + tickOuter), thickness, StrokeCap.Round)
+            }
+
+            CrosshairStyle.CIRCLE_DOT_TICKS -> {
+                drawCircle(drawColor, radius = r * 0.7f, center = Offset(cx, cy), style = stroke)
+                drawCircle(drawColor, radius = thickness * 1.2f, center = Offset(cx, cy))
+                val tickStart = r * 0.7f + thickness * 0.4f
+                val tickEnd = r
+                drawLine(drawColor, Offset(cx - tickEnd, cy), Offset(cx - tickStart, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx + tickStart, cy), Offset(cx + tickEnd, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - tickEnd), Offset(cx, cy - tickStart), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy + tickStart), Offset(cx, cy + tickEnd), thickness, StrokeCap.Round)
+            }
+
+            CrosshairStyle.CIRCLE_CROSS_TICKS -> {
+                drawCircle(drawColor, radius = r * 0.7f, center = Offset(cx, cy), style = stroke)
+                drawLine(drawColor, Offset(cx - r * 0.7f, cy), Offset(cx + r * 0.7f, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - r * 0.7f), Offset(cx, cy + r * 0.7f), thickness, StrokeCap.Round)
+                val tickStart = r * 0.7f + thickness * 0.4f
+                val tickEnd = r
+                drawLine(drawColor, Offset(cx - tickEnd, cy), Offset(cx - tickStart, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx + tickStart, cy), Offset(cx + tickEnd, cy), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy - tickEnd), Offset(cx, cy - tickStart), thickness, StrokeCap.Round)
+                drawLine(drawColor, Offset(cx, cy + tickStart), Offset(cx, cy + tickEnd), thickness, StrokeCap.Round)
+            }
         }
         }
     }

@@ -69,6 +69,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setCrosshairRotation(degrees: Int) = updateCrosshair { it.copy(crosshairRotationDegrees = degrees) }
 
+    /**
+     * Dipanggil berulang kali (repeat-loop) selagi salah satu segitiga
+     * D-pad posisi ditahan — lihat `PositionDPad` di
+     * `CrosshairSettingsSection.kt`. Menggeser offset relatif terhadap
+     * nilai saat ini, terpisah dari [setCrosshairRotation] yang mengatur
+     * rotasi bentuk crosshair.
+     */
+    fun nudgeCrosshairPosition(dx: Int, dy: Int) = updateCrosshair {
+        it.copy(
+            crosshairOffsetX = it.crosshairOffsetX + dx,
+            crosshairOffsetY = it.crosshairOffsetY + dy,
+        )
+    }
+
     fun setFpsMonitorEnabled(enabled: Boolean, activity: Activity? = null) {
         viewModelScope.launch {
             preferences.setFpsMonitorEnabled(enabled)

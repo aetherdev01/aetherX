@@ -94,6 +94,7 @@ fun SettingsScreen(
             onColorChange = viewModel::setCrosshairColor,
             onSizeChange = viewModel::setCrosshairSize,
             onRotationChange = viewModel::setCrosshairRotation,
+            onNudgePosition = viewModel::nudgeCrosshairPosition,
         )
 
         SectionCard(title = stringResource(R.string.settings_section_fps_monitor), watermarkIcon = Icons.Outlined.Speed) {

@@ -4,7 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,9 +41,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -54,6 +59,7 @@ import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.SurfaceRaised
+import kotlinx.coroutines.delay
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -71,12 +77,16 @@ private val crosshairColorPalette = listOf(
 private data class StyleOption(val style: CrosshairStyle, val labelRes: Int)
 
 private val styleOptions = listOf(
+    StyleOption(CrosshairStyle.DOT, R.string.crosshair_style_dot),
     StyleOption(CrosshairStyle.PLUS, R.string.crosshair_style_plus),
+    StyleOption(CrosshairStyle.CIRCLE_PLUS, R.string.crosshair_style_circle_plus),
+    StyleOption(CrosshairStyle.TICK_CROSS, R.string.crosshair_style_tick_cross),
+    StyleOption(CrosshairStyle.CIRCLE_DOT_TICKS, R.string.crosshair_style_circle_dot_ticks),
+    StyleOption(CrosshairStyle.CIRCLE_CROSS_TICKS, R.string.crosshair_style_circle_cross_ticks),
     StyleOption(CrosshairStyle.BULLET, R.string.crosshair_style_bullet),
     StyleOption(CrosshairStyle.CROSS, R.string.crosshair_style_cross),
     StyleOption(CrosshairStyle.PLUS_GAP, R.string.crosshair_style_plus_gap),
     StyleOption(CrosshairStyle.X_SHAPE, R.string.crosshair_style_x),
-    StyleOption(CrosshairStyle.DOT, R.string.crosshair_style_dot),
     StyleOption(CrosshairStyle.CIRCLE, R.string.crosshair_style_circle),
     StyleOption(CrosshairStyle.CIRCLE_DOT, R.string.crosshair_style_circle_dot),
     StyleOption(CrosshairStyle.CROSS_DOT, R.string.crosshair_style_cross_dot),
@@ -103,6 +113,7 @@ fun CrosshairSettingsSection(
     onColorChange: (Long) -> Unit,
     onSizeChange: (Int) -> Unit,
     onRotationChange: (Int) -> Unit,
+    onNudgePosition: (dx: Int, dy: Int) -> Unit,
 ) {
 
     var showColorPicker by remember { mutableStateOf(false) }
@@ -206,6 +217,13 @@ fun CrosshairSettingsSection(
                         modifier = Modifier.width(56.dp),
                     )
                 }
+
+                PositionDPad(
+                    onNudge = onNudgePosition,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
@@ -385,6 +403,44 @@ private fun StyleIconButton(
                     drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
                     drawCircle(drawColor, radius = r * 0.55f, center = Offset(cx, cy), style = Stroke(thickness))
                 }
+
+                CrosshairStyle.CIRCLE_PLUS -> {
+                    drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+                    val armInner = r * 0.15f
+                    drawLine(drawColor, Offset(cx - r * 0.75f, cy), Offset(cx - armInner, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + armInner, cy), Offset(cx + r * 0.75f, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r * 0.75f), Offset(cx, cy - armInner), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + armInner), Offset(cx, cy + r * 0.75f), thickness, StrokeCap.Round)
+                }
+
+                CrosshairStyle.TICK_CROSS -> {
+                    val tickInner = r * 0.45f
+                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - tickInner, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + tickInner, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - tickInner), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + tickInner), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                }
+
+                CrosshairStyle.CIRCLE_DOT_TICKS -> {
+                    drawCircle(drawColor, radius = r * 0.7f, center = Offset(cx, cy), style = Stroke(thickness))
+                    drawCircle(drawColor, radius = thickness * 1.2f, center = Offset(cx, cy))
+                    val tickStart = r * 0.7f + thickness * 0.4f
+                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - tickStart, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + tickStart, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - tickStart), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + tickStart), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                }
+
+                CrosshairStyle.CIRCLE_CROSS_TICKS -> {
+                    drawCircle(drawColor, radius = r * 0.7f, center = Offset(cx, cy), style = Stroke(thickness))
+                    drawLine(drawColor, Offset(cx - r * 0.7f, cy), Offset(cx + r * 0.7f, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r * 0.7f), Offset(cx, cy + r * 0.7f), thickness, StrokeCap.Round)
+                    val tickStart2 = r * 0.7f + thickness * 0.4f
+                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - tickStart2, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx + tickStart2, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - tickStart2), thickness, StrokeCap.Round)
+                    drawLine(drawColor, Offset(cx, cy + tickStart2), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                }
             }
         }
     }
@@ -470,6 +526,125 @@ private fun RotationDial(
 }
 
 private const val HANDLE_SIZE_DP = 18
+
+/**
+ * D-pad segitiga untuk menggeser POSISI crosshair di layar (atas/bawah/
+ * kiri/kanan) — kontrol terpisah dari [RotationDial] (rotasi bentuk
+ * crosshair itu sendiri, tetap dipertahankan apa adanya). Menahan salah
+ * satu segitiga menggeser posisi berulang kali selama ditekan lewat
+ * `LaunchedEffect` + delay loop, hingga jari diangkat. Setiap nudge
+ * memanggil [onNudge] yang di pemanggil disambungkan ke perubahan offset
+ * X/Y crosshair, dibaca `CrosshairOverlayService` untuk memindah posisi
+ * window overlay nyata di layar.
+ */
+@Composable
+private fun PositionDPad(
+    onNudge: (dx: Int, dy: Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val step = 6
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(120.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceRaised),
+            )
+
+            DPadTriangle(
+                direction = DPadDirection.UP,
+                onNudge = { onNudge(0, -step) },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+            DPadTriangle(
+                direction = DPadDirection.DOWN,
+                onNudge = { onNudge(0, step) },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+            DPadTriangle(
+                direction = DPadDirection.LEFT,
+                onNudge = { onNudge(-step, 0) },
+                modifier = Modifier.align(Alignment.CenterStart),
+            )
+            DPadTriangle(
+                direction = DPadDirection.RIGHT,
+                onNudge = { onNudge(step, 0) },
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
+        }
+    }
+}
+
+private enum class DPadDirection { UP, DOWN, LEFT, RIGHT }
+
+@Composable
+private fun DPadTriangle(
+    direction: DPadDirection,
+    onNudge: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isHeld by remember { mutableStateOf(false) }
+    val latestOnNudge by rememberUpdatedState(onNudge)
+
+    LaunchedEffect(isHeld) {
+        if (!isHeld) return@LaunchedEffect
+        // Ketuk sekali dulu supaya tap singkat tetap menggeser 1 langkah,
+        // lalu ulangi terus selama ditahan (delay awal lebih lama supaya
+        // tap cepat tidak terasa "loncat" dua kali).
+        latestOnNudge()
+        delay(350)
+        while (isHeld) {
+            latestOnNudge()
+            delay(80)
+        }
+    }
+
+    val rotationDegrees = when (direction) {
+        DPadDirection.UP -> 0f
+        DPadDirection.RIGHT -> 90f
+        DPadDirection.DOWN -> 180f
+        DPadDirection.LEFT -> 270f
+    }
+
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .pointerInput(direction) {
+                awaitPointerEventScope {
+                    while (true) {
+                        awaitFirstDown(requireUnconsumed = false)
+                        isHeld = true
+                        waitForUpOrCancellation()
+                        isHeld = false
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(
+            modifier = Modifier
+                .size(18.dp)
+                .rotate(rotationDegrees),
+        ) {
+            val path = Path().apply {
+                moveTo(size.width / 2f, 0f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(path, color = if (isHeld) AccentBlue else Color.White.copy(alpha = 0.65f))
+        }
+    }
+}
 
 @Composable
 private fun VerticalAccentSlider(

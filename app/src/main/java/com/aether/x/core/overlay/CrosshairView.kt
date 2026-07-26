@@ -162,6 +162,47 @@ class CrosshairView(context: Context) : View(context) {
             CrosshairStyle.BULLET -> {
                 canvas.drawCircle(cx, cy, r * 0.5f, fillPaint)
             }
+            CrosshairStyle.CIRCLE_PLUS -> {
+
+                canvas.drawCircle(cx, cy, r, paint)
+                val armInner = r * 0.15f
+                canvas.drawLine(cx - r * 0.75f, cy, cx - armInner, cy, paint)
+                canvas.drawLine(cx + armInner, cy, cx + r * 0.75f, cy, paint)
+                canvas.drawLine(cx, cy - r * 0.75f, cx, cy - armInner, paint)
+                canvas.drawLine(cx, cy + armInner, cx, cy + r * 0.75f, paint)
+            }
+            CrosshairStyle.TICK_CROSS -> {
+
+                val tickOuter = r
+                val tickInner = r * 0.45f
+                canvas.drawLine(cx - tickOuter, cy, cx - tickInner, cy, paint)
+                canvas.drawLine(cx + tickInner, cy, cx + tickOuter, cy, paint)
+                canvas.drawLine(cx, cy - tickOuter, cx, cy - tickInner, paint)
+                canvas.drawLine(cx, cy + tickInner, cx, cy + tickOuter, paint)
+            }
+            CrosshairStyle.CIRCLE_DOT_TICKS -> {
+
+                canvas.drawCircle(cx, cy, r * 0.7f, paint)
+                canvas.drawCircle(cx, cy, thicknessPx * 1.2f, fillPaint)
+                val tickStart = r * 0.7f + thicknessPx * 0.4f
+                val tickEnd = r
+                canvas.drawLine(cx - tickEnd, cy, cx - tickStart, cy, paint)
+                canvas.drawLine(cx + tickStart, cy, cx + tickEnd, cy, paint)
+                canvas.drawLine(cx, cy - tickEnd, cx, cy - tickStart, paint)
+                canvas.drawLine(cx, cy + tickStart, cx, cy + tickEnd, paint)
+            }
+            CrosshairStyle.CIRCLE_CROSS_TICKS -> {
+
+                canvas.drawCircle(cx, cy, r * 0.7f, paint)
+                canvas.drawLine(cx - r * 0.7f, cy, cx + r * 0.7f, cy, paint)
+                canvas.drawLine(cx, cy - r * 0.7f, cx, cy + r * 0.7f, paint)
+                val tickStart = r * 0.7f + thicknessPx * 0.4f
+                val tickEnd = r
+                canvas.drawLine(cx - tickEnd, cy, cx - tickStart, cy, paint)
+                canvas.drawLine(cx + tickStart, cy, cx + tickEnd, cy, paint)
+                canvas.drawLine(cx, cy - tickEnd, cx, cy - tickStart, paint)
+                canvas.drawLine(cx, cy + tickStart, cx, cy + tickEnd, paint)
+            }
         }
 
         canvas.restoreToCount(saveCount)
