@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,7 +62,7 @@ fun RootMonitorSection(
         )
 
         if (!state.nativeAvailable) {
-            SectionCard(watermarkIcon = Icons.Outlined.Memory) {
+            SectionCard(title = null, watermarkIcon = Icons.Outlined.Memory) {
                 Text(
                     text = stringResource(R.string.root_monitor_native_unavailable),
                     style = MaterialTheme.typography.bodyMedium,

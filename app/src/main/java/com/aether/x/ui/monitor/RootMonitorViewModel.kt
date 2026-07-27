@@ -31,7 +31,7 @@ data class RootMonitorUiState(
 /**
  * RootMonitorViewModel — mengelola polling loop [RootSystemMonitor] dan
  * rolling history buffer untuk grafik CPU/GPU real-time. Dipakai HANYA
- * dari layar monitor root-only (lihat RootMonitorScreen.kt) — pemanggil
+ * dari layar monitor root-only (lihat RootMonitorSection.kt) — pemanggil
  * WAJIB memastikan `PrivilegeStatus.activeBackend == PrivilegeBackend.ROOT`
  * sebelum menampilkan layar ini sama sekali (gating dilakukan di level
  * navigasi/drawer, konsisten dengan Kernel Manager & Build Prop yang juga

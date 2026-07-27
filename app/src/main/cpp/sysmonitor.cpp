@@ -98,7 +98,6 @@ bool nsmReadCpu(CpuSnapshot* out) {
     if (f == nullptr) return false;
 
     char line[256];
-    int coreIndex = -1;  // -1 = baris agregat "cpu"
     long long total = 0;
     long long idle = 0;
 
@@ -126,18 +125,14 @@ bool nsmReadCpu(CpuSnapshot* out) {
         if (isAggregate) {
             out->aggregateLoadPercent = pct;
             aggregateOk = true;
-        } else {
-            if (parsedCores < kMaxCpuCores) {
-                out->perCoreLoadPercent[parsedCores] = pct;
-                parsedCores++;
-            }
-            coreIndex = parsedCores;
+        } else if (parsedCores < kMaxCpuCores) {
+            out->perCoreLoadPercent[parsedCores] = pct;
+            parsedCores++;
         }
     }
     fclose(f);
 
     out->coreCount = parsedCores;
-    (void)coreIndex;
 
     g_cpuState.hasPrevious = true;
     return aggregateOk;
