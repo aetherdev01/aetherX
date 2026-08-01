@@ -486,6 +486,7 @@
     <string name="about_link_youtube_title">Subscribe YouTube</string>
     <string name="about_link_youtube_desc">Tutorial, review, &amp; showcase fitur</string>
     <string name="about_link_youtube_url">https://youtube.com/@aetherdevofficial?si=JrYQSWzKgoKRSydR</string>
+    <string name="about_link_open_failed">Tidak ada aplikasi yang bisa membuka tautan ini</string>
 
     <!-- Section "Settings Umum" (settings_section_general, settings_language_*,
          settings_reset_all_*) DIHAPUS TOTAL — fitur pemilih Bahasa & Reset

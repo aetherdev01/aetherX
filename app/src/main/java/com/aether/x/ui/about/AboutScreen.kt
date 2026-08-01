@@ -3,6 +3,7 @@ package com.aether.x.ui.about
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,7 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -76,21 +81,24 @@ fun AboutScreen(
         )
 
         CommunityLinkRow(
-            iconRes = R.drawable.ic_social_whatsapp,
+            icon = Icons.Filled.Chat,
+            iconColor = Color(0xFF25D366),
             title = stringResource(R.string.about_link_whatsapp_title),
             description = stringResource(R.string.about_link_whatsapp_desc),
             url = stringResource(R.string.about_link_whatsapp_url),
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
         CommunityLinkRow(
-            iconRes = R.drawable.ic_social_telegram,
+            icon = Icons.AutoMirrored.Filled.Send,
+            iconColor = Color(0xFF29A9EB),
             title = stringResource(R.string.about_link_telegram_title),
             description = stringResource(R.string.about_link_telegram_desc),
             url = stringResource(R.string.about_link_telegram_url),
             modifier = Modifier.cardEnterAnimation(index = 2),
         )
         CommunityLinkRow(
-            iconRes = R.drawable.ic_social_youtube,
+            icon = Icons.Filled.SmartDisplay,
+            iconColor = Color(0xFFFF3B30),
             title = stringResource(R.string.about_link_youtube_title),
             description = stringResource(R.string.about_link_youtube_desc),
             url = stringResource(R.string.about_link_youtube_url),
@@ -175,7 +183,8 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
 
 @Composable
 private fun CommunityLinkRow(
-    iconRes: Int,
+    icon: ImageVector,
+    iconColor: Color,
     title: String,
     description: String,
     url: String,
@@ -190,12 +199,7 @@ private fun CommunityLinkRow(
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
             .clickable(interactionSource = interactionSource, indication = null) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                try {
-                    context.startActivity(intent)
-                } catch (e: ActivityNotFoundException) {
-
-                }
+                openUrl(context, url)
             }
             .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
@@ -206,13 +210,13 @@ private fun CommunityLinkRow(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(iconColor.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painter = painterResource(id = iconRes),
+            Icon(
+                imageVector = icon,
                 contentDescription = title,
-                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                tint = iconColor,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -235,5 +239,33 @@ private fun CommunityLinkRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
+    }
+}
+
+/**
+ * Buka [url] di browser/app luar. Sebelumnya kegagalan (mis. tidak ada
+ * app yang bisa menangani intent) ditangkap lalu DIBUANG begitu saja
+ * (catch block kosong) — dari sisi pengguna, tombol terlihat "tidak
+ * berfungsi" tanpa penjelasan sama sekali. Sekarang: coba ACTION_VIEW
+ * dulu (bisa buka app WhatsApp/Telegram/YouTube langsung kalau
+ * terpasang), kalau gagal baru dicoba dengan FLAG_ACTIVITY_NEW_TASK
+ * (perlu untuk context tertentu yang bukan Activity langsung), dan
+ * kalau tetap gagal, tampilkan Toast supaya pengguna tahu link gagal
+ * dibuka (bukan diam tanpa respons).
+ */
+private fun openUrl(context: android.content.Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    try {
+        context.startActivity(intent)
+        return
+    } catch (e: ActivityNotFoundException) {
+        // lanjut ke fallback di bawah
+    }
+
+    try {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        Toast.makeText(context, context.getString(R.string.about_link_open_failed), Toast.LENGTH_SHORT).show()
     }
 }
