@@ -22,9 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,8 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -81,24 +76,21 @@ fun AboutScreen(
         )
 
         CommunityLinkRow(
-            icon = Icons.Filled.Chat,
-            iconColor = Color(0xFF25D366),
+            iconRes = R.drawable.ic_social_whatsapp,
             title = stringResource(R.string.about_link_whatsapp_title),
             description = stringResource(R.string.about_link_whatsapp_desc),
             url = stringResource(R.string.about_link_whatsapp_url),
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
         CommunityLinkRow(
-            icon = Icons.AutoMirrored.Filled.Send,
-            iconColor = Color(0xFF29A9EB),
+            iconRes = R.drawable.ic_social_telegram,
             title = stringResource(R.string.about_link_telegram_title),
             description = stringResource(R.string.about_link_telegram_desc),
             url = stringResource(R.string.about_link_telegram_url),
             modifier = Modifier.cardEnterAnimation(index = 2),
         )
         CommunityLinkRow(
-            icon = Icons.Filled.SmartDisplay,
-            iconColor = Color(0xFFFF3B30),
+            iconRes = R.drawable.ic_social_youtube,
             title = stringResource(R.string.about_link_youtube_title),
             description = stringResource(R.string.about_link_youtube_desc),
             url = stringResource(R.string.about_link_youtube_url),
@@ -183,8 +175,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
 
 @Composable
 private fun CommunityLinkRow(
-    icon: ImageVector,
-    iconColor: Color,
+    iconRes: Int,
     title: String,
     description: String,
     url: String,
@@ -210,14 +201,13 @@ private fun CommunityLinkRow(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(iconColor.copy(alpha = 0.16f)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = icon,
+            Image(
+                painter = painterResource(id = iconRes),
                 contentDescription = title,
-                tint = iconColor,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {

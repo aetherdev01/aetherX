@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -339,11 +339,12 @@ private fun MembershipProCard(modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_social_telegram),
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape),
                     )
                     Text(
                         text = stringResource(R.string.membership_pro_cta),
