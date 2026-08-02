@@ -13,6 +13,43 @@ enum class CpuGovernor(val sysfsName: String?) {
 
 class TweakRepository {
 
+    /**
+     * Pembungkus untuk skrip berbentuk "loop tulis ke banyak kandidat path
+     * sysfs, redirect stderr ke /dev/null di tiap baris" (governor CPU/GPU,
+     * I/O scheduler, dll). Loop shell semacam ini SELALU exit code 0 walau
+     * tidak satu pun path sukses ditulis (loop kosong atau semua write
+     * gagal bukan error shell) — sebelumnya [ShellResult.success] jadi
+     * true walau device tidak didukung sama sekali dan tidak ada
+     * perubahan nyata terjadi ("silent success").
+     *
+     * Perbaikannya: setiap baris `echo VALUE > PATH` di [script] dibungkus
+     * jadi `echo VALUE > PATH 2>/dev/null && WRITTEN=$((WRITTEN+1))`, lalu
+     * skrip mencetak `AETHERX_WRITTEN=<n>` sebagai baris TERAKHIR output.
+     * Kotlin membaca baris itu dan hanya melaporkan sukses kalau n > 0 —
+     * device yang benar-benar tidak punya satu pun path yang cocok
+     * sekarang correctly dilaporkan gagal, bukan sukses semu.
+     *
+     * [script] harus HANYA berisi baris-baris `echo ... > path 2>/dev/null`
+     * (satu redirect per baris, tanpa `;` majemuk) di dalam loop — caller
+     * yang butuh logic lebih kompleks (mis. [applyGpuRenderingPriority])
+     * tetap pakai `executor.exec` langsung.
+     */
+    private suspend fun execCountingWrites(executor: ShellExecutor, script: String): ShellResult {
+        val wrapped = """
+            WRITTEN=0
+            $script
+            echo "AETHERX_WRITTEN=${'$'}WRITTEN"
+        """.trimIndent()
+        val result = executor.exec(wrapped)
+        val writtenCount = result.output
+            .lastOrNull { it.startsWith("AETHERX_WRITTEN=") }
+            ?.substringAfter("=")
+            ?.toIntOrNull()
+            ?: 0
+
+        return result.copy(success = result.success && writtenCount > 0)
+    }
+
     suspend fun applyDensity(executor: ShellExecutor, dpi: Int): ShellResult =
         executor.exec("wm density $dpi")
 
@@ -67,31 +104,35 @@ class TweakRepository {
                   *" ${'$'}candidate "*) chosen="${'$'}candidate"; break ;;
                 esac
               done
-              echo ${'$'}chosen > ${'$'}g 2>/dev/null
+              echo ${'$'}chosen > ${'$'}g 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             done
             """.trimIndent()
         } else {
             val name = governor.sysfsName
             """
             for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-              echo $name > ${'$'}g 2>/dev/null
+              echo $name > ${'$'}g 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             done
             """.trimIndent()
         }
-        return executor.exec(script)
+        return execCountingWrites(executor, script)
     }
 
     suspend fun applyRamPriority(executor: ShellExecutor, enabled: Boolean): ShellResult {
         val value = if (enabled) 10 else 60
-        return executor.exec("echo $value > /proc/sys/vm/swappiness 2>/dev/null")
+        return execCountingWrites(
+            executor,
+            "echo $value > /proc/sys/vm/swappiness 2>/dev/null && WRITTEN=\$((WRITTEN+1))",
+        )
     }
 
     suspend fun applyThermalThrottleOverride(executor: ShellExecutor, enabled: Boolean): ShellResult {
         return if (enabled) {
-            executor.exec(
+            execCountingWrites(
+                executor,
                 """
                 for z in /sys/class/thermal/thermal_zone*/trip_point_0_temp; do
-                  echo 90000 > ${'$'}z 2>/dev/null
+                  echo 90000 > ${'$'}z 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
                 done
                 """.trimIndent(),
             )
@@ -107,31 +148,31 @@ class TweakRepository {
             """
             if [ -f /sys/module/ged/parameters/gpu_freq_bound ] && [ -f /proc/gpufreq/gpufreq_opp_freq ]; then
               max_freq="${'$'}(head -n1 /proc/gpufreq/gpufreq_opp_freq 2>/dev/null | awk '{print ${'$'}1}')"
-              [ -n "${'$'}max_freq" ] && echo ${'$'}max_freq > /sys/module/ged/parameters/gpu_freq_bound 2>/dev/null
+              [ -n "${'$'}max_freq" ] && echo ${'$'}max_freq > /sys/module/ged/parameters/gpu_freq_bound 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             fi
             """.trimIndent()
         } else {
             """
-            [ -f /sys/module/ged/parameters/gpu_freq_bound ] && echo 0 > /sys/module/ged/parameters/gpu_freq_bound 2>/dev/null
+            [ -f /sys/module/ged/parameters/gpu_freq_bound ] && echo 0 > /sys/module/ged/parameters/gpu_freq_bound 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             """.trimIndent()
         }
         val script = """
             # Qualcomm/Adreno
             for g in /sys/class/kgsl/kgsl-3d0/devfreq/governor /sys/devices/platform/*/kgsl-3d0/devfreq/governor; do
-              [ -f ${'$'}g ] && echo $devfreqGovernor > ${'$'}g 2>/dev/null
+              [ -f ${'$'}g ] && echo $devfreqGovernor > ${'$'}g 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             done
             # MediaTek/Mali & Exynos/Mali — skema devfreq umum
             for g in /sys/class/devfreq/*mali*/governor /sys/devices/platform/*/devfreq/*mali*/governor; do
-              [ -f ${'$'}g ] && echo $devfreqGovernor > ${'$'}g 2>/dev/null
+              [ -f ${'$'}g ] && echo $devfreqGovernor > ${'$'}g 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             done
             # Mali generik lewat node misc
             for g in /sys/class/misc/mali0/device/dvfs_governor; do
-              [ -f ${'$'}g ] && echo $misGovernor > ${'$'}g 2>/dev/null
+              [ -f ${'$'}g ] && echo $misGovernor > ${'$'}g 2>/dev/null && WRITTEN=${'$'}((WRITTEN+1))
             done
             # MediaTek GED (Dimensity modern) — kunci/lepas batas frekuensi opp tertinggi
             $gedBlock
         """.trimIndent()
-        return executor.exec(script)
+        return execCountingWrites(executor, script)
     }
 
     suspend fun applyGpuRenderingPriority(
@@ -184,14 +225,17 @@ class TweakRepository {
 
     suspend fun applyIoSchedulerBoost(executor: ShellExecutor, enabled: Boolean): ShellResult {
         return if (enabled) {
-            executor.exec(
+            execCountingWrites(
+                executor,
                 "for q in /sys/block/*/queue/scheduler; do " +
-                    "(echo kyber > \$q 2>/dev/null || echo bfq > \$q 2>/dev/null); done",
+                    "(echo kyber > \$q 2>/dev/null && WRITTEN=\$((WRITTEN+1))) || " +
+                    "(echo bfq > \$q 2>/dev/null && WRITTEN=\$((WRITTEN+1))); done",
             )
         } else {
-            executor.exec(
+            execCountingWrites(
+                executor,
                 "for q in /sys/block/*/queue/scheduler; do " +
-                    "echo mq-deadline > \$q 2>/dev/null; done",
+                    "echo mq-deadline > \$q 2>/dev/null && WRITTEN=\$((WRITTEN+1)); done",
             )
         }
     }
