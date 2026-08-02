@@ -1,6 +1,7 @@
 package com.aether.x.core.monitor
 
 import android.util.Log
+import com.aether.x.core.shell.RootShellExecutor
 
 /**
  * RootSystemMonitor — jembatan tipis ke modul native sysmonitor (lihat
@@ -76,9 +77,21 @@ object RootSystemMonitor {
     }
 
     /**
-     * Baca satu snapshot GPU (load% + frekuensi MHz). Return null kalau
-     * native tidak tersedia atau tidak satu pun path sysfs GPU dikenal
-     * berhasil dibaca di device ini (device tidak didukung, bukan error).
+     * Baca satu snapshot GPU (load% + frekuensi MHz) lewat native/fopen
+     * langsung. DIPERTAHANKAN untuk kompatibilitas/device yang path
+     * sysfs GPU-nya kebetulan world-readable, tapi TIDAK dipakai lagi
+     * sebagai jalur utama — lihat [readGpuSnapshotViaRoot].
+     *
+     * Root cause kenapa jalur ini sering gagal di banyak device Adreno:
+     * `/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage` dkk umumnya
+     * bermode 0440 (root-only read). Proses app biasa TIDAK otomatis
+     * dapat izin baca file itu hanya karena `PrivilegeStatus.activeBackend
+     * == ROOT` — status itu berarti app PUNYA akses menjalankan command
+     * lewat `su` (lihat RootShellExecutor), bukan berarti UID proses app
+     * berubah jadi root. fopen() native di sysmonitor.cpp berjalan
+     * sebagai UID app biasa, jadi kena EACCES diam-diam (readSmallFile
+     * return false, tidak melempar) dan nsmReadGpu selalu gagal di
+     * device begini walau root granted.
      */
     fun readGpuSnapshot(): GpuLoadSnapshot? {
         if (!isNativeAvailable) return null
@@ -89,6 +102,64 @@ object RootSystemMonitor {
             freqMhz = raw[1].takeIf { it >= 0f },
         )
     }
+
+    /** Path sysfs GPU yang dicoba berurutan, sama dengan yang dipakai native/SystemStatsProvider.kt. */
+    private val gpuLoadPaths = listOf(
+        "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage",
+        "/sys/kernel/gpu/gpu_busy",
+        "/sys/class/devfreq/gpufreq/gpu_busy",
+    )
+    private val gpuFreqPaths = listOf(
+        "/sys/class/kgsl/kgsl-3d0/gpuclk",
+        "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
+        "/sys/class/devfreq/gpufreq/cur_freq",
+    )
+
+    /**
+     * Baca snapshot GPU lewat shell root (`su -c cat <path>`), memakai
+     * [RootShellExecutor] yang sama dipakai fitur root lain di app ini.
+     * Ini jalur UTAMA untuk GPU sekarang — beda dari CPU (/proc/stat)
+     * yang tetap world-readable jadi cukup lewat native, file sysfs GPU
+     * banyak device (termasuk Adreno) bermode root-only, jadi WAJIB
+     * dibaca lewat proses shell root, bukan fopen() langsung dari proses
+     * app. Satu panggilan `cat` menggabungkan semua path kandidat supaya
+     * tidak perlu round-trip `su` berkali-kali tiap sampel (mahal).
+     *
+     * Return null kalau shell root gagal dijalankan sama sekali (root
+     * dicabut, dll — lihat RootShellExecutor.exec). Return snapshot
+     * dengan field null individual kalau shell berhasil tapi tidak satu
+     * pun path GPU dikenal berhasil dibaca di device ini.
+     */
+    suspend fun readGpuSnapshotViaRoot(): GpuLoadSnapshot? {
+        val allPaths = (gpuLoadPaths + gpuFreqPaths).joinToString(" ")
+        val command = buildString {
+            append("for f in ")
+            append(allPaths)
+            append("; do echo \"\$f=\$(cat \"\$f\" 2>/dev/null)\"; done")
+        }
+        val result = runCatching { RootShellExecutor().exec(command) }.getOrNull() ?: return null
+        if (!result.success && result.output.isEmpty()) return null
+
+        val values = result.output.mapNotNull { line ->
+            val idx = line.indexOf('=')
+            if (idx < 0) return@mapNotNull null
+            line.substring(0, idx) to line.substring(idx + 1).trim()
+        }.toMap()
+
+        val loadPercent = gpuLoadPaths.firstNotNullOfOrNull { path ->
+            values[path]?.let { extractFirstNumberOrNull(it) }?.takeIf { it in 0f..100f }
+        }
+        val rawFreq = gpuFreqPaths.firstNotNullOfOrNull { path ->
+            values[path]?.let { extractFirstNumberOrNull(it) }?.takeIf { it > 0f }
+        }
+        val freqMhz = rawFreq?.let { if (it > 100_000f) it / 1_000_000f else it }
+
+        if (loadPercent == null && freqMhz == null) return null
+        return GpuLoadSnapshot(loadPercent = loadPercent, freqMhz = freqMhz)
+    }
+
+    private fun extractFirstNumberOrNull(text: String): Float? =
+        Regex("\\d+").find(text)?.value?.toFloatOrNull()
 
     /**
      * Reset state delta CPU di sisi native. WAJIB dipanggil setiap kali

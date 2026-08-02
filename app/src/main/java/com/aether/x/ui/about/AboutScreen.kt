@@ -76,21 +76,18 @@ fun AboutScreen(
         )
 
         CommunityLinkRow(
-            iconRes = R.drawable.ic_social_whatsapp,
             title = stringResource(R.string.about_link_whatsapp_title),
             description = stringResource(R.string.about_link_whatsapp_desc),
             url = stringResource(R.string.about_link_whatsapp_url),
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
         CommunityLinkRow(
-            iconRes = R.drawable.ic_social_telegram,
             title = stringResource(R.string.about_link_telegram_title),
             description = stringResource(R.string.about_link_telegram_desc),
             url = stringResource(R.string.about_link_telegram_url),
             modifier = Modifier.cardEnterAnimation(index = 2),
         )
         CommunityLinkRow(
-            iconRes = R.drawable.ic_social_youtube,
             title = stringResource(R.string.about_link_youtube_title),
             description = stringResource(R.string.about_link_youtube_desc),
             url = stringResource(R.string.about_link_youtube_url),
@@ -175,7 +172,6 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
 
 @Composable
 private fun CommunityLinkRow(
-    iconRes: Int,
     title: String,
     description: String,
     url: String,
@@ -196,20 +192,6 @@ private fun CommunityLinkRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = title,
-                modifier = Modifier.size(24.dp),
-            )
-        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,

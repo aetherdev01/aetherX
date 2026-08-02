@@ -16,8 +16,17 @@ import kotlinx.coroutines.withContext
 /** Jumlah sampel yang disimpan untuk digambar di grafik (garis bergeser ke kiri setelah penuh). */
 private const val HISTORY_SIZE = 60
 
-/** Interval polling — cukup cepat untuk terasa "real-time", cukup jarang untuk tidak boros baterai/CPU. */
+/** Interval polling CPU — native/proc, murah, cukup cepat untuk terasa "real-time". */
 private const val POLL_INTERVAL_MS = 500L
+
+/**
+ * Interval polling GPU — lebih jarang dari CPU karena dibaca lewat
+ * shell root (`su -c cat ...`, lihat readGpuSnapshotViaRoot), yang jauh
+ * lebih mahal per panggilan dibanding baca /proc/stat native langsung.
+ * Dijalankan di coroutine terpisah dari loop CPU supaya latensi shell
+ * root tidak ikut menunda sampling CPU tiap 500ms.
+ */
+private const val GPU_POLL_INTERVAL_MS = 1500L
 
 data class RootMonitorUiState(
     val nativeAvailable: Boolean = true,
@@ -49,6 +58,7 @@ class RootMonitorViewModel : ViewModel() {
     val state: StateFlow<RootMonitorUiState> = _state.asStateFlow()
 
     private var pollingJob: Job? = null
+    private var gpuPollingJob: Job? = null
 
     fun onResume() {
         if (!RootSystemMonitor.isNativeAvailable) return
@@ -69,7 +79,6 @@ class RootMonitorViewModel : ViewModel() {
         pollingJob = viewModelScope.launch {
             while (true) {
                 val cpu = withContext(Dispatchers.IO) { RootSystemMonitor.readCpuSnapshot() }
-                val gpu = withContext(Dispatchers.IO) { RootSystemMonitor.readGpuSnapshot() }
 
                 // Sampel pertama setelah reset selalu -1 (belum ada delta pembanding) — dibuang, tidak masuk history.
                 if (cpu != null && cpu.aggregatePercent >= 0f) {
@@ -82,6 +91,17 @@ class RootMonitorViewModel : ViewModel() {
                     }
                 }
 
+                delay(POLL_INTERVAL_MS)
+            }
+        }
+
+        // Loop GPU terpisah, interval lebih jarang — lihat KDoc GPU_POLL_INTERVAL_MS
+        // dan RootSystemMonitor.readGpuSnapshotViaRoot untuk alasan lengkap (baca
+        // lewat su shell, bukan native fopen, karena sysfs GPU umumnya root-only).
+        gpuPollingJob = viewModelScope.launch {
+            while (true) {
+                val gpu = withContext(Dispatchers.IO) { RootSystemMonitor.readGpuSnapshotViaRoot() }
+
                 if (gpu?.loadPercent != null) {
                     _state.update { current ->
                         current.copy(
@@ -93,7 +113,7 @@ class RootMonitorViewModel : ViewModel() {
                     _state.update { it.copy(gpuFreqMhz = gpu.freqMhz) }
                 }
 
-                delay(POLL_INTERVAL_MS)
+                delay(GPU_POLL_INTERVAL_MS)
             }
         }
     }
@@ -101,9 +121,12 @@ class RootMonitorViewModel : ViewModel() {
     fun onPause() {
         pollingJob?.cancel()
         pollingJob = null
+        gpuPollingJob?.cancel()
+        gpuPollingJob = null
     }
 
     override fun onCleared() {
         pollingJob?.cancel()
+        gpuPollingJob?.cancel()
     }
 }
