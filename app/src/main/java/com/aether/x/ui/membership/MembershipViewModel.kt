@@ -104,6 +104,17 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     }
                     _expiresAtMillis.value = cachedExpiry
                 }
+                is LicenseResult.RateLimited -> {
+                    // Jalur observe() memanggil revalidateLicense yang TIDAK
+                    // dikenai rate limit server (lihat KDoc
+                    // revalidateLicense.ts) — kalau tetap muncul di sini,
+                    // kemungkinan besar transient (mis. proxy/NAT berbagi
+                    // App Check dengan device lain yang sedang brute force).
+                    // Jangan ubah status yang sudah ada (biarkan status
+                    // ACTIVE lama tetap dipercaya sampai polling berikutnya
+                    // berhasil), supaya pengguna sah tidak tiba-tiba
+                    // ter-downgrade ke INACTIVE akibat gangguan sesaat ini.
+                }
             }
         }
     }
@@ -187,6 +198,19 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                 LicenseResult.NetworkError -> {
 
                     _errorMessage.value = appString(R.string.membership_key_error_network)
+                }
+                is LicenseResult.RateLimited -> {
+                    // Rate limit SERVER-SIDE (lihat rateLimiter.ts) — beda
+                    // dari attemptGuard.checkBeforeAttempt() di atas yang
+                    // hanya lapisan client (UX cepat, bisa di-bypass).
+                    // Kalau server yang menolak, itu berarti guard client
+                    // entah tidak sinkron atau dilewati — tetap tampilkan
+                    // pesan yang sama ke pengguna untuk konsistensi, dan
+                    // catat sebagai percobaan gagal juga di guard client
+                    // supaya kedua lapisan sinkron kembali.
+                    attemptGuard.recordFailure()
+                    _errorMessage.value = appString(R.string.membership_key_error_locked)
+                        .format(result.remainingSeconds)
                 }
             }
             _isSubmitting.value = false
