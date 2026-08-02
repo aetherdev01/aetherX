@@ -179,6 +179,12 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
 
+    // ── Firebase Auth (anonymous sign-in) + Cloud Functions — dipakai
+    // data/LicenseRepository.kt untuk verifikasi lisensi lewat callable
+    // function di server (Firebase.auth, Firebase.functions).
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.functions)
+
     // ── Firebase Cloud Messaging: notifikasi push realtime (maintenance/
     // update/membership) yang tetap sampai walau aplikasi di-background atau
     // ditutup total — lihat core/messaging/AetherXFirebaseMessagingService.kt

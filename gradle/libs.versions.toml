@@ -120,6 +120,10 @@ libsu-core                              = { group = "com.github.topjohnwu.libsu"
 firebase-bom                            = { group = "com.google.firebase",        name = "firebase-bom",               version.ref = "firebaseBom"         }
 firebase-analytics                      = { group = "com.google.firebase",        name = "firebase-analytics"                                               }
 firebase-firestore                      = { group = "com.google.firebase",        name = "firebase-firestore"                                               }
+# Firebase Auth (anonymous sign-in) + Cloud Functions — dipakai LicenseRepository
+# untuk verifikasi lisensi lewat callable function di server.
+firebase-auth                           = { group = "com.google.firebase",        name = "firebase-auth-ktx"                                                }
+firebase-functions                      = { group = "com.google.firebase",        name = "firebase-functions-ktx"                                           }
 # Firebase Cloud Messaging — notifikasi push realtime (maintenance/update/
 # membership) yang WAJIB tetap sampai walau aplikasi sedang di-background
 # atau ditutup total (di-kill dari recent apps), berbeda dari
