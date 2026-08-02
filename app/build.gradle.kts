@@ -97,13 +97,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-        )
-    }
+    // NOTE: pengaturan JVM target & opt-in compiler ada di blok top-level
+    // `kotlin { compilerOptions { ... } }` di bawah file ini (bukan di sini),
+    // karena API `android.kotlinOptions` sudah deprecated di Kotlin 2.x.
 
     buildFeatures {
         compose     = true
@@ -120,6 +116,16 @@ android {
                 "META-INF/LGPL2.1",
             )
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs.addAll(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+        )
     }
 }
 
