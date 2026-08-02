@@ -3,18 +3,14 @@ package com.aether.x.ui.update
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,26 +23,22 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.notification.AetherXNotifier
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
-import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
 
@@ -68,47 +60,17 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
 
     if (!state.visible) return
 
-    Dialog(
+    PopupDialog(
         onDismissRequest = { viewModel.dismiss() },
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
+        icon = Icons.Outlined.RocketLaunch,
+        iconTint = AccentBlue,
+        title = stringResource(R.string.update_available_title),
+        dismissLabel = stringResource(R.string.update_later_button),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 28.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(AccentBlueDim),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.RocketLaunch,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
-
-            Text(
-                text = stringResource(R.string.update_available_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
             if (state.info.latestVersionName.isNotBlank()) {
                 VersionTransitionRow(
                     currentVersionName = state.currentVersionName,
@@ -165,13 +127,6 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-            }
-
-            TextButton(onClick = { viewModel.dismiss() }) {
-                Text(
-                    text = stringResource(R.string.update_later_button),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

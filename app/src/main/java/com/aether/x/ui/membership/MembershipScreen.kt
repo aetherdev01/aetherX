@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,15 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.WorkspacePremium
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.cardEnterAnimation
@@ -338,12 +339,11 @@ private fun MembershipProCard(modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_social_telegram),
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(CircleShape),
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
                     )
                     Text(
                         text = stringResource(R.string.membership_pro_cta),
@@ -481,25 +481,19 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
     }
 
     if (showLogoutConfirm) {
-        AlertDialog(
+        PopupDialog(
             onDismissRequest = { showLogoutConfirm = false },
-            title = { Text(stringResource(R.string.membership_logout_confirm_title)) },
-            text = { Text(stringResource(R.string.membership_logout_confirm_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showLogoutConfirm = false
-                        onLogout()
-                    },
-                ) {
-                    Text(stringResource(R.string.membership_logout_confirm_action), color = AccentRed)
-                }
+            icon = Icons.Outlined.Logout,
+            iconTint = AccentRed,
+            title = stringResource(R.string.membership_logout_confirm_title),
+            message = stringResource(R.string.membership_logout_confirm_message),
+            confirmLabel = stringResource(R.string.membership_logout_confirm_action),
+            onConfirm = {
+                showLogoutConfirm = false
+                onLogout()
             },
-            dismissButton = {
-                TextButton(onClick = { showLogoutConfirm = false }) {
-                    Text(stringResource(R.string.membership_logout_cancel))
-                }
-            },
+            confirmIsDestructive = true,
+            dismissLabel = stringResource(R.string.membership_logout_cancel),
         )
     }
 }

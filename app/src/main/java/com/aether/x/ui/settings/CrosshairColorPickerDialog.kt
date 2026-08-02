@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +33,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
+import com.aether.x.ui.components.PopupDialog
+import com.aether.x.ui.theme.AccentPurple
 
 @Composable
 fun CrosshairColorPickerDialog(
@@ -54,55 +56,48 @@ fun CrosshairColorPickerDialog(
         Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value)))
     }
 
-    AlertDialog(
+    PopupDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.crosshair_custom_color_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                SaturationValuePanel(
-                    hue = hue,
-                    saturation = saturation,
-                    value = value,
-                    onSaturationValueChange = { s, v -> saturation = s; value = v },
+        icon = Icons.Outlined.Palette,
+        iconTint = AccentPurple,
+        title = stringResource(R.string.crosshair_custom_color_title),
+        confirmLabel = stringResource(R.string.crosshair_custom_color_apply),
+        onConfirm = {
+            val argb = 0xFF000000L or (currentColor.toArgb().toLong() and 0xFFFFFFL)
+            onColorConfirmed(argb)
+        },
+        dismissLabel = stringResource(R.string.crosshair_custom_color_cancel),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            SaturationValuePanel(
+                hue = hue,
+                saturation = saturation,
+                value = value,
+                onSaturationValueChange = { s, v -> saturation = s; value = v },
+            )
+            HueSlider(
+                hue = hue,
+                onHueChange = { hue = it },
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(currentColor)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                 )
-                HueSlider(
-                    hue = hue,
-                    onHueChange = { hue = it },
+                Text(
+                    text = "#%06X".format(currentColor.toArgb() and 0xFFFFFF),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(currentColor)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                    )
-                    Text(
-                        text = "#%06X".format(currentColor.toArgb() and 0xFFFFFF),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-
-                val argb = 0xFF000000L or (currentColor.toArgb().toLong() and 0xFFFFFFL)
-                onColorConfirmed(argb)
-            }) {
-                Text(stringResource(R.string.crosshair_custom_color_apply))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.crosshair_custom_color_cancel))
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable

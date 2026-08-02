@@ -1,15 +1,9 @@
 package com.aether.x.ui.shizuku
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
@@ -26,19 +20,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shizuku.ShizukuConnectionState
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
-import com.aether.x.ui.theme.AccentBlueDim
 
 /**
  * Pop up global untuk kasus: pengguna sebelumnya sudah memilih Shizuku
@@ -81,106 +71,57 @@ fun ShizukuFallbackGate() {
 
     val state = status.shizukuState
 
-    Dialog(
+    val primaryAction: () -> Unit = when (state) {
+        ShizukuConnectionState.PermissionNotGranted,
+        ShizukuConnectionState.PermissionDenied,
+        -> {
+            { PrivilegeManager.requestShizukuPermission() }
+        }
+        else -> {
+            { PrivilegeManager.openShizukuManager(context) }
+        }
+    }
+    val primaryLabel = when (state) {
+        ShizukuConnectionState.PermissionNotGranted,
+        ShizukuConnectionState.PermissionDenied,
+        -> "Izinkan Shizuku"
+        ShizukuConnectionState.NotInstalled -> "Instal Shizuku Manager"
+        else -> "Buka Shizuku Manager"
+    }
+
+    PopupDialog(
         onDismissRequest = { dismissed = true },
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
+        icon = Icons.Outlined.Bolt,
+        iconTint = AccentBlue,
+        title = "Shizuku Terputus",
+        message = "${shizukuFallbackMessage(state)}\n\nSelama Shizuku belum aktif lagi, AetherX berjalan tanpa akses khusus (No Root) dan sebagian fitur tweak tidak akan berfungsi.",
     ) {
-        Column(
+        Button(
+            onClick = primaryAction,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .height(50.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentBlue,
+                contentColor = MaterialTheme.colorScheme.surface,
+            ),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(AccentBlueDim),
-                contentAlignment = Alignment.Center,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Bolt,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(32.dp),
-                )
+                Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null)
+                Text(text = primaryLabel, fontWeight = FontWeight.SemiBold)
             }
+        }
 
-            Text(
-                text = "Shizuku Terputus",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        TextButton(onClick = { PrivilegeManager.refreshShizuku() }) {
+            Text(text = "Sudah aktifkan, cek ulang", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
 
-            Text(
-                text = shizukuFallbackMessage(state),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Text(
-                text = "Selama Shizuku belum aktif lagi, AetherX berjalan tanpa akses khusus (No Root) dan sebagian fitur tweak tidak akan berfungsi.",
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            val primaryAction: () -> Unit = when (state) {
-                ShizukuConnectionState.PermissionNotGranted,
-                ShizukuConnectionState.PermissionDenied,
-                -> {
-                    { PrivilegeManager.requestShizukuPermission() }
-                }
-                else -> {
-                    { PrivilegeManager.openShizukuManager(context) }
-                }
-            }
-            val primaryLabel = when (state) {
-                ShizukuConnectionState.PermissionNotGranted,
-                ShizukuConnectionState.PermissionDenied,
-                -> "Izinkan Shizuku"
-                ShizukuConnectionState.NotInstalled -> "Instal Shizuku Manager"
-                else -> "Buka Shizuku Manager"
-            }
-
-            Button(
-                onClick = primaryAction,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentBlue,
-                    contentColor = MaterialTheme.colorScheme.surface,
-                ),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null)
-                    Text(text = primaryLabel, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            TextButton(onClick = { PrivilegeManager.refreshShizuku() }) {
-                Text(text = "Sudah aktifkan, cek ulang", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            TextButton(onClick = { dismissed = true }) {
-                Text(text = "Nanti saja", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        TextButton(onClick = { dismissed = true }) {
+            Text(text = "Nanti saja", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

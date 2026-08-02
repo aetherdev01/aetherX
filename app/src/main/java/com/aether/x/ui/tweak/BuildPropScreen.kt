@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -47,7 +46,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.buildprop.BuildPropBackup
 import com.aether.x.core.buildprop.BuildPropEntry
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
+import com.aether.x.ui.theme.AccentRed
 import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
@@ -265,31 +266,25 @@ private fun EditConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    PopupDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text(stringResource(R.string.buildprop_confirm_edit_title)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.buildprop_confirm_edit_warning))
-                Text(
-                    text = stringResource(R.string.buildprop_confirm_edit_diff_format, key, oldValue, newValue),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.buildprop_confirm_edit_button), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.buildprop_action_cancel)) }
-        },
-    )
+        icon = Icons.Outlined.WarningAmber,
+        iconTint = MaterialTheme.colorScheme.error,
+        title = stringResource(R.string.buildprop_confirm_edit_title),
+        message = stringResource(R.string.buildprop_confirm_edit_warning),
+        confirmLabel = stringResource(R.string.buildprop_confirm_edit_button),
+        onConfirm = onConfirm,
+        confirmIsDestructive = true,
+        dismissLabel = stringResource(R.string.buildprop_action_cancel),
+    ) {
+        Text(
+            text = stringResource(R.string.buildprop_confirm_edit_diff_format, key, oldValue, newValue),
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            color = TextSecondary,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
 }
 
 @Composable
@@ -298,17 +293,15 @@ private fun RestoreConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    PopupDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Outlined.History, contentDescription = null, tint = AccentBlue) },
-        title = { Text(stringResource(R.string.buildprop_confirm_restore_title)) },
-        text = { Text(stringResource(R.string.buildprop_confirm_restore_warning, backup.partition.displayLabel)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.buildprop_confirm_restore_button)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.buildprop_action_cancel)) }
-        },
+        icon = Icons.Outlined.History,
+        iconTint = AccentBlue,
+        title = stringResource(R.string.buildprop_confirm_restore_title),
+        message = stringResource(R.string.buildprop_confirm_restore_warning, backup.partition.displayLabel),
+        confirmLabel = stringResource(R.string.buildprop_confirm_restore_button),
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.buildprop_action_cancel),
     )
 }
 
@@ -318,38 +311,38 @@ private fun BackupListDialog(
     onRestore: (BuildPropBackup) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    PopupDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.buildprop_backups_title)) },
-        text = {
-            if (backups.isEmpty()) {
-                Text(stringResource(R.string.buildprop_backups_empty), color = TextMuted)
-            } else {
-                Column {
-                    backups.forEach { backup ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm").format(java.util.Date(backup.timestampMillis)),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextPrimary,
-                            )
-                            TextButton(onClick = { onRestore(backup) }) {
-                                Text(stringResource(R.string.buildprop_action_restore))
-                            }
+        icon = Icons.Outlined.History,
+        iconTint = AccentBlue,
+        title = stringResource(R.string.buildprop_backups_title),
+        dismissLabel = stringResource(R.string.buildprop_action_close),
+        scrollableContent = true,
+    ) {
+        if (backups.isEmpty()) {
+            Text(stringResource(R.string.buildprop_backups_empty), color = TextMuted)
+        } else {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                backups.forEach { backup ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm").format(java.util.Date(backup.timestampMillis)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary,
+                        )
+                        TextButton(onClick = { onRestore(backup) }) {
+                            Text(stringResource(R.string.buildprop_action_restore))
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.buildprop_action_close)) }
-        },
-    )
+        }
+    }
 }

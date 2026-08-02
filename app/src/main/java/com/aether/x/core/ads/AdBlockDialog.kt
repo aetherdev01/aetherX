@@ -1,14 +1,15 @@
 package com.aether.x.core.ads
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
+import com.aether.x.ui.components.PopupDialog
+import com.aether.x.ui.theme.AccentAmber
 
 @Composable
 fun AdBlockDialog() {
@@ -17,23 +18,19 @@ fun AdBlockDialog() {
 
     val context = LocalContext.current
 
-    AlertDialog(
-
-        onDismissRequest = {},
-        title = { Text(stringResource(R.string.adblock_dialog_title)) },
-        text = { Text(stringResource(R.string.adblock_dialog_message)) },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    AdBlockDialogState.dismiss(context)
-                    AdBlockDialogState.requestOpenMembership()
-                },
-            ) { Text(stringResource(R.string.adblock_dialog_membership_button)) }
+    PopupDialog(
+        onDismissRequest = { AdBlockDialogState.dismiss(context) },
+        dismissOnBackPress = false,
+        dismissOnClickOutside = false,
+        icon = Icons.Outlined.Shield,
+        iconTint = AccentAmber,
+        title = stringResource(R.string.adblock_dialog_title),
+        message = stringResource(R.string.adblock_dialog_message),
+        confirmLabel = stringResource(R.string.adblock_dialog_membership_button),
+        onConfirm = {
+            AdBlockDialogState.dismiss(context)
+            AdBlockDialogState.requestOpenMembership()
         },
-        dismissButton = {
-            TextButton(onClick = { AdBlockDialogState.dismiss(context) }) {
-                Text(stringResource(R.string.adblock_dialog_dismiss_button))
-            }
-        },
+        dismissLabel = stringResource(R.string.adblock_dialog_dismiss_button),
     )
 }

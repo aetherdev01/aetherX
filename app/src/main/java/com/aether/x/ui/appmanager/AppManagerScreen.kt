@@ -15,10 +15,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -50,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.appmanager.AppOrigin
 import com.aether.x.core.appmanager.InstalledAppEntry
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
@@ -170,20 +171,15 @@ private fun ClearCacheConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    PopupDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.app_manager_clear_cache_confirm_title)) },
-        text = { Text(stringResource(R.string.app_manager_clear_cache_confirm_desc, appLabel)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.app_manager_clear_cache_confirm_action))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.crosshair_custom_color_cancel))
-            }
-        },
+        icon = Icons.Outlined.DeleteSweep,
+        iconTint = AccentBlue,
+        title = stringResource(R.string.app_manager_clear_cache_confirm_title),
+        message = stringResource(R.string.app_manager_clear_cache_confirm_desc, appLabel),
+        confirmLabel = stringResource(R.string.app_manager_clear_cache_confirm_action),
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.crosshair_custom_color_cancel),
     )
 }
 
