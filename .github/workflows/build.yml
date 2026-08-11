@@ -72,6 +72,7 @@ jobs:
           name: aetherx-release-${{ github.run_number }}
           path: app/build/outputs/apk/release/AXKM_v*-release.apk
           if-no-files-found: error
+          retention-days: 3
 
       # ── 10. Kirim APK ke Telegram ────────────────────────────────────────────
       - name: Send APK to Telegram
@@ -185,6 +186,7 @@ jobs:
           name: aetherx-debug-${{ github.run_number }}
           path: app/build/outputs/apk/debug/*-debug.apk
           if-no-files-found: error
+          retention-days: 3
 
       # ── 10. Kirim link download ke Telegram ──────────────────────────────────
       # APK debug (belum di-minify/shrink) sering > 50MB, limit sendDocument
