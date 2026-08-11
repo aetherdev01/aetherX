@@ -1,8 +1,7 @@
 [versions]
-agp                     = "8.9.2"
-kotlin = "2.1.20"
+agp                     = "8.11.1"
+kotlin                  = "2.3.0"
 
-# AndroidX
 coreKtx                 = "1.16.0"
 appcompat               = "1.7.0"
 lifecycleRuntimeKtx     = "2.9.0"
@@ -11,51 +10,20 @@ composeBom              = "2025.05.00"
 navigationCompose       = "2.9.0"
 datastorePreferences    = "1.1.4"
 splashscreen            = "1.0.1"
-# FITUR BARU (Game Booster — floating sidebar overlay, lihat
-# core/overlay/ComposeOverlayLifecycleOwner.kt): dideklarasikan eksplisit
-# (bukan hanya transitive lewat lifecycle-runtime-ktx) karena dipakai
-# LANGSUNG oleh kode aplikasi (SavedStateRegistryController,
-# setViewTreeSavedStateRegistryOwner) untuk menjalankan ComposeView yang
-# di-attach manual ke WindowManager dari Service (floating overlay Game
-# Booster), bukan dari Activity/Fragment biasa yang sudah otomatis
-# menyediakan owner ini.
 savedstate              = "1.2.1"
 
-# Compose / UI
 material3               = "1.3.2"
 icons                   = "1.7.8"
 
-# Kotlin
 coroutines              = "1.9.0"
 
-# Privilege backends
-# ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali ke shizuku
-# pure... hapus semua yang bersangkutan dengan adb tertanam"): rework ADB
-# tertanam (libadb-android, sun-security-android, conscrypt) TERBUKTI tidak
-# cukup stabil di lapangan — pairing wireless debugging berulang kali gagal
-# tersambung di ROM agresif (dilaporkan pertama di MIUI/Redmi Note 11,
-# Android 13) walau sudah diberi banyak lapis retry + WakeLock. Kembali ke
-# Shizuku murni: AetherX HANYA bind ke service Shizuku yang sudah berjalan
-# (pengguna start sendiri lewat app Shizuku Manager terpisah, pairing/adb
-# manual dilakukan DI SANA bukan di AetherX) — tidak ada mDNS/TLS/pairing
-# custom sama sekali di sisi AetherX, jauh lebih sedikit yang bisa gagal.
 shizuku                 = "13.1.5"
 libsu                   = "6.0.0"
 
-# Firebase (ID pengguna global via Firestore counter)
 googleServices          = "4.5.0"
 firebaseBom             = "34.15.0"
 
-# Ads (rewarded ads untuk fitur non-member — lihat core/ads/RewardGate.kt)
-# CATATAN: "4.+" dipakai (bukan versi patch spesifik) supaya Gradle otomatis
-# resolve ke versi mayor-4 TERBARU yang benar-benar ada di Maven Central,
-# alih-alih menebak nomor patch tanpa akses internet untuk verifikasi —
-# versi sebelumnya ("4.15.1") kemungkinan besar tidak exist dan menyebabkan
-# SEMUA `import com.unity3d.ads.*` gagal resolve saat compile (Unresolved
-# reference 'unity3d'). Kalau build masih gagal, cek versi konkret yang
-# tersedia di https://dashboard.unity3d.com atau search.maven.org
-# (com.unity3d.ads:unity-ads) dan ganti "4.+" dengan nomor pasti hasil cek.
-unityAds                = "4.+"
+unityAds                = "4.15.1"
 
 [plugins]
 android-application     = { id = "com.android.application",             version.ref = "agp"    }
@@ -64,22 +32,18 @@ kotlin-compose          = { id = "org.jetbrains.kotlin.plugin.compose", version.
 google-services         = { id = "com.google.gms.google-services",      version.ref = "googleServices" }
 
 [libraries]
-# ── Core ─────────────────────────────────────────────────────────────────────
 androidx-core-ktx                       = { group = "androidx.core",             name = "core-ktx",                    version.ref = "coreKtx"             }
 androidx-appcompat                      = { group = "androidx.appcompat",         name = "appcompat",                   version.ref = "appcompat"           }
 androidx-core-splashscreen              = { group = "androidx.core",             name = "core-splashscreen",           version.ref = "splashscreen"        }
 
-# ── Lifecycle ─────────────────────────────────────────────────────────────────
 androidx-lifecycle-runtime-ktx          = { group = "androidx.lifecycle",        name = "lifecycle-runtime-ktx",       version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-compose    = { group = "androidx.lifecycle",        name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-runtime-compose      = { group = "androidx.lifecycle",        name = "lifecycle-runtime-compose",   version.ref = "lifecycleRuntimeKtx" }
 androidx-savedstate                     = { group = "androidx.savedstate",       name = "savedstate",                  version.ref = "savedstate"          }
 
-# ── Activity & Navigation ────────────────────────────────────────────────────
 androidx-activity-compose               = { group = "androidx.activity",         name = "activity-compose",            version.ref = "activityCompose"     }
 androidx-navigation-compose             = { group = "androidx.navigation",       name = "navigation-compose",          version.ref = "navigationCompose"   }
 
-# ── Compose BOM ───────────────────────────────────────────────────────────────
 androidx-compose-bom                    = { group = "androidx.compose",          name = "compose-bom",                 version.ref = "composeBom"          }
 androidx-ui                             = { group = "androidx.compose.ui",       name = "ui"                                                                }
 androidx-ui-graphics                    = { group = "androidx.compose.ui",       name = "ui-graphics"                                                       }
@@ -89,47 +53,20 @@ androidx-compose-animation              = { group = "androidx.compose.animation"
 androidx-material3                      = { group = "androidx.compose.material3",name = "material3",                   version.ref = "material3"           }
 androidx-material-icons-extended        = { group = "androidx.compose.material", name = "material-icons-extended",     version.ref = "icons"               }
 
-# ── DataStore ─────────────────────────────────────────────────────────────────
 androidx-datastore-preferences          = { group = "androidx.datastore",        name = "datastore-preferences",       version.ref = "datastorePreferences"}
 
-# ── Coroutines ────────────────────────────────────────────────────────────────
 kotlinx-coroutines-android              = { group = "org.jetbrains.kotlinx",     name = "kotlinx-coroutines-android",  version.ref = "coroutines"          }
 
-# ── Privilege backends: Shizuku (no-root, lewat app Shizuku Manager) ────────
-# "dev.rikka.shizuku:api" — client library untuk bind ke service Shizuku
-# yang sudah berjalan (start/pairing dilakukan pengguna sendiri di app
-# Shizuku Manager, BUKAN di AetherX). "provider" TIDAK dipakai (itu untuk
-# app yang mau MENYEDIAKAN Shizuku sebagai module Sui/Magisk, bukan untuk
-# app yang cuma jadi CLIENT/consumer seperti AetherX).
-# FIX BUILD — "dev.rikka.shizuku:provider" TERNYATA WAJIB (bukan opsional
-# untuk app yang "menyediakan" Shizuku seperti Sui module — asumsi awal ini
-# SALAH). ShizukuProvider adalah ContentProvider yang menangani proses
-# AWAL mendapatkan Binder dari service Shizuku; tanpa <provider> ini
-# dideklarasikan di AndroidManifest.xml, listener seperti
-# addBinderReceivedListenerSticky TIDAK PERNAH terpanggil sama sekali,
-# app tidak akan pernah bisa terhubung ke Shizuku. Dikonfirmasi dari
-# dokumentasi resmi RikkaApps/Shizuku-API: "Add this line if you want to
-# support Shizuku // implementation dev.rikka.shizuku:provider".
 shizuku-api                              = { group = "dev.rikka.shizuku",         name = "api",                        version.ref = "shizuku"             }
 shizuku-provider                         = { group = "dev.rikka.shizuku",         name = "provider",                   version.ref = "shizuku"             }
 
-# ── Privilege backends: root / Magisk / KernelSU / APatch) ───────────
 libsu-core                              = { group = "com.github.topjohnwu.libsu", name = "core",                       version.ref = "libsu"               }
 
-# ── Firebase (ID pengguna global via Firestore counter) ─────────────────────
 firebase-bom                            = { group = "com.google.firebase",        name = "firebase-bom",               version.ref = "firebaseBom"         }
 firebase-analytics                      = { group = "com.google.firebase",        name = "firebase-analytics"                                               }
 firebase-firestore                      = { group = "com.google.firebase",        name = "firebase-firestore"                                               }
-# Firebase Auth (anonymous sign-in) + Cloud Functions — dipakai LicenseRepository
-# untuk verifikasi lisensi lewat callable function di server.
 firebase-auth                           = { group = "com.google.firebase",        name = "firebase-auth"                                                    }
 firebase-functions                      = { group = "com.google.firebase",        name = "firebase-functions"                                               }
-# Firebase Cloud Messaging — notifikasi push realtime (maintenance/update/
-# membership) yang WAJIB tetap sampai walau aplikasi sedang di-background
-# atau ditutup total (di-kill dari recent apps), berbeda dari
-# MaintenanceRepository/UpdateRepository/LicenseRepository yang pakai
-# Firestore addSnapshotListener dan HANYA jalan selagi app punya proses hidup.
 firebase-messaging                      = { group = "com.google.firebase",        name = "firebase-messaging"                                               }
 
-# ── Ads: Unity Ads (rewarded ads — lihat core/ads/RewardGate.kt) ────────────
 unity-ads                               = { group = "com.unity3d.ads",            name = "unity-ads",                   version.ref = "unityAds"            }
