@@ -42,6 +42,13 @@
     <string name="setup_page_access_title">Metode Akses</string>
     <string name="setup_page_access_subtitle">Pilih salah satu: Shizuku (tanpa root) atau akses Root penuh lewat Magisk/KernelSU/APatch.</string>
 
+    <!-- Mode tanpa root/Shizuku (skip) — popup pemberitahuan sebelum lanjut -->
+    <string name="setup_no_root_skip">Lewati, lanjut tanpa akses (mode terbatas)</string>
+    <string name="setup_no_root_dialog_title">Mode Terbatas Tanpa Root</string>
+    <string name="setup_no_root_dialog_message">Kamu bisa lanjut tanpa Root maupun Shizuku, tapi hampir semua fitur inti AetherX (kontrol governor CPU/GPU, tweak sistem, kernel manager, dll) butuh salah satu akses tersebut untuk berjalan. Tanpa akses, fitur yang tersedia sangat terbatas. Untuk fitur lengkap, aktifkan Root atau Shizuku terlebih dahulu.</string>
+    <string name="setup_no_root_dialog_confirm">Lanjutkan Mode Terbatas</string>
+    <string name="setup_no_root_dialog_cancel">Batal</string>
+
     <!-- Halaman 2 — Ubah Pengaturan Sistem (WRITE_SETTINGS) -->
     <string name="setup_page_write_settings_title">Ubah Pengaturan Sistem</string>
     <string name="setup_page_write_settings_subtitle">Dibutuhkan supaya AetherX bisa membaca dan mengubah sebagian setelan sistem, seperti DPI dan kecepatan pointer.</string>

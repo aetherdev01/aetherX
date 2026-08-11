@@ -1,33 +1,13 @@
 cmake_minimum_required(VERSION 3.22.1)
 project("aetherX")
 
-# -O2 + strip symbols di release: binary lebih kecil dan lebih sulit dibaca
-# lewat disassembler dibanding build dengan simbol debug lengkap.
-#
-# CATATAN soal -fvisibility=hidden + RegisterNatives (lihat jni_onload.cpp):
-# flag ini menyembunyikan SEMUA simbol secara default KECUALI yang eksplisit
-# ditandai __attribute__((visibility("default"))) — makro JNIEXPORT dari NDK
-# sudah melakukan itu otomatis untuk JNI_OnLoad, nvfy, nvfy2, nvint, ndns,
-# nmod, dan nfgp (semuanya dideklarasikan pakai JNIEXPORT — ndns/nmod
-# ditambahkan di adblockguard.cpp, nfgp di devicefingerprint.cpp, lihat
-# file masing-masing), jadi tetap bisa dipanggil JVM/RegisterNatives walau
-# visibility default project ini hidden. (nvpn SUDAH DIHAPUS — deteksi VPN
-# pindah ke ConnectivityManager di Kotlin, lihat AdBlockDetector.kt.)
-# Fungsi non-JNI lain (constantTimeEquals, fnv1a64, sha256/hmacSha256, dkk
-# di dalam namespace anonim/common.h) TETAP tersembunyi seperti sebelumnya —
-# tidak ada regresi di situ.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong")
 
-# Nama library HARUS "aetherX" (menghasilkan libaetherX.so) — cocok dengan
-# System.loadLibrary("aetherX") di SignatureGuard.kt, NativeIntegrityGuard.kt,
-# DAN AdBlockDetector.kt (tiga file, SEMUA memuat SATU library yang sama,
-# bukan tiga library terpisah). ${CMAKE_PROJECT_NAME} di sini mengambil
-# nilai dari project("aetherX") di baris 2 di atas, jadi KEDUANYA (nama
-# project & nama library) sengaja sama persis "aetherX" — pastikan
-# project() TIDAK diganti tanpa ikut mengganti System.loadLibrary() di
-# KETIGA file Kotlin tersebut juga.
+# GANTI -O2 menjadi -Oz (untuk ukuran terkecil) atau -Os.
+# TAMBAHKAN -flto untuk Link-Time Optimization (membuat kode sangat sulit di-reverse dan lebih padat).
+set(CMAKE_CXX_FLAGS_RELEASE "-Oz -flto -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong")
+
 add_library(${CMAKE_PROJECT_NAME} SHARED
     sigcheck.cpp
     integrityguard.cpp
@@ -44,12 +24,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     ${log-lib}
 )
 
-# --- Hardening linker, konsisten di semua ABI (arm64-v8a termasuk) ---
-# BIND_NOW + full RELRO terverifikasi ada di build armeabi-v7a sebelumnya
-# (readelf -d -> FLAGS: BIND_NOW, FLAGS_1: NOW). --gc-sections + --icf
-# memangkas kode/simbol duplikat supaya output arm64 tidak jadi jauh lebih
-# besar dibanding v7a walau instruksi 64-bit umumnya lebih boros byte.
+# Tambahkan -flto juga di bagian linker
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -flto
     -Wl,-z,now
     -Wl,-z,relro
     -Wl,--build-id=sha1
@@ -58,9 +35,6 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -Wl,--icf=all
 )
 
-# Strip simbol non-dynamic setelah link, konsisten di semua ABI supaya hasil
-# arm64-v8a tetap fully stripped seperti build v7a (nm hanya menyisakan
-# JNI_OnLoad, nvfy, nvfy2, nvint, ndns, nmod — nvpn sudah dihapus).
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_STRIP} --strip-unneeded $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
 )

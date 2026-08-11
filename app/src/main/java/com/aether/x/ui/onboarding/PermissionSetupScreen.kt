@@ -49,7 +49,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +73,7 @@ import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
 import com.aether.x.ui.components.ShizukuCard
 import com.aether.x.ui.components.PermissionMethodCard
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
 import com.aether.x.ui.theme.AccentGreenContainer
@@ -97,7 +97,16 @@ fun PermissionSetupScreen(
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    val accessSatisfied = status.hasAccess
+    // Mode terbatas tanpa Root/Shizuku — pengguna bisa lanjut lewat opsi
+    // "Lewati" setelah membaca popup pemberitahuan (lihat NoRootDialog di
+    // AccessMethodPage). Begitu diaktifkan, halaman akses dianggap
+    // "terpenuhi" walau status.hasAccess masih false, tapi TIDAK mengubah
+    // status.hasAccess itu sendiri — fitur yang butuh privilege tetap
+    // dicek lewat status.hasAccess di tempat lain, jadi fitur lengkap
+    // tetap terkunci sampai user benar-benar mengaktifkan Root/Shizuku.
+    var noRootModeAccepted by remember { mutableStateOf(false) }
+
+    val accessSatisfied = status.hasAccess || noRootModeAccepted
     val writeSettingsSatisfied = status.writeSettingsGranted
     val overlaySatisfied = status.overlayGranted
     val notificationsSatisfied = status.notificationsGranted
@@ -176,58 +185,11 @@ fun PermissionSetupScreen(
         PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
-    // BUG FIX — "animasi slide macet di tengah / layar berikutnya cuma
-    // setengah" setelah mengaktifkan izin (Shizuku, overlay, dll).
-    //
-    // Penyebab #1: key LaunchedEffect auto-advance SEBELUMNYA menyertakan
-    // `pagerState.currentPage`. Dokumentasi resmi Compose Foundation
-    // mendefinisikan `currentPage` sebagai "halaman TERDEKAT ke posisi
-    // snap" — nilainya BISA BERUBAH DI TENGAH ANIMASI, begitu posisi
-    // scroll melewati titik tengah antar halaman, BUKAN cuma di akhir
-    // animasi. Karena nilai yang berubah itu ada di dalam key,
-    // LaunchedEffect restart di tengah animasi, MEMBATALKAN coroutine
-    // `animateScrollToPage` sebelum sempat selesai — pager berhenti di
-    // posisi transisi (parsial) alih-alih tuntas ke halaman berikutnya.
-    // Fix: pakai `settledPage`, properti yang SENGAJA didesain Compose
-    // Foundation supaya nilainya TETAP selama animasi berlangsung, hanya
-    // berubah SETELAH benar-benar tuntas (settle).
-    //
-    // Detail implementasi: closure `derivedStateOf` di bawah membaca
-    // `status` (StateFlow reaktif) langsung, BUKAN variabel lokal
-    // `pageSatisfied` yang dideklarasikan di atas — closure di dalam
-    // `remember { }` tanpa key hanya dibuat SEKALI seumur hidup composable
-    // ini, jadi kalau closure itu menangkap `pageSatisfied` (List biasa
-    // yang dibuat ulang tiap recomposition, bukan State), closure tersebut
-    // akan selamanya merujuk ke List versi pertama kali remember
-    // dieksekusi dan tidak pernah ter-update lagi.
-    val autoAdvanceTrigger by remember {
-        derivedStateOf {
-            val currentStatus = status
-            val satisfiedList = listOf(
-                currentStatus.hasAccess,
-                currentStatus.writeSettingsGranted,
-                currentStatus.overlayGranted,
-                currentStatus.notificationsGranted,
-                kernelWarningAcknowledged,
-            )
-            val page = pagerState.settledPage
-            val satisfied = satisfiedList.getOrNull(page) == true
-            val hasNextPage = page < satisfiedList.size - 1
-            if (satisfied && hasNextPage) page else -1
-        }
-    }
-    LaunchedEffect(autoAdvanceTrigger) {
-        if (!requireAccessToContinue) return@LaunchedEffect
-        val targetPage = autoAdvanceTrigger
-        if (targetPage < 0) return@LaunchedEffect
-        kotlinx.coroutines.delay(600)
-        // Cek ulang setelah delay: batalkan auto-advance kalau kondisinya
-        // sudah berubah lagi selama jeda 600ms itu (mis. pengguna sudah
-        // pindah halaman manual, atau justru izin barusan dicabut lagi).
-        if (autoAdvanceTrigger == targetPage) {
-            pagerState.animateScrollToPage(targetPage + 1)
-        }
-    }
+    // Auto-advance dinonaktifkan atas permintaan pengguna — sebelumnya
+    // pager pindah halaman otomatis 600ms setelah satu izin terpenuhi,
+    // tapi perilaku ini menyebabkan bug (macet/animasi tanggung, lihat
+    // riwayat komentar di versi sebelumnya). Sekarang navigasi antar
+    // halaman sepenuhnya manual: swipe atau tombol "Lanjut" di bawah.
 
     Scaffold(
         containerColor = BgVoid,
@@ -267,6 +229,8 @@ fun PermissionSetupScreen(
                         0 -> AccessMethodPage(
                             status = status,
                             context = context,
+                            noRootModeAccepted = noRootModeAccepted,
+                            onNoRootModeAcceptedChange = { noRootModeAccepted = it },
                         )
                         1 -> WriteSettingsPage(status = status, context = context)
                         2 -> OverlayPage(status = status, context = context)
@@ -342,7 +306,11 @@ fun PermissionSetupScreen(
 private fun AccessMethodPage(
     status: com.aether.x.core.permission.PrivilegeStatus,
     context: android.content.Context,
+    noRootModeAccepted: Boolean,
+    onNoRootModeAcceptedChange: (Boolean) -> Unit,
 ) {
+    var showNoRootDialog by remember { mutableStateOf(false) }
+
     PageIcon(icon = Icons.Outlined.Shield, tint = AccentBlue)
     PageTitle(
         title = stringResource(R.string.setup_page_access_title),
@@ -448,6 +416,73 @@ private fun AccessMethodPage(
                 )
             }
         }
+
+        // Opsi lewati untuk pengguna tanpa root/Shizuku — hanya muncul
+        // kalau memang belum ada akses sama sekali. Menampilkan popup
+        // pemberitahuan dulu (NoRootDialog) sebelum benar-benar
+        // membolehkan pengguna lanjut dalam mode terbatas.
+        AnimatedVisibility(
+            visible = !status.hasAccess && !noRootModeAccepted,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Text(
+                    text = stringResource(R.string.setup_no_root_skip),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextMuted,
+                    modifier = Modifier
+                        .padding(top = Spacing.md)
+                        .clickable { showNoRootDialog = true },
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = !status.hasAccess && noRootModeAccepted,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Spacing.md)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SurfaceCardAlt)
+                    .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.WarningAmber,
+                    contentDescription = null,
+                    tint = TextMuted,
+                )
+                Text(
+                    text = stringResource(R.string.setup_no_root_dialog_message),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+            }
+        }
+    }
+
+    if (showNoRootDialog) {
+        PopupDialog(
+            onDismissRequest = { showNoRootDialog = false },
+            icon = Icons.Outlined.WarningAmber,
+            iconTint = AccentRed,
+            title = stringResource(R.string.setup_no_root_dialog_title),
+            message = stringResource(R.string.setup_no_root_dialog_message),
+            confirmLabel = stringResource(R.string.setup_no_root_dialog_confirm),
+            onConfirm = {
+                showNoRootDialog = false
+                onNoRootModeAcceptedChange(true)
+            },
+            confirmIsDestructive = true,
+            dismissLabel = stringResource(R.string.setup_no_root_dialog_cancel),
+        )
     }
 }
 
