@@ -157,13 +157,13 @@
     <string name="membership_benefit_4">Bebas iklan di seluruh aplikasi</string>
     <string name="membership_pro_title">Langganan Membership Pro</string>
     <!-- FITUR BARU (lihat perintah rework "tambahkan opsi harga Rp10.000
-         / 1 Minggu, 60.000 / 1 bulan"): dua paket berlangganan, pengguna
+         / 1 Minggu, 25.000 / 1 bulan"): dua paket berlangganan, pengguna
          pilih salah satu lewat MembershipPlanSelector sebelum menghubungi
          admin Telegram bukan lagi satu harga tetap tanpa pilihan. -->
     <string name="membership_pro_plan_weekly_label">1 Minggu</string>
     <string name="membership_pro_plan_weekly_price">Rp10.000</string>
     <string name="membership_pro_plan_monthly_label">1 Bulan</string>
-    <string name="membership_pro_plan_monthly_price">Rp60.000</string>
+    <string name="membership_pro_plan_monthly_price">Rp25.000</string>
     <string name="membership_pro_plan_monthly_badge">Lebih Hemat</string>
     <string name="membership_pro_description">Pilih paket, lalu hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi Membership Pro.</string>
     <string name="membership_pro_cta">Langganan Sekarang</string>

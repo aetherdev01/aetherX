@@ -79,6 +79,7 @@ import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
 import com.aether.x.ui.theme.AccentGreenContainer
 import com.aether.x.ui.theme.AccentRed
+import com.aether.x.ui.theme.OnAccentBlue
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -394,7 +395,8 @@ private fun MembershipPlanOption(
                     Text(
                         text = stringResource(R.string.membership_pro_plan_monthly_badge),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        color = OnAccentBlue,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                     )
                 }

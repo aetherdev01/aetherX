@@ -74,6 +74,8 @@ class LicenseRepository(context: Context) {
     private companion object {
         const val TAG = "LicenseRepository"
         const val POLL_INTERVAL_MILLIS = 60_000L
+        const val SIGN_IN_RETRY_COUNT = 3
+        const val SIGN_IN_RETRY_DELAY_MILLIS = 800L
     }
 
     /**
@@ -87,13 +89,23 @@ class LicenseRepository(context: Context) {
      */
     private suspend fun ensureSignedIn(): Boolean {
         if (auth.currentUser != null) return true
-        return runCatching {
-            auth.signInAnonymously().await()
-            true
-        }.getOrElse { e ->
-            Log.w(TAG, "Gagal membuat sesi Firebase Auth anonim", e)
-            false
+        // Retry ringan dengan backoff — koneksi yang sempat putus-nyambung
+        // (mis. pindah dari WiFi ke data seluler) tidak boleh langsung
+        // dianggap gagal permanen hanya karena percobaan pertama gagal.
+        repeat(SIGN_IN_RETRY_COUNT) { attempt ->
+            val success = runCatching {
+                auth.signInAnonymously().await()
+                true
+            }.getOrElse { e ->
+                Log.w(TAG, "Gagal membuat sesi Firebase Auth anonim (percobaan ${attempt + 1})", e)
+                false
+            }
+            if (success) return true
+            if (attempt < SIGN_IN_RETRY_COUNT - 1) {
+                delay(SIGN_IN_RETRY_DELAY_MILLIS * (attempt + 1))
+            }
         }
+        return false
     }
 
     suspend fun activate(key: String): LicenseResult {

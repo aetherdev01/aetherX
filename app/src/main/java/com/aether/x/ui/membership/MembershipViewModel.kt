@@ -154,6 +154,7 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
 
             when (val guardCheck = attemptGuard.checkBeforeAttempt()) {
                 is AttemptGuardResult.Locked -> {
+                    _activationStage.value = ActivationStage.CHECKING_GUARD
                     _errorMessage.value = appString(R.string.membership_key_error_locked)
                         .format(guardCheck.remainingSeconds)
                     _isSubmitting.value = false
@@ -197,6 +198,7 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                 }
                 LicenseResult.NetworkError -> {
 
+                    _activationStage.value = ActivationStage.CHECKING_GUARD
                     _errorMessage.value = appString(R.string.membership_key_error_network)
                 }
                 is LicenseResult.RateLimited -> {
