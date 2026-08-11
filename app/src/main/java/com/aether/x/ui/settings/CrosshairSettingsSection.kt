@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.ui.input.pointer.awaitPointerEvent
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
@@ -36,8 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,14 +42,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
@@ -61,7 +60,10 @@ import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.SurfaceRaised
 import kotlinx.coroutines.delay
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private val crosshairColorPalette = listOf(
     0xFFFFFFFFL,
@@ -209,11 +211,10 @@ fun CrosshairSettingsSection(
                             color = Color.White.copy(alpha = 0.6f),
                             modifier = Modifier.padding(bottom = 6.dp),
                         )
-                        CrosshairRotationSlider(
+                        CrosshairPositionDial(
                             rotationDegrees = rotationDegrees,
                             onRotationChange = onRotationChange,
                             onNudgePosition = onNudgePosition,
-                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
 
@@ -466,190 +467,105 @@ private fun StyleIconButton(
  *   dial tetap menampilkan derajat rotasi).
  */
 @Composable
-private fun CrosshairRotationSlider(
+private fun CrosshairPositionDial(
     rotationDegrees: Int,
     onRotationChange: (Int) -> Unit,
     onNudgePosition: (dx: Int, dy: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val clampedRotation = rotationDegrees.coerceIn(0, 360)
-    val fraction = clampedRotation / 360f
-    val animatedFraction by animateFloatAsState(
-        targetValue = fraction,
-        animationSpec = tween(durationMillis = 90),
-        label = "rotationSlider",
-    )
+    val dialSize = 190.dp
+    val handleTrackInset = 16.dp
+    val latestRotation by rememberUpdatedState(rotationDegrees)
+    val density = LocalDensity.current
     val nudgeStep = 6
 
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Box(
+        modifier = modifier
+            .size(dialSize)
+            .pointerInput(Unit) {
+                detectDragGestures { change, _ ->
+                    change.consume()
+                    val centerX = size.width / 2f
+                    val centerY = size.height / 2f
+                    val dx = change.position.x - centerX
+                    val dy = change.position.y - centerY
+                    // atan2 dengan sumbu Y dibalik (koordinat layar Y ke
+                    // bawah) supaya 0° berada tepat di atas dial (jam 12),
+                    // sesuai posisi handle pada gambar referensi.
+                    val angleRad = atan2(dx, -dy)
+                    var degrees = Math.toDegrees(angleRad.toDouble()).roundToInt()
+                    if (degrees < 0) degrees += 360
+                    if (degrees >= 360) degrees -= 360
+                    onRotationChange(degrees)
+                }
+            },
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "ROTATION",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.55f),
+        Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+            val strokeWidth = 2.dp.toPx()
+            drawCircle(
+                color = AccentBlueDim,
+                radius = size.minDimension / 2f - strokeWidth,
+                style = Stroke(strokeWidth),
             )
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(AccentBlue.copy(alpha = 0.12f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-            ) {
-                Text(
-                    text = stringResource(
-                        R.string.crosshair_rotation_degrees_format,
-                        clampedRotation,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = AccentBlue,
-                )
-            }
         }
+
+        // D-pad segitiga geser posisi, ditata di dalam ring rotasi.
+        DPadTriangle(
+            direction = DPadDirection.UP,
+            onNudge = { onNudgePosition(0, -nudgeStep) },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 34.dp),
+        )
+        DPadTriangle(
+            direction = DPadDirection.DOWN,
+            onNudge = { onNudgePosition(0, nudgeStep) },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 34.dp),
+        )
+        DPadTriangle(
+            direction = DPadDirection.LEFT,
+            onNudge = { onNudgePosition(-nudgeStep, 0) },
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 34.dp),
+        )
+        DPadTriangle(
+            direction = DPadDirection.RIGHT,
+            onNudge = { onNudgePosition(nudgeStep, 0) },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 34.dp),
+        )
+
+        val trackRadiusPx = with(density) { (dialSize / 2f - handleTrackInset).toPx() }
+        val angleRad = Math.toRadians((latestRotation - 90).toDouble())
+        val handleOffsetPx = IntOffset(
+            x = (cos(angleRad) * trackRadiusPx).roundToInt(),
+            y = (sin(angleRad) * trackRadiusPx).roundToInt(),
+        )
 
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(68.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(SurfaceRaised.copy(alpha = 0.7f))
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        down.consume()
+                .offset { handleOffsetPx }
+                .size(HANDLE_SIZE_DP.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFE8402F))
+                .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
+        )
 
-                        fun updateFromX(x: Float) {
-                            val fractionFromX = (x / size.width.toFloat()).coerceIn(0f, 1f)
-                            onRotationChange((fractionFromX * 360f).roundToInt())
-                        }
-
-                        updateFromX(down.position.x)
-
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull() ?: break
-                            if (!change.pressed) {
-                                change.consume()
-                                break
-                            }
-                            updateFromX(change.position.x)
-                            change.consume()
-                        }
-                    }
-                },
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp)
-                    .padding(horizontal = 14.dp),
-            ) {
-                val trackHeight = 7.dp.toPx()
-                val trackTop = center.y - trackHeight / 2f
-                val left = 0f
-                val right = size.width
-                val animatedRight = left + (right - left) * animatedFraction
-
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.09f),
-                    topLeft = androidx.compose.ui.geometry.Offset(left, trackTop),
-                    size = androidx.compose.ui.geometry.Size(right - left, trackHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f),
-                )
-
-                if (animatedRight > left) {
-                    drawRoundRect(
-                        color = AccentBlue,
-                        topLeft = androidx.compose.ui.geometry.Offset(left, trackTop),
-                        size = androidx.compose.ui.geometry.Size(animatedRight - left, trackHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f),
-                    )
-                }
-
-                val thumbWidth = 34.dp.toPx()
-                val thumbHeight = 22.dp.toPx()
-                val thumbCenterX = left + (right - left) * animatedFraction
-                val thumbLeft = (thumbCenterX - thumbWidth / 2f)
-                    .coerceIn(left, (right - thumbWidth).coerceAtLeast(left))
-
-                drawRoundRect(
-                    color = AccentBlue,
-                    topLeft = androidx.compose.ui.geometry.Offset(
-                        thumbLeft,
-                        center.y - thumbHeight / 2f,
-                    ),
-                    size = androidx.compose.ui.geometry.Size(thumbWidth, thumbHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()),
-                )
-
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.28f),
-                    topLeft = androidx.compose.ui.geometry.Offset(
-                        thumbLeft + 7.dp.toPx(),
-                        center.y - 2.dp.toPx(),
-                    ),
-                    size = androidx.compose.ui.geometry.Size(
-                        thumbWidth - 14.dp.toPx(),
-                        4.dp.toPx(),
-                    ),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 14.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("0°", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.38f))
-                Text("90°", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.28f))
-                Text("180°", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.28f))
-                Text("270°", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.28f))
-                Text("360°", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.38f))
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DPadTriangle(
-                direction = DPadDirection.LEFT,
-                onNudge = { onNudgePosition(-nudgeStep, 0) },
-                modifier = Modifier.weight(1f),
-            )
-            DPadTriangle(
-                direction = DPadDirection.UP,
-                onNudge = { onNudgePosition(0, -nudgeStep) },
-                modifier = Modifier.weight(1f),
-            )
-            DPadTriangle(
-                direction = DPadDirection.DOWN,
-                onNudge = { onNudgePosition(0, nudgeStep) },
-                modifier = Modifier.weight(1f),
-            )
-            DPadTriangle(
-                direction = DPadDirection.RIGHT,
-                onNudge = { onNudgePosition(nudgeStep, 0) },
-                modifier = Modifier.weight(1f),
-            )
-        }
+        Text(
+            text = stringResource(R.string.crosshair_rotation_degrees_format, rotationDegrees),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = AccentBlue,
+        )
     }
 }
+
+private const val HANDLE_SIZE_DP = 18
 
 private enum class DPadDirection { UP, DOWN, LEFT, RIGHT }
 
