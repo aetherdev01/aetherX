@@ -1,5 +1,6 @@
 package com.aether.x.core.kernel
 
+import com.aether.x.core.security.SecretStrings
 import com.aether.x.core.shell.ShellExecutor
 import kotlin.math.roundToInt
 
@@ -222,16 +223,13 @@ class KernelInfoReader {
     }
 
     suspend fun readGpuBusyPercent(executor: ShellExecutor): Int? {
-        val script = """
-            for p in /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage \
-                     /sys/kernel/gpu/gpu_busy \
-                     /sys/class/devfreq/gpufreq/gpu_busy; do
-              if [ -r "${'$'}p" ]; then
-                cat "${'$'}p"
-                break
-              fi
-            done
-        """.trimIndent()
+        // Script ini disimpan terenkripsi (lihat SecretStrings.kt) supaya
+        // path deteksi GPU tidak muncul plaintext di classes.dex — sama
+        // dengan candidate path di RootSystemMonitor.kt/SystemStatsProvider.kt.
+        // Payload digenerate lewat tools/encode_secret.py.
+        val script = SecretStrings.reveal(
+            "wYQY7HtjXc4aVLiKMTA0oBQBfqQHgXwiK7GtRumgnHpL9ttT48QdNykZV63hHApQbjllfxBdz3/seu6C07skRtyW7MGOHV2L390sgE1IRUfrhLOvVi7gtl4BzpCJ/Zzv4PkysbxZ3cFVA+FS45qiKMp0xBf6mch25jiMIgOZRN7ITyPvhJ6ZnPOEfaZlQF0VMoZ+DRNFLnAlqxG7Zv0dGaMnPAFM+DIB47Ri2YXlQFMShBFa0gblzKiQM7LEVT/0iXUj0Gm7cthyx0T7U63umpEHwrXeTu4Ih4pxSTpqnqhp+gDrCIoixkyK3NsB1NdBQ1Vj8e9wSaV6gFeJeeBGRI+5qExDPFpJ9+MLALW6L6ETJOvv05/03GAWsZ/Ng5W3jUrRjpvER4YxRCH8hNc+jLuTWvU=",
+        )
         val result = executor.exec(script)
         val text = result.outputText.trim()
         val numeric = Regex("\\d+").find(text)?.value?.toIntOrNull() ?: return null

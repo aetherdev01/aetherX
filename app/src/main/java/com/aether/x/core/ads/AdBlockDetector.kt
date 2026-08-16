@@ -6,13 +6,22 @@ import android.net.NetworkCapabilities
 import android.util.Log
 import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.core.security.SecretStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 object AdBlockDetector {
 
     private const val TAG = "AdBlockDetector"
-    private const val MAGISK_MODULES_PATH = "/data/adb/modules/"
+
+    /**
+     * Path listing modul Magisk — disimpan terenkripsi (lihat
+     * SecretStrings.kt) supaya tidak muncul plaintext di classes.dex.
+     * Payload digenerate lewat tools/encode_secret.py.
+     */
+    private val MAGISK_MODULES_PATH: String by lazy {
+        SecretStrings.reveal("rJIfp2/ULymoDP3v5gdzpSsbYd0hMYi9dNDQlNbjaA+jUNfPnUWBRHjB4lPiew==")
+    }
 
     init {
 

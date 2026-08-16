@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import com.aether.x.core.security.SecretStrings
 import java.io.File
 import java.io.RandomAccessFile
 import kotlin.math.roundToInt
@@ -70,12 +71,19 @@ class SystemStatsProvider {
         null
     }.getOrNull()
 
-    fun readGpuLoadPercent(): Int? = runCatching {
-        val candidatePaths = listOf(
-            "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage",
-            "/sys/kernel/gpu/gpu_busy",
-            "/sys/class/devfreq/gpufreq/gpu_busy",
+    // Sama seperti RootSystemMonitor.gpuLoadPaths — disimpan terenkripsi
+    // (lihat SecretStrings.kt) supaya path deteksi ini tidak muncul
+    // sebagai `const-string` polos di classes.dex. Payload digenerate
+    // lewat tools/encode_secret.py.
+    private val candidatePaths: List<String> by lazy {
+        SecretStrings.revealList(
+            "I6j+eUjxdOTCahE7R9ln0GBdnCO5P5p+/QWoPkDCqRROGHD9tqwty1AD3HCg7lHRVrltLtGoststLh5fofXW3YUltMXIYl+I",
+            "iPwScFxrn3MGvqYiYZpzqZbGwHcrZJI3oVkQ/MPUXkwaPZ/tUIU8zMA5BDQfkd2phDRYUg==",
+            "mm9NUroIYp0Pg2YQSTSGNp1reds/dbThExcV4FEHF3kbn8BWdrW879Kdty4By+uUy7QGb8WlvF2dyLswaKCr",
         )
+    }
+
+    fun readGpuLoadPercent(): Int? = runCatching {
         for (path in candidatePaths) {
             val file = File(path)
             if (!file.canRead()) continue

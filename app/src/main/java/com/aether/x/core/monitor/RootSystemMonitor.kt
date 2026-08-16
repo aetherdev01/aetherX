@@ -1,6 +1,7 @@
 package com.aether.x.core.monitor
 
 import android.util.Log
+import com.aether.x.core.security.SecretStrings
 import com.aether.x.core.shell.RootShellExecutor
 
 /**
@@ -95,8 +96,9 @@ object RootSystemMonitor {
      * sebagai jalur utama — lihat [readGpuSnapshotViaRoot].
      *
      * Root cause kenapa jalur ini sering gagal di banyak device Adreno:
-     * `/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage` dkk umumnya
-     * bermode 0440 (root-only read). Proses app biasa TIDAK otomatis
+     * path-path sysfs GPU di [gpuLoadPaths] (lihat nilai terdekripsinya
+     * saat runtime) umumnya bermode 0440 (root-only read). Proses app
+     * biasa TIDAK otomatis
      * dapat izin baca file itu hanya karena `PrivilegeStatus.activeBackend
      * == ROOT` — status itu berarti app PUNYA akses menjalankan command
      * lewat `su` (lihat RootShellExecutor), bukan berarti UID proses app
@@ -115,17 +117,28 @@ object RootSystemMonitor {
         )
     }
 
-    /** Path sysfs GPU yang dicoba berurutan, sama dengan yang dipakai native/SystemStatsProvider.kt. */
-    private val gpuLoadPaths = listOf(
-        "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage",
-        "/sys/kernel/gpu/gpu_busy",
-        "/sys/class/devfreq/gpufreq/gpu_busy",
-    )
-    private val gpuFreqPaths = listOf(
-        "/sys/class/kgsl/kgsl-3d0/gpuclk",
-        "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
-        "/sys/class/devfreq/gpufreq/cur_freq",
-    )
+    /**
+     * Path sysfs GPU yang dicoba berurutan, sama dengan yang dipakai
+     * native/SystemStatsProvider.kt. Disimpan terenkripsi (lihat
+     * SecretStrings.kt) supaya path deteksi ini tidak muncul sebagai
+     * `const-string` polos di classes.dex — nilainya baru didekripsi
+     * sekali (lazy) saat pertama dipakai, bukan plaintext sejak awal.
+     * Payload di bawah digenerate lewat tools/encode_secret.py.
+     */
+    private val gpuLoadPaths: List<String> by lazy {
+        SecretStrings.revealList(
+            "I6j+eUjxdOTCahE7R9ln0GBdnCO5P5p+/QWoPkDCqRROGHD9tqwty1AD3HCg7lHRVrltLtGoststLh5fofXW3YUltMXIYl+I",
+            "iPwScFxrn3MGvqYiYZpzqZbGwHcrZJI3oVkQ/MPUXkwaPZ/tUIU8zMA5BDQfkd2phDRYUg==",
+            "mm9NUroIYp0Pg2YQSTSGNp1reds/dbThExcV4FEHF3kbn8BWdrW879Kdty4By+uUy7QGb8WlvF2dyLswaKCr",
+        )
+    }
+    private val gpuFreqPaths: List<String> by lazy {
+        SecretStrings.revealList(
+            "kGBSLu8zfn2SFSak7lqf2mh72HEIF6D+SHKFWjbX4h0XBh2iGV6NPPngAEkjl+HFBwkjATQxpeOwuag=",
+            "dtjGlTXpnj7f4pDZ/3FWduKEEOkHv+wNxYqUfq/L6j+ybLRhqP5MxV+f+gLiLLFKSBCo+YCxZwSPDhbh3rSYGJ5tgt+Z",
+            "FZGDOSS9Oe/Tj1OqZGQZxM61a3TkitRqVx2MNFt5ylLP+zwbBNz4ted1YiT2e9Mvt/h/pld8PUX88/wyoNFz",
+        )
+    }
 
     /**
      * Baca snapshot GPU lewat shell root (`su -c cat <path>`), memakai

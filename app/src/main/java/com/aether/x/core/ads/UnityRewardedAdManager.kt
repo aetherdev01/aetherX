@@ -7,6 +7,7 @@ import com.unity3d.ads.IUnityAdsLoadListener
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
 import com.unity3d.ads.UnityAdsShowOptions
+import com.aether.x.core.security.SecretStrings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,9 +20,17 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
     private companion object {
         const val TAG = "UnityRewardedAdManager"
 
-        const val GAME_ID = "6091240"
+        // GAME_ID/PLACEMENT_ID disimpan terenkripsi (lihat SecretStrings.kt)
+        // supaya tidak muncul plaintext di classes.dex — bukan `const val`
+        // lagi karena nilainya baru ada setelah dekripsi runtime (lazy,
+        // sekali per proses). Payload digenerate lewat tools/encode_secret.py.
+        val GAME_ID: String by lazy {
+            SecretStrings.reveal("BloZVjORRRZKCCSHVQsXdIKajPEPAjnhYWS8i7FmY3ihhG4=")
+        }
 
-        const val PLACEMENT_ID = "Rewarded_Android"
+        val PLACEMENT_ID: String by lazy {
+            SecretStrings.reveal("95y4ip+mnmdWhDtW9DzNb+Ptg9wjq1t2ZEP7GJ3KoSpjCawD8KHTXtGbK1A=")
+        }
 
         const val INITIAL_RETRY_DELAY_MILLIS = 2_000L
         const val MAX_RETRY_DELAY_MILLIS = 60_000L
