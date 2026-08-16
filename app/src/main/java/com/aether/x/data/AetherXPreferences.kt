@@ -22,6 +22,7 @@ enum class FpsMonitorStyle { ROG, CLASSIC }
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
+    val noRootAdvisoryDismissed: Boolean = false,
 
     val darkModePref: DarkModePref = DarkModePref.DARK,
 
@@ -84,6 +85,7 @@ class AetherXPreferences(private val context: Context) {
 
     private object Keys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        val NO_ROOT_ADVISORY_DISMISSED = booleanPreferencesKey("no_root_advisory_dismissed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
@@ -154,6 +156,7 @@ class AetherXPreferences(private val context: Context) {
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
         AppPreferences(
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
+            noRootAdvisoryDismissed = prefs[Keys.NO_ROOT_ADVISORY_DISMISSED] ?: false,
 
             darkModePref = DarkModePref.DARK,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
@@ -205,6 +208,10 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setOnboardingCompleted(value: Boolean) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
+    }
+
+    suspend fun setNoRootAdvisoryDismissed(value: Boolean) {
+        context.dataStore.edit { it[Keys.NO_ROOT_ADVISORY_DISMISSED] = value }
     }
 
     suspend fun saveTweakState(

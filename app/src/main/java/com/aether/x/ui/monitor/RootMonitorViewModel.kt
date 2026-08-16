@@ -35,7 +35,12 @@ data class RootMonitorUiState(
     val gpuLoadHistory: List<Float> = emptyList(),
     val gpuFreqMhz: Float? = null,
     val hasSamples: Boolean = false,
+    /** Berapa kali polling CPU sudah jalan tapi delta belum valid (native return -1). */
+    val cpuStalledAttempts: Int = 0,
 )
+
+/** Setelah sekian percobaan gagal berturut-turut, anggap CPU snapshot memang tidak bisa dibaca di device ini (bukan cuma "baru mulai"). */
+const val CPU_STALLED_THRESHOLD = 10
 
 /**
  * RootMonitorViewModel — mengelola polling loop [RootSystemMonitor] dan
@@ -87,8 +92,16 @@ class RootMonitorViewModel : ViewModel() {
                             cpuAggregateHistory = (current.cpuAggregateHistory + cpu.aggregatePercent).takeLast(HISTORY_SIZE),
                             cpuPerCoreLatest = cpu.perCorePercent,
                             hasSamples = true,
+                            cpuStalledAttempts = 0,
                         )
                     }
+                } else {
+                    // Delta belum valid lagi (bukan cuma sampel pertama) —
+                    // hitung supaya UI bisa membedakan "baru mulai sebentar"
+                    // vs "device ini memang tidak bisa dibaca deltanya sama
+                    // sekali" (lihat Logcat tag AetherX-SysMonitor untuk
+                    // detail angka total/idle mentah kalau ini terus terjadi).
+                    _state.update { it.copy(cpuStalledAttempts = it.cpuStalledAttempts + 1) }
                 }
 
                 delay(POLL_INTERVAL_MS)

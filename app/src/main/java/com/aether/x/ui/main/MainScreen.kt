@@ -31,6 +31,7 @@ import com.aether.x.core.ads.AdBlockDialog
 import com.aether.x.core.ads.AdBlockDialogState
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.about.AboutScreen
+import com.aether.x.ui.dashboard.NoRootAdvisoryGate
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
@@ -68,6 +69,7 @@ fun MainScreen(
     }
 
     AdBlockDialog()
+    NoRootAdvisoryGate()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

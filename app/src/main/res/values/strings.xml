@@ -385,6 +385,12 @@
     <string name="root_monitor_gpu_unsupported">GPU tidak terbaca di perangkat ini</string>
     <string name="root_monitor_native_unavailable">Modul monitor native tidak tersedia di build ini</string>
     <string name="root_monitor_waiting_samples">Mengumpulkan sampel pertama…</string>
+    <string name="root_monitor_cpu_stalled">Beban CPU belum bisa terbaca di perangkat ini — coba tutup dan buka lagi layar ini</string>
+
+    <string name="no_root_advisory_title">Kamu belum pakai akses Root</string>
+    <string name="no_root_advisory_message">Sekarang AetherX jalan lewat Shizuku. Beberapa fitur seperti Kernel Manager, Build.prop Editor, GPU Performance Mode, dan Monitor CPU/GPU cuma bisa diakses kalau perangkatmu di-root. Buka akses Root di menu Pengaturan biar semua fitur bisa dipakai penuh.</string>
+    <string name="no_root_advisory_confirm">Mengerti, jangan tampilkan lagi</string>
+    <string name="no_root_advisory_dismiss">Nanti saja</string>
 
     <string name="buildprop_value_empty">(kosong)</string>
     <string name="buildprop_action_edit">Edit</string>

@@ -79,7 +79,11 @@ fun RootMonitorSection(
         ) {
             if (!state.hasSamples) {
                 Text(
-                    text = stringResource(R.string.root_monitor_waiting_samples),
+                    text = if (state.cpuStalledAttempts >= CPU_STALLED_THRESHOLD) {
+                        stringResource(R.string.root_monitor_cpu_stalled)
+                    } else {
+                        stringResource(R.string.root_monitor_waiting_samples)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
