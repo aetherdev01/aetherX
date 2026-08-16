@@ -208,12 +208,6 @@ dependencies {
     // catalog.
     implementation("com.google.firebase:firebase-appcheck-playintegrity:18.0.0")
 
-    // DebugAppCheckProviderFactory (lihat AppCheckInitializer.kt) — HANYA
-    // aktif dipakai saat BuildConfig.DEBUG true. debugImplementation supaya
-    // tidak pernah ikut ke APK release Play Store sama sekali (bukan cuma
-    // tidak dipanggil, tapi memang tidak ada di classpath release).
-    debugImplementation("com.google.firebase:firebase-appcheck-debug:18.0.0")
-
     // ── Ads: Unity Ads (rewarded ads untuk fitur non-member) ─────────────────
     // Dipakai lewat abstraksi RewardedAdManager (lihat core/ads/RewardedAdManager.kt)
     // — bukan direferensikan langsung di luar core/ads/UnityRewardedAdManager.kt.

@@ -8,7 +8,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
-import java.util.Date
 
 sealed interface LicenseResult {
 
@@ -33,7 +32,7 @@ sealed interface LicenseResult {
  * (bukan lewat Cloud Functions `activateLicense`/`revalidateLicense` lagi).
  *
  * KENAPA DIROMBAK BALIK: source Cloud Functions (`cloud_functions/functions/
- * src/*.ts`) hilang/tidak bisa ditemukan lagi dan APK didistribusikan lewat
+ * src) hilang/tidak bisa ditemukan lagi dan APK didistribusikan lewat
  * Telegram (sideload manual, bukan Play Store) — Firebase App Check dengan
  * Play Integrity provider TIDAK BISA mengeluarkan token valid untuk APK yang
  * tidak melalui jalur distribusi resmi Play Console, apa pun signing key-nya.
@@ -62,7 +61,7 @@ sealed interface LicenseResult {
  *   - Device ID pengikat lisensi TETAP dikirim sebagai field biasa
  *     (bukan lagi UID Firebase Auth yang ditandatangani server) — sama
  *     seperti arsitektur "versi lama" yang disebut di riwayat proyek ini.
- *     Ini instrik yang sama tapi diterima sebagai kompromi wajar untuk app
+ *     Ini risiko yang sama dengan versi lama, tapi diterima sebagai kompromi wajar untuk app
  *     hobi/skala kecil yang didistribusikan lewat Telegram.
  */
 class LicenseRepository(context: Context) {
