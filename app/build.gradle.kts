@@ -38,11 +38,9 @@ android {
         // Native signature guard (lihat app/src/main/cpp/sigcheck.cpp dan
         // SignatureGuard.kt) — hash signing cert dibandingkan di sisi native
         // supaya tidak muncul sebagai string plain di DEX/Kotlin bytecode.
-        externalNativeBuild {
-            cmake {
-                cppFlags += ""
-            }
-        }
+        // (cppFlags kosong dihapus — tidak berefek apa pun, lokasi
+        // CMakeLists.txt & versi CMake sudah cukup diatur di blok
+        // externalNativeBuild level android{} di bawah.)
     }
 
     externalNativeBuild {
@@ -209,6 +207,12 @@ dependencies {
     // yang sudah dipakai (libs.firebase.bom) kalau nanti ingin dipindah ke
     // catalog.
     implementation("com.google.firebase:firebase-appcheck-playintegrity:18.0.0")
+
+    // DebugAppCheckProviderFactory (lihat AppCheckInitializer.kt) — HANYA
+    // aktif dipakai saat BuildConfig.DEBUG true. debugImplementation supaya
+    // tidak pernah ikut ke APK release Play Store sama sekali (bukan cuma
+    // tidak dipanggil, tapi memang tidak ada di classpath release).
+    debugImplementation("com.google.firebase:firebase-appcheck-debug:18.0.0")
 
     // ── Ads: Unity Ads (rewarded ads untuk fitur non-member) ─────────────────
     // Dipakai lewat abstraksi RewardedAdManager (lihat core/ads/RewardedAdManager.kt)

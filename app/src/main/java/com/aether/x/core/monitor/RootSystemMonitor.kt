@@ -47,7 +47,19 @@ object RootSystemMonitor {
             nativeResetCpuDelta()
             true
         }.getOrElse { t ->
-            Log.w(TAG, "Modul native sysmonitor tidak tersedia: ${t.message}")
+            // DEBUG: log exception PENUH (bukan cuma t.message) supaya kelihatan
+            // jenis error sebenarnya:
+            //  - UnsatisfiedLinkError "couldn't find libaetherX.so" atau
+            //    "dlopen failed: library ... not found" -> .so tidak ikut
+            //    ter-package ke APK (cek app/build/intermediates/cmake dan
+            //    app/build/intermediates/merged_native_libs setelah build,
+            //    pastikan folder arm64-v8a/armeabi-v7a berisi libaetherX.so).
+            //  - UnsatisfiedLinkError "No implementation found for ... nsmr"
+            //    -> .so ADA dan loadLibrary sukses, tapi RegisterNatives di
+            //    jni_onload.cpp gagal (mis. FindClass gagal karena proguard/
+            //    R8 me-rename/menghapus class RootSystemMonitor -- cek
+            //    proguard-rules.pro, pastikan ada -keep untuk class ini).
+            Log.e(TAG, "Modul native sysmonitor tidak tersedia", t)
             false
         }
     }
