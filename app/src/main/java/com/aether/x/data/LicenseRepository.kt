@@ -2,14 +2,13 @@ package com.aether.x.data
 
 import android.content.Context
 import android.util.Log
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.functions.FirebaseFunctionsException
-import com.google.firebase.functions.functions
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 sealed interface LicenseResult {
 
@@ -25,185 +24,186 @@ sealed interface LicenseResult {
 
     data object NetworkError : LicenseResult
 
-    /** Terlalu banyak percobaan gagal — rate limit SERVER-SIDE (lihat KDoc kelas ini). */
+    /** Terlalu banyak percobaan gagal — rate limit CLIENT-SIDE (lihat LicenseAttemptGuard). */
     data class RateLimited(val remainingSeconds: Int) : LicenseResult
 }
 
 /**
- * LicenseRepository — SELURUH validasi lisensi sekarang lewat Cloud
- * Functions (`activateLicense`/`revalidateLicense`, lihat
- * `cloud_functions/functions/src/` di root repo), BUKAN lagi akses
- * Firestore langsung dari client.
+ * LicenseRepository — ROLLBACK ke akses Firestore LANGSUNG dari client
+ * (bukan lewat Cloud Functions `activateLicense`/`revalidateLicense` lagi).
  *
- * KENAPA DIROMBAK TOTAL dari versi sebelumnya (yang memanggil
- * `FirebaseFirestore` langsung): versi lama bisa di-crack dengan salah
- * satu dari dua cara — (1) decompile APK, lihat persis logic evaluasi di
- * `evaluate()`, lalu patch smali supaya selalu return Valid tanpa
- * menyentuh Firestore sama sekali, atau (2) kalau Firestore Security
- * Rules longgar, langsung tulis dokumen `licenses/{key}` sendiri lewat
- * REST API Firestore tanpa lewat app. Client APK secara fundamental
- * tidak bisa dipercaya menyimpan logic keamanan — kodenya ada di tangan
- * attacker apa pun yang terjadi.
+ * KENAPA DIROMBAK BALIK: source Cloud Functions (`cloud_functions/functions/
+ * src/*.ts`) hilang/tidak bisa ditemukan lagi dan APK didistribusikan lewat
+ * Telegram (sideload manual, bukan Play Store) — Firebase App Check dengan
+ * Play Integrity provider TIDAK BISA mengeluarkan token valid untuk APK yang
+ * tidak melalui jalur distribusi resmi Play Console, apa pun signing key-nya.
+ * Ini bikin SEMUA panggilan Cloud Function ditolak (UNAUTHENTICATED) sebelum
+ * logic lisensi sempat jalan. Tanpa source Cloud Functions untuk
+ * didiagnosis/diperbaiki, dan tanpa jalur Play Console yang dipakai, jalur
+ * client -> Cloud Function -> Firestore Admin SDK tidak bisa dipertahankan.
  *
- * Sekarang: client HANYA mengirim kunci lisensi dan menerima hasil
- * evaluasi jadi dari server. Tiga lapis pertahanan yang tidak bisa
- * dilihat/dipatch dari APK (karena jalan di infrastruktur Google, bukan
- * di device pengguna):
- *   1. Firebase App Check (Play Integrity) — Cloud Function menolak
- *      request yang tidak lolos verifikasi keaslian APK/perangkat
- *      SEBELUM kode evaluasi lisensi berjalan sama sekali.
- *   2. Firebase Auth anonim — identitas device untuk backend adalah
- *      `FirebaseAuth.currentUser.uid`, ditandatangani server Firebase
- *      sendiri, BUKAN string device ID yang dikirim bebas oleh client
- *      seperti versi lama (yang bisa dipalsukan attacker).
- *   3. Rate limit percobaan gagal disimpan di Firestore lewat Admin SDK
- *      (state di server, bukan SharedPreferences lokal yang bisa
- *      dihapus/dipalsukan lewat root/Frida/clear-app-data).
+ * Rules `firestore.rules` yang ada SUDAH didesain untuk mode ini —
+ * `isVerifiedApp()` sudah `return true` (App Check tidak diwajibkan di
+ * level rules), dan struktur `match /licenses/{key}` sudah mendukung
+ * transisi device-binding one-shot (unused -> active) langsung dari client
+ * lewat `allow update`.
  *
- * Firestore Security Rules (`cloud_functions/firestore.rules`) mengunci
- * TOTAL akses client langsung ke koleksi `licenses`/`licenseAttempts` —
- * hanya Admin SDK di Cloud Functions yang bisa menyentuhnya.
+ * TRADE-OFF YANG DISADARI (dibanding versi Cloud Functions):
+ *   - Logic evaluasi lisensi (expired/revoked/device-binding) sekarang ada
+ *     di APK, bisa dibaca lewat decompile. Firestore Security Rules tetap
+ *     jadi penjaga TERAKHIR yang tidak bisa dipatch dari APK (rules jalan
+ *     di server Firebase, bukan di device) — SELAMA rules-nya ketat, client
+ *     yang di-patch untuk selalu menganggap sukses tetap tidak bisa menulis
+ *     dokumen licenses/{key} yang melanggar rules.
+ *   - Rate limit percobaan gagal sekarang murni client-side
+ *     (LicenseAttemptGuard, SharedPreferences) — bisa dilewati lewat
+ *     root/Frida/clear-app-data. Diterima sebagai trade-off sementara
+ *     karena tidak ada infra server (Cloud Functions) yang bisa dipakai.
+ *   - Device ID pengikat lisensi TETAP dikirim sebagai field biasa
+ *     (bukan lagi UID Firebase Auth yang ditandatangani server) — sama
+ *     seperti arsitektur "versi lama" yang disebut di riwayat proyek ini.
+ *     Ini instrik yang sama tapi diterima sebagai kompromi wajar untuk app
+ *     hobi/skala kecil yang didistribusikan lewat Telegram.
  */
 class LicenseRepository(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val functions by lazy { Firebase.functions("asia-southeast2") }
-    private val auth by lazy { Firebase.auth }
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
 
     private companion object {
         const val TAG = "LicenseRepository"
         const val POLL_INTERVAL_MILLIS = 60_000L
-        const val SIGN_IN_RETRY_COUNT = 3
-        const val SIGN_IN_RETRY_DELAY_MILLIS = 800L
+        const val COLLECTION = "licenses"
+
+        const val FIELD_DEVICE_ID = "deviceId"
+        const val FIELD_STATUS = "status"
+        const val FIELD_ACTIVATED_AT = "activatedAt"
+        const val FIELD_EXPIRES_AT = "expiresAt"
+        const val FIELD_CREATED_AT = "createdAt"
+
+        const val STATUS_UNUSED = "unused"
+        const val STATUS_ACTIVE = "active"
     }
 
-    /**
-     * Pastikan ada sesi Firebase Auth anonim sebelum memanggil Cloud
-     * Function apa pun — UID sesi ini yang dipakai server sebagai
-     * identitas device (lihat KDoc kelas). Kalau sudah ada sesi anonim
-     * dari sebelumnya (persist otomatis oleh Firebase Auth SDK selama
-     * app tidak di-uninstall), tidak membuat sesi baru — UID yang sama
-     * dipertahankan supaya lisensi yang sudah di-bind sebelumnya tetap
-     * cocok.
-     */
-    private suspend fun ensureSignedIn(): Boolean {
-        if (auth.currentUser != null) return true
-        // Retry ringan dengan backoff — koneksi yang sempat putus-nyambung
-        // (mis. pindah dari WiFi ke data seluler) tidak boleh langsung
-        // dianggap gagal permanen hanya karena percobaan pertama gagal.
-        repeat(SIGN_IN_RETRY_COUNT) { attempt ->
-            val success = runCatching {
-                auth.signInAnonymously().await()
-                true
-            }.getOrElse { e ->
-                Log.w(TAG, "Gagal membuat sesi Firebase Auth anonim (percobaan ${attempt + 1})", e)
-                false
-            }
-            if (success) return true
-            if (attempt < SIGN_IN_RETRY_COUNT - 1) {
-                delay(SIGN_IN_RETRY_DELAY_MILLIS * (attempt + 1))
-            }
-        }
-        return false
-    }
+    private val deviceId: String by lazy { DeviceId.read(appContext) }
 
     suspend fun activate(key: String): LicenseResult {
         val trimmedKey = key.trim()
         if (trimmedKey.isEmpty()) return LicenseResult.NotFound
 
-        if (!ensureSignedIn()) return LicenseResult.NetworkError
+        val docRef = firestore.collection(COLLECTION).document(trimmedKey)
 
         return runCatching {
-            val response = functions
-                .getHttpsCallable("activateLicense")
-                .call(mapOf("key" to trimmedKey))
-                .await()
+            firestore.runTransaction { tx ->
+                val snapshot = tx.get(docRef)
+                if (!snapshot.exists()) {
+                    return@runTransaction LicenseResult.NotFound
+                }
 
-            @Suppress("UNCHECKED_CAST")
-            val data = response.data as? Map<String, Any?>
-                ?: return LicenseResult.NetworkError
+                val status = snapshot.getString(FIELD_STATUS)
+                val boundDeviceId = snapshot.getString(FIELD_DEVICE_ID)
+                val expiresAt = snapshot.getTimestamp(FIELD_EXPIRES_AT)
 
-            val expiresAtMillis = (data["expiresAtMillis"] as? Number)?.toLong()
-                ?: return LicenseResult.NetworkError
+                when {
+                    // Sudah terikat ke device INI sebelumnya — anggap sukses
+                    // lagi (mis. pengguna re-input key yang sama setelah
+                    // clear app data), tidak perlu tulis ulang dokumen.
+                    boundDeviceId == deviceId && status == STATUS_ACTIVE -> {
+                        val millis = expiresAt?.toDate()?.time
+                        if (millis != null && millis > System.currentTimeMillis()) {
+                            LicenseResult.Valid(millis)
+                        } else if (millis != null) {
+                            LicenseResult.Expired(millis)
+                        } else {
+                            LicenseResult.NetworkError
+                        }
+                    }
 
-            LicenseResult.Valid(expiresAtMillis)
-        }.getOrElse { e -> mapFunctionsException(e) }
+                    boundDeviceId != null && boundDeviceId != deviceId -> {
+                        LicenseResult.BoundToOtherDevice
+                    }
+
+                    status != STATUS_UNUSED -> {
+                        LicenseResult.Revoked
+                    }
+
+                    expiresAt != null && expiresAt.toDate().time <= System.currentTimeMillis() -> {
+                        LicenseResult.Expired(expiresAt.toDate().time)
+                    }
+
+                    else -> {
+                        // Klaim key ini untuk device sekarang — field yang
+                        // ditulis di sini WAJIB persis cocok dengan yang
+                        // diwajibkan firestore.rules (match /licenses/{key}
+                        // allow update, cabang pertama), kalau tidak
+                        // transaksi akan ditolak PERMISSION_DENIED oleh
+                        // server walau logic di atas sudah lolos di client.
+                        val updates = mapOf(
+                            FIELD_DEVICE_ID to deviceId,
+                            FIELD_STATUS to STATUS_ACTIVE,
+                            FIELD_ACTIVATED_AT to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                            FIELD_EXPIRES_AT to expiresAt,
+                            FIELD_CREATED_AT to snapshot.get(FIELD_CREATED_AT),
+                        )
+                        tx.update(docRef, updates)
+                        val millis = expiresAt?.toDate()?.time ?: return@runTransaction LicenseResult.NetworkError
+                        LicenseResult.Valid(millis)
+                    }
+                }
+            }.await()
+        }.getOrElse { e -> mapFirestoreException(e) }
     }
 
     /**
      * Cek ulang status lisensi yang sudah pernah diaktivasi, dipanggil
-     * berkala (bukan real-time push seperti snapshot listener versi
-     * lama — lihat KDoc `revalidateLicense.ts` untuk alasan trade-off
-     * ini). Pemanggil ([MembershipViewModel]) sudah cocok dengan pola
-     * `Flow` yang emit ulang tiap kali ada perubahan status, jadi
-     * signature ini dipertahankan sama walau implementasinya sekarang
-     * polling, bukan listener.
+     * berkala oleh [MembershipViewModel]. Baca dokumen langsung (bukan
+     * snapshot listener realtime) supaya konsisten dengan pola polling
+     * yang sudah ada — bisa diganti addSnapshotListener nanti kalau mau
+     * update instan tanpa nunggu interval.
      */
     fun observe(key: String): Flow<LicenseResult> = flow {
         while (true) {
-            emit(revalidateOnce())
+            emit(revalidateOnce(key))
             delay(POLL_INTERVAL_MILLIS)
         }
     }
 
-    private suspend fun revalidateOnce(): LicenseResult {
-        if (!ensureSignedIn()) return LicenseResult.NetworkError
+    private suspend fun revalidateOnce(key: String): LicenseResult {
+        val trimmedKey = key.trim()
+        if (trimmedKey.isEmpty()) return LicenseResult.NotFound
 
         return runCatching {
-            val response = functions
-                .getHttpsCallable("revalidateLicense")
-                .call()
-                .await()
+            val snapshot = firestore.collection(COLLECTION).document(trimmedKey).get().await()
+            if (!snapshot.exists()) return@runCatching LicenseResult.NotFound
 
-            @Suppress("UNCHECKED_CAST")
-            val data = response.data as? Map<String, Any?>
-                ?: return LicenseResult.NetworkError
+            val status = snapshot.getString(FIELD_STATUS)
+            val boundDeviceId = snapshot.getString(FIELD_DEVICE_ID)
+            val expiresAt = snapshot.getTimestamp(FIELD_EXPIRES_AT)?.toDate()?.time
 
-            val status = data["status"] as? String
-            val expiresAtMillis = (data["expiresAtMillis"] as? Number)?.toLong()
-
-            when (status) {
-                "valid" -> expiresAtMillis?.let { LicenseResult.Valid(it) } ?: LicenseResult.NetworkError
-                "expired" -> expiresAtMillis?.let { LicenseResult.Expired(it) } ?: LicenseResult.NotFound
-                "revoked" -> LicenseResult.Revoked
-                "not_activated" -> LicenseResult.NotFound
-                else -> LicenseResult.NetworkError
+            when {
+                boundDeviceId != null && boundDeviceId != deviceId -> LicenseResult.BoundToOtherDevice
+                status != STATUS_ACTIVE -> LicenseResult.NotFound
+                expiresAt == null -> LicenseResult.NetworkError
+                expiresAt <= System.currentTimeMillis() -> LicenseResult.Expired(expiresAt)
+                else -> LicenseResult.Valid(expiresAt)
             }
-        }.getOrElse { e -> mapFunctionsException(e) }
+        }.getOrElse { e -> mapFirestoreException(e) }
     }
 
-    /**
-     * Terjemahkan error dari pemanggilan Cloud Function (HttpsError di
-     * sisi server, lihat `activateLicense.ts`/`revalidateLicense.ts`)
-     * ke [LicenseResult] yang dikonsumsi UI. Kode error ini SENGAJA
-     * ditentukan lengkap di server (bukan client menebak dari pesan
-     * teks) — client hanya mem-mapping kode standar Firebase Functions.
-     */
-    private fun mapFunctionsException(e: Throwable): LicenseResult {
-        val functionsException = e as? FirebaseFunctionsException
+    private fun mapFirestoreException(e: Throwable): LicenseResult {
+        val firestoreException = e as? FirebaseFirestoreException
             ?: return LicenseResult.NetworkError.also {
-                Log.w(TAG, "Gagal memanggil Cloud Function lisensi", e)
+                Log.w(TAG, "Gagal mengakses Firestore lisensi", e)
             }
 
-        return when (functionsException.code) {
-            FirebaseFunctionsException.Code.NOT_FOUND -> LicenseResult.NotFound
-            FirebaseFunctionsException.Code.PERMISSION_DENIED -> LicenseResult.Revoked
-            FirebaseFunctionsException.Code.ALREADY_EXISTS -> LicenseResult.BoundToOtherDevice
-            FirebaseFunctionsException.Code.FAILED_PRECONDITION -> {
-                val details = functionsException.details as? Map<*, *>
-                val expiredAt = (details?.get("expiredAtMillis") as? Number)?.toLong()
-                    ?: System.currentTimeMillis()
-                LicenseResult.Expired(expiredAt)
-            }
-            FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED -> {
-                val details = functionsException.details as? Map<*, *>
-                val remaining = (details?.get("remainingSeconds") as? Number)?.toInt() ?: 30
-                LicenseResult.RateLimited(remaining)
-            }
-            FirebaseFunctionsException.Code.UNAUTHENTICATED -> LicenseResult.NetworkError
+        return when (firestoreException.code) {
+            FirebaseFirestoreException.Code.PERMISSION_DENIED -> LicenseResult.Revoked
+            FirebaseFirestoreException.Code.NOT_FOUND -> LicenseResult.NotFound
+            FirebaseFirestoreException.Code.UNAVAILABLE,
+            FirebaseFirestoreException.Code.DEADLINE_EXCEEDED -> LicenseResult.NetworkError
             else -> {
-                Log.w(TAG, "Cloud Function lisensi mengembalikan error tak terduga: ${functionsException.code}", e)
+                Log.w(TAG, "Firestore lisensi mengembalikan error tak terduga: ${firestoreException.code}", e)
                 LicenseResult.NetworkError
             }
         }
