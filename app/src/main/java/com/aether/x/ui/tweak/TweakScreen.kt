@@ -73,7 +73,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.CpuGovernor
 import com.aether.x.ui.appmanager.AppManagerScreen
@@ -84,12 +83,10 @@ import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
-import com.aether.x.core.shizuku.WirelessDebuggingMonitor
 import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
-import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard
 import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
@@ -109,8 +106,6 @@ fun TweakScreen(
 
     val dashboardViewModel: DashboardViewModel = viewModel()
     val dashboardState by dashboardViewModel.state.collectAsStateWithLifecycle()
-
-    val wirelessDebuggingEnabled by WirelessDebuggingMonitor.state.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -136,14 +131,12 @@ fun TweakScreen(
         }
     }
 
-    LaunchedEffect(privilegeStatus.activeBackend) {
-        val backend = privilegeStatus.activeBackend
-        val needsRootOnly = selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
+    LaunchedEffect(privilegeStatus.rootGranted) {
+        val needsRoot = selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
             selectedSubTab == TweakSubTab.BUILD_PROP ||
-            selectedSubTab == TweakSubTab.ROOT_MONITOR
-        val needsAnyPrivilege = selectedSubTab == TweakSubTab.APP_MANAGER
-        val shouldReset = (needsRootOnly && backend != PrivilegeBackend.ROOT) ||
-            (needsAnyPrivilege && backend == PrivilegeBackend.NONE)
+            selectedSubTab == TweakSubTab.ROOT_MONITOR ||
+            selectedSubTab == TweakSubTab.APP_MANAGER
+        val shouldReset = needsRoot && !privilegeStatus.rootGranted
         if (shouldReset) {
             selectedSubTab = TweakSubTab.DASHBOARD
             if (drawerState.isOpen) drawerState.close()
@@ -158,8 +151,7 @@ fun TweakScreen(
             ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
                 TweakDrawerContent(
                     selected = selectedSubTab,
-                    showPrivilegedItems = privilegeStatus.activeBackend != PrivilegeBackend.NONE,
-                    showRootOnlyItems = privilegeStatus.activeBackend == PrivilegeBackend.ROOT,
+                    showRootOnlyItems = privilegeStatus.rootGranted,
                     onSelect = { tab ->
                         selectedSubTab = tab
                         coroutineScope.launch { drawerState.close() }
@@ -200,15 +192,7 @@ fun TweakScreen(
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
                     AetherXInfoCard(
-                        activeBackend = privilegeStatus.activeBackend,
                         modifier = Modifier.cardEnterAnimation(index = 0),
-                    )
-
-                    WirelessDebuggingQuickCard(
-                        activeBackend = privilegeStatus.activeBackend,
-                        wirelessDebuggingEnabled = wirelessDebuggingEnabled,
-                        onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
-                        modifier = Modifier.cardEnterAnimation(index = 1),
                     )
 
                     GameActivitySection(
@@ -216,12 +200,12 @@ fun TweakScreen(
                         loading = dashboardState.loadingGames,
                         lastPlayedPackage = dashboardState.lastPlayedPackage,
                         onGameClick = dashboardViewModel::onGameClick,
-                        modifier = Modifier.cardEnterAnimation(index = 2),
+                        modifier = Modifier.cardEnterAnimation(index = 1),
                     )
 
                     DeviceInfoSection(
                         info = dashboardState.deviceInfo,
-                        modifier = Modifier.cardEnterAnimation(index = 3),
+                        modifier = Modifier.cardEnterAnimation(index = 2),
                     )
                     return@Column
                 }
@@ -269,27 +253,25 @@ fun TweakScreen(
                     return@Column
                 }
 
-                if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
-                    SectionCard(title = stringResource(R.string.tweak_section_touch), watermarkIcon = Icons.Outlined.TouchApp) {
+                SectionCard(title = stringResource(R.string.tweak_section_touch), watermarkIcon = Icons.Outlined.TouchApp) {
 
-                        TweakSlider(
-                            label = stringResource(R.string.tweak_pointer_speed),
-                            description = stringResource(R.string.tweak_pointer_speed_desc),
-                            valueText = state.pointerSpeed.toString(),
-                            value = state.pointerSpeed.toFloat(),
-                            range = -7f..7f,
-                            steps = 13,
-                            onValueChange = viewModel::onPointerSpeedChange,
-                            onValueChangeFinished = { viewModel.onPointerSpeedChangeFinished(activity) },
-                        )
-                        TweakSwitch(
-                            label = stringResource(R.string.tweak_touch_boost),
-                            description = stringResource(R.string.tweak_touch_boost_desc),
-                            checked = state.touchBoost,
-                            onCheckedChange = { checked -> viewModel.onTouchBoostChange(checked, activity) },
-                            icon = Icons.Outlined.TouchApp,
-                        )
-                    }
+                    TweakSlider(
+                        label = stringResource(R.string.tweak_pointer_speed),
+                        description = stringResource(R.string.tweak_pointer_speed_desc),
+                        valueText = state.pointerSpeed.toString(),
+                        value = state.pointerSpeed.toFloat(),
+                        range = -7f..7f,
+                        steps = 13,
+                        onValueChange = viewModel::onPointerSpeedChange,
+                        onValueChangeFinished = { viewModel.onPointerSpeedChangeFinished(activity) },
+                    )
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_touch_boost),
+                        description = stringResource(R.string.tweak_touch_boost_desc),
+                        checked = state.touchBoost,
+                        onCheckedChange = { checked -> viewModel.onTouchBoostChange(checked, activity) },
+                        icon = Icons.Outlined.TouchApp,
+                    )
                 }
 
                 SectionCard(title = stringResource(R.string.tweak_section_refresh), watermarkIcon = Icons.Outlined.RestartAlt) {
@@ -313,7 +295,7 @@ fun TweakScreen(
                     )
                 }
 
-                if (privilegeStatus.activeBackend == PrivilegeBackend.ROOT) {
+                if (privilegeStatus.rootGranted) {
                     SectionCard(title = stringResource(R.string.tweak_section_root_cpu), watermarkIcon = Icons.Outlined.Memory) {
                         TweakDropdown(
                             label = stringResource(R.string.tweak_cpu_governor),
@@ -427,7 +409,6 @@ private val LOCKED_ITEM_NO_OP_CLICK: () -> Unit = {}
 @Composable
 private fun TweakDrawerContent(
     selected: TweakSubTab,
-    showPrivilegedItems: Boolean,
     showRootOnlyItems: Boolean,
     onSelect: (TweakSubTab) -> Unit,
     onNavigateToGameBooster: () -> Unit,
@@ -484,13 +465,13 @@ private fun TweakDrawerContent(
             .alpha(if (GAME_BOOSTER_DRAWER_LOCKED) 0.38f else 1f),
     )
 
-    if (showPrivilegedItems) {
+    if (showRootOnlyItems) {
         HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant,
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
         )
         Text(
-            text = stringResource(R.string.drawer_privileged_label),
+            text = stringResource(R.string.drawer_root_only_label),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
@@ -502,19 +483,6 @@ private fun TweakDrawerContent(
             onClick = { onSelect(TweakSubTab.APP_MANAGER) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-        )
-    }
-
-    if (showRootOnlyItems) {
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
-        )
-        Text(
-            text = stringResource(R.string.drawer_root_only_label),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
             label = { Text(stringResource(R.string.kernel_manager_title)) },

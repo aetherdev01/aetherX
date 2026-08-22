@@ -28,7 +28,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -45,7 +44,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -66,12 +64,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
-import com.aether.x.ui.components.ShizukuCard
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
@@ -97,16 +93,11 @@ fun PermissionSetupScreen(
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    // Mode terbatas tanpa Root/Shizuku — pengguna bisa lanjut lewat opsi
-    // "Lewati" setelah membaca popup pemberitahuan (lihat NoRootDialog di
-    // AccessMethodPage). Begitu diaktifkan, halaman akses dianggap
-    // "terpenuhi" walau status.hasAccess masih false, tapi TIDAK mengubah
-    // status.hasAccess itu sendiri — fitur yang butuh privilege tetap
-    // dicek lewat status.hasAccess di tempat lain, jadi fitur lengkap
-    // tetap terkunci sampai user benar-benar mengaktifkan Root/Shizuku.
-    var noRootModeAccepted by remember { mutableStateOf(false) }
-
-    val accessSatisfied = status.hasAccess || noRootModeAccepted
+    // v3.1 PURE ROOT: mode "Lewati tanpa akses" (No Root skip) DIHAPUS
+    // TOTAL — aplikasi sekarang ketat hanya untuk pengguna root, halaman
+    // akses hanya dianggap terpenuhi kalau status.hasAccess (root granted)
+    // benar-benar true.
+    val accessSatisfied = status.hasAccess
     val writeSettingsSatisfied = status.writeSettingsGranted
     val overlaySatisfied = status.overlayGranted
     val notificationsSatisfied = status.notificationsGranted
@@ -133,20 +124,13 @@ fun PermissionSetupScreen(
     LaunchedEffect(Unit) {
         PrivilegeManager.events.collect { feedback ->
             val message = when (feedback) {
-                is RequestFeedback.Granted -> when (feedback.backend) {
-                    PrivilegeBackend.SHIZUKU -> context.getString(R.string.permission_feedback_shizuku_granted)
-                    PrivilegeBackend.ROOT -> context.getString(R.string.permission_feedback_root_granted)
-                    PrivilegeBackend.NONE -> null
-                }
+                is RequestFeedback.Granted -> context.getString(R.string.permission_feedback_root_granted)
                 is RequestFeedback.Failed -> when (feedback.reason) {
-                    RequestFailureReason.SHIZUKU_NOT_INSTALLED -> context.getString(R.string.permission_feedback_shizuku_not_installed)
-                    RequestFailureReason.SHIZUKU_SERVICE_NOT_RUNNING -> context.getString(R.string.permission_feedback_shizuku_service_not_running)
-                    RequestFailureReason.SHIZUKU_PERMISSION_DENIED -> context.getString(R.string.permission_feedback_shizuku_permission_denied)
                     RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE -> context.getString(R.string.permission_feedback_root_denied)
                     RequestFailureReason.ROOT_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_root_in_progress)
                 }
             }
-            message?.let { snackbarHostState.showSnackbar(it) }
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -162,7 +146,6 @@ fun PermissionSetupScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshSupportingPermissions(context)
                 PrivilegeManager.refreshAll()
-                PrivilegeManager.adoptExistingGrantIfNoPreference(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -179,10 +162,6 @@ fun PermissionSetupScreen(
         ) {
             notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
-    }
-
-    LaunchedEffect(status.shizukuGranted, status.rootGranted) {
-        PrivilegeManager.adoptExistingGrantIfNoPreference(context)
     }
 
     // Auto-advance dinonaktifkan atas permintaan pengguna — sebelumnya
@@ -229,8 +208,6 @@ fun PermissionSetupScreen(
                         0 -> AccessMethodPage(
                             status = status,
                             context = context,
-                            noRootModeAccepted = noRootModeAccepted,
-                            onNoRootModeAcceptedChange = { noRootModeAccepted = it },
                         )
                         1 -> WriteSettingsPage(status = status, context = context)
                         2 -> OverlayPage(status = status, context = context)
@@ -306,11 +283,7 @@ fun PermissionSetupScreen(
 private fun AccessMethodPage(
     status: com.aether.x.core.permission.PrivilegeStatus,
     context: android.content.Context,
-    noRootModeAccepted: Boolean,
-    onNoRootModeAcceptedChange: (Boolean) -> Unit,
 ) {
-    var showNoRootDialog by remember { mutableStateOf(false) }
-
     PageIcon(icon = Icons.Outlined.Shield, tint = AccentBlue)
     PageTitle(
         title = stringResource(R.string.setup_page_access_title),
@@ -323,38 +296,10 @@ private fun AccessMethodPage(
 
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
 
-        val shizukuLocked = status.preferredBackend == PrivilegeBackend.ROOT
-        val rootLocked = status.preferredBackend == PrivilegeBackend.SHIZUKU
-
-        // ROLLBACK — status Shizuku di-refresh setiap layar ini kembali ke
-        // foreground (mis. pengguna baru kembali dari app Shizuku Manager
-        // setelah start service/pairing di sana). Lihat KDoc
-        // [com.aether.x.core.shizuku.ShizukuManager.refresh].
-        val shizukuLifecycleOwner = LocalLifecycleOwner.current
-        DisposableEffect(shizukuLifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    PrivilegeManager.refreshShizuku()
-                }
-            }
-            shizukuLifecycleOwner.lifecycle.addObserver(observer)
-            onDispose { shizukuLifecycleOwner.lifecycle.removeObserver(observer) }
-        }
-
-        ShizukuCard(
-            state = status.shizukuState,
-            locked = shizukuLocked,
-            lockedHint = stringResource(R.string.setup_locked_by_root_hint),
-            onOpenShizukuManager = { PrivilegeManager.openShizukuManager(context) },
-            onRequestPermission = { PrivilegeManager.requestShizukuPermission() },
-            onRefresh = { PrivilegeManager.refreshShizuku() },
-        )
-
-        // Battery optimization tetap relevan untuk Shizuku: ROM agresif
-        // (MIUI dkk) bisa membunuh proses app Shizuku Manager di background
-        // walau service-nya sedang dipakai, memutus binder AetherX secara
-        // tiba-tiba. Sama seperti sebelumnya, murni informatif + tombol ke
-        // dialog sistem resmi, tidak memaksa apa pun.
+        // v3.1 PURE ROOT: battery optimization tetap relevan — ROM agresif
+        // (MIUI dkk) bisa membunuh daemon root shell di background pada
+        // sebagian perangkat. Murni informatif + tombol ke dialog sistem
+        // resmi, tidak memaksa apa pun.
         var ignoringBatteryOptimizations by remember {
             mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
         }
@@ -369,17 +314,13 @@ private fun AccessMethodPage(
             onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
         }
         AnimatedVisibility(
-            visible = !shizukuLocked && !ignoringBatteryOptimizations,
+            visible = !ignoringBatteryOptimizations,
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
             BatteryOptimizationBanner(
                 onRequestExemption = { PrivilegeManager.requestIgnoreBatteryOptimizations(context) },
             )
-        }
-
-        if (!status.hasAccess) {
-            OrDivider()
         }
 
         PermissionMethodCard(
@@ -390,98 +331,11 @@ private fun AccessMethodPage(
                 status.rootGranted -> stringResource(R.string.setup_status_granted)
                 else -> stringResource(R.string.setup_status_not_granted)
             },
-            granted = status.rootGranted && !rootLocked,
-            locked = rootLocked,
-            lockedHint = stringResource(R.string.setup_locked_by_adb_hint),
+            granted = status.rootGranted,
             actionLabel = stringResource(R.string.setup_action_request),
             onAction = { PrivilegeManager.requestRoot(context) },
             isRequesting = status.rootRequestState == RequestState.REQUESTING,
             requestingLabel = stringResource(R.string.setup_action_requesting),
-        )
-
-        AnimatedVisibility(
-            visible = status.preferredBackend != PrivilegeBackend.NONE,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(
-                    text = stringResource(R.string.setup_switch_method),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AccentBlue,
-                    modifier = Modifier
-                        .padding(top = Spacing.xs)
-                        .clickable { PrivilegeManager.clearBackendPreference(context) },
-                )
-            }
-        }
-
-        // Opsi lewati untuk pengguna tanpa root/Shizuku — hanya muncul
-        // kalau memang belum ada akses sama sekali. Menampilkan popup
-        // pemberitahuan dulu (NoRootDialog) sebelum benar-benar
-        // membolehkan pengguna lanjut dalam mode terbatas.
-        AnimatedVisibility(
-            visible = !status.hasAccess && !noRootModeAccepted,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(
-                    text = stringResource(R.string.setup_no_root_skip),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextMuted,
-                    modifier = Modifier
-                        .padding(top = Spacing.md)
-                        .clickable { showNoRootDialog = true },
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = !status.hasAccess && noRootModeAccepted,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = Spacing.md)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceCardAlt)
-                    .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.WarningAmber,
-                    contentDescription = null,
-                    tint = TextMuted,
-                )
-                Text(
-                    text = stringResource(R.string.setup_no_root_dialog_message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                )
-            }
-        }
-    }
-
-    if (showNoRootDialog) {
-        PopupDialog(
-            onDismissRequest = { showNoRootDialog = false },
-            icon = Icons.Outlined.WarningAmber,
-            iconTint = AccentRed,
-            title = stringResource(R.string.setup_no_root_dialog_title),
-            message = stringResource(R.string.setup_no_root_dialog_message),
-            confirmLabel = stringResource(R.string.setup_no_root_dialog_confirm),
-            onConfirm = {
-                showNoRootDialog = false
-                onNoRootModeAcceptedChange(true)
-            },
-            confirmIsDestructive = true,
-            dismissLabel = stringResource(R.string.setup_no_root_dialog_cancel),
         )
     }
 }
@@ -771,8 +625,8 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
  * Banner peringatan murni informatif (bukan blocker — pengguna tetap bisa
  * lanjut tanpa mengizinkan ini) yang muncul kalau AetherX MASIH kena
  * battery optimization sistem. Relevan untuk ROM agresif seperti MIUI yang
- * bisa membunuh proses app Shizuku Manager di background (memutus binder
- * Shizuku secara tiba-tiba) kalau belum dikecualikan dari battery saver.
+ * bisa membunuh daemon root shell AetherX di background kalau belum
+ * dikecualikan dari battery saver.
  *
  * NOTE untuk asw: tambahkan string berikut ke strings.xml (belum ada di
  * source yang di-share, jadi placeholder Indonesia berikut dipakai
@@ -809,7 +663,7 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
             )
         }
         Text(
-            text = "Di sebagian perangkat (MIUI, ColorOS, dll), ini bisa membuat pairing wireless gagal terhubung setelah kode dimasukkan, walau Wireless debugging tetap aktif. Izinkan AetherX berjalan tanpa batasan supaya pairing lebih stabil.",
+            text = "Di sebagian perangkat (MIUI, ColorOS, dll), ini bisa membuat proses akses root AetherX dimatikan diam-diam di background. Izinkan AetherX berjalan tanpa batasan supaya akses root tetap stabil.",
             style = MaterialTheme.typography.bodySmall,
             color = TextSecondary,
         )
@@ -819,21 +673,5 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
         ) {
             Text(text = "Izinkan", fontWeight = FontWeight.SemiBold)
         }
-    }
-}
-
-@Composable
-private fun OrDivider() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.setup_or_divider),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = TextMuted,
-        )
     }
 }

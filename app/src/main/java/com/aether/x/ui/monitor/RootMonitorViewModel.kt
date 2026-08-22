@@ -46,7 +46,7 @@ const val CPU_STALLED_THRESHOLD = 10
  * RootMonitorViewModel — mengelola polling loop [RootSystemMonitor] dan
  * rolling history buffer untuk grafik CPU/GPU real-time. Dipakai HANYA
  * dari layar monitor root-only (lihat RootMonitorSection.kt) — pemanggil
- * WAJIB memastikan `PrivilegeStatus.activeBackend == PrivilegeBackend.ROOT`
+ * WAJIB memastikan `PrivilegeStatus.rootGranted == true`
  * sebelum menampilkan layar ini sama sekali (gating dilakukan di level
  * navigasi/drawer, konsisten dengan Kernel Manager & Build Prop yang juga
  * root-only — lihat TweakScreen.kt).

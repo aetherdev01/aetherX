@@ -23,7 +23,6 @@ import androidx.navigation.compose.rememberNavController
 import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.monitor.GameProfileMonitorService
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.SignatureGuard
 import com.aether.x.data.AetherXPreferences
@@ -34,7 +33,6 @@ import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
-import com.aether.x.ui.shizuku.ShizukuFallbackGate
 import com.aether.x.ui.theme.AetherXTheme
 import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
@@ -99,8 +97,6 @@ private fun AetherXRoot(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshAll()
-
-                com.aether.x.core.shizuku.WirelessDebuggingMonitor.refresh(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -109,9 +105,9 @@ private fun AetherXRoot(
 
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val appPrefsForService by preferences.preferences.collectAsStateWithLifecycle(initialValue = null)
-    LaunchedEffect(privilegeStatus.activeBackend, appPrefsForService?.gameProfiles?.keys) {
+    LaunchedEffect(privilegeStatus.rootGranted, appPrefsForService?.gameProfiles?.keys) {
         val hasProfiles = appPrefsForService?.gameProfiles?.isNotEmpty() == true
-        val isRoot = privilegeStatus.activeBackend == PrivilegeBackend.ROOT
+        val isRoot = privilegeStatus.rootGranted
         if (hasProfiles && isRoot) {
             GameProfileMonitorService.start(context)
         } else {
@@ -165,6 +161,4 @@ private fun AetherXRoot(
     MaintenanceGate()
 
     UpdateGate()
-
-    ShizukuFallbackGate()
 }

@@ -29,18 +29,6 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" />
         </intent>
-
-        <!-- ROLLBACK — WAJIB untuk Android 11+ (API 30) package visibility:
-             tanpa deklarasi ini, PackageManager.getPackageInfo/
-             getLaunchIntentForPackage untuk moe.shizuku.privileged.api
-             (dipakai ShizukuManager.isShizukuInstalled/openShizukuManager)
-             akan SELALU gagal seolah app-nya tidak terinstal, walau
-             sebenarnya terpasang. Catatan: QUERY_ALL_PACKAGES di atas
-             sebenarnya sudah cukup luas untuk ini juga, tapi entri eksplisit
-             ini dipertahankan sebagai dokumentasi + jaring pengaman kalau
-             suatu saat QUERY_ALL_PACKAGES dilepas (mis. demi kepatuhan Play
-             Store yang lebih ketat). -->
-        <package android:name="moe.shizuku.privileged.api" />
     </queries>
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -53,18 +41,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali ke
-         shizuku pure... hapus semua yang bersangkutan dengan adb
-         tertanam"): permission khusus ADB tertanam (ACCESS_WIFI_STATE +
-         CHANGE_WIFI_MULTICAST_STATE untuk mDNS discovery, WAKE_LOCK untuk
-         menjaga proses pairing tetap hidup) SEMUA DIHAPUS — Shizuku murni
-         tidak melakukan discovery jaringan atau pairing apa pun di sisi
-         AetherX sama sekali, jadi permission ini tidak lagi dibutuhkan. -->
-
-    <!-- Battery optimization TETAP dipertahankan: ROM agresif (MIUI dkk)
-         bisa membunuh proses app Shizuku Manager di background walau
-         service-nya sedang dipakai AetherX, memutus binder secara
-         tiba-tiba. Dipakai HANYA untuk menampilkan dialog sistem resmi
+    <!-- v3.1 PURE ROOT: seluruh permission khusus Shizuku/ADB (mDNS
+         discovery, wake lock pairing, dst) sudah tidak relevan dan
+         dihapus. Battery optimization TETAP dipertahankan karena ROM
+         agresif (MIUI dkk) juga bisa mematikan proses root shell daemon
+         di background pada beberapa perangkat. Dipakai HANYA untuk
+         menampilkan dialog sistem resmi
          (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) — BUKAN dipaksakan
          otomatis. Lihat PrivilegeManager.requestIgnoreBatteryOptimizations. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -91,25 +73,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- FIX BUILD — ROLLBACK ke Shizuku murni: <provider> ini WAJIB
-             ADA (asumsi awal saya bahwa ini opsional untuk client SALAH —
-             dikonfirmasi dari dokumentasi resmi RikkaApps/Shizuku-API).
-             ShizukuProvider menangani proses AWAL mendapatkan Binder dari
-             service Shizuku; tanpa ini, seluruh listener di ShizukuManager
-             (addBinderReceivedListenerSticky dkk) tidak akan pernah
-             terpanggil dan AetherX tidak akan pernah bisa terhubung ke
-             Shizuku sama sekali. android:permission harus permission yang
-             dimiliki Shell/Root tapi TIDAK dimiliki app biasa (persis
-             seperti dokumentasi resmi), supaya ContentProvider ini tidak
-             bisa diakses sembarang app lain. -->
-        <provider
-            android:name="rikka.shizuku.ShizukuProvider"
-            android:authorities="${applicationId}.shizuku"
-            android:multiprocess="false"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <!-- Overlay crosshair: foreground service, "specialUse" karena menampilkan
              elemen bantu di atas aplikasi lain (bukan media/lokasi/dll bawaan Android). -->

@@ -41,7 +41,7 @@ import com.aether.x.ui.theme.AccentRed
  * logout confirm di MembershipScreen, CrosshairColorPickerDialog, dan 3
  * dialog di BuildPropScreen) dan tampil kotak putih flat generik — tidak
  * konsisten dengan gaya "gate" dialog yang sudah lebih baik
- * (MaintenanceGate/ShizukuFallbackGate/UpdateGate: rounded 28dp, icon
+ * (MaintenanceGate/UpdateGate: rounded 28dp, icon
  * bulat berwarna, padding lega). PopupDialog menyatukan gaya itu jadi satu
  * komponen reusable supaya SEMUA pop up di app konsisten, dan supaya
  * perubahan gaya di masa depan cukup dilakukan di satu tempat.

@@ -25,9 +25,6 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.SportsEsports
-import androidx.compose.material.icons.outlined.WifiTethering
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,13 +43,11 @@ import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.Spacing
 
 @Composable
 fun AetherXInfoCard(
-    activeBackend: PrivilegeBackend,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -87,89 +82,6 @@ fun AetherXInfoCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Spacing.xs),
             )
-        }
-        PrivilegeBackendPill(activeBackend)
-    }
-}
-
-@Composable
-private fun PrivilegeBackendPill(backend: PrivilegeBackend) {
-    val (label, bgColor) = when (backend) {
-        PrivilegeBackend.ROOT -> stringResource(R.string.dashboard_privilege_root) to MaterialTheme.colorScheme.primary
-        PrivilegeBackend.SHIZUKU -> stringResource(R.string.dashboard_privilege_shizuku) to MaterialTheme.colorScheme.surfaceVariant
-        PrivilegeBackend.NONE -> stringResource(R.string.dashboard_privilege_none) to MaterialTheme.colorScheme.surfaceVariant
-    }
-    val textColor = if (backend == PrivilegeBackend.ROOT) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(bgColor)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = textColor,
-        )
-    }
-}
-
-@Composable
-fun WirelessDebuggingQuickCard(
-    activeBackend: PrivilegeBackend,
-    wirelessDebuggingEnabled: Boolean,
-    onOpenWirelessDebugging: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-
-    if (activeBackend == PrivilegeBackend.ROOT) return
-
-    if (wirelessDebuggingEnabled) return
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.WifiTethering,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(26.dp),
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = Spacing.md, end = Spacing.md),
-        ) {
-            Text(
-                text = stringResource(R.string.dashboard_wireless_debugging_off_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.dashboard_wireless_debugging_off_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Spacing.xs),
-            )
-        }
-        Button(
-            onClick = onOpenWirelessDebugging,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        ) {
-            Text(text = stringResource(R.string.dashboard_wireless_debugging_off_action))
         }
     }
 }

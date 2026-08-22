@@ -15,7 +15,7 @@ import com.aether.x.core.shell.RootShellExecutor
  * ROOT-ONLY BY DESIGN: object ini SENGAJA tidak melakukan pengecekan
  * root sendiri — pemanggil (RootSystemMonitorViewModel) WAJIB hanya
  * memulai polling saat
- * `PrivilegeManager.status.value.activeBackend == PrivilegeBackend.ROOT`.
+ * `PrivilegeManager.status.value.rootGranted == true`.
  * Alasan gating ada di sisi Kotlin, bukan native, dijelaskan lengkap di
  * KDoc sysmonitor.h (intinya: sebagian path sysfs yang dibaca modul ini
  * kebetulan world-readable di sebagian device tanpa root, tapi supaya
@@ -99,8 +99,8 @@ object RootSystemMonitor {
      * path-path sysfs GPU di [gpuLoadPaths] (lihat nilai terdekripsinya
      * saat runtime) umumnya bermode 0440 (root-only read). Proses app
      * biasa TIDAK otomatis
-     * dapat izin baca file itu hanya karena `PrivilegeStatus.activeBackend
-     * == ROOT` — status itu berarti app PUNYA akses menjalankan command
+     * dapat izin baca file itu hanya karena `PrivilegeStatus.rootGranted
+     * == true` — status itu berarti app PUNYA akses menjalankan command
      * lewat `su` (lihat RootShellExecutor), bukan berarti UID proses app
      * berubah jadi root. fopen() native di sysmonitor.cpp berjalan
      * sebagai UID app biasa, jadi kena EACCES diam-diam (readSmallFile

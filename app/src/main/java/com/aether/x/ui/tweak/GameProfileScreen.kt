@@ -57,7 +57,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.GameMode
 import com.aether.x.data.GameProfile
@@ -80,7 +79,7 @@ fun GameProfileScreen(
 ) {
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
 
-    if (privilegeStatus.activeBackend != PrivilegeBackend.ROOT) {
+    if (!privilegeStatus.rootGranted) {
         GameProfileRootRequiredNotice(modifier = modifier, contentPadding = contentPadding)
         return
     }

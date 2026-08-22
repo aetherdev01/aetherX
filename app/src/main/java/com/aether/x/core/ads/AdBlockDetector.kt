@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.SecretStrings
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +81,7 @@ object AdBlockDetector {
     }.getOrDefault(emptyList())
 
     private suspend fun detectMagiskModule(): Boolean {
-        if (PrivilegeManager.status.value.activeBackend != PrivilegeBackend.ROOT) {
+        if (!PrivilegeManager.status.value.rootGranted) {
             return false
         }
         val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return false

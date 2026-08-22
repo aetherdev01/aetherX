@@ -22,7 +22,6 @@ enum class FpsMonitorStyle { ROG, CLASSIC }
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
-    val noRootAdvisoryDismissed: Boolean = false,
 
     val darkModePref: DarkModePref = DarkModePref.DARK,
 
@@ -58,8 +57,6 @@ data class AppPreferences(
 
     val licenseExpiresAtMillis: Long? = null,
 
-    val preferredPrivilegeBackend: String? = null,
-
     val gameProfiles: Map<String, GameProfile> = emptyMap(),
 
     val activeGameProfilePackage: String? = null,
@@ -85,7 +82,6 @@ class AetherXPreferences(private val context: Context) {
 
     private object Keys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
-        val NO_ROOT_ADVISORY_DISMISSED = booleanPreferencesKey("no_root_advisory_dismissed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
@@ -136,8 +132,6 @@ class AetherXPreferences(private val context: Context) {
 
         val LICENSE_LOCKOUT_UNTIL_MILLIS = longPreferencesKey("license_lockout_until_millis")
 
-        val PREFERRED_PRIVILEGE_BACKEND = stringPreferencesKey("preferred_privilege_backend")
-
         val GAME_PROFILES_JSON = stringPreferencesKey("game_profiles_json")
         val ACTIVE_GAME_PROFILE_PACKAGE = stringPreferencesKey("active_game_profile_package")
 
@@ -156,7 +150,6 @@ class AetherXPreferences(private val context: Context) {
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
         AppPreferences(
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
-            noRootAdvisoryDismissed = prefs[Keys.NO_ROOT_ADVISORY_DISMISSED] ?: false,
 
             darkModePref = DarkModePref.DARK,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
@@ -193,7 +186,6 @@ class AetherXPreferences(private val context: Context) {
             fpsMonitorOffsetY = prefs[Keys.FPS_MONITOR_OFFSET_Y] ?: 0,
             licenseKey = prefs[Keys.LICENSE_KEY],
             licenseExpiresAtMillis = prefs[Keys.LICENSE_EXPIRES_AT_MILLIS],
-            preferredPrivilegeBackend = prefs[Keys.PREFERRED_PRIVILEGE_BACKEND],
             gameProfiles = GameProfileSerializer.deserialize(prefs[Keys.GAME_PROFILES_JSON]),
             activeGameProfilePackage = prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE],
             lastPlayedGamePackage = prefs[Keys.LAST_PLAYED_GAME_PACKAGE],
@@ -208,10 +200,6 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setOnboardingCompleted(value: Boolean) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
-    }
-
-    suspend fun setNoRootAdvisoryDismissed(value: Boolean) {
-        context.dataStore.edit { it[Keys.NO_ROOT_ADVISORY_DISMISSED] = value }
     }
 
     suspend fun saveTweakState(
@@ -387,19 +375,6 @@ class AetherXPreferences(private val context: Context) {
             prefs.remove(Keys.LICENSE_ATTEMPT_WINDOW_START_MILLIS)
             prefs.remove(Keys.LICENSE_LOCKOUT_UNTIL_MILLIS)
         }
-    }
-
-    suspend fun getPreferredPrivilegeBackend(): String? {
-        val prefs = context.dataStore.data.first()
-        return prefs[Keys.PREFERRED_PRIVILEGE_BACKEND]
-    }
-
-    suspend fun setPreferredPrivilegeBackend(value: String) {
-        context.dataStore.edit { prefs -> prefs[Keys.PREFERRED_PRIVILEGE_BACKEND] = value }
-    }
-
-    suspend fun clearPreferredPrivilegeBackend() {
-        context.dataStore.edit { prefs -> prefs.remove(Keys.PREFERRED_PRIVILEGE_BACKEND) }
     }
 
     suspend fun saveGameProfile(profile: GameProfile) {

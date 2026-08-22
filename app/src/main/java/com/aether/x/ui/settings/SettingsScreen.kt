@@ -29,11 +29,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
-import com.aether.x.core.shizuku.WirelessDebuggingMonitor
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.cardEnterAnimation
-import com.aether.x.ui.dashboard.WirelessDebuggingQuickCard
 
 @Composable
 fun SettingsScreen(
@@ -48,14 +46,12 @@ fun SettingsScreen(
 
     val context = LocalContext.current
     val activity = context as? Activity
-    val wirelessDebuggingEnabled by WirelessDebuggingMonitor.state.collectAsStateWithLifecycle()
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 overlayGranted = viewModel.canDrawOverlays()
-                WirelessDebuggingMonitor.refresh(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -77,13 +73,6 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.primary,
         )
 
-        WirelessDebuggingQuickCard(
-            activeBackend = privilegeStatus.activeBackend,
-            wirelessDebuggingEnabled = wirelessDebuggingEnabled,
-            onOpenWirelessDebugging = { PrivilegeManager.openWirelessDebuggingSettings(context) },
-            modifier = Modifier.cardEnterAnimation(index = 0),
-        )
-
         CrosshairSettingsSection(
             enabled = prefs.crosshairEnabled,
             style = prefs.crosshairStyle,
@@ -101,13 +90,13 @@ fun SettingsScreen(
             onSizeChange = viewModel::setCrosshairSize,
             onRotationChange = viewModel::setCrosshairRotation,
             onNudgePosition = viewModel::nudgeCrosshairPosition,
-            modifier = Modifier.cardEnterAnimation(index = 1),
+            modifier = Modifier.cardEnterAnimation(index = 0),
         )
 
         SectionCard(
             title = stringResource(R.string.settings_section_fps_monitor),
             watermarkIcon = Icons.Outlined.Speed,
-            modifier = Modifier.cardEnterAnimation(index = 2),
+            modifier = Modifier.cardEnterAnimation(index = 1),
         ) {
             FpsMonitorSettingsSection(
                 enabled = prefs.fpsMonitorEnabled,

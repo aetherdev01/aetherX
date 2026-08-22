@@ -7,24 +7,23 @@
     <string name="splash_status_database">Menyambungkan ke database…</string>
     <string name="splash_status_ready">Siap!</string>
 
-    <!-- REWORK TOTAL — Onboarding Setup Permission jadi 5 halaman slide
-         (HorizontalPager): (1) Shizuku/Root, (2) Write Settings, (3) Overlay,
+    <!-- v3.1 PURE ROOT — Onboarding Setup Permission tetap 5 halaman slide
+         (HorizontalPager): (1) Root, (2) Write Settings, (3) Overlay,
          (4) Notifikasi, (5) Peringatan Kernel DWYOR. SEMUA EMPAT IZIN
-         (halaman 1-4) sekarang WAJIB granted untuk lanjut — bukan lagi
-         cuma Shizuku/Root yang wajib sementara 3 izin lain opsional seperti
-         versi sebelumnya. Dipakai ulang juga sebagai "Kelola Akses" di
-         halaman utama (requireAccessToContinue=false: navigasi bebas,
-         tidak dikunci). -->
+         (halaman 1-4) WAJIB granted untuk lanjut. Shizuku dan mode
+         "lanjut tanpa akses" (skip) DIHAPUS TOTAL — halaman 1 sekarang
+         murni permintaan akses Root, tidak ada pilihan metode lain.
+         Dipakai ulang juga sebagai "Kelola Akses" di halaman utama
+         (requireAccessToContinue=false: navigasi bebas, tidak dikunci). -->
     <string name="setup_title">Izin Akses</string>
-    <string name="setup_subtitle">Pilih metode akses agar AetherX bisa mengontrol performa dan tweak sistem di perangkatmu.</string>
-    <string name="setup_required_header">Wajib Salah Satu</string>
-    <string name="setup_required_banner">Aktifkan Shizuku atau Root untuk melanjutkan</string>
+    <string name="setup_subtitle">Aktifkan akses Root agar AetherX bisa mengontrol performa dan tweak sistem di perangkatmu.</string>
+    <string name="setup_required_header">Wajib</string>
+    <string name="setup_required_banner">Aktifkan Root untuk melanjutkan</string>
     <string name="setup_method_root">Magisk</string>
     <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser untuk fitur lanjutan.</string>
     <string name="setup_status_granted">Aktif</string>
     <string name="setup_status_not_granted">Belum Aktif</string>
     <string name="setup_status_checking">Memeriksa…</string>
-    <string name="setup_or_divider">ATAU</string>
     <string name="setup_action_request">Izinkan</string>
     <string name="setup_action_continue">Selesai</string>
     <!-- FITUR BARU — tombol "Lanjut" per halaman (BEDA dari "Selesai" yang
@@ -34,20 +33,10 @@
     <string name="setup_action_next">Lanjut</string>
     <string name="setup_locked_hint">Selesaikan izin di halaman ini dulu untuk melanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
-    <string name="setup_locked_by_root_hint">Root sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Shizuku.</string>
-    <string name="setup_locked_by_adb_hint">Shizuku sedang dipakai. Ketuk "Ganti metode" untuk beralih ke Root.</string>
-    <string name="setup_switch_method">Ganti metode</string>
 
-    <!-- Halaman 1 — Metode akses (Shizuku / Root) -->
-    <string name="setup_page_access_title">Metode Akses</string>
-    <string name="setup_page_access_subtitle">Pilih salah satu: Shizuku (tanpa root) atau akses Root penuh lewat Magisk/KernelSU/APatch.</string>
-
-    <!-- Mode tanpa root/Shizuku (skip) — popup pemberitahuan sebelum lanjut -->
-    <string name="setup_no_root_skip">Lewati, lanjut tanpa akses (mode terbatas)</string>
-    <string name="setup_no_root_dialog_title">Mode Terbatas Tanpa Root</string>
-    <string name="setup_no_root_dialog_message">Kamu bisa lanjut tanpa Root maupun Shizuku, tapi hampir semua fitur inti AetherX (kontrol governor CPU/GPU, tweak sistem, kernel manager, dll) butuh salah satu akses tersebut untuk berjalan. Tanpa akses, fitur yang tersedia sangat terbatas. Untuk fitur lengkap, aktifkan Root atau Shizuku terlebih dahulu.</string>
-    <string name="setup_no_root_dialog_confirm">Lanjutkan Mode Terbatas</string>
-    <string name="setup_no_root_dialog_cancel">Batal</string>
+    <!-- Halaman 1 — Akses Root -->
+    <string name="setup_page_access_title">Akses Root</string>
+    <string name="setup_page_access_subtitle">AetherX membutuhkan akses Root penuh lewat Magisk/KernelSU/APatch untuk berjalan.</string>
 
     <!-- Halaman 2 — Ubah Pengaturan Sistem (WRITE_SETTINGS) -->
     <string name="setup_page_write_settings_title">Ubah Pengaturan Sistem</string>
@@ -243,8 +232,8 @@
     <string name="tweak_section_touch">Input Driver</string>
 
     <!-- Dashboard: monitor CPU/GPU/Suhu ringkas + Info Device. CPU/GPU
-         dibaca lewat shell executor (Root/Shizuku) kalau aktif untuk hasil
-         lebih reliable, fallback baca langsung proses app kalau backend
+         dibaca lewat shell executor Root kalau aktif untuk hasil
+         lebih reliable, fallback baca langsung proses app kalau root
          belum aktif lihat KDoc DashboardViewModel. -->
     <!-- FITUR BARU (rework total Dashboard): section "Aktivitas Game"
          daftar game terpasang yang bisa di-scroll horizontal, game
@@ -254,12 +243,12 @@
     <string name="dashboard_section_game_activity">Aktivitas Game</string>
     <string name="dashboard_game_activity_last_used">Terakhir dipakai</string>
     <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
-    <!-- FITUR BARU: kartu info aplikasi + status mode akses di puncak Dashboard -->
+    <!-- FITUR BARU: kartu info aplikasi di puncak Dashboard. v3.1 PURE
+         ROOT: pill status mode akses (Root/Shizuku/No Root) DIHAPUS —
+         aplikasi sekarang hanya punya satu status akses (root granted
+         atau tidak), sudah cukup terwakili di halaman Izin Akses. -->
     <string name="dashboard_hero_kicker">AXKM</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
-    <string name="dashboard_privilege_root">Root</string>
-    <string name="dashboard_privilege_shizuku">Shizuku</string>
-    <string name="dashboard_privilege_none">No Root</string>
     <string name="dashboard_section_device_info">Info Device</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
     <string name="dashboard_device_info_group_identity">Identitas Perangkat</string>
@@ -273,15 +262,7 @@
     <string name="dashboard_device_usage_format">%1$s / %2$s</string>
     <string name="dashboard_device_cpu_abi">Arsitektur CPU</string>
 
-    <!-- FITUR BARU — kartu pintasan "Aktifkan Wireless Debugging" (khusus
-         No Root/Shizuku, lihat WirelessDebuggingQuickCard) — muncul HANYA
-         ketika toggle Wireless debugging sistem sedang mati, hilang
-         otomatis begitu dinyalakan kembali. -->
-    <string name="dashboard_wireless_debugging_off_title">Wireless Debugging Mati</string>
-    <string name="dashboard_wireless_debugging_off_desc">Nyalakan lagi agar AetherX tersambung otomatis.</string>
-    <string name="dashboard_wireless_debugging_off_action">Aktifkan</string>
     <string name="drawer_root_only_label">Advanced</string>
-    <string name="drawer_privileged_label">Aplikasi</string>
     <string name="tweak_pointer_speed">Pointer Speed</string>
     <string name="tweak_pointer_speed_desc">Nilai driver input sistem yang menentukan kecepatan respons kursor/sentuh (-7 lambat, 7 cepat).</string>
     <string name="tweak_touch_boost">Touch Response Override</string>
@@ -351,9 +332,9 @@
     <string name="app_manager_empty">Tidak ada aplikasi yang cocok</string>
     <string name="app_manager_status_frozen">Dinonaktifkan</string>
     <string name="app_manager_status_active">Aktif</string>
-    <string name="app_manager_error_root_unavailable">Sambungkan Shizuku atau Root dulu di layar Izin Akses</string>
-    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Coba pakai akses Root jika Shizuku tidak berhasil.</string>
-    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Coba pakai akses Root jika Shizuku tidak berhasil.</string>
+    <string name="app_manager_error_root_unavailable">Aktifkan akses Root dulu di layar Izin Akses</string>
+    <string name="app_manager_error_freeze">Gagal menonaktifkan %1$s. Pastikan akses Root aktif.</string>
+    <string name="app_manager_error_unfreeze">Gagal mengaktifkan kembali %1$s. Pastikan akses Root aktif.</string>
     <string name="app_manager_more_options_cd">Opsi lainnya</string>
     <string name="app_manager_action_force_stop">Force Stop</string>
     <string name="app_manager_action_clear_cache">Bersihkan Cache</string>
@@ -387,11 +368,6 @@
     <string name="root_monitor_waiting_samples">Mengumpulkan sampel pertama…</string>
     <string name="root_monitor_cpu_stalled">Beban CPU belum bisa terbaca di perangkat ini — coba tutup dan buka lagi layar ini</string>
 
-    <string name="no_root_advisory_title">Kamu belum pakai akses Root</string>
-    <string name="no_root_advisory_message">Sekarang AetherX jalan lewat Shizuku. Beberapa fitur seperti Kernel Manager, Build.prop Editor, GPU Performance Mode, dan Monitor CPU/GPU cuma bisa diakses kalau perangkatmu di-root. Buka akses Root di menu Pengaturan biar semua fitur bisa dipakai penuh.</string>
-    <string name="no_root_advisory_confirm">Mengerti, jangan tampilkan lagi</string>
-    <string name="no_root_advisory_dismiss">Nanti saja</string>
-
     <string name="buildprop_value_empty">(kosong)</string>
     <string name="buildprop_action_edit">Edit</string>
     <string name="buildprop_action_save">Simpan</string>
@@ -422,8 +398,8 @@
     <string name="tweak_doze_disabled_desc">Cegah sistem membekukan proses game atau service background (voice chat, download aset) saat perangkat idle sesaat. Butuh akses root.</string>
     <string name="tweak_reset">Reset ke Default Pabrik</string>
     <string name="tweak_reset_toast">Parameter kernel &amp; sistem dikembalikan ke default</string>
-    <string name="tweak_no_access_toast">Sambungkan Shizuku atau Root dulu di layar Izin Akses</string>
-    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Pastikan service Shizuku masih berjalan, lalu coba tekan sekali lagi</string>
+    <string name="tweak_no_access_toast">Aktifkan akses Root dulu di layar Izin Akses</string>
+    <string name="tweak_command_failed_toast">Perintah gagal dijalankan. Pastikan akses Root masih aktif, lalu coba tekan sekali lagi</string>
     <string name="tweak_kill_background_toast">Aplikasi background dibersihkan</string>
 
     <!-- Tweak screen game launcher -->
@@ -445,7 +421,7 @@
     <string name="fps_monitor_position_locked_hint">Gaya Klasik selalu terkunci di pojok kiri bawah dan tidak bisa digeser.</string>
     <string name="fps_monitor_position_draggable_hint">Tahan dan geser panel di layar untuk memindahkan posisinya. Posisi otomatis tersimpan.</string>
     <string name="fps_monitor_gpu_disclaimer">Pembacaan GPU tergantung chipset perangkat tampil "-" kalau tidak didukung.</string>
-    <string name="fps_monitor_accuracy_disclaimer">FPS dibaca langsung dari game yang sedang berjalan (bukan Hz layar), butuh akses Shizuku atau Root aktif supaya angkanya akurat.</string>
+    <string name="fps_monitor_accuracy_disclaimer">FPS dibaca langsung dari game yang sedang berjalan (bukan Hz layar), butuh akses Root aktif supaya angkanya akurat.</string>
     <string name="fps_monitor_notification_channel">Overlay Monitor FPS</string>
     <string name="fps_monitor_notification_title">Monitor FPS AetherX aktif</string>
     <string name="fps_monitor_notification_text">Ketuk untuk membuka pengaturan Monitor FPS</string>
@@ -611,7 +587,7 @@
     <string name="game_booster_metrics_gpu">GPU</string>
     <string name="game_booster_metrics_ram">RAM</string>
     <string name="game_booster_metrics_temp">Suhu</string>
-    <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root/Shizuku di tab Tweak untuk FPS real-time</string>
+    <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root di tab Tweak untuk FPS real-time</string>
 
     <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
     <string name="game_booster_sidebar_close">Tutup</string>
@@ -625,7 +601,7 @@
     <string name="game_booster_sidebar_header">AetherX Corner</string>
     <string name="game_booster_sidebar_launch">Luncurkan</string>
 
-    <string name="game_booster_screenshot_needs_privilege">Aktifkan akses root/Shizuku dulu untuk mengambil tangkapan layar</string>
+    <string name="game_booster_screenshot_needs_privilege">Aktifkan akses Root dulu untuk mengambil tangkapan layar</string>
     <string name="game_booster_screenshot_success">Tangkapan layar tersimpan</string>
     <string name="game_booster_screenshot_failed">Gagal mengambil tangkapan layar</string>
 
@@ -653,7 +629,7 @@
 
     <string name="game_booster_panel_monitor_average_jitter">Average %1$d FPS   Jitter %2$d</string>
     <string name="game_booster_panel_monitor_realtime">Real-time %1$d FPS</string>
-    <string name="game_booster_panel_monitor_fps_unavailable_hint">Aktifkan Root/Shizuku untuk FPS real-time</string>
+    <string name="game_booster_panel_monitor_fps_unavailable_hint">Aktifkan Root untuk FPS real-time</string>
 
     <string name="game_booster_panel_mode_balanced">Balanced</string>
     <string name="game_booster_panel_mode_performance">Performance</string>
@@ -681,15 +657,10 @@
     <string name="adblock_dialog_membership_button">Lihat Membership</string>
     <string name="adblock_dialog_dismiss_button">Tutup</string>
 
-    <!-- ROLLBACK TOTAL (lihat perintah — "jadikan sistem adb kembali ke
-         shizuku pure... hapus semua yang bersangkutan dengan adb
-         tertanam"): pesan feedback konkret untuk setiap hasil aksi
-         Shizuku & root, ditampilkan lewat Snackbar menggantikan
-         silent-fail yang membuat tombol terasa "tidak merespon". -->
-    <string name="permission_feedback_shizuku_not_installed">Shizuku Manager belum terinstal. Instal dulu dari Play Store, lalu start service-nya di sana.</string>
-    <string name="permission_feedback_shizuku_service_not_running">Service Shizuku belum berjalan. Buka Shizuku Manager dan start dulu (ADB wireless/USB, root, atau modul Sui).</string>
-    <string name="permission_feedback_shizuku_permission_denied">Izin Shizuku ditolak. Ketuk "Izinkan" lagi untuk memberi izin ke AetherX.</string>
-    <string name="permission_feedback_shizuku_granted">Shizuku terhubung.</string>
+    <!-- v3.1 PURE ROOT: pesan feedback konkret untuk setiap hasil aksi
+         permintaan akses root, ditampilkan lewat Snackbar menggantikan
+         silent-fail yang membuat tombol terasa "tidak merespon". Seluruh
+         pesan khusus Shizuku DIHAPUS bersama backend-nya. -->
     <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch terpasang, lalu coba lagi.</string>
     <string name="permission_feedback_root_in_progress">Permintaan akses root masih diproses, tunggu sebentar.</string>
     <string name="permission_feedback_root_granted">Akses root aktif.</string>

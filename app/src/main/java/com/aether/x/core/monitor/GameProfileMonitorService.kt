@@ -15,7 +15,6 @@ import com.aether.x.R
 import com.aether.x.core.apps.GameProfileCatalog
 import com.aether.x.core.booster.GameBoosterFeatureFlag
 import com.aether.x.core.overlay.GameBoosterOverlayService
-import com.aether.x.core.permission.PrivilegeBackend
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.data.AetherXPreferences
@@ -128,7 +127,7 @@ class GameProfileMonitorService : Service() {
 
     private suspend fun pollOnce() {
 
-        if (PrivilegeManager.status.value.activeBackend != PrivilegeBackend.ROOT) {
+        if (!PrivilegeManager.status.value.rootGranted) {
             resetActiveProfileIfAny()
             stopSelf()
             return

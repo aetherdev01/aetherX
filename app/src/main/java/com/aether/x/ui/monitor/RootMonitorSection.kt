@@ -33,10 +33,10 @@ import com.aether.x.ui.theme.Spacing
 
 /**
  * RootMonitorSection — grafik CPU per-core + GPU real-time. HANYA
- * dipanggil dari TweakScreen saat `TweakSubTab.ROOT_MONITOR` dan backend
- * aktif ROOT (gating sama seperti Kernel Manager/Build.prop Editor —
- * lihat TweakScreen.kt, blok LaunchedEffect(privilegeStatus.activeBackend)
- * yang otomatis melempar kembali ke Dashboard kalau backend bukan ROOT).
+ * dipanggil dari TweakScreen saat `TweakSubTab.ROOT_MONITOR` dan root
+ * granted (gating sama seperti Kernel Manager/Build.prop Editor —
+ * lihat TweakScreen.kt, blok LaunchedEffect(privilegeStatus.rootGranted)
+ * yang otomatis melempar kembali ke Dashboard kalau root belum granted).
  *
  * Polling dimulai saat composable ini masuk komposisi ([DisposableEffect]
  * memanggil [RootMonitorViewModel.onResume]) dan berhenti saat keluar
