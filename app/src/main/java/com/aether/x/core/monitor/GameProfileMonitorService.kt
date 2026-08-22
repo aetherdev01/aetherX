@@ -101,7 +101,7 @@ class GameProfileMonitorService : Service() {
         )
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_aetherx_mark)
+            .setSmallIcon(R.drawable.ic_notification_mark)
             .setContentTitle(getString(R.string.game_profile_monitor_notification_title))
             .setContentText(getString(R.string.game_profile_monitor_notification_text))
             .setOngoing(true)

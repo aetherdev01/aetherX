@@ -23,8 +23,12 @@ jobs:
           java-version: 17
 
       # ── 3. Setup Gradle ───────────────────────────────────────────────────────
+      # build-scan-publish dimatikan default, cache read-write aktif otomatis
+      # lewat action ini (terpisah dari actions/cache manual di step 6).
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       # ── 4. Grant execute permission ──────────────────────────────────────────
       - name: Grant execute permission
@@ -62,8 +66,19 @@ jobs:
             > local.properties
 
       # ── 8. Build Release APK ─────────────────────────────────────────────────
+      # Flag speed-up: --build-cache (reuse task output antar run lewat cache
+      # di step 6, termasuk cache task CMake/NDK native build) dan --parallel
+      # (compile module/task independen bersamaan). --configuration-cache
+      # SENGAJA tidak dipakai di sini — project ini punya native build
+      # (externalNativeBuild/CMake, lihat app/build.gradle.kts) yang belum
+      # tentu 100% kompatibel dengan configuration cache di semua versi
+      # AGP/CMake, risikonya CI gagal bukan malah lebih cepat. Sudah
+      # diaktifkan di gradle.properties kalau nanti mau dicoba manual dulu
+      # di lokal sebelum dipakai di CI. --warning-mode all dibuang karena
+      # cuma menambah log verbose tanpa mempercepat build; --stacktrace
+      # dipertahankan supaya error tetap gampang didiagnosis kalau gagal.
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace --warning-mode all
+        run: ./gradlew assembleRelease --no-daemon --stacktrace --build-cache --parallel
 
       # ── 9. Upload artifact ───────────────────────────────────────────────────
       - name: Upload Release APK
@@ -111,123 +126,6 @@ jobs:
 
           TEXT=$(printf \
             '❌ Build <b>AetherX</b> gagal\n\n🔖 <b>Commit:</b> <code>%s</code> — <a href="%s">lihat detail</a>' \
-            "$SHA_SHORT" "$RUN_URL")
-
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d "text=${TEXT}" || true
-
-  build-debug:
-    name: Build Debug APK
-    runs-on: ubuntu-latest
-
-    steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # ── 2. JDK 17 ────────────────────────────────────────────────────────────
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      # ── 3. Setup Gradle ───────────────────────────────────────────────────────
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      # ── 4. Grant execute permission ──────────────────────────────────────────
-      - name: Grant execute permission
-        run: chmod +x ./gradlew
-
-      # ── 5. Remove legacy Groovy build files (konflik dengan KTS) ─────────────
-      - name: Remove legacy Groovy build files
-        run: |
-          rm -f build.gradle settings.gradle
-          rm -f app/build.gradle
-          echo "=== Build files sekarang ==="
-          find . -name "*.gradle" -o -name "*.gradle.kts" | grep -v ".gradle/caches" | sort
-
-      # ── 6. Gradle cache ──────────────────────────────────────────────────────
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-
-
-      # ── 7. Setup keystore ────────────────────────────────────────────────────
-      # Debug buildType sekarang pakai signingConfig release (aetherx.jks),
-      # bukan debug keystore bawaan Android — kalau tidak, SignatureGuard
-      # (native, lihat SignatureGuard.kt + sigcheck.cpp) bakal langsung
-      # force-close app karena hash signing cert tidak cocok.
-      - name: Setup signing
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > aetherx.jks
-          printf '%s\n' \
-            "STORE_FILE=aetherx.jks" \
-            "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" \
-            "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" \
-            "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" \
-            > local.properties
-
-      # ── 8. Build Debug APK ───────────────────────────────────────────────────
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
-
-      # ── 9. Upload artifact ───────────────────────────────────────────────────
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: aetherx-debug-${{ github.run_number }}
-          path: app/build/outputs/apk/debug/*-debug.apk
-          if-no-files-found: error
-          retention-days: 3
-
-      # ── 10. Kirim link download ke Telegram ──────────────────────────────────
-      # APK debug (belum di-minify/shrink) sering > 50MB, limit sendDocument
-      # Telegram Bot API — jadi kirim link ke artifact GitHub Actions saja,
-      # bukan file APK-nya langsung (413 Request Entity Too Large kalau dipaksa).
-      - name: Send link to Telegram
-        if: success()
-        run: |
-          SHA="${{ github.sha }}"
-          SHA_SHORT="${SHA:0:7}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          APK_PATH=$(find app/build/outputs/apk/debug/ -name "*.apk" | head -n 1)
-          APK_NAME=$(basename "$APK_PATH")
-
-          VERSION=$(grep -m1 'versionName' app/build.gradle.kts 2>/dev/null \
-                    | sed 's/.*= *"//' | sed 's/".*//')
-          [ -z "$VERSION" ] && VERSION="unknown"
-
-          SIZE_BYTES=$(stat -c%s "$APK_PATH")
-          SIZE_MB=$(awk "BEGIN {printf \"%.2f\", ${SIZE_BYTES}/1048576}")
-
-          TEXT=$(printf \
-            '🐞 Build <b>AetherX (Debug)</b> berhasil\n\n📦 <b>File:</b> <code>%s</code>\n🏷 <b>Versi:</b> <code>%s</code>\n💾 <b>Ukuran:</b> <code>%s MB</code> (di atas limit 50MB Telegram, download lewat link)\n🔖 <b>Commit:</b> <code>%s</code>\n⬇️ <b>Download:</b> <a href="%s">buka artifact di GitHub Actions</a>' \
-            "$APK_NAME" "$VERSION" "$SIZE_MB" "$SHA_SHORT" "$RUN_URL")
-
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d disable_web_page_preview="true" \
-            -d "text=${TEXT}" || true
-
-      # ── 11. Notif Telegram (gagal) ───────────────────────────────────────────
-      - name: Telegram Notification (Failure)
-        if: failure()
-        run: |
-          SHA="${{ github.sha }}"
-          SHA_SHORT="${SHA:0:7}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          TEXT=$(printf \
-            '❌ Build <b>AetherX (Debug)</b> gagal\n\n🔖 <b>Commit:</b> <code>%s</code> — <a href="%s">lihat detail</a>' \
             "$SHA_SHORT" "$RUN_URL")
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \

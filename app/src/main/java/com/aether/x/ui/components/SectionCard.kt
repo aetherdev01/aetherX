@@ -37,7 +37,7 @@ private fun SectionCardWatermark(icon: ImageVector? = null) {
         )
     } else {
         Icon(
-            painter = painterResource(id = R.drawable.ic_aetherx_mark),
+            painter = painterResource(id = R.drawable.ic_aetherx_logo),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
             modifier = Modifier

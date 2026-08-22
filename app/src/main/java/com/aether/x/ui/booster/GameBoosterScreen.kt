@@ -300,10 +300,9 @@ private fun GameBoosterRadialContent(
                         .background(SurfaceCard),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_aetherx_mark),
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_aetherx_logo),
                         contentDescription = null,
-                        tint = AccentBlue,
                         modifier = Modifier.size(72.dp),
                     )
                 }
