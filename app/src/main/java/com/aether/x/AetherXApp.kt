@@ -9,7 +9,6 @@ import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.AppCheckInitializer
-import com.aether.x.core.security.NativeIntegrityGuard
 import com.aether.x.core.security.SignatureGuard
 import com.aether.x.data.FcmTokenRepository
 import com.topjohnwu.superuser.Shell
@@ -48,13 +47,6 @@ class AetherXApp : Application() {
         super.onCreate()
         try {
             SignatureGuard.verifyOrDie(this)
-        } catch (e: UnsatisfiedLinkError) {
-            Process.killProcess(Process.myPid())
-            return
-        }
-
-        try {
-            NativeIntegrityGuard.verifyOrDie(this)
         } catch (e: UnsatisfiedLinkError) {
             Process.killProcess(Process.myPid())
             return

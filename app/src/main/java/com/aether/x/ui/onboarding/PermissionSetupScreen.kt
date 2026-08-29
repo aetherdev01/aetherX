@@ -629,13 +629,6 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
  * battery optimization sistem. Relevan untuk ROM agresif seperti MIUI yang
  * bisa membunuh daemon root shell AetherX di background kalau belum
  * dikecualikan dari battery saver.
- *
- * NOTE untuk asw: tambahkan string berikut ke strings.xml (belum ada di
- * source yang di-share, jadi placeholder Indonesia berikut dipakai
- * langsung apa adanya di kode sampai dipindah ke resource):
- * - setup_battery_optimization_title
- * - setup_battery_optimization_desc
- * - setup_battery_optimization_action
  */
 @Composable
 private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
@@ -657,7 +650,7 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
                 tint = AccentRed,
             )
             Text(
-                text = "Optimasi baterai masih membatasi AetherX",
+                text = stringResource(R.string.setup_battery_optimization_title),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
@@ -665,7 +658,7 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
             )
         }
         Text(
-            text = "Di sebagian perangkat (MIUI, ColorOS, dll), ini bisa membuat proses akses root AetherX dimatikan diam-diam di background. Izinkan AetherX berjalan tanpa batasan supaya akses root tetap stabil.",
+            text = stringResource(R.string.setup_battery_optimization_desc),
             style = MaterialTheme.typography.bodySmall,
             color = TextSecondary,
         )
@@ -673,7 +666,10 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
             onClick = onRequestExemption,
             modifier = Modifier.align(Alignment.End),
         ) {
-            Text(text = "Izinkan", fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.setup_battery_optimization_action),
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }

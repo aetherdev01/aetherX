@@ -13,8 +13,8 @@
 //
 // SHA-256 & HMAC diimplementasikan SENDIRI di sini (bukan pakai OpenSSL/
 // BoringSSL) supaya tidak menambah dependency native baru — konsisten
-// dengan sigcheck.cpp/integrityguard.cpp yang juga self-contained tanpa
-// library crypto eksternal. Implementasi ini murni untuk turunan
+// dengan sigcheck.cpp yang juga self-contained tanpa library crypto
+// eksternal. Implementasi ini murni untuk turunan
 // fingerprint (bukan untuk keperluan kriptografi yang butuh audit
 // FIPS/constant-time penuh), jadi tidak perlu hardening sekelas TLS.
 

@@ -12,10 +12,6 @@ const JNINativeMethod kSignatureGuardMethods[] = {
     {"nativeVerifyRecheck", "([B)Z", reinterpret_cast<void*>(nvfy2)},
 };
 
-const JNINativeMethod kIntegrityGuardMethods[] = {
-    {"nativeVerifyIntegrity", "()I", reinterpret_cast<void*>(nvint)},
-};
-
 // nvpn (deteksi VPN) SUDAH TIDAK dipakai/didaftarkan di sini — deteksi VPN
 // pindah sepenuhnya ke ConnectivityManager/NetworkCapabilities di Kotlin
 // (lihat AdBlockDetector.kt) karena getifaddrs()/NETLINK tidak lagi bisa
@@ -72,12 +68,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         kSignatureGuardMethods,
         sizeof(kSignatureGuardMethods) / sizeof(kSignatureGuardMethods[0]));
 
-    const bool integrityOk = registerClass(
-        env, "com/aether/x/core/security/NativeIntegrityGuard",
-        kIntegrityGuardMethods,
-        sizeof(kIntegrityGuardMethods) / sizeof(kIntegrityGuardMethods[0]));
-
-    if (!sigOk || !integrityOk) {
+    if (!sigOk) {
         return JNI_ERR;
     }
 

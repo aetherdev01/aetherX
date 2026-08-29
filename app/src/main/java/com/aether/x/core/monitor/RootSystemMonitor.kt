@@ -24,8 +24,8 @@ import com.aether.x.core.shell.RootShellExecutor
  * root-only murni dari sisi kebijakan UI, bukan dari kemampuan teknis
  * baca filenya).
  *
- * Native lib yang dimuat sama dengan SignatureGuard/NativeIntegrityGuard/
- * AdBlockDetector/DeviceFingerprint (satu libaetherX.so, lihat KDoc
+ * Native lib yang dimuat sama dengan SignatureGuard/AdBlockDetector/
+ * DeviceFingerprint (satu libaetherX.so, lihat KDoc
  * CMakeLists.txt) — `System.loadLibrary` di `init` ini aman dipanggil
  * berkali-kali kalau class lain juga sudah memuatnya lebih dulu (JVM
  * hanya memuat native lib sekali per proses).

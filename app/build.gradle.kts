@@ -23,8 +23,8 @@ android {
         applicationId = "com.aether.x"
         minSdk        = 31
         targetSdk     = 35
-        versionCode   = 30001208
-        versionName   = "3.0"
+        versionCode   = 30501209
+        versionName   = "3.5"
 
         // Nomor run CI (GitHub Actions) — dipakai untuk bagian "rXXX" di nama APK.
         // Di lokal (bukan CI) akan fallback ke "0" karena env var ini tidak ada.

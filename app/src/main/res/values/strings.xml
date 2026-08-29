@@ -33,6 +33,9 @@
     <string name="setup_action_next">Lanjut</string>
     <string name="setup_locked_hint">Selesaikan izin di halaman ini dulu untuk melanjutkan.</string>
     <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
+    <string name="setup_battery_optimization_title">Optimasi baterai masih membatasi AetherX</string>
+    <string name="setup_battery_optimization_desc">Di sebagian perangkat (MIUI, ColorOS, dll), ini bisa membuat proses akses root AetherX dimatikan diam-diam di background. Izinkan AetherX berjalan tanpa batasan supaya akses root tetap stabil.</string>
+    <string name="setup_battery_optimization_action">Izinkan</string>
 
     <!-- Halaman 1 — Akses Root -->
     <string name="setup_page_access_title">Akses Root</string>
