@@ -26,6 +26,13 @@ class KernelManagerRepository {
         return executor.exec("echo $governorName > $base/scaling_governor 2>/dev/null")
     }
 
+    suspend fun setAllCoresGovernor(executor: ShellExecutor, coreCount: Int, governorName: String): ShellResult {
+        val commands = (0 until coreCount).map { i ->
+            "echo $governorName > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_governor 2>/dev/null"
+        }
+        return executor.exec(commands.joinToString("; "))
+    }
+
     suspend fun setAllCoresFrequency(
         executor: ShellExecutor,
         coreCount: Int,

@@ -15,6 +15,7 @@ import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.CrosshairStyle
+import com.aether.x.data.DarkModePref
 import com.aether.x.data.FpsMonitorStyle
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -104,6 +105,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         if (activity == null) return
         val isMember = preferences.preferences.first().isMembershipActive
         AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+    }
+
+    fun setDarkModePref(value: DarkModePref) {
+        viewModelScope.launch { preferences.setDarkModePref(value) }
     }
 
     fun setFpsMonitorStyle(style: FpsMonitorStyle) {

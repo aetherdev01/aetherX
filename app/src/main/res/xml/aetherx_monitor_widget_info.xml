@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 110dp x 40dp ~= sel 2x1 di sebagian besar launcher. updatePeriodMillis
+     minimum yang DIHORMATI Android adalah 30 menit (1800000ms) walau
+     diisi lebih kecil — refresh cepat sesungguhnya lewat tombol manual
+     (widget_refresh) di AetherXMonitorWidgetProvider, bukan interval ini. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_aetherx_monitor"
+    android:previewImage="@mipmap/ic_launcher"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description" />

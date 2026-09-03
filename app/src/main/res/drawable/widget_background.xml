@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Latar widget AetherX Monitor: rounded rect gelap konsisten dengan
+     palet brand (lihat colors.xml). Dibuat sebagai shape drawable murni
+     (bukan aset gambar) supaya tidak bergantung file binary tambahan. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/aetherx_surface_dark" />
+    <corners android:radius="20dp" />
+</shape>

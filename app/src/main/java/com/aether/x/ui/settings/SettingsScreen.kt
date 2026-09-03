@@ -5,11 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.cardEnterAnimation
 
@@ -73,6 +78,16 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.primary,
         )
 
+        SectionCard(
+            title = stringResource(R.string.settings_section_appearance),
+            watermarkIcon = Icons.Outlined.DarkMode,
+        ) {
+            AppearanceModeRow(
+                selected = prefs.darkModePref,
+                onSelect = viewModel::setDarkModePref,
+            )
+        }
+
         CrosshairSettingsSection(
             enabled = prefs.crosshairEnabled,
             style = prefs.crosshairStyle,
@@ -109,5 +124,34 @@ fun SettingsScreen(
             )
         }
 
+    }
+}
+
+@Composable
+private fun AppearanceModeRow(
+    selected: DarkModePref,
+    onSelect: (DarkModePref) -> Unit,
+) {
+    val options = listOf(
+        DarkModePref.SYSTEM to stringResource(R.string.settings_appearance_system),
+        DarkModePref.LIGHT to stringResource(R.string.settings_appearance_light),
+        DarkModePref.DARK to stringResource(R.string.settings_appearance_dark),
+    )
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { (mode, label) ->
+            FilterChip(
+                modifier = Modifier.weight(1f),
+                selected = selected == mode,
+                onClick = { onSelect(mode) },
+                label = { Text(text = label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                    selectedLabelColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
+        }
     }
 }

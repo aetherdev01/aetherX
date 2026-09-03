@@ -72,6 +72,10 @@ data class AppPreferences(
 
     val gameBoosterRotationLocked: Boolean = false,
     val gameBoosterTouchBoostEnabled: Boolean = false,
+
+    val dashboardCardOrder: List<String> = listOf("info", "activity", "device"),
+
+    val lastSeenChangelogVersionCode: Int = 0,
 ) {
 
     val isMembershipActive: Boolean
@@ -145,13 +149,18 @@ class AetherXPreferences(private val context: Context) {
         val GAME_BOOSTER_FPS_OVERLAY_ENABLED = booleanPreferencesKey("game_booster_fps_overlay_enabled")
         val GAME_BOOSTER_ROTATION_LOCKED = booleanPreferencesKey("game_booster_rotation_locked")
         val GAME_BOOSTER_TOUCH_BOOST_ENABLED = booleanPreferencesKey("game_booster_touch_boost_enabled")
+
+        val DASHBOARD_CARD_ORDER = stringPreferencesKey("dashboard_card_order")
+
+        val LAST_SEEN_CHANGELOG_VERSION_CODE = intPreferencesKey("last_seen_changelog_version_code")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
         AppPreferences(
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
 
-            darkModePref = DarkModePref.DARK,
+            darkModePref = runCatching { DarkModePref.valueOf(prefs[Keys.DARK_MODE] ?: "") }
+                .getOrDefault(DarkModePref.DARK),
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -195,11 +204,21 @@ class AetherXPreferences(private val context: Context) {
             gameBoosterFpsOverlayEnabled = prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] ?: true,
             gameBoosterRotationLocked = prefs[Keys.GAME_BOOSTER_ROTATION_LOCKED] ?: false,
             gameBoosterTouchBoostEnabled = prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] ?: false,
+            dashboardCardOrder = prefs[Keys.DASHBOARD_CARD_ORDER]
+                ?.split(",")
+                ?.filter { it.isNotBlank() }
+                ?.takeIf { it.toSet() == setOf("info", "activity", "device") }
+                ?: listOf("info", "activity", "device"),
+            lastSeenChangelogVersionCode = prefs[Keys.LAST_SEEN_CHANGELOG_VERSION_CODE] ?: 0,
         )
     }
 
     suspend fun setOnboardingCompleted(value: Boolean) {
         context.dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = value }
+    }
+
+    suspend fun setDarkModePref(value: DarkModePref) {
+        context.dataStore.edit { it[Keys.DARK_MODE] = value.name }
     }
 
     suspend fun saveTweakState(
@@ -442,6 +461,14 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setGameBoosterTouchBoostEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] = enabled }
+    }
+
+    suspend fun setDashboardCardOrder(order: List<String>) {
+        context.dataStore.edit { prefs -> prefs[Keys.DASHBOARD_CARD_ORDER] = order.joinToString(",") }
+    }
+
+    suspend fun setLastSeenChangelogVersionCode(versionCode: Int) {
+        context.dataStore.edit { prefs -> prefs[Keys.LAST_SEEN_CHANGELOG_VERSION_CODE] = versionCode }
     }
 
     suspend fun getRewardQuota(featureKey: String, dateKey: String): RewardQuotaState {

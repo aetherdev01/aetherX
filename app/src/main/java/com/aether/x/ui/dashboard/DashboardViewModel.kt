@@ -25,6 +25,7 @@ data class DashboardUiState(
     val installedGames: List<InstalledGameEntry> = emptyList(),
     val loadingGames: Boolean = true,
     val lastPlayedPackage: String? = null,
+    val cardOrder: List<String> = listOf("info", "activity", "device"),
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -55,9 +56,28 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 it.copy(
                     lastPlayedPackage = prefs.lastPlayedGamePackage,
                     installedGames = reorderByLastPlayed(it.installedGames, prefs.lastPlayedGamePackage),
+                    cardOrder = prefs.dashboardCardOrder,
                 )
             }
         }.launchIn(viewModelScope)
+    }
+
+    /**
+     * Pindah satu card dashboard naik/turun satu posisi dan simpan urutan
+     * baru ke DataStore — dipanggil dari tombol panah di
+     * [com.aether.x.ui.tweak.TweakScreen] saat "mode atur urutan" aktif.
+     * direction: -1 = naik, +1 = turun.
+     */
+    fun moveCard(cardId: String, direction: Int) {
+        val current = _state.value.cardOrder.toMutableList()
+        val fromIndex = current.indexOf(cardId)
+        if (fromIndex < 0) return
+        val toIndex = (fromIndex + direction).coerceIn(0, current.lastIndex)
+        if (toIndex == fromIndex) return
+        current.removeAt(fromIndex)
+        current.add(toIndex, cardId)
+        _state.update { it.copy(cardOrder = current) }
+        viewModelScope.launch { preferences.setDashboardCardOrder(current) }
     }
 
     private fun reorderByLastPlayed(games: List<InstalledGameEntry>, lastPlayed: String?): List<InstalledGameEntry> {

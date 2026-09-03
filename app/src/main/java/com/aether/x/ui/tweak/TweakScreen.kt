@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.DeveloperBoard
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.MonitorHeart
@@ -191,22 +194,65 @@ fun TweakScreen(
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
-                    AetherXInfoCard(
-                        modifier = Modifier.cardEnterAnimation(index = 0),
-                    )
+                    var editingOrder by remember { mutableStateOf(false) }
 
-                    GameActivitySection(
-                        games = dashboardState.installedGames,
-                        loading = dashboardState.loadingGames,
-                        lastPlayedPackage = dashboardState.lastPlayedPackage,
-                        onGameClick = dashboardViewModel::onGameClick,
-                        modifier = Modifier.cardEnterAnimation(index = 1),
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        androidx.compose.material3.TextButton(onClick = { editingOrder = !editingOrder }) {
+                            Text(
+                                text = if (editingOrder) {
+                                    stringResource(R.string.dashboard_order_done)
+                                } else {
+                                    stringResource(R.string.dashboard_order_edit)
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
 
-                    DeviceInfoSection(
-                        info = dashboardState.deviceInfo,
-                        modifier = Modifier.cardEnterAnimation(index = 2),
-                    )
+                    dashboardState.cardOrder.forEachIndexed { index, cardId ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().cardEnterAnimation(index = index),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                when (cardId) {
+                                    "info" -> AetherXInfoCard()
+                                    "activity" -> GameActivitySection(
+                                        games = dashboardState.installedGames,
+                                        loading = dashboardState.loadingGames,
+                                        lastPlayedPackage = dashboardState.lastPlayedPackage,
+                                        onGameClick = dashboardViewModel::onGameClick,
+                                    )
+                                    "device" -> DeviceInfoSection(info = dashboardState.deviceInfo)
+                                }
+                            }
+                            if (editingOrder) {
+                                Column {
+                                    IconButton(
+                                        onClick = { dashboardViewModel.moveCard(cardId, -1) },
+                                        enabled = index != 0,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.KeyboardArrowUp,
+                                            contentDescription = stringResource(R.string.dashboard_order_move_up_cd),
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { dashboardViewModel.moveCard(cardId, 1) },
+                                        enabled = index != dashboardState.cardOrder.lastIndex,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.KeyboardArrowDown,
+                                            contentDescription = stringResource(R.string.dashboard_order_move_down_cd),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                     return@Column
                 }
 

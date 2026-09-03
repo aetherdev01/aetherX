@@ -35,6 +35,7 @@ import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
+import com.aether.x.ui.whatsnew.WhatsNewDialog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -68,6 +69,7 @@ fun MainScreen(
     }
 
     AdBlockDialog()
+    WhatsNewDialog()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

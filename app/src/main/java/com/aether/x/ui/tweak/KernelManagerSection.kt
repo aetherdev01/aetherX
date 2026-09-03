@@ -12,14 +12,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BatteryStd
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -93,6 +98,44 @@ fun KernelManagerSection(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
             return@Column
+        }
+
+        SectionCard(title = stringResource(R.string.kernel_manager_preset_section_title), watermarkIcon = Icons.Outlined.Tune) {
+            Text(
+                text = stringResource(R.string.kernel_manager_preset_section_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                PresetChip(
+                    label = stringResource(R.string.kernel_preset_battery_saver),
+                    icon = Icons.Outlined.BatteryStd,
+                    loading = state.applyingPreset == KernelPreset.BATTERY_SAVER,
+                    enabled = state.applyingPreset == null,
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.applyPreset(KernelPreset.BATTERY_SAVER, activity) },
+                )
+                PresetChip(
+                    label = stringResource(R.string.kernel_preset_balanced),
+                    icon = Icons.Outlined.Speed,
+                    loading = state.applyingPreset == KernelPreset.BALANCED,
+                    enabled = state.applyingPreset == null,
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.applyPreset(KernelPreset.BALANCED, activity) },
+                )
+                PresetChip(
+                    label = stringResource(R.string.kernel_preset_performance),
+                    icon = Icons.Outlined.Bolt,
+                    loading = state.applyingPreset == KernelPreset.PERFORMANCE,
+                    enabled = state.applyingPreset == null,
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.applyPreset(KernelPreset.PERFORMANCE, activity) },
+                )
+            }
         }
 
         SectionCard(title = stringResource(R.string.kernel_manager_section_cpu), watermarkIcon = Icons.Outlined.Memory) {
@@ -324,3 +367,48 @@ private fun FrequencyRangeSlider(
 @Composable
 private fun freqMhzLabel(khz: Int): String =
     stringResource(R.string.kernel_manager_freq_mhz_format, khz / 1000)
+
+@Composable
+private fun PresetChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    loading: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    OutlinedCard(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}

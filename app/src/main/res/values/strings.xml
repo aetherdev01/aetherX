@@ -100,6 +100,19 @@
          salah interpretasi. Bottom nav dikembalikan ke "Tweak" (nama
          section umum drawer-nya), drawer item dikembalikan ke "Dashboard". -->
     <string name="nav_dashboard">Dashboard</string>
+    <string name="dashboard_order_edit">Atur Urutan</string>
+    <string name="dashboard_order_done">Selesai</string>
+    <string name="dashboard_order_move_up_cd">Pindah ke atas</string>
+    <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
+    <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
+    <string name="whatsnew_confirm">Mengerti</string>
+    <string name="whatsnew_item_theme">Tema Terang/Gelap/Ikuti Sistem bisa diatur di Settings</string>
+    <string name="whatsnew_item_kernel_preset">Preset cepat Kernel Manager: Hemat Baterai, Seimbang, Performa</string>
+    <string name="whatsnew_item_dashboard_order">Urutan card Dashboard sekarang bisa diatur sesuai selera</string>
+    <string name="whatsnew_item_notif_action">Notifikasi Crosshair/FPS Monitor/Game Booster kini punya tombol matikan langsung</string>
+    <string name="whatsnew_item_quick_tile">Tile Quick Settings baru untuk toggle Crosshair &amp; Monitor FPS tanpa buka app</string>
+    <string name="whatsnew_item_widget">Widget layar utama baru: pantau CPU/GPU/suhu sekilas</string>
+    <string name="whatsnew_item_game_booster">Game Booster kini aktif otomatis saat game dibuka</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah
@@ -326,6 +339,13 @@
     <string name="kernel_manager_error_gpu_frequency">Gagal mengubah frekuensi GPU</string>
     <string name="kernel_manager_error_gpu_governor">Gagal mengubah governor GPU</string>
 
+    <string name="kernel_preset_battery_saver">Hemat Baterai</string>
+    <string name="kernel_preset_balanced">Seimbang</string>
+    <string name="kernel_preset_performance">Performa</string>
+    <string name="kernel_manager_preset_applied">Preset %1$s diterapkan ke semua core &amp; GPU</string>
+    <string name="kernel_manager_preset_section_title">Preset Cepat</string>
+    <string name="kernel_manager_preset_section_desc">Terapkan konfigurasi ke semua core CPU dan GPU sekaligus, tanpa perlu atur satu-satu.</string>
+
     <!-- App Manager sub-drawer khusus Root, freeze/unfreeze aplikasi pihak ketiga & bloatware terkurasi -->
     <string name="nav_app_manager">App Manager</string>
     <string name="app_manager_subtitle">Nonaktifkan sementara aplikasi pihak ketiga atau bloatware bawaan pabrik. Bisa diaktifkan kembali kapan saja.</string>
@@ -413,6 +433,10 @@
 
     <!-- Settings Monitor FPS -->
     <string name="settings_section_fps_monitor">Monitor FPS ( Beta )</string>
+    <string name="settings_section_appearance">Tampilan</string>
+    <string name="settings_appearance_system">Ikuti Sistem</string>
+    <string name="settings_appearance_light">Terang</string>
+    <string name="settings_appearance_dark">Gelap</string>
     <string name="fps_monitor_enable">Tampilkan Monitor FPS</string>
     <string name="fps_monitor_locked_desc">Fitur ini sementara dikunci dan belum bisa digunakan. Segera hadir.</string>
     <string name="fps_monitor_permission_needed">Butuh izin "Tampil di atas aplikasi lain". Ketuk saklar di atas untuk membuka pengaturan izin.</string>
@@ -427,6 +451,14 @@
     <string name="fps_monitor_accuracy_disclaimer">FPS dibaca langsung dari game yang sedang berjalan (bukan Hz layar), butuh akses Root aktif supaya angkanya akurat.</string>
     <string name="fps_monitor_notification_channel">Overlay Monitor FPS</string>
     <string name="fps_monitor_notification_title">Monitor FPS AetherX aktif</string>
+    <string name="overlay_notification_action_stop">Matikan</string>
+    <string name="widget_title">AetherX Monitor</string>
+    <string name="widget_refresh_symbol">⟳</string>
+    <string name="widget_label_cpu">CPU</string>
+    <string name="widget_label_gpu">GPU</string>
+    <string name="widget_root_required">Butuh akses Root — ketuk untuk buka app</string>
+    <string name="widget_last_updated">Update %1$s</string>
+    <string name="widget_description">Pantau beban CPU/GPU perangkat sekilas dari layar utama.</string>
     <string name="fps_monitor_notification_text">Ketuk untuk membuka pengaturan Monitor FPS</string>
 
     <!-- Game Profile khusus Root, sidebar di tab Tweak -->

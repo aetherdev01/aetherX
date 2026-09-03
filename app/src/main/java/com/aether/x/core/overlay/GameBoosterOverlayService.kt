@@ -426,12 +426,19 @@ class GameBoosterOverlayService : Service() {
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val stopIntent = PendingIntent.getService(
+            this,
+            0,
+            Intent(this, GameBoosterOverlayService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_mark)
             .setContentTitle(getString(R.string.game_booster_notification_title_format, gameLabel))
             .setContentText(getString(R.string.game_booster_notification_text))
             .setOngoing(true)
             .setContentIntent(contentIntent)
+            .addAction(0, getString(R.string.overlay_notification_action_stop), stopIntent)
             .build()
     }
 

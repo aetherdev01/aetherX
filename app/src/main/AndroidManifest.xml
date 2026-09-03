@@ -135,6 +135,52 @@
             android:excludeFromRecents="true"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
 
+        <!-- v3.5: Quick Settings Tile untuk toggle Crosshair langsung dari
+             notification shade. android:permission WAJIB BIND_QUICK_SETTINGS_TILE
+             (bukan <uses-permission> di root manifest) — begitu cara Android
+             memastikan hanya System UI yang boleh bind ke tile service ini. -->
+        <service
+            android:name=".core.tile.CrosshairTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_notification_mark"
+            android:label="@string/feature_name_crosshair"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- v3.5: Quick Settings Tile untuk toggle Monitor FPS — pola sama
+             dengan CrosshairTileService di atas. -->
+        <service
+            android:name=".core.tile.FpsMonitorTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_notification_mark"
+            android:label="@string/feature_name_fps_monitor"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- v3.5: Widget layar utama — pantau CPU/GPU sekilas tanpa buka
+             app. android:exported="true" WAJIB untuk widget (dibind
+             System UI/launcher dari proses lain), tapi tetap aman: hanya
+             merespons ACTION_APPWIDGET_UPDATE bawaan sistem +
+             ACTION_REFRESH milik sendiri, tidak mengekspos data sensitif
+             lewat intent apapun. -->
+        <receiver
+            android:name=".core.widget.AetherXMonitorWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.aether.x.action.WIDGET_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/aetherx_monitor_widget_info" />
+        </receiver>
+
         <!-- FITUR BARU — Firebase Cloud Messaging: menerima push notifikasi
              maintenance/update/membership yang tetap sampai walau aplikasi
              sedang di-background ATAU sudah ditutup total (lihat KDoc

@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.aether.x.BuildConfig
 import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.monitor.GameProfileMonitorService
@@ -130,7 +131,13 @@ private fun AetherXRoot(
         composable(AetherXRoutes.PERMISSION_ONBOARDING) {
             PermissionSetupScreen(
                 onContinue = {
-                    scope.launch { preferences.setOnboardingCompleted(true) }
+                    scope.launch {
+                        preferences.setOnboardingCompleted(true)
+                        // Onboarding baru = instalasi baru, bukan update dari versi lama —
+                        // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
+                        // pakai versi sebelumnya (lihat WhatsNewViewModel).
+                        preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
+                    }
 
                     navController.navigate(AetherXRoutes.MAIN) {
                         popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
