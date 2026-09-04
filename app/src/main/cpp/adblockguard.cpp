@@ -130,6 +130,24 @@ constexpr EncodedStr kAdBlockModuleKeywordsEncoded[] = {
 };
 constexpr size_t kAdBlockModuleKeywordsCount = sizeof(kAdBlockModuleKeywordsEncoded) / sizeof(kAdBlockModuleKeywordsEncoded[0]);
 
+// v3.5 — domain IKLAN ASLI (bukan provider DNS di atas) dipakai untuk dua
+// hal: (1) bait DNS resolution di Kotlin (AdBlockDetector.detectDnsSinkhole,
+// lihat KDoc di sana untuk kenapa ini deteksi paling mekanisme-agnostik —
+// nangkep DNS block, hosts file, ATAU VPN filtering sekaligus), dan (2)
+// pencarian sinkhole di isi hosts file mentah (hostsContentSinkholesKnownAdDomain
+// di bawah). unityads.unity3d.com/configv2 dikonfirmasi lewat dokumentasi
+// domain resmi Unity Ads (netify.ai domain listing); doubleclick.net &
+// googlesyndication.com dipilih karena ITU domain paling universal masuk
+// SEMUA filter list adblock populer (EasyList/AdGuard Base) — kalau salah
+// satu dari domain ini di-sinkhole, hampir pasti ada adblock aktif.
+constexpr EncodedStr kAdBlockBaitDomainsEncoded[] = {
+    {{0x49, 0xaa, 0x99, 0x67, 0x77, 0x03, 0x89, 0xb2, 0x21, 0x76, 0x8f, 0x2c, 0x35, 0xc3, 0x7b, 0xeb, 0x2c, 0xc0, 0x30, 0x8d}, 20},  // unityads.unity3d.com
+    {{0x5f, 0xab, 0x9e, 0x75, 0x67, 0x05, 0x9b, 0xf3, 0x21, 0x76, 0x8f, 0x2c, 0x35, 0xc3, 0x29, 0xeb, 0x71, 0x8d, 0x2a, 0x8e, 0xb1, 0xda, 0xfc, 0xd3, 0x19, 0x17, 0x8f, 0xb2, 0x55}, 29},  // configv2.unityads.unity3d.com
+    {{0x58, 0xab, 0x85, 0x71, 0x62, 0x07, 0x8e, 0xad, 0x66, 0x60, 0x8a, 0x6b, 0x2f, 0xdf, 0x3c}, 15},  // doubleclick.net
+    {{0x5b, 0xab, 0x9f, 0x74, 0x62, 0x07, 0x9e, 0xb8, 0x61, 0x67, 0x88, 0x26, 0x20, 0xce, 0x21, 0xe0, 0x6c, 0x8d, 0x3c, 0x8f, 0xb5}, 21},  // googlesyndication.com
+};
+constexpr size_t kAdBlockBaitDomainsCount = sizeof(kAdBlockBaitDomainsEncoded) / sizeof(kAdBlockBaitDomainsEncoded[0]);
+
 // Decode satu EncodedStr ke buffer stack null-terminated. Buffer pemanggil
 // harus berukuran minimal kMaxEncodedLen + 1. Mengembalikan panjang hasil
 // decode (tanpa null terminator).
@@ -172,6 +190,62 @@ bool containsKnownAdBlockModuleKeyword(const char* listing) {
     return found;
 }
 
+// ==========================================================================
+// v3.5 — DETEKSI HOSTS FILE LANGSUNG (fix "deteksi AdBlock kurang ketat"):
+//
+// Deteksi Magisk module SEBELUMNYA (containsKnownAdBlockModuleKeyword di
+// atas) cuma cocokkan NAMA folder module terhadap keyword ("adaway",
+// "systemless-hosts", dst) — gampang di-bypass, tinggal rename folder
+// module jadi nama apa saja yang tidak mengandung keyword tsb, module
+// tetap jalan penuh tapi lolos dari nmod().
+//
+// nhosts() di bawah TIDAK peduli nama module/folder sama sekali — ini
+// baca ISI /system/etc/hosts (sudah merged lewat magic mount Magisk/
+// KernelSU, jadi otomatis mencerminkan override dari SEMUA module aktif
+// tanpa perlu tahu nama module mana) dan cari baris yang domain iklan
+// dikenalnya di-sinkhole ke 0.0.0.0/127.0.0.1/::1 — pola HOSTS FILE
+// AdBlock yang universal (dipakai AdAway, Blokada Root Proxy Mode,
+// systemless-hosts custom apapun namanya, dst), bukan fingerprint nama
+// module tertentu. Ini jauh lebih tahan terhadap evasion by-renaming.
+constexpr const char* kSinkholeTokens[] = {"0.0.0.0", "127.0.0.1", "::1"};
+constexpr size_t kSinkholeTokensCount = sizeof(kSinkholeTokens) / sizeof(kSinkholeTokens[0]);
+
+bool lineIsSinkholedForDomain(const char* line, const char* domain) {
+    if (strcasestr(line, domain) == nullptr) return false;
+    for (size_t i = 0; i < kSinkholeTokensCount; i++) {
+        if (strstr(line, kSinkholeTokens[i]) != nullptr) return true;
+    }
+    return false;
+}
+
+bool hostsContentSinkholesKnownAdDomain(const char* hostsContent) {
+    char decoded[kMaxEncodedLen + 1];
+    static thread_local char lineBuf[4096];
+    size_t contentLen = strlen(hostsContent);
+    size_t offset = 0;
+    while (offset < contentLen) {
+        size_t lineEnd = offset;
+        while (lineEnd < contentLen && hostsContent[lineEnd] != '\n') lineEnd++;
+        size_t lineLen = lineEnd - offset;
+        if (lineLen >= sizeof(lineBuf)) lineLen = sizeof(lineBuf) - 1;
+        std::memcpy(lineBuf, hostsContent + offset, lineLen);
+        lineBuf[lineLen] = '\0';
+
+        for (size_t i = 0; i < kAdBlockBaitDomainsCount; i++) {
+            decodeToBuffer(kAdBlockBaitDomainsEncoded[i], decoded);
+            if (lineIsSinkholedForDomain(lineBuf, decoded)) {
+                std::memset(decoded, 0, sizeof(decoded));
+                std::memset(lineBuf, 0, sizeof(lineBuf));
+                return true;
+            }
+        }
+        offset = lineEnd + 1;
+    }
+    std::memset(decoded, 0, sizeof(decoded));
+    std::memset(lineBuf, 0, sizeof(lineBuf));
+    return false;
+}
+
 }  // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -205,5 +279,23 @@ nmod(JNIEnv* env, jobject /* thiz */, jstring moduleListing) {
 
     const bool match = containsKnownAdBlockModuleKeyword(listing);
     env->ReleaseStringUTFChars(moduleListing, listing);
+    return match ? JNI_TRUE : JNI_FALSE;
+}
+
+// v3.5 — lihat KDoc hostsContentSinkholesKnownAdDomain di atas. hostsContent
+// adalah isi MENTAH /system/etc/hosts (dibaca lewat root shell di
+// AdBlockDetector.kt, `cat /system/etc/hosts`), bisa berukuran lumayan besar
+// (ribuan baris) kalau blocklist-nya komprehensif — makanya diproses per
+// baris di C++ (bukan di-split jadi List<String> dulu di Kotlin) supaya
+// tidak boros alokasi objek untuk data yang cuma dipakai sekali.
+extern "C" JNIEXPORT jboolean JNICALL
+nhosts(JNIEnv* env, jobject /* thiz */, jstring hostsContent) {
+    if (hostsContent == nullptr) return JNI_FALSE;
+
+    const char* content = env->GetStringUTFChars(hostsContent, nullptr);
+    if (content == nullptr) return JNI_FALSE;
+
+    const bool match = hostsContentSinkholesKnownAdDomain(content);
+    env->ReleaseStringUTFChars(hostsContent, content);
     return match ? JNI_TRUE : JNI_FALSE;
 }

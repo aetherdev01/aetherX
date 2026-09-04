@@ -21,6 +21,7 @@ const JNINativeMethod kSignatureGuardMethods[] = {
 const JNINativeMethod kAdBlockDetectorMethods[] = {
     {"nativeMatchAdBlockDns", "([Ljava/lang/String;)Z", reinterpret_cast<void*>(ndns)},
     {"nativeMatchAdBlockModule", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nmod)},
+    {"nativeMatchAdBlockHosts", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nhosts)},
 };
 
 // Device fingerprint (lihat devicefingerprint.h/.cpp) — dipakai

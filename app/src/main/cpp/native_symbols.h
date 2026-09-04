@@ -18,6 +18,7 @@ JNIEXPORT jboolean JNICALL nvfy2(JNIEnv* env, jobject thiz, jbyteArray actualHas
 // ConnectivityManager/NetworkCapabilities di Kotlin (AdBlockDetector.kt).
 JNIEXPORT jboolean JNICALL ndns(JNIEnv* env, jobject thiz, jobjectArray dnsServers);
 JNIEXPORT jboolean JNICALL nmod(JNIEnv* env, jobject thiz, jstring moduleListing);
+JNIEXPORT jboolean JNICALL nhosts(JNIEnv* env, jobject thiz, jstring hostsContent);
 
 // nfgp: turunan device fingerprint hash (HMAC-SHA256) dari identifier
 // perangkat mentah — lihat devicefingerprint.h/.cpp untuk kontrak dan
