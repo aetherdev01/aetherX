@@ -53,7 +53,7 @@ fun AetherXInfoCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
@@ -152,7 +152,7 @@ private fun GameActivityCard(
     Column(
         modifier = Modifier
             .width(84.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(MaterialTheme.shapes.large)
             .clickable(onClick = onClick)
             .padding(vertical = Spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -162,7 +162,7 @@ private fun GameActivityCard(
             contentDescription = null,
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(16.dp)),
+                .clip(MaterialTheme.shapes.small),
         )
         Text(
             text = entry.label,

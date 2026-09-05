@@ -82,7 +82,7 @@ fun GameBoosterPanelContent(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(BgVoid)
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -109,7 +109,7 @@ private fun GameBoosterAppRail(
     Column(
         modifier = modifier
             .width(52.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceCardAlt)
             .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -176,7 +176,7 @@ private fun GameBoosterMainPanel(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(SurfaceCardAlt)
             .heightIn(max = maxPanelHeight)
             .verticalScroll(rememberScrollState())
@@ -252,7 +252,7 @@ private fun GameBoosterTabRow(selectedTab: GameBoosterTab, onTabSelected: (GameB
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceRaised)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -306,7 +306,7 @@ private fun MonitoringGraphCard(metrics: GameBoosterMetrics) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceRaised)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -457,7 +457,7 @@ private fun SettingsTile(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceRaised)
             .clickable(onClick = onClick)
             .padding(12.dp),
@@ -576,7 +576,7 @@ private fun GamesTab(session: GameBoosterSession, onLaunchGame: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceRaised)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,

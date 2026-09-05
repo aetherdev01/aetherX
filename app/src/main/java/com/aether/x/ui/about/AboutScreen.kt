@@ -101,7 +101,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surface)
             .padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -137,7 +137,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
@@ -183,7 +183,7 @@ private fun CommunityLinkRow(
         modifier = modifier
             .fillMaxWidth()
             .pressScale(interactionSource)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surface)
             .clickable(interactionSource = interactionSource, indication = null) {
                 openUrl(context, url)

@@ -114,7 +114,7 @@ private fun SaturationValuePanel(
         modifier = Modifier
             .fillMaxWidth()
             .height(panelHeight)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(hueColor)
             .background(Brush.horizontalGradient(listOf(Color.White, Color.Transparent)))
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))

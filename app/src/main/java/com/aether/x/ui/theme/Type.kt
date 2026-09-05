@@ -19,6 +19,21 @@ val PoppinsFamily = FontFamily(
     Font(R.font.gfextrabold, FontWeight.ExtraBold),
     Font(R.font.gfblack, FontWeight.Black),
 )
+
+/**
+ * v3.5 — dipakai KHUSUS untuk pembacaan angka teknis yang sering berubah:
+ * CPU/GPU %, frekuensi MHz, suhu, FPS, RAM. Ini bukan hiasan — app ini
+ * secara harfiah adalah instrumen pembacaan nilai kernel/sysfs, dan angka
+ * di font tabular (lebar digit konsisten) terasa jauh lebih "stabil" saat
+ * update cepat dibanding proportional font yang lebar tiap digitnya beda-
+ * beda (angka terlihat "bergeser" tiap refresh). Pakai
+ * `FontFamily.Monospace` bawaan sistem — TIDAK butuh file font tambahan
+ * (aman dari batasan aset font kustom), tersedia di semua perangkat
+ * Android. JANGAN dipakai untuk body text/label biasa — hanya untuk nilai
+ * numerik instrumen.
+ */
+val AetherMonoFamily = FontFamily.Monospace
+
 val AetherXTypography = Typography(
     headlineSmall = TextStyle(
         fontFamily = PoppinsFamily,

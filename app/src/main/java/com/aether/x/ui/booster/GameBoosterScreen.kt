@@ -193,7 +193,7 @@ private fun GameBoosterGameRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(backgroundColor)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -484,7 +484,7 @@ private fun RadialMenuIcon(item: RadialMenuItemData, modifier: Modifier = Modifi
     val tint = if (item.active) AccentBlue else TextSecondary
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = item.onClick)
             .padding(vertical = 10.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -532,7 +532,7 @@ private fun InfoMonitorPanel(metrics: com.aether.x.core.booster.GameBoosterMetri
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceCard)
             .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,

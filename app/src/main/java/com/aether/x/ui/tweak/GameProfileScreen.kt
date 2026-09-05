@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -119,7 +118,7 @@ private fun GameProfileRootRequiredNotice(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .clip(MaterialTheme.shapes.large)
                 .background(SurfaceCardAlt),
             contentAlignment = Alignment.Center,
         ) {
@@ -175,7 +174,7 @@ private fun GameProfileListPane(
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = StrokeSubtle,
@@ -227,7 +226,7 @@ private fun GameListRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -237,7 +236,7 @@ private fun GameListRow(
             contentDescription = null,
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(12.dp)),
+                .clip(MaterialTheme.shapes.small),
         )
         Column(
             modifier = Modifier
@@ -393,7 +392,7 @@ private fun GameProfileDetailPane(
         OutlinedButton(
             onClick = { viewModel.resetSelectedProfile(activity) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
@@ -421,7 +420,7 @@ private fun GameIdentityCard(
                 contentDescription = null,
                 modifier = Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(14.dp)),
+                    .clip(MaterialTheme.shapes.medium),
             )
             Column(modifier = Modifier.padding(start = 14.dp)) {
                 Text(
@@ -492,12 +491,12 @@ private fun GameModeChip(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(if (isSelected) AccentBlue.copy(alpha = 0.18f) else SurfaceCardAlt)
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
                 color = if (isSelected) AccentBlue else StrokeSubtle,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.large,
             )
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp),

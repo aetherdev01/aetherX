@@ -174,7 +174,7 @@ fun MembershipScreen(
                         }
                     },
                     isError = errorMessage != null,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AccentBlue,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -198,7 +198,7 @@ fun MembershipScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
                 ) {
 
@@ -330,7 +330,7 @@ private fun MembershipProCard(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF29A9EA),
                     contentColor = Color.White,
@@ -370,9 +370,9 @@ private fun MembershipPlanOption(
     Column(
         modifier = modifier
             .pressScale(interactionSource)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(backgroundColor)
-            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
+            .border(1.5.dp, borderColor, MaterialTheme.shapes.large)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
@@ -432,7 +432,7 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -469,7 +469,7 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = AccentRed,
@@ -506,7 +506,7 @@ private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surface)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

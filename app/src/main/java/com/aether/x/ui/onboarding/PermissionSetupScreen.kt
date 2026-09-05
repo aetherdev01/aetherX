@@ -23,7 +23,6 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
@@ -251,7 +250,7 @@ fun PermissionSetupScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentBlue,
                         contentColor = OnAccentBlue,
@@ -450,7 +449,7 @@ private fun KernelWarningPage(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceCardAlt)
             .padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -501,7 +500,7 @@ private fun KernelWarningPage(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .clickable { onAcknowledgedChange(!acknowledged) }
             .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -526,7 +525,7 @@ private fun PageIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tint
         modifier = Modifier
             .padding(top = Spacing.md)
             .size(56.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(SurfaceCardAlt),
         contentAlignment = Alignment.Center,
     ) {
@@ -602,7 +601,7 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(if (canContinue) AccentGreenContainer else SurfaceCardAlt)
             .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
@@ -635,7 +634,7 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceCardAlt)
             .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),

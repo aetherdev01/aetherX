@@ -93,7 +93,7 @@ fun GameBoosterSidebarContent(
     val maxPanelHeight = (configuration.screenHeightDp * 0.85f).dp
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceCard)
             .heightIn(max = maxPanelHeight)
             .verticalScroll(rememberScrollState())
@@ -232,7 +232,7 @@ private fun GameLaunchCard(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(SurfaceRaised)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -300,7 +300,7 @@ private fun ModeSelector(currentMode: GameMode, onModeChange: (GameMode) -> Unit
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceRaised),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -405,7 +405,7 @@ private fun GameBoosterMetricsPanel(metrics: GameBoosterMetrics) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(SurfaceRaised)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),

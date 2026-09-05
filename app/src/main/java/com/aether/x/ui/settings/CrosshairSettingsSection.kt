@@ -124,7 +124,7 @@ fun CrosshairSettingsSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(MaterialTheme.shapes.medium)
 
             .background(MaterialTheme.colorScheme.surface),
     ) {
@@ -294,12 +294,12 @@ private fun StyleIconButton(
     Box(
         modifier = Modifier
             .size(56.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(if (isSelected) AccentBlueDim else SurfaceRaised)
             .border(
                 width = if (isSelected) 1.5.dp else 0.dp,
                 color = if (isSelected) AccentBlue else Color.Transparent,
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.large,
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -711,12 +711,12 @@ private fun ColorSwatchLarge(
     Box(
         modifier = modifier
             .height(52.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(Color(color.toInt()))
             .border(
                 width = if (selected) 2.dp else 0.dp,
                 color = if (selected) AccentBlue else Color.Transparent,
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.large,
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -750,12 +750,12 @@ private fun CustomColorSwatch(
     Box(
         modifier = modifier
             .height(52.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(rainbowBrush)
             .border(
                 width = if (isCustomActive) 2.dp else 0.dp,
                 color = if (isCustomActive) AccentBlue else Color.Transparent,
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.large,
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,

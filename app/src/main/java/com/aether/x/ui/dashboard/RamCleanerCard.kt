@@ -114,7 +114,7 @@ fun RamCleanerCard(modifier: Modifier = Modifier, viewModel: RamCleanerViewModel
             onClick = viewModel::boostRam,
             enabled = !state.boosting,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.large,
         ) {
             if (state.boosting) {
                 CircularProgressIndicator(
