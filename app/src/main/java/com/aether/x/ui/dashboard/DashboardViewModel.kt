@@ -25,7 +25,7 @@ data class DashboardUiState(
     val installedGames: List<InstalledGameEntry> = emptyList(),
     val loadingGames: Boolean = true,
     val lastPlayedPackage: String? = null,
-    val cardOrder: List<String> = listOf("info", "activity", "device"),
+    val cardOrder: List<String> = listOf("info", "activity", "device", "ram"),
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {

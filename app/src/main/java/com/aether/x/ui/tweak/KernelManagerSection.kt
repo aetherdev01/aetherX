@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -55,6 +57,14 @@ fun KernelManagerSection(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? Activity
+
+    state.pendingPresetRequiresAd?.let {
+        PresetAdPromptDialog(
+            freeUsesPerDay = KernelManagerViewModel.PRESET_FREE_USES_PER_DAY,
+            onWatchAd = { activity?.let(viewModel::watchAdForPendingPreset) },
+            onDismiss = viewModel::dismissPendingPresetPrompt,
+        )
+    }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
@@ -105,8 +115,20 @@ fun KernelManagerSection(
                 text = stringResource(R.string.kernel_manager_preset_section_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp),
             )
+            state.remainingFreePresetUses?.let { remaining ->
+                Text(
+                    text = stringResource(
+                        R.string.kernel_preset_quota_remaining_format,
+                        remaining,
+                        KernelManagerViewModel.PRESET_FREE_USES_PER_DAY,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -411,4 +433,26 @@ private fun PresetChip(
             )
         }
     }
+}
+
+/**
+ * Muncul saat [KernelManagerViewModel.applyPreset] kena RewardGateResult.
+ * RequiresAd — kuota gratis harian sudah habis. onWatchAd null-safe di
+ * pemanggil (butuh Activity non-null buat nampilin rewarded ad).
+ */
+@Composable
+private fun PresetAdPromptDialog(
+    freeUsesPerDay: Int,
+    onWatchAd: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    com.aether.x.ui.components.PopupDialog(
+        onDismissRequest = onDismiss,
+        icon = Icons.Outlined.Bolt,
+        title = stringResource(R.string.kernel_preset_quota_exhausted_title),
+        message = stringResource(R.string.kernel_preset_quota_exhausted_desc, freeUsesPerDay),
+        confirmLabel = stringResource(R.string.kernel_preset_watch_ad),
+        onConfirm = onWatchAd,
+        dismissLabel = stringResource(R.string.kernel_preset_cancel),
+    )
 }

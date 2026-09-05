@@ -14,6 +14,16 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 
+/**
+ * v3.5 — daftar ID card Dashboard yang valid, dalam urutan default.
+ * "ram" ditambahkan belakangan (fitur RAM Cleaner) — dipisah jadi
+ * konstanta bersama supaya logic parsing di [AetherXPreferences] BISA
+ * menambahkan card baru ke urutan tersimpan user yang lama (dibuat
+ * sebelum "ram" ada) tanpa mereset seluruh urutan custom mereka ke
+ * default. Lihat pemakaiannya di parsing `dashboardCardOrder` di bawah.
+ */
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("info", "activity", "device", "ram")
+
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
 enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING, PLUS, BULLET, CIRCLE_PLUS, TICK_CROSS, CIRCLE_DOT_TICKS, CIRCLE_CROSS_TICKS }
@@ -73,7 +83,7 @@ data class AppPreferences(
     val gameBoosterRotationLocked: Boolean = false,
     val gameBoosterTouchBoostEnabled: Boolean = false,
 
-    val dashboardCardOrder: List<String> = listOf("info", "activity", "device"),
+    val dashboardCardOrder: List<String> = DEFAULT_DASHBOARD_CARD_ORDER,
 
     val lastSeenChangelogVersionCode: Int = 0,
 ) {
@@ -206,9 +216,10 @@ class AetherXPreferences(private val context: Context) {
             gameBoosterTouchBoostEnabled = prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] ?: false,
             dashboardCardOrder = prefs[Keys.DASHBOARD_CARD_ORDER]
                 ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.takeIf { it.toSet() == setOf("info", "activity", "device") }
-                ?: listOf("info", "activity", "device"),
+                ?.filter { it.isNotBlank() && it in DEFAULT_DASHBOARD_CARD_ORDER }
+                ?.let { stored -> stored + DEFAULT_DASHBOARD_CARD_ORDER.minus(stored.toSet()) }
+                ?.takeIf { it.isNotEmpty() }
+                ?: DEFAULT_DASHBOARD_CARD_ORDER,
             lastSeenChangelogVersionCode = prefs[Keys.LAST_SEEN_CHANGELOG_VERSION_CODE] ?: 0,
         )
     }

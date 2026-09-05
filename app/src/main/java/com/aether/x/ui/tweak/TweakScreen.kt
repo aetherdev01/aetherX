@@ -90,6 +90,7 @@ import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
+import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
@@ -227,6 +228,7 @@ fun TweakScreen(
                                         onGameClick = dashboardViewModel::onGameClick,
                                     )
                                     "device" -> DeviceInfoSection(info = dashboardState.deviceInfo)
+                                    "ram" -> RamCleanerCard()
                                 }
                             }
                             if (editingOrder) {

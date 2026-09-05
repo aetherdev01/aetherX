@@ -14,6 +14,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     devicefingerprint.cpp
     sysmonitor.cpp
     sysmonitor_jni.cpp
+    rammonitor.cpp
+    rammonitor_jni.cpp
     jni_onload.cpp
 )
 

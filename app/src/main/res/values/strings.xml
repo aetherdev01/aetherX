@@ -266,6 +266,15 @@
     <string name="dashboard_hero_kicker">AXKM</string>
     <string name="dashboard_app_version_format">Versi %1$s</string>
     <string name="dashboard_section_device_info">Info Device</string>
+    <string name="ram_cleaner_title">RAM Cleaner</string>
+    <string name="ram_cleaner_loading">Membaca RAM…</string>
+    <string name="ram_cleaner_usage_format">%1$s / %2$s terpakai</string>
+    <string name="ram_cleaner_usage_unknown">Info RAM tidak tersedia</string>
+    <string name="ram_cleaner_percent_format">%1$d%%</string>
+    <string name="ram_cleaner_last_freed_format">Terakhir dibersihkan: +%1$s bebas</string>
+    <string name="ram_cleaner_boost_action">Bersihkan RAM</string>
+    <string name="ram_cleaner_freed_format">RAM dibersihkan — %1$s dibebaskan</string>
+    <string name="ram_cleaner_done_no_change">RAM sudah cukup lega, tidak banyak yang bisa dibersihkan</string>
     <string name="dashboard_device_info_loading">Memuat info perangkat…</string>
     <string name="dashboard_device_info_group_identity">Identitas Perangkat</string>
     <string name="dashboard_device_info_group_usage">Penggunaan Resource</string>
@@ -345,6 +354,12 @@
     <string name="kernel_manager_preset_applied">Preset %1$s diterapkan ke semua core &amp; GPU</string>
     <string name="kernel_manager_preset_section_title">Preset Cepat</string>
     <string name="kernel_manager_preset_section_desc">Terapkan konfigurasi ke semua core CPU dan GPU sekaligus, tanpa perlu atur satu-satu.</string>
+    <string name="kernel_preset_quota_remaining_format">%1$d/%2$d gratis hari ini</string>
+    <string name="kernel_preset_quota_exhausted_title">Kuota Preset Gratis Habis</string>
+    <string name="kernel_preset_quota_exhausted_desc">Kamu sudah pakai %1$d preset gratis hari ini. Tonton iklan singkat untuk +1 pemakaian, atau jadi Member untuk pemakaian tanpa batas.</string>
+    <string name="kernel_preset_watch_ad">Tonton Iklan</string>
+    <string name="kernel_preset_cancel">Batal</string>
+    <string name="kernel_preset_ad_not_ready">Iklan belum siap, coba lagi sebentar</string>
 
     <!-- App Manager sub-drawer khusus Root, freeze/unfreeze aplikasi pihak ketiga & bloatware terkurasi -->
     <string name="nav_app_manager">App Manager</string>

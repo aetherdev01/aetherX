@@ -43,6 +43,14 @@ const JNINativeMethod kSysMonitorMethods[] = {
     {"nativeResetCpuDelta", "()V", reinterpret_cast<void*>(nsmr)},
 };
 
+// RAM Cleaner (v3.5, lihat rammonitor.h/.cpp/_jni.cpp) — dipakai
+// RamMonitor.kt. Sama seperti kSysMonitorMethods, kegagalan registrasi
+// TIDAK fatal — RamMonitor.kt akan melaporkan isNativeAvailable=false dan
+// UI menyembunyikan kartu RAM Cleaner alih-alih crash.
+const JNINativeMethod kRamMonitorMethods[] = {
+    {"nativeReadRamSnapshot", "()[F", reinterpret_cast<void*>(nrmc)},
+};
+
 bool registerClass(JNIEnv* env, const char* classBinaryName,
                     const JNINativeMethod* methods, int methodCount) {
     jclass clazz = env->FindClass(classBinaryName);
@@ -101,6 +109,16 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         __android_log_print(
             ANDROID_LOG_WARN, LOG_TAG,
             "RootSystemMonitor native registration failed");
+    }
+
+    const bool ramMonitorOk = registerClass(
+        env, "com/aether/x/core/monitor/RamMonitor",
+        kRamMonitorMethods,
+        sizeof(kRamMonitorMethods) / sizeof(kRamMonitorMethods[0]));
+    if (!ramMonitorOk) {
+        __android_log_print(
+            ANDROID_LOG_WARN, LOG_TAG,
+            "RamMonitor native registration failed");
     }
 
     return JNI_VERSION_1_6;

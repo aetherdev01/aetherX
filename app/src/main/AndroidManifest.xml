@@ -33,6 +33,12 @@
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!-- v3.5: RAM Cleaner — killBackgroundProcesses per app pihak ketiga.
+         Normal-level permission, auto-granted saat install, TIDAK ada
+         runtime prompt. Lihat KDoc RamCleanerViewModel.boostRam untuk
+         batasan efeknya (OS hanya izinkan mematikan proses yang sudah
+         berstatus cached/background). -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

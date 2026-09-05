@@ -43,4 +43,11 @@ JNIEXPORT jfloatArray JNICALL nsmc(JNIEnv* env, jobject thiz);
 JNIEXPORT jfloatArray JNICALL nsmg(JNIEnv* env, jobject thiz);
 JNIEXPORT void JNICALL nsmr(JNIEnv* env, jobject thiz);
 
+// nrmc: baca snapshot RAM (v3.5, lihat rammonitor.h/.cpp/_jni.cpp) —
+// dipakai RamMonitor.kt. Beda dari nsmc/nsmg/nsmr di atas: TIDAK
+// root-gated, TIDAK punya state delta (/proc/meminfo adalah snapshot
+// absolut, bukan cumulative counter seperti /proc/stat).
+//   nrmc(JNIEnv*, jobject) -> float[4] { totalKb, availableKb, swapTotalKb, swapFreeKb }
+JNIEXPORT jfloatArray JNICALL nrmc(JNIEnv* env, jobject thiz);
+
 }
