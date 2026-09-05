@@ -700,13 +700,6 @@
 
     <string name="game_booster_panel_open_game">Buka</string>
 
-    <!-- Dialog adblock lihat KDoc AdBlockDialogState untuk arsitektur
-         lengkapnya. Ditampilkan sekali per sesi saat ad-blocker terdeteksi. -->
-    <string name="adblock_dialog_title">Ad Blocker Terdeteksi</string>
-    <string name="adblock_dialog_message">Iklan membantu kami menjaga AetherX tetap gratis. Nonaktifkan ad blocker, atau upgrade ke Membership untuk pengalaman bebas iklan.</string>
-    <string name="adblock_dialog_membership_button">Lihat Membership</string>
-    <string name="adblock_dialog_dismiss_button">Tutup</string>
-
     <!-- v3.1 PURE ROOT: pesan feedback konkret untuk setiap hasil aksi
          permintaan akses root, ditampilkan lewat Snackbar menggantikan
          silent-fail yang membuat tombol terasa "tidak merespon". Seluruh

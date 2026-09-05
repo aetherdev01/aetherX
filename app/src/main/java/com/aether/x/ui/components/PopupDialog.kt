@@ -36,7 +36,7 @@ import com.aether.x.ui.theme.AccentRed
 /**
  * PopupDialog — pengganti `androidx.compose.material3.AlertDialog` bawaan
  * di seluruh app ini. AlertDialog default Material3 dipakai sebelumnya di
- * 6 tempat (AdBlockDialog, ClearCacheConfirmDialog di AppManagerScreen,
+ * beberapa tempat (ClearCacheConfirmDialog di AppManagerScreen,
  * logout confirm di MembershipScreen, CrosshairColorPickerDialog, dan 3
  * dialog di BuildPropScreen) dan tampil kotak putih flat generik — tidak
  * konsisten dengan gaya "gate" dialog yang sudah lebih baik

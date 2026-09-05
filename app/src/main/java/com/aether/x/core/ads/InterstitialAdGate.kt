@@ -9,12 +9,6 @@ class InterstitialAdGate(
     suspend fun maybeShow(activity: Activity, isMember: Boolean) {
         if (isMember) return
 
-        val adBlockSignals = AdBlockDetector.detect(activity)
-        if (adBlockSignals.anyDetected) {
-            AdBlockDialogState.requestShow(activity, adBlockSignals)
-            return
-        }
-
         if (!adManager.isReady) return
 
         val now = System.currentTimeMillis()

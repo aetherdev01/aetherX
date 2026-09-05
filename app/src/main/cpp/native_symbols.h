@@ -13,13 +13,6 @@ JNIEXPORT jboolean JNICALL nvfy2(JNIEnv* env, jobject thiz, jbyteArray actualHas
 // configured"), jadi tidak pernah benar-benar memverifikasi apapun.
 // Dihapus daripada dikonfigurasi.
 
-// nvpn (deteksi VPN via getifaddrs) SUDAH DIHAPUS — lihat catatan di
-// adblockguard.cpp kenapa deteksi VPN pindah sepenuhnya ke
-// ConnectivityManager/NetworkCapabilities di Kotlin (AdBlockDetector.kt).
-JNIEXPORT jboolean JNICALL ndns(JNIEnv* env, jobject thiz, jobjectArray dnsServers);
-JNIEXPORT jboolean JNICALL nmod(JNIEnv* env, jobject thiz, jstring moduleListing);
-JNIEXPORT jboolean JNICALL nhosts(JNIEnv* env, jobject thiz, jstring hostsContent);
-
 // nfgp: turunan device fingerprint hash (HMAC-SHA256) dari identifier
 // perangkat mentah — lihat devicefingerprint.h/.cpp untuk kontrak dan
 // alasan lengkap, dan DeviceFingerprint.kt untuk sisi pemanggil.

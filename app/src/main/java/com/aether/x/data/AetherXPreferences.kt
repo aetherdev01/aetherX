@@ -135,8 +135,6 @@ class AetherXPreferences(private val context: Context) {
 
         val USER_ID_SYNCED = booleanPreferencesKey("user_id_synced")
 
-        val ADBLOCK_LAST_ACKNOWLEDGED_SIGNAL = stringPreferencesKey("adblock_last_acknowledged_signal")
-
         val LICENSE_KEY = stringPreferencesKey("license_key")
         val LICENSE_EXPIRES_AT_MILLIS = longPreferencesKey("license_expires_at_millis")
 
@@ -340,17 +338,6 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.USER_ID] = id
             prefs[Keys.USER_ID_SYNCED] = true
-        }
-    }
-
-    suspend fun getAdBlockAcknowledgedSignal(): String? {
-        val prefs = context.dataStore.data.first()
-        return prefs[Keys.ADBLOCK_LAST_ACKNOWLEDGED_SIGNAL]
-    }
-
-    suspend fun setAdBlockAcknowledgedSignal(signalKey: String) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.ADBLOCK_LAST_ACKNOWLEDGED_SIGNAL] = signalKey
         }
     }
 

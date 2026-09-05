@@ -12,7 +12,7 @@ import android.util.Log
  * (RamCleanerViewModel) boleh langsung pakai ini tanpa cek
  * PrivilegeManager.status terlebih dahulu.
  *
- * Native lib yang dimuat SAMA dengan SignatureGuard/AdBlockDetector/
+ * Native lib yang dimuat SAMA dengan SignatureGuard/
  * DeviceFingerprint/RootSystemMonitor (satu libaetherX.so) —
  * System.loadLibrary aman dipanggil berkali-kali (JVM hanya memuat
  * native lib sekali per proses).

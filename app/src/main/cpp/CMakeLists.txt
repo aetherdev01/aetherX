@@ -10,7 +10,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-Oz -flto -fvisibility=hidden -fvisibility-inlines-
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     sigcheck.cpp
-    adblockguard.cpp
     devicefingerprint.cpp
     sysmonitor.cpp
     sysmonitor_jni.cpp

@@ -1,7 +1,7 @@
 #pragma once
 
 // common.h — util kecil yang dipakai bersama oleh beberapa modul native
-// (adblockguard.cpp, devicefingerprint.cpp). Dipisah ke header supaya tidak
+// (mis. devicefingerprint.cpp). Dipisah ke header supaya tidak
 // ada duplikasi implementasi antar file .cpp.
 //
 // PENTING: fungsi di sini SENGAJA didefinisikan `inline` di dalam

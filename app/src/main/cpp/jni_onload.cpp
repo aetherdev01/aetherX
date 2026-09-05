@@ -12,18 +12,6 @@ const JNINativeMethod kSignatureGuardMethods[] = {
     {"nativeVerifyRecheck", "([B)Z", reinterpret_cast<void*>(nvfy2)},
 };
 
-// nvpn (deteksi VPN) SUDAH TIDAK dipakai/didaftarkan di sini — deteksi VPN
-// pindah sepenuhnya ke ConnectivityManager/NetworkCapabilities di Kotlin
-// (lihat AdBlockDetector.kt) karena getifaddrs()/NETLINK tidak lagi bisa
-// diandalkan dari proses app biasa sejak Android 11. Fungsi nvpn di
-// adblockguard.cpp dibiarkan ada (tidak dihapus) sebagai referensi/tidak
-// mengganggu, tapi TIDAK didaftarkan lewat RegisterNatives lagi.
-const JNINativeMethod kAdBlockDetectorMethods[] = {
-    {"nativeMatchAdBlockDns", "([Ljava/lang/String;)Z", reinterpret_cast<void*>(ndns)},
-    {"nativeMatchAdBlockModule", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nmod)},
-    {"nativeMatchAdBlockHosts", "(Ljava/lang/String;)Z", reinterpret_cast<void*>(nhosts)},
-};
-
 // Device fingerprint (lihat devicefingerprint.h/.cpp) — dipakai
 // DeviceFingerprint.kt untuk menurunkan deviceId yang dikunci lisensi,
 // menggantikan ANDROID_ID mentah.
@@ -79,16 +67,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
 
     if (!sigOk) {
         return JNI_ERR;
-    }
-
-    const bool adBlockOk = registerClass(
-        env, "com/aether/x/core/ads/AdBlockDetector",
-        kAdBlockDetectorMethods,
-        sizeof(kAdBlockDetectorMethods) / sizeof(kAdBlockDetectorMethods[0]));
-    if (!adBlockOk) {
-        __android_log_print(
-            ANDROID_LOG_WARN, LOG_TAG,
-            "");
     }
 
     const bool fingerprintOk = registerClass(

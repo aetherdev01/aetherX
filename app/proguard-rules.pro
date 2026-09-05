@@ -17,7 +17,6 @@
 -keep class com.aether.x.core.monitor.RootSystemMonitor { *; }
 -keep class com.aether.x.core.security.SignatureGuard { *; }
 -keep class com.aether.x.core.security.NativeIntegrityGuard { *; }
--keep class com.aether.x.core.ads.AdBlockDetector { *; }
 -keep class com.aether.x.core.security.DeviceFingerprint { *; }
 
 # Jaga semua native method declaration di project (lapisan pengaman kedua,
