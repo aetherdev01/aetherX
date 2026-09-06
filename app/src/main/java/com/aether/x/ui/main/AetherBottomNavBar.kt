@@ -6,10 +6,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -333,19 +331,29 @@ fun AetherBottomNavBar(
                         }
                     } else {
                         // Tap biasa (jari terangkat sebelum ambang long-press):
-                        // JANGAN animasikan pill kembali ke selectedIndex lama
-                        // di sini — itu sumber bug "jeduk": animasi balik ini
-                        // akan langsung dipotong begitu onClick item memanggil
-                        // onSelect dan LaunchedEffect(selectedIndex) menembak
-                        // target baru, membuat dua animasi saling membatalkan
-                        // dan terlihat seperti lompat instan. Biarkan pill diam
-                        // di titik sentuh; LaunchedEffect(selectedIndex) yang
-                        // akan menariknya dengan satu animasi pegas tunggal
-                        // dan mulus ke tab yang benar-benar dipilih (atau balik
-                        // ke tab semula bila tap ini tidak memicu onSelect).
+                        // onSelect dipanggil LANGSUNG DI SINI berdasarkan
+                        // posisi sentuhan — bukan lewat Modifier.clickable
+                        // terpisah di NavBarItem anak. Sebelumnya ada DUA
+                        // gesture detector bertumpuk di area yang sama (ini
+                        // awaitEachGesture di Box induk, dan clickable di
+                        // Column anak): custom pointerInput induk berjalan
+                        // penuh menunggu ambang long-press TANPA meng-
+                        // konsumsi event tap biasa, sehingga resolusi
+                        // gesture-arbitration Compose antara induk & anak
+                        // jadi tidak konsisten — kadang clickable anak tidak
+                        // pernah menerima onClick-nya sama sekali, sehingga
+                        // tap ke tab (paling sering terlihat pada Dashboard/
+                        // index 0) tidak memicu navigasi sama sekali padahal
+                        // secara visual pill sempat bereaksi. Dengan memanggil
+                        // onSelect langsung dari sini, navigasi tidak lagi
+                        // bergantung pada apakah clickable anak "menang" event
+                        // atau tidak.
                         isPressed = false
+                        val tappedIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
                         previewIndex = selectedIndex
-                        if (clampedDown.roundToInt().coerceIn(0, items.lastIndex) == selectedIndex) {
+                        if (tappedIndex != selectedIndex) {
+                            onSelect(tappedIndex)
+                        } else {
                             scope.launch {
                                 pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
                             }
@@ -522,6 +530,14 @@ fun AetherBottomNavBar(
 
         // Lapis 3: ikon + label tiap tab, sedikit inset agar tidak
         // menyentuh tepi kaca (menjaga area sentuh tetap nyaman).
+        // NavBarItem di sini MURNI presentasional (tidak punya clickable
+        // sendiri) — semua interaksi sentuh (tap MAUPUN drag) ditangani
+        // TUNGGAL oleh pointerInput di Box induk di atas. Sebelumnya
+        // NavBarItem punya Modifier.clickable sendiri yang tumpang tindih
+        // dengan gesture custom induk di area yang sama, menyebabkan
+        // resolusi gesture-arbitration Compose tidak konsisten — kadang
+        // onClick anak tidak pernah terpanggil sehingga tap tab (paling
+        // sering index 0 / Dashboard) gagal menavigasi.
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -533,7 +549,6 @@ fun AetherBottomNavBar(
                 NavBarItem(
                     item = item,
                     selected = if (isDragging) index == previewIndex else index == selectedIndex,
-                    onClick = { if (!isDragging) onSelect(index) },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -547,11 +562,8 @@ fun AetherBottomNavBar(
 private fun NavBarItem(
     item: AetherNavItem,
     selected: Boolean,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.onPrimaryContainer
@@ -566,13 +578,7 @@ private fun NavBarItem(
     )
 
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            ),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
