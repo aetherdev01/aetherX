@@ -41,7 +41,6 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -398,10 +397,18 @@ fun AetherBottomNavBar(
             val offsetYDp = with(density) { ((barHeightPx - pillHeightPx) / 2f).toDp() }
 
             val tint = MaterialTheme.colorScheme.primary
+
+            // Dasar pill liquid glass ala iOS: HAMPIR NETRAL, bukan tint
+            // warna pekat. Liquid Glass asli itu dasarnya abu-abu gelap
+            // transparan (blur dari Haze di bawahnya yang membentuk warna),
+            // dan aksen warna tema HANYA muncul tipis — di rim/border dan
+            // sedikit di dasar gradasi. Sebelumnya pillBrush mengisi seluruh
+            // permukaan dengan cyan alpha 0.42, menutupi blur dan bikin pill
+            // terlihat solid teal pekat, bukan bening seperti kaca.
             val pillBrush = Brush.verticalGradient(
                 colors = listOf(
-                    tint.copy(alpha = 0.42f),
-                    tint.copy(alpha = 0.20f),
+                    Color.White.copy(alpha = 0.10f),
+                    Color.Black.copy(alpha = 0.16f),
                 ),
             )
 
@@ -423,65 +430,91 @@ fun AetherBottomNavBar(
                     // sumbernya dengan blur bar) — bukan cuma warna solid.
                     .hazeEffect(state = hazeState, style = HazeMaterials.regular())
                     .background(pillBrush)
-                    // Semua lapisan cahaya (sheen dasar + mirror diagonal +
-                    // refraksi tepi) digambar SEKALIGUS dalam satu Canvas
-                    // lewat drawWithCache, dengan BlendMode.Plus/Screen —
-                    // ini WAJIB dipakai ketimbang menumpuk .background(brush)
-                    // berkali-kali, karena setiap .background() menggambar
-                    // solid di atas hasil sebelumnya (tidak blending cahaya),
-                    // sehingga highlight beralpha rendah saling menutup dan
-                    // efek mirror/liquid nyaris tak kelihatan di layar.
+                    // Semua lapisan cahaya (mirror highlight + refraksi tepi
+                    // + tint tipis tema) digambar SEKALIGUS dalam satu Canvas
+                    // lewat drawWithCache. PENTING: highlight di sini dibuat
+                    // sebagai bright-spot KONTRAS di area kecil (radial, pusat
+                    // di satu titik) dengan Color.White solid dan blendMode
+                    // Screen/SrcOver biasa — BUKAN BlendMode.Plus disapu ke
+                    // seluruh permukaan seperti versi sebelumnya. BlendMode.
+                    // Plus bersifat additive: ketika disapu rata ke seluruh
+                    // pill yang sudah bertint warna tema, hasilnya menyaturasi
+                    // SELURUH permukaan jadi satu warna pekat merata (itulah
+                    // sebab pill terlihat teal solid, bukan kaca bening
+                    // dengan satu titik pantulan cahaya seperti iOS asli).
                     .drawWithCache {
                         val w = size.width
                         val h = size.height
-                        // Sheen dasar: gradasi vertikal tipis dari terang di
-                        // atas ke gelap di bawah — dasar "ketebalan" kaca.
-                        val baseSheen = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.24f),
-                                Color.White.copy(alpha = 0.02f),
-                            ),
-                            startY = 0f,
-                            endY = h,
-                        )
-                        // Mirror highlight: bercak terang diagonal cembung
-                        // yang bergerak mengikuti pill (posisinya relatif
-                        // terhadap pill itu sendiri, jadi otomatis ikut
-                        // translationX/Y pill di atas) — meniru pantulan
-                        // cahaya pada permukaan kaca liquid yang melengkung.
+                        // Mirror highlight: SATU bercak terang di pojok
+                        // kiri-atas, memudar cepat ke transparan — ini yang
+                        // memberi kesan "pantulan cahaya di permukaan kaca
+                        // cembung", dan harus kontras/kecil, bukan menyebar
+                        // rata ke seluruh pill.
                         val mirrorHighlight = Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.65f),
+                                Color.White.copy(alpha = 0.85f),
+                                Color.White.copy(alpha = 0.25f),
+                                Color.Transparent,
+                            ),
+                            center = Offset(w * 0.24f, h * 0.10f),
+                            radius = w * 0.42f,
+                        )
+                        // Refleksi sekunder redup di pojok kanan-bawah —
+                        // liquid glass iOS punya dua titik highlight (satu
+                        // dominan, satu samar) supaya kesan cembungnya nyata.
+                        val counterHighlight = Brush.radialGradient(
+                            colors = listOf(
                                 Color.White.copy(alpha = 0.18f),
                                 Color.Transparent,
                             ),
-                            center = Offset(w * 0.28f, h * 0.12f),
-                            radius = w * 0.55f,
+                            center = Offset(w * 0.82f, h * 0.92f),
+                            radius = w * 0.35f,
                         )
-                        // Refraksi tepi kiri & kanan: garis vertikal tipis
-                        // menyala di kedua sisi, khas distorsi cahaya pada
-                        // pinggiran kaca cembung ala iOS liquid glass.
+                        // Refraksi tepi kiri & kanan — garis vertikal tipis
+                        // menyala, khas distorsi cahaya pada pinggiran kaca
+                        // cembung. Dijaga tipis (alpha rendah) supaya tidak
+                        // ikut menutup blur di baliknya.
                         val edgeLeft = Brush.horizontalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.55f), Color.Transparent),
+                            colors = listOf(Color.White.copy(alpha = 0.32f), Color.Transparent),
                             startX = 0f,
-                            endX = w * 0.16f,
+                            endX = w * 0.14f,
                         )
                         val edgeRight = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.40f)),
-                            startX = w * 0.84f,
+                            colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.22f)),
+                            startX = w * 0.86f,
                             endX = w,
+                        )
+                        // Tint identitas tema: TIPIS SEKALI, hanya di area
+                        // bawah pill — ini satu-satunya tempat warna cyan
+                        // tema muncul di permukaan (di luar border), supaya
+                        // pill tetap terasa "kaca" alih-alih "plastik teal".
+                        val bottomTint = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, tint.copy(alpha = 0.16f)),
+                            startY = h * 0.55f,
+                            endY = h,
                         )
                         onDrawWithContent {
                             drawContent()
-                            drawRect(brush = baseSheen, blendMode = BlendMode.Plus)
-                            drawRect(brush = mirrorHighlight, blendMode = BlendMode.Plus)
-                            drawRect(brush = edgeLeft, blendMode = BlendMode.Plus)
-                            drawRect(brush = edgeRight, blendMode = BlendMode.Plus)
+                            drawRect(brush = bottomTint)
+                            drawRect(brush = edgeLeft)
+                            drawRect(brush = edgeRight)
+                            drawRect(brush = counterHighlight)
+                            drawRect(brush = mirrorHighlight)
                         }
                     }
                     .border(
                         width = 1.dp,
-                        color = tint.copy(alpha = 0.55f),
+                        // Rim border liquid glass: gradasi dari terang
+                        // (rim highlight kaca) di atas ke tint tema tipis di
+                        // bawah — bukan warna tema solid di keliling penuh
+                        // seperti sebelumnya (itu salah satu penyebab pill
+                        // terlihat "outline teal tebal" alih-alih rim kaca).
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.65f),
+                                tint.copy(alpha = 0.45f),
+                            ),
+                        ),
                         shape = RoundedCornerShape(50),
                     ),
             )
