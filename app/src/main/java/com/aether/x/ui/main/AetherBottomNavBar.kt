@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -61,17 +62,25 @@ import kotlinx.coroutines.withTimeout
  * Apple News+ — satu pill BESAR mengisi hampir seluruh slot tab,
  * bukan chip kecil di belakang ikon).
  *
- * Dua lapis liquid terpisah:
+ * Tiga lapis liquid terpisah:
  * 1. KACA BAR — blur nyata dari konten di baliknya (Haze), rim highlight
  *    di tepi atas + inner-shadow tipis di bawah supaya kaca terasa
- *    punya ketebalan.
+ *    punya ketebalan. Seluruh kapsul bar ikut "menyembul" pegas (bulge
+ *    tipis) saat ditahan, supaya terasa satu material kenyal, bukan
+ *    cuma pill di dalamnya yang bergerak sendirian.
  * 2. PILL PENANDA TAB — satu pill solid setinggi/selebar slot yang bisa
  *    DITAHAN lalu DIGESER. Selama ditahan, pill "menyembul" (scale naik,
- *    boleh sedikit melebihi tinggi bar) dan mengikuti jari secara halus
- *    berpindah antar slot yang berdekatan — bukan lonjong menyambung
- *    dua titik jauh. Tab baru baru dipilih (onSelect) saat jari
- *    dilepas; pill snap-settle ke slot terdekat dengan sedikit overshoot
- *    pegas untuk kesan liquid.
+ *    boleh sedikit melebihi tinggi bar) dan mengikuti jari lewat spring
+ *    kenyal (bukan snap instan mentah) — respons tetap cepat tapi ada
+ *    sedikit "lag" elastis khas liquid glass, bukan lonjong menyambung
+ *    dua titik jauh. Tab baru dipilih (onSelect) saat jari dilepas;
+ *    pill snap-settle ke slot terdekat dengan sedikit overshoot pegas.
+ *    Saat bergerak cepat, pill squash & stretch (melebar searah gerak,
+ *    memipih tegak lurusnya) lalu membulat lagi saat berhenti — efek
+ *    jelly.
+ * 3. MIRROR SHEEN — highlight spekular yang ikut bergeser mengikuti
+ *    posisi pill, mensimulasikan pantulan cahaya pada permukaan kaca
+ *    cembung (efek "mirror" liquid glass).
  */
 data class AetherNavItem(
     val icon: ImageVector,
@@ -123,9 +132,25 @@ fun AetherBottomNavBar(
     var isPressed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    // Kecepatan gerak pill (satuan: index pecahan per event drag), dipakai
+    // untuk efek jelly squash & stretch — bukan animasi berjadwal, tapi
+    // dihitung dari selisih posisi mentah antar sample gesture.
+    var pillVelocity by remember { mutableFloatStateOf(0f) }
+    var lastRawPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+
+    // Spring "settle" untuk perpindahan tab yang sudah final (lepas jari /
+    // tap) — sedikit overshoot pegas supaya berhenti terasa kenyal.
     val settleSpec = spring<Float>(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMedium,
+    )
+    // Spring "follow" dipakai SELAMA jari menahan & menggeser — redaman
+    // lebih tinggi (kurang mantul) tapi kekakuan lebih rendah dari settle,
+    // supaya pill terasa "berat/kenyal" mengikuti jari (ala iOS 26) alih-
+    // alih menempel mentah 1:1 pada posisi sentuhan setiap frame.
+    val followSpec = spring<Float>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = 380f,
     )
 
     LaunchedEffect(selectedIndex, items.size) {
@@ -135,9 +160,10 @@ fun AetherBottomNavBar(
         }
     }
 
-    // Efek "menyembul": pill membesar melampaui tinggi normal bar begitu
-    // jari MENYENTUH (isPressed), bukan baru saat drag resmi terdeteksi —
-    // supaya responnya instan, lalu mengempis kembali saat jari dilepas.
+    // Efek "menyembul" pada PILL: membesar melampaui tinggi normal bar
+    // begitu jari MENYENTUH (isPressed), bukan baru saat drag resmi
+    // terdeteksi — supaya responnya instan, lalu mengempis kembali saat
+    // jari dilepas.
     val pillBulge = remember { Animatable(1f) }
     LaunchedEffect(isPressed) {
         pillBulge.animateTo(
@@ -149,12 +175,51 @@ fun AetherBottomNavBar(
         )
     }
 
+    // Efek "menyembul" pada seluruh KAPSUL BAR: skala naik sedikit saat
+    // ditahan, seolah seluruh bar ikut merespons tekanan seperti satu
+    // permukaan liquid yang menyatu dengan pill di dalamnya — bukan cuma
+    // pill yang bergerak sendirian di atas bar yang diam kaku.
+    val barBulge = remember { Animatable(1f) }
+    LaunchedEffect(isPressed) {
+        barBulge.animateTo(
+            targetValue = if (isPressed) 1.035f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+        )
+    }
+
+    // Peluruhan velocity: begitu jari berhenti bergerak/terlepas, velocity
+    // meluruh halus ke 0 supaya efek jelly mengendur perlahan, bukan
+    // langsung patah ke bentuk normal.
+    LaunchedEffect(isDragging) {
+        if (!isDragging) {
+            val decaySpec = spring<Float>(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessLow,
+            )
+            val decayAnim = Animatable(pillVelocity)
+            decayAnim.animateTo(0f, animationSpec = decaySpec) {
+                pillVelocity = value
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .navigationBarsPadding()
             .padding(horizontal = 28.dp, vertical = 14.dp)
             .fillMaxWidth()
             .height(66.dp)
+            .graphicsLayer {
+                // Bulge kapsul dipusatkan di tengah bar, jadi mengembang
+                // merata ke segala arah alih-alih menggeser posisi bar.
+                val scale = barBulge.value
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
+            }
             .onSizeChanged {
                 barWidthPx = it.width.toFloat()
                 barHeightPx = it.height.toFloat()
@@ -166,10 +231,14 @@ fun AetherBottomNavBar(
                     // tanpa menunggu apakah ini akan jadi long-press/drag.
                     val down = awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
-                    val raw = (down.position.x / slotWidthPx) - 0.5f
-                    val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
-                    previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
-                    scope.launch { pillPosition.snapTo(clamped) }
+                    val rawDown = (down.position.x / slotWidthPx) - 0.5f
+                    val clampedDown = rawDown.coerceIn(0f, (items.size - 1).toFloat())
+                    lastRawPosition = clampedDown
+                    pillVelocity = 0f
+                    previewIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
+                    scope.launch {
+                        pillPosition.animateTo(clampedDown, animationSpec = followSpec)
+                    }
 
                     // Tunggu ambang long-press sambil tetap memantau apakah
                     // jari terangkat lebih dulu (berarti ini tap biasa).
@@ -188,7 +257,11 @@ fun AetherBottomNavBar(
 
                     if (becameDrag) {
                         isDragging = true
-                        // Loop drag: ikuti jari sampai terangkat.
+                        // Loop drag: ikuti jari sampai terangkat. Posisi
+                        // mentah dikejar lewat spring "follow" (bukan
+                        // snapTo instan) supaya gerakan pill terasa kenyal
+                        // dan tidak terlalu cepat/kaku — sesuai nuansa
+                        // iOS 26 liquid nav.
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id }
@@ -196,8 +269,12 @@ fun AetherBottomNavBar(
                             change.consume()
                             val dragRaw = (change.position.x / slotWidthPx) - 0.5f
                             val dragClamped = dragRaw.coerceIn(0f, (items.size - 1).toFloat())
+                            pillVelocity = dragClamped - lastRawPosition
+                            lastRawPosition = dragClamped
                             previewIndex = dragClamped.roundToInt().coerceIn(0, items.lastIndex)
-                            scope.launch { pillPosition.snapTo(dragClamped) }
+                            scope.launch {
+                                pillPosition.animateTo(dragClamped, animationSpec = followSpec)
+                            }
                         }
                         isDragging = false
                         isPressed = false
@@ -248,8 +325,17 @@ fun AetherBottomNavBar(
             val pillHeightBase = barHeightPx - insetPx * 2f
             val centerX = (pillPosition.value + 0.5f) * slotWidthPx
             val bulge = pillBulge.value
-            val pillWidthPx = pillWidth * (0.92f + 0.08f * bulge)
-            val pillHeightPx = pillHeightBase * bulge
+
+            // Efek jelly: squash & stretch berdasarkan kecepatan gerak.
+            // Semakin cepat pill bergeser, semakin ia melebar horizontal
+            // dan memipih vertikal (seperti tetesan cair yang ditarik),
+            // lalu membulat kembali begitu berhenti/melambat.
+            val speed = abs(pillVelocity).coerceIn(0f, 0.6f)
+            val stretchFactor = 1f + (speed / 0.6f) * 0.26f
+            val squashFactor = 1f - (speed / 0.6f) * 0.16f
+
+            val pillWidthPx = pillWidth * (0.92f + 0.08f * bulge) * stretchFactor
+            val pillHeightPx = pillHeightBase * bulge * squashFactor
             val pillWidthDp = with(density) { pillWidthPx.toDp() }
             val pillHeightDp = with(density) { pillHeightPx.toDp() }
             val offsetXDp = with(density) { (centerX - pillWidthPx / 2f).toDp() }
@@ -266,6 +352,29 @@ fun AetherBottomNavBar(
                 colors = listOf(
                     Color.White.copy(alpha = 0.22f),
                     Color.White.copy(alpha = 0.02f),
+                ),
+            )
+            // Sheen "mirror" — highlight cembung diagonal yang menempel di
+            // pill (bergerak bersamanya lewat translationX di atas), meniru
+            // pantulan cahaya pada permukaan kaca liquid yang melengkung.
+            val mirrorSheen = Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.50f),
+                    Color.White.copy(alpha = 0.06f),
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.16f),
+                ),
+                start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                end = androidx.compose.ui.geometry.Offset(pillWidthPx * 0.7f, pillHeightPx),
+            )
+            // Refraksi tepi kiri/kanan — garis tegas tipis yang menekuk
+            // terang, khas efek "liquid glass" ala iOS.
+            val edgeRefraction = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.55f),
+                    Color.Transparent,
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.35f),
                 ),
             )
 
@@ -288,6 +397,11 @@ fun AetherBottomNavBar(
                     .hazeEffect(state = hazeState, style = HazeMaterials.regular())
                     .background(pillBrush)
                     .background(pillSheen)
+                    // Lapisan mirror + refraksi tepi, di atas sheen dasar,
+                    // supaya kesan "kaca cembung memantulkan cahaya" hidup
+                    // dan ikut bergerak seiring pill berpindah slot.
+                    .background(mirrorSheen)
+                    .background(edgeRefraction)
                     .border(
                         width = 1.dp,
                         color = tint.copy(alpha = 0.55f),
@@ -334,7 +448,10 @@ private fun NavBarItem(
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(200),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
         label = "navItemColor",
     )
 
