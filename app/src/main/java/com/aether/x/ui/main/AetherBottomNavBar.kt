@@ -1,33 +1,27 @@
 package com.aether.x.ui.main
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,15 +36,20 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Navbar bawah gaya "floating pill" — bukan Material NavigationBar standar
- * yang nempel rata di tepi layar. Melayang dengan margin, indikator aktif
- * berupa kapsul cyan yang meluncur (spring) di belakang tab terpilih, ikon
- * yang membesar halus saat aktif, dan label yang hanya muncul (expand+fade)
- * di sebelah ikon yang sedang dipilih — supaya terasa ringan & modern
- * dibanding 4 label statis berjejer.
+ * Navbar bawah gaya "floating pill" yang ringkas & rapi:
+ * - Ikon di atas, label singkat 1 baris di bawah (bukan label mendatar di
+ *   sebelah ikon) — supaya label seperti "Membership"/"Pengaturan" tidak
+ *   pernah "kepanjangan" sampai tumpang tindih ke slot tab sebelah.
+ * - Tab aktif dapat highlight bulat kecil (pop-in) di belakang ikonnya
+ *   sendiri, bukan indikator yang meluncur lintas-bar — lebih rapi dan
+ *   selalu presisi pas di ikonnya sendiri.
+ * - Ditahan (press & hold) memicu efek "menyembul": ikon+label naik sedikit
+ *   dan membesar lalu kembali pegas saat dilepas.
  */
 data class AetherNavItem(
     val icon: ImageVector,
@@ -64,69 +63,38 @@ fun AetherBottomNavBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val barShape = RoundedCornerShape(28.dp)
+    val barShape = RoundedCornerShape(26.dp)
     val surface = MaterialTheme.colorScheme.surface
     val outline = MaterialTheme.colorScheme.outline
 
-    Box(
+    Row(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 24.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .height(64.dp)
+            .height(68.dp)
             .shadow(
-                elevation = 16.dp,
+                elevation = 14.dp,
                 shape = barShape,
                 ambientColor = Color.Black.copy(alpha = 0.35f),
                 spotColor = Color.Black.copy(alpha = 0.45f),
             )
             .clip(barShape)
             .background(surface)
-            .border(width = 1.dp, color = outline.copy(alpha = 0.6f), shape = barShape),
+            .border(width = 1.dp, color = outline.copy(alpha = 0.6f), shape = barShape)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-        ) {
-            val itemWidth = maxWidth / items.size
-            val indicatorInset = 6.dp
-            val indicatorOffset by animateDpAsState(
-                targetValue = itemWidth * selectedIndex,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow,
-                ),
-                label = "navIndicatorOffset",
-            )
-
-            // Kapsul indikator aktif — meluncur di belakang ikon terpilih.
-            Box(
+        items.forEachIndexed { index, item ->
+            NavBarItem(
+                item = item,
+                selected = index == selectedIndex,
+                onClick = { onSelect(index) },
                 modifier = Modifier
-                    .padding(start = indicatorOffset)
-                    .padding(horizontal = indicatorInset)
-                    .fillMaxHeight()
-                    .width(itemWidth - indicatorInset * 2)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .weight(1f)
+                    .fillMaxHeight(),
             )
-
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items.forEachIndexed { index, item ->
-                    NavBarItem(
-                        item = item,
-                        selected = index == selectedIndex,
-                        onClick = { onSelect(index) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-                }
-            }
         }
     }
 }
@@ -138,6 +106,9 @@ private fun NavBarItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.onPrimaryContainer
@@ -147,48 +118,82 @@ private fun NavBarItem(
         animationSpec = tween(200),
         label = "navItemColor",
     )
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.12f else 1f,
+
+    // Highlight bulat di belakang ikon — pop-in halus saat tab jadi aktif.
+    val highlightScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.6f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium,
         ),
-        label = "navItemScale",
+        label = "navHighlightScale",
+    )
+    val highlightAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = tween(180),
+        label = "navHighlightAlpha",
     )
 
-    Row(
+    // Efek "menyembul" saat ditahan: konten naik sedikit + membesar, lalu
+    // pegas kembali begitu jari dilepas.
+    val bulgeScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.22f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "navBulgeScale",
+    )
+    val bulgeLift by animateDpAsState(
+        targetValue = if (isPressed) (-6).dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "navBulgeLift",
+    )
+
+    Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             ),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = item.icon,
-            contentDescription = item.label,
-            tint = contentColor,
+        Box(
             modifier = Modifier
-                .size(22.dp)
-                .scale(iconScale),
-        )
-        AnimatedVisibility(
-            visible = selected,
-            enter = fadeIn(tween(180)) + expandHorizontally(spring(stiffness = Spring.StiffnessMedium)),
-            exit = fadeOut(tween(120)) + shrinkHorizontally(spring(stiffness = Spring.StiffnessMedium)),
+                .offset(y = bulgeLift)
+                .scale(bulgeScale),
+            contentAlignment = Alignment.Center,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = item.label,
-                    color = contentColor,
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .size(width = 40.dp, height = 26.dp)
+                    .scale(highlightScale)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = highlightAlpha)),
+            )
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.label,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
         }
+        Text(
+            text = item.label,
+            color = contentColor,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .offset(y = bulgeLift)
+                .padding(top = 3.dp, start = 2.dp, end = 2.dp),
+        )
     }
 }
