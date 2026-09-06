@@ -9,7 +9,14 @@ class InterstitialAdGate(
     suspend fun maybeShow(activity: Activity, isMember: Boolean) {
         if (isMember) return
 
-        if (!adManager.isReady) return
+        if (!adManager.isReady) {
+            // Iklan belum siap saat dibutuhkan — minta muat lagi sekarang juga
+            // (bukan cuma menunggu retry loop internal yang bisa lagi delay
+            // panjang), supaya kunjungan layar berikutnya punya peluang lebih
+            // besar dapat iklan yang sudah siap.
+            adManager.preload()
+            return
+        }
 
         val now = System.currentTimeMillis()
         if (now - lastShownAtMillis < COOLDOWN_MILLIS) return

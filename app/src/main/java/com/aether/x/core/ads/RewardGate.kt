@@ -57,7 +57,14 @@ class RewardGate(
     }
 
     suspend fun watchAdForCredit(featureKey: String, activity: Activity): WatchAdResult {
-        if (!adManager.isReady) return WatchAdResult.AdNotReady
+        if (!adManager.isReady) {
+            // Minta muat ulang sekarang, jangan cuma mengandalkan retry loop
+            // internal yang bisa sedang menunggu backoff panjang — supaya
+            // percobaan berikutnya (mis. user tap tombol ini lagi) lebih
+            // mungkin sudah dapat iklan siap tayang.
+            adManager.preload()
+            return WatchAdResult.AdNotReady
+        }
 
         val result = showAdSuspend(activity)
         return when (result) {

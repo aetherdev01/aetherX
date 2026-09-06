@@ -103,16 +103,14 @@ class UnityInterstitialAdManager(private val testMode: Boolean) : InterstitialAd
     }
 
     private fun scheduleRetry() {
-        if (consecutiveFailures >= MAX_RETRY_ATTEMPTS) {
-            Log.w(
-                TAG,
-                "Interstitial ad gagal load $MAX_RETRY_ATTEMPTS kali berturut-turut — " +
-                    "berhenti retry otomatis, menunggu trigger eksternal (mis. show() " +
-                    "berikutnya) untuk mencoba lagi.",
-            )
-            return
-        }
-        val attempt = consecutiveFailures
+        // Dulu retry berhenti total setelah MAX_RETRY_ATTEMPTS kali gagal dan
+        // menunggu "trigger eksternal" — tapi tidak ada satupun caller (gate/
+        // viewmodel) yang pernah memanggil preload() lagi setelah itu, jadi
+        // begitu retry habis, iklan STUCK selamanya tidak pernah muat lagi
+        // sampai proses app di-restart. Sekarang retry tidak pernah menyerah
+        // selama proses masih hidup — delay hanya di-cap di MAX_RETRY_DELAY_MILLIS
+        // (attempt count dipakai buat backoff eksponensial, bukan buat berhenti).
+        val attempt = consecutiveFailures.coerceAtMost(MAX_RETRY_ATTEMPTS)
         consecutiveFailures++
 
         val delayMillis = (INITIAL_RETRY_DELAY_MILLIS shl attempt)

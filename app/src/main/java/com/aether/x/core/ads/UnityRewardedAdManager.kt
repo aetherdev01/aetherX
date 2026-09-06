@@ -103,16 +103,11 @@ class UnityRewardedAdManager(private val testMode: Boolean) : RewardedAdManager 
     }
 
     private fun scheduleRetry() {
-        if (consecutiveFailures >= MAX_RETRY_ATTEMPTS) {
-            Log.w(
-                TAG,
-                "Rewarded ad gagal load $MAX_RETRY_ATTEMPTS kali berturut-turut — " +
-                    "berhenti retry otomatis, menunggu trigger eksternal (mis. show() " +
-                    "berikutnya) untuk mencoba lagi.",
-            )
-            return
-        }
-        val attempt = consecutiveFailures
+        // Sama seperti UnityInterstitialAdManager: retry tidak pernah berhenti
+        // total lagi (dulu stuck permanen setelah MAX_RETRY_ATTEMPTS kali gagal
+        // karena tidak ada caller yang memanggil preload() lagi setelahnya).
+        // Delay tetap di-cap, attempt count hanya dipakai untuk backoff.
+        val attempt = consecutiveFailures.coerceAtMost(MAX_RETRY_ATTEMPTS)
         consecutiveFailures++
 
         val delayMillis = (INITIAL_RETRY_DELAY_MILLIS shl attempt)
