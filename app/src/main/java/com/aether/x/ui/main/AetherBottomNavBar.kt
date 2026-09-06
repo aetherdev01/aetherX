@@ -40,19 +40,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
 
 /**
- * Navbar bawah bergaya "Liquid Glass" ala iOS 26: kapsul melayang,
- * translusen (kaca buram) dengan sapuan highlight lembut di bagian atas
- * (efek kilau kaca), tab aktif mendapat "chip" kaca bertinta warna primer,
- * dan setiap item punya efek "menyembul" (membesar + naik) saat ditahan —
- * mendekati kesan "bubbly glass" interaktif iOS 26.
- *
- * Catatan: ini pendekatan gaya visual (translusensi + gradient + border
- * bercahaya), BUKAN blur real-time dari konten di belakangnya. Blur asli
- * (konten di bawah bar betul-betul buram melalui kaca) butuh capture layer
- * terpisah (mis. lib "Haze" atau RenderEffect manual) — bisa ditambahkan
- * belakangan kalau efek blur sungguhannya juga diinginkan.
+ * Navbar bawah bergaya "Liquid Glass" ala iOS 26: kapsul melayang dengan
+ * blur kaca NYATA dari konten di baliknya (via Haze — hazeEffect di sini
+ * dipasangkan dengan hazeSource di konten layar, lihat MainScreen.kt),
+ * ditambah sapuan highlight lembut di tepi atas (efek kilau kaca), tab
+ * aktif mendapat "chip" kaca bertinta warna primer, dan setiap item punya
+ * efek "menyembul" (membesar + naik) saat ditahan.
  */
 data class AetherNavItem(
     val icon: ImageVector,
@@ -64,18 +62,12 @@ fun AetherBottomNavBar(
     items: List<AetherNavItem>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
+    hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
     val barShape = RoundedCornerShape(percent = 50)
-    val surface = MaterialTheme.colorScheme.surface
     val outline = MaterialTheme.colorScheme.outline
 
-    val glassBackground = Brush.verticalGradient(
-        colors = listOf(
-            surface.copy(alpha = 0.90f),
-            surface.copy(alpha = 0.70f),
-        ),
-    )
     val glassRim = Brush.verticalGradient(
         colors = listOf(
             Color.White.copy(alpha = 0.30f),
@@ -96,7 +88,7 @@ fun AetherBottomNavBar(
                 spotColor = Color.Black.copy(alpha = 0.45f),
             )
             .clip(barShape)
-            .background(glassBackground)
+            .hazeEffect(state = hazeState, style = HazeMaterials.ultraThin())
             .border(width = 1.dp, brush = glassRim, shape = barShape)
             .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,

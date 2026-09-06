@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -36,6 +37,8 @@ import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
 
 private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
@@ -54,6 +57,12 @@ fun MainScreen(
     val navItems = remember {
         listOf(MainTab.TWEAK, MainTab.MEMBERSHIP, MainTab.ABOUT, MainTab.SETTINGS)
     }
+
+    // HazeState menghubungkan konten (sumber blur, lewat hazeSource di bawah)
+    // dengan navbar (penerima blur, lewat hazeEffect di AetherBottomNavBar) —
+    // supaya navbar benar-benar menampilkan konten di baliknya secara buram
+    // real-time, bukan cuma translusensi statis.
+    val hazeState = rememberHazeState()
 
     // Navbar ala iOS 26: menyembunyikan diri (geser ke bawah) saat konten
     // di-scroll ke bawah, dan muncul lagi saat di-scroll ke atas. Tinggi bar
@@ -84,6 +93,7 @@ fun MainScreen(
                 ),
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index -> selectedTab = navItems[index] },
+                hazeState = hazeState,
                 modifier = Modifier
                     .onSizeChanged { navBarHeightPx = it.height.toFloat() }
                     .offset { IntOffset(x = 0, y = -navBarOffsetPx.roundToInt()) },
@@ -94,6 +104,9 @@ fun MainScreen(
         // supaya perpindahan konten terasa mulus mengikuti indikator navbar
         // yang meluncur di bawah.
         AnimatedContent(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(state = hazeState),
             targetState = selectedTab,
             transitionSpec = {
                 (fadeIn(tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220))) togetherWith

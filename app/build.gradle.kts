@@ -156,6 +156,12 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     debugImplementation(libs.androidx.ui.tooling)
 
+    // ── Haze: blur kaca real-time di belakang navbar (efek "Liquid Glass"
+    //    ala iOS 26). hazeSource() dipasang di konten layar, hazeEffect()
+    //    di navbar — lihat AetherBottomNavBar.kt & MainScreen.kt. ─────────
+    implementation(libs.haze)
+    implementation(libs.haze.materials)
+
     // ── Activity & Navigation ─────────────────────────────────────────────────
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
