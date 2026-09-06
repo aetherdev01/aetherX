@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,12 +33,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
@@ -132,14 +136,25 @@ fun AetherBottomNavBar(
     var isPressed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // Kecepatan gerak pill (satuan: index pecahan per event drag), dipakai
-    // untuk efek jelly squash & stretch — bukan animasi berjadwal, tapi
-    // dihitung dari selisih posisi mentah antar sample gesture.
+    // Kecepatan gerak pill YANG SUDAH DI-SMOOTH (satuan: index pecahan per
+    // frame), dipakai untuk efek jelly squash & stretch. Nilai mentah dari
+    // event pointer sangat berisik (noisy) antar-frame, jadi dilewatkan
+    // dulu lewat exponential smoothing (rawVelocitySample -> pillVelocity)
+    // sebelum dipakai untuk visual, supaya jelly mengalir, bukan gemetar.
     var pillVelocity by remember { mutableFloatStateOf(0f) }
     var lastRawPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+    // Dipakai HANYA untuk menurunkan velocity dari pergerakan pillPosition
+    // itu sendiri (lihat efek di bawah) — sumber jelly saat pill meluncur
+    // otomatis lewat animasi settle/follow, bukan cuma dari drag jari
+    // mentah. Ini membuat efek jelly juga hidup saat TAP (pill meregang
+    // dari titik sentuh menuju tab tujuan), bukan cuma saat drag manual.
+    var lastAnimatedPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
 
     // Spring "settle" untuk perpindahan tab yang sudah final (lepas jari /
-    // tap) — sedikit overshoot pegas supaya berhenti terasa kenyal.
+    // tap) — sedikit overshoot pegas supaya berhenti terasa kenyal. Dipakai
+    // sebagai SATU-SATUNYA jalur animasi menuju selectedIndex, supaya tidak
+    // pernah ada dua animasi berebut pillPosition di saat bersamaan (itu
+    // penyebab pill terlihat "jeduk"/instan saat tap-select tab jauh).
     val settleSpec = spring<Float>(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMedium,
@@ -153,6 +168,12 @@ fun AetherBottomNavBar(
         stiffness = 380f,
     )
 
+    // SATU-SATUNYA tempat yang menganimasikan pillPosition menuju tab yang
+    // benar-benar terpilih. Baik tap biasa maupun drag-lepas hanya perlu
+    // mengubah selectedIndex (lewat onSelect) dan berhenti di situ — efek
+    // ini yang akan menariknya dengan animasi pegas dari posisi manapun
+    // pill sedang berada saat itu (termasuk dari titik sentuhan tap),
+    // sehingga tidak pernah terjadi rebutan animasi/patah gerak.
     LaunchedEffect(selectedIndex, items.size) {
         previewIndex = selectedIndex
         if (!isDragging) {
@@ -190,17 +211,35 @@ fun AetherBottomNavBar(
         )
     }
 
-    // Peluruhan velocity: begitu jari berhenti bergerak/terlepas, velocity
-    // meluruh halus ke 0 supaya efek jelly mengendur perlahan, bukan
-    // langsung patah ke bentuk normal.
-    LaunchedEffect(isDragging) {
-        if (!isDragging) {
-            val decaySpec = spring<Float>(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessLow,
-            )
+    // Sumber velocity TUNGGAL dan mulus: dibaca dari perubahan aktual
+    // pillPosition.value setiap frame (snapshotFlow), bukan cuma dari
+    // sample event pointer mentah. Ini menangkap pergerakan pill baik
+    // saat DIGESER manual maupun saat ia meluncur sendiri lewat animasi
+    // settle/follow (mis. saat tap memicu pill meregang dari titik sentuh
+    // menuju tab tujuan) — sehingga efek jelly konsisten hidup di semua
+    // jenis interaksi, bukan cuma drag. Exponential smoothing di sini
+    // meredam noise antar-frame supaya squash & stretch mengalir halus.
+    LaunchedEffect(Unit) {
+        snapshotFlow { pillPosition.value }.collect { current ->
+            val rawSample = current - lastAnimatedPosition
+            lastAnimatedPosition = current
+            pillVelocity = pillVelocity + (rawSample - pillVelocity) * 0.45f
+        }
+    }
+
+    // Peluruhan velocity ke nol saat benar-benar diam (tidak digeser & tidak
+    // sedang dianimasikan lagi) — mencegah sisa nilai kecil terus "getar"
+    // tanpa akhir akibat floating point residu dari smoothing di atas.
+    LaunchedEffect(isDragging, pillPosition.isRunning) {
+        if (!isDragging && !pillPosition.isRunning && abs(pillVelocity) > 0.001f) {
             val decayAnim = Animatable(pillVelocity)
-            decayAnim.animateTo(0f, animationSpec = decaySpec) {
+            decayAnim.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow,
+                ),
+            ) {
                 pillVelocity = value
             }
         }
@@ -218,7 +257,7 @@ fun AetherBottomNavBar(
                 val scale = barBulge.value
                 scaleX = scale
                 scaleY = scale
-                transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
+                transformOrigin = TransformOrigin.Center
             }
             .onSizeChanged {
                 barWidthPx = it.width.toFloat()
@@ -269,7 +308,6 @@ fun AetherBottomNavBar(
                             change.consume()
                             val dragRaw = (change.position.x / slotWidthPx) - 0.5f
                             val dragClamped = dragRaw.coerceIn(0f, (items.size - 1).toFloat())
-                            pillVelocity = dragClamped - lastRawPosition
                             lastRawPosition = dragClamped
                             previewIndex = dragClamped.roundToInt().coerceIn(0, items.lastIndex)
                             scope.launch {
@@ -282,18 +320,36 @@ fun AetherBottomNavBar(
                         // onSelect dipanggil SEGERA — tidak menunggu animasi
                         // settle pill selesai — supaya transisi screen dan
                         // pill snap berjalan bersamaan, bukan berurutan.
-                        if (finalIndex != selectedIndex) onSelect(finalIndex)
-                        scope.launch {
-                            pillPosition.animateTo(finalIndex.toFloat(), animationSpec = settleSpec)
+                        // pillPosition SENGAJA tidak dianimasikan di sini:
+                        // begitu selectedIndex berubah, LaunchedEffect di atas
+                        // adalah satu-satunya yang menariknya ke slot final —
+                        // menghindari dua animasi berebut target di saat yang
+                        // sama (penyebab gerakan terlihat patah).
+                        if (finalIndex != selectedIndex) {
+                            onSelect(finalIndex)
+                        } else {
+                            scope.launch {
+                                pillPosition.animateTo(finalIndex.toFloat(), animationSpec = settleSpec)
+                            }
                         }
                     } else {
                         // Tap biasa (jari terangkat sebelum ambang long-press):
-                        // kembalikan pill ke tab aktif, jangan pindah tab dari
-                        // posisi sentuh — tap-to-select tetap lewat onClick item.
+                        // JANGAN animasikan pill kembali ke selectedIndex lama
+                        // di sini — itu sumber bug "jeduk": animasi balik ini
+                        // akan langsung dipotong begitu onClick item memanggil
+                        // onSelect dan LaunchedEffect(selectedIndex) menembak
+                        // target baru, membuat dua animasi saling membatalkan
+                        // dan terlihat seperti lompat instan. Biarkan pill diam
+                        // di titik sentuh; LaunchedEffect(selectedIndex) yang
+                        // akan menariknya dengan satu animasi pegas tunggal
+                        // dan mulus ke tab yang benar-benar dipilih (atau balik
+                        // ke tab semula bila tap ini tidak memicu onSelect).
                         isPressed = false
                         previewIndex = selectedIndex
-                        scope.launch {
-                            pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
+                        if (clampedDown.roundToInt().coerceIn(0, items.lastIndex) == selectedIndex) {
+                            scope.launch {
+                                pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
+                            }
                         }
                     }
                 }
@@ -348,35 +404,6 @@ fun AetherBottomNavBar(
                     tint.copy(alpha = 0.20f),
                 ),
             )
-            val pillSheen = Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.22f),
-                    Color.White.copy(alpha = 0.02f),
-                ),
-            )
-            // Sheen "mirror" — highlight cembung diagonal yang menempel di
-            // pill (bergerak bersamanya lewat translationX di atas), meniru
-            // pantulan cahaya pada permukaan kaca liquid yang melengkung.
-            val mirrorSheen = Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.50f),
-                    Color.White.copy(alpha = 0.06f),
-                    Color.Transparent,
-                    Color.White.copy(alpha = 0.16f),
-                ),
-                start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                end = androidx.compose.ui.geometry.Offset(pillWidthPx * 0.7f, pillHeightPx),
-            )
-            // Refraksi tepi kiri/kanan — garis tegas tipis yang menekuk
-            // terang, khas efek "liquid glass" ala iOS.
-            val edgeRefraction = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.55f),
-                    Color.Transparent,
-                    Color.Transparent,
-                    Color.White.copy(alpha = 0.35f),
-                ),
-            )
 
             Box(
                 modifier = Modifier
@@ -396,12 +423,62 @@ fun AetherBottomNavBar(
                     // sumbernya dengan blur bar) — bukan cuma warna solid.
                     .hazeEffect(state = hazeState, style = HazeMaterials.regular())
                     .background(pillBrush)
-                    .background(pillSheen)
-                    // Lapisan mirror + refraksi tepi, di atas sheen dasar,
-                    // supaya kesan "kaca cembung memantulkan cahaya" hidup
-                    // dan ikut bergerak seiring pill berpindah slot.
-                    .background(mirrorSheen)
-                    .background(edgeRefraction)
+                    // Semua lapisan cahaya (sheen dasar + mirror diagonal +
+                    // refraksi tepi) digambar SEKALIGUS dalam satu Canvas
+                    // lewat drawWithCache, dengan BlendMode.Plus/Screen —
+                    // ini WAJIB dipakai ketimbang menumpuk .background(brush)
+                    // berkali-kali, karena setiap .background() menggambar
+                    // solid di atas hasil sebelumnya (tidak blending cahaya),
+                    // sehingga highlight beralpha rendah saling menutup dan
+                    // efek mirror/liquid nyaris tak kelihatan di layar.
+                    .drawWithCache {
+                        val w = size.width
+                        val h = size.height
+                        // Sheen dasar: gradasi vertikal tipis dari terang di
+                        // atas ke gelap di bawah — dasar "ketebalan" kaca.
+                        val baseSheen = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.24f),
+                                Color.White.copy(alpha = 0.02f),
+                            ),
+                            startY = 0f,
+                            endY = h,
+                        )
+                        // Mirror highlight: bercak terang diagonal cembung
+                        // yang bergerak mengikuti pill (posisinya relatif
+                        // terhadap pill itu sendiri, jadi otomatis ikut
+                        // translationX/Y pill di atas) — meniru pantulan
+                        // cahaya pada permukaan kaca liquid yang melengkung.
+                        val mirrorHighlight = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.65f),
+                                Color.White.copy(alpha = 0.18f),
+                                Color.Transparent,
+                            ),
+                            center = Offset(w * 0.28f, h * 0.12f),
+                            radius = w * 0.55f,
+                        )
+                        // Refraksi tepi kiri & kanan: garis vertikal tipis
+                        // menyala di kedua sisi, khas distorsi cahaya pada
+                        // pinggiran kaca cembung ala iOS liquid glass.
+                        val edgeLeft = Brush.horizontalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.55f), Color.Transparent),
+                            startX = 0f,
+                            endX = w * 0.16f,
+                        )
+                        val edgeRight = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.40f)),
+                            startX = w * 0.84f,
+                            endX = w,
+                        )
+                        onDrawWithContent {
+                            drawContent()
+                            drawRect(brush = baseSheen, blendMode = BlendMode.Plus)
+                            drawRect(brush = mirrorHighlight, blendMode = BlendMode.Plus)
+                            drawRect(brush = edgeLeft, blendMode = BlendMode.Plus)
+                            drawRect(brush = edgeRight, blendMode = BlendMode.Plus)
+                        }
+                    }
                     .border(
                         width = 1.dp,
                         color = tint.copy(alpha = 0.55f),
