@@ -8,7 +8,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -52,6 +54,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * Navbar bawah bergaya "Liquid Glass" ala iOS 26 (rujukan: tab bar
@@ -113,11 +116,16 @@ fun AetherBottomNavBar(
     val pillPosition = remember { Animatable(selectedIndex.toFloat()) }
     var previewIndex by remember { mutableStateOf(selectedIndex) }
     var isDragging by remember { mutableStateOf(false) }
+    // Ditekan TAPI belum tentu jadi drag — dipisah dari isDragging supaya
+    // pill bisa langsung "menyembul" begitu jari menyentuh, tanpa menunggu
+    // ambang waktu long-press yang dipakai detectDragGesturesAfterLongPress
+    // (itu jeda yang terasa seperti "delay" sebelumnya).
+    var isPressed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val settleSpec = spring<Float>(
         dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow,
+        stiffness = Spring.StiffnessMedium,
     )
 
     LaunchedEffect(selectedIndex, items.size) {
@@ -127,13 +135,13 @@ fun AetherBottomNavBar(
         }
     }
 
-    // Efek "menyembul": pill membesar melampaui tinggi normal bar saat
-    // ditahan, lalu mengempis kembali saat dilepas — pegas lembut biar
-    // terasa kenyal/liquid, bukan patah-patah.
+    // Efek "menyembul": pill membesar melampaui tinggi normal bar begitu
+    // jari MENYENTUH (isPressed), bukan baru saat drag resmi terdeteksi —
+    // supaya responnya instan, lalu mengempis kembali saat jari dilepas.
     val pillBulge = remember { Animatable(1f) }
-    LaunchedEffect(isDragging) {
+    LaunchedEffect(isPressed) {
         pillBulge.animateTo(
-            targetValue = if (isDragging) 1.22f else 1f,
+            targetValue = if (isPressed) 1.22f else 1f,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessMedium,
@@ -153,37 +161,65 @@ fun AetherBottomNavBar(
             }
             .pointerInput(items.size, slotWidthPx) {
                 if (slotWidthPx <= 0f) return@pointerInput
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
+                awaitEachGesture {
+                    // down: feedback instan (bulge) di posisi sentuhan,
+                    // tanpa menunggu apakah ini akan jadi long-press/drag.
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    isPressed = true
+                    val raw = (down.position.x / slotWidthPx) - 0.5f
+                    val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
+                    previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
+                    scope.launch { pillPosition.snapTo(clamped) }
+
+                    // Tunggu ambang long-press sambil tetap memantau apakah
+                    // jari terangkat lebih dulu (berarti ini tap biasa).
+                    val becameDrag = try {
+                        withTimeout(viewConfiguration.longPressTimeoutMillis) {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                if (change == null || !change.pressed) return@withTimeout
+                            }
+                        }
+                        false
+                    } catch (timeout: PointerEventTimeoutCancellationException) {
+                        true
+                    }
+
+                    if (becameDrag) {
                         isDragging = true
-                        val raw = (offset.x / slotWidthPx) - 0.5f
-                        val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
-                        previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
-                        scope.launch { pillPosition.snapTo(clamped) }
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        val raw = (change.position.x / slotWidthPx) - 0.5f
-                        val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
-                        previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
-                        scope.launch { pillPosition.snapTo(clamped) }
-                    },
-                    onDragEnd = {
+                        // Loop drag: ikuti jari sampai terangkat.
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) break
+                            change.consume()
+                            val dragRaw = (change.position.x / slotWidthPx) - 0.5f
+                            val dragClamped = dragRaw.coerceIn(0f, (items.size - 1).toFloat())
+                            previewIndex = dragClamped.roundToInt().coerceIn(0, items.lastIndex)
+                            scope.launch { pillPosition.snapTo(dragClamped) }
+                        }
                         isDragging = false
+                        isPressed = false
                         val finalIndex = previewIndex
+                        // onSelect dipanggil SEGERA — tidak menunggu animasi
+                        // settle pill selesai — supaya transisi screen dan
+                        // pill snap berjalan bersamaan, bukan berurutan.
+                        if (finalIndex != selectedIndex) onSelect(finalIndex)
                         scope.launch {
                             pillPosition.animateTo(finalIndex.toFloat(), animationSpec = settleSpec)
                         }
-                        if (finalIndex != selectedIndex) onSelect(finalIndex)
-                    },
-                    onDragCancel = {
-                        isDragging = false
+                    } else {
+                        // Tap biasa (jari terangkat sebelum ambang long-press):
+                        // kembalikan pill ke tab aktif, jangan pindah tab dari
+                        // posisi sentuh — tap-to-select tetap lewat onClick item.
+                        isPressed = false
                         previewIndex = selectedIndex
                         scope.launch {
                             pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
                         }
-                    },
-                )
+                    }
+                }
             },
     ) {
         // Kaca bar (di-clip ke bentuk kapsul) — lapis terpisah PALING BAWAH,
@@ -226,6 +262,12 @@ fun AetherBottomNavBar(
                     tint.copy(alpha = 0.20f),
                 ),
             )
+            val pillSheen = Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.22f),
+                    Color.White.copy(alpha = 0.02f),
+                ),
+            )
 
             Box(
                 modifier = Modifier
@@ -235,13 +277,17 @@ fun AetherBottomNavBar(
                     }
                     .size(width = pillWidthDp, height = pillHeightDp)
                     .shadow(
-                        elevation = if (isDragging) 10.dp else 0.dp,
+                        elevation = if (isPressed) 10.dp else 0.dp,
                         shape = RoundedCornerShape(50),
                         ambientColor = tint.copy(alpha = 0.4f),
                         spotColor = tint.copy(alpha = 0.5f),
                     )
                     .clip(RoundedCornerShape(50))
+                    // Blur kaca NYATA dari konten di belakang pill (sama
+                    // sumbernya dengan blur bar) — bukan cuma warna solid.
+                    .hazeEffect(state = hazeState, style = HazeMaterials.regular())
                     .background(pillBrush)
+                    .background(pillSheen)
                     .border(
                         width = 1.dp,
                         color = tint.copy(alpha = 0.55f),
