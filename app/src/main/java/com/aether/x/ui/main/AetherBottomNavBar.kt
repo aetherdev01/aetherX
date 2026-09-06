@@ -1,9 +1,18 @@
 package com.aether.x.ui.main
 
+import android.graphics.RenderEffect as AndroidRenderEffect
+import android.graphics.RuntimeShader
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -42,11 +51,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,6 +94,49 @@ import kotlinx.coroutines.withTimeout
  *    posisi pill, mensimulasikan pantulan cahaya pada permukaan kaca
  *    cembung (efek "mirror" liquid glass).
  */
+// Shader AGSL (RuntimeShader, Android 13+/Tiramisu) yang membiaskan konten
+// kapsul secara NYATA per-piksel — bukan gradient tiruan. Tiga hal dilakukan
+// sekaligus di sini:
+// 1. Bulge/barrel distortion: sampel ditekuk ke arah pusat sebanding jarak
+//    dari tepi, mensimulasikan permukaan kaca cembung yang membiaskan
+//    (refract) apa pun di baliknya — inilah "background distortion".
+// 2. Chromatic fringe tipis di sekitar sampel yang sama (sampel R & B
+//    digeser sedikit dari G) — "subtle refraction" khas lensa/kaca tebal,
+//    dijaga sangat halus supaya tidak terlihat seperti glitch RGB split.
+// 3. Highlight yang "memantul" bolak-balik melintasi kapsul (uniform
+//    bouncePhase, digerakkan dari Compose) — realistic reflections yang
+//    benar-benar bergerak, bukan cuma titik statis.
+private const val LIQUID_GLASS_CAPSULE_SHADER = """
+    uniform shader content;
+    uniform float2 resolution;
+    uniform float bouncePhase;
+    uniform float energy;
+
+    half4 main(float2 fragCoord) {
+        float2 uv = fragCoord / resolution;
+        float2 p = uv * 2.0 - 1.0;
+        float r = length(p);
+
+        float edge = smoothstep(0.12, 1.05, r);
+        float2 bent = p * (1.0 - edge * 0.075);
+        float2 baseUv = clamp(bent * 0.5 + 0.5, float2(0.002), float2(0.998));
+
+        float2 fringe = p * edge * 0.0022;
+        half redSample = content.eval(clamp(baseUv + fringe, float2(0.0), float2(1.0)) * resolution).r;
+        half4 baseSample = content.eval(baseUv * resolution);
+        half blueSample = content.eval(clamp(baseUv - fringe, float2(0.0), float2(1.0)) * resolution).b;
+
+        half4 refracted = half4(redSample, baseSample.g, blueSample, baseSample.a);
+
+        float sweep = mix(-0.35, 1.35, bouncePhase);
+        float bandDist = abs((uv.x - sweep) + (uv.y - 0.5) * 0.4);
+        float band = (1.0 - smoothstep(0.0, 0.24, bandDist)) * 0.5 * energy;
+
+        half3 lit = refracted.rgb + half3(band);
+        return half4(lit, refracted.a);
+    }
+"""
+
 data class AetherNavItem(
     val icon: ImageVector,
     val label: String,
@@ -99,6 +153,33 @@ fun AetherBottomNavBar(
     val barShape = RoundedCornerShape(percent = 50)
     val outline = MaterialTheme.colorScheme.outline
     val density = LocalDensity.current
+
+    // Dukungan lensa liquid glass NYATA (AGSL RuntimeShader) hanya ada mulai
+    // Android 13 (Tiramisu). Di bawah itu, kapsul tetap tampil lewat lapisan
+    // highlight gradient (drawWithCache di bawah) tanpa distorsi/refraksi
+    // per-piksel — jadi tetap terlihat baik, hanya tanpa efek lensa nyata.
+    val pillShader = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            RuntimeShader(LIQUID_GLASS_CAPSULE_SHADER)
+        } else {
+            null
+        }
+    }
+
+    // Fase "memantul" (bounce) yang berjalan pelan bolak-balik 0..1..0 tanpa
+    // henti — sumber gerak untuk SEMUA highlight/refleksi di dalam kapsul
+    // (baik lewat shader maupun lewat gradient biasa), supaya kesan "cahaya
+    // memantul di dalam kaca cair" tetap hidup walau kapsul tidak disentuh.
+    val bounceTransition = rememberInfiniteTransition(label = "liquidGlassBounce")
+    val bouncePhase by bounceTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "bouncePhase",
+    )
 
     val glassRim = Brush.verticalGradient(
         colors = listOf(
@@ -377,6 +458,29 @@ fun AetherBottomNavBar(
                 .clip(barShape)
                 .hazeEffect(state = hazeState, style = HazeMaterials.thin())
                 .background(glassSheen)
+                .drawWithCache {
+                    val w = size.width
+                    val h = size.height
+                    // Sapuan cahaya sangat tipis yang ikut bergerak bolak-
+                    // balik di sepanjang KACA BAR (pakai bouncePhase yang
+                    // sama dengan pill) — supaya seluruh kapsul terasa satu
+                    // material liquid yang menyatu, bukan bar diam kaku
+                    // dengan hanya pill di dalamnya yang "hidup".
+                    val sweepX = lerp(-0.25f, 1.25f, bouncePhase) * w
+                    val barSweep = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.10f),
+                            Color.Transparent,
+                        ),
+                        start = Offset(sweepX - w * 0.3f, 0f),
+                        end = Offset(sweepX + w * 0.3f, h),
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(brush = barSweep)
+                    }
+                }
                 .border(width = 1.dp, brush = glassRim, shape = barShape),
         )
 
@@ -403,6 +507,13 @@ fun AetherBottomNavBar(
             val pillHeightDp = with(density) { pillHeightPx.toDp() }
             val offsetXDp = with(density) { (centerX - pillWidthPx / 2f).toDp() }
             val offsetYDp = with(density) { ((barHeightPx - pillHeightPx) / 2f).toDp() }
+
+            // Energi highlight: naik saat kapsul ditekan/digeser sehingga
+            // refleksi terasa BEREAKSI terhadap sentuhan (seperti liquid
+            // glass asli), bukan animasi ambien yang berjalan sendiri tanpa
+            // peduli interaksi pengguna.
+            val dragEnergy = (0.45f + (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.35f +
+                (if (isPressed) 0.2f else 0f)).coerceIn(0.45f, 1f)
 
             val tint = MaterialTheme.colorScheme.primary
 
@@ -434,6 +545,24 @@ fun AetherBottomNavBar(
                         spotColor = tint.copy(alpha = 0.5f),
                     )
                     .clip(RoundedCornerShape(50))
+                    .graphicsLayer {
+                        // Lensa liquid glass NYATA (bukan gradient tiruan):
+                        // membiaskan & mendistorsi konten kaca (blur + highlight
+                        // + border di bawah) lewat AGSL RuntimeShader, plus
+                        // menambahkan pantulan cahaya yang bergerak bolak-balik.
+                        // Hanya tersedia di Android 13+; di bawah itu properti
+                        // ini dibiarkan null (tidak ada distorsi tambahan) dan
+                        // kapsul tetap tampil lewat highlight gradient biasa
+                        // (lihat drawWithCache di bawah, termasuk fallbackSweep).
+                        if (pillShader != null) {
+                            pillShader.setFloatUniform("resolution", pillWidthPx, pillHeightPx)
+                            pillShader.setFloatUniform("bouncePhase", bouncePhase)
+                            pillShader.setFloatUniform("energy", dragEnergy)
+                            renderEffect = AndroidRenderEffect
+                                .createRuntimeShaderEffect(pillShader, "content")
+                                .asComposeRenderEffect()
+                        }
+                    }
                     // Blur kaca NYATA dari konten di belakang pill (sama
                     // sumbernya dengan blur bar) — bukan cuma warna solid.
                     .hazeEffect(state = hazeState, style = HazeMaterials.regular())
@@ -453,29 +582,36 @@ fun AetherBottomNavBar(
                     .drawWithCache {
                         val w = size.width
                         val h = size.height
-                        // Mirror highlight: SATU bercak terang di pojok
-                        // kiri-atas, memudar cepat ke transparan — ini yang
-                        // memberi kesan "pantulan cahaya di permukaan kaca
-                        // cembung", dan harus kontras/kecil, bukan menyebar
-                        // rata ke seluruh pill.
+                        // Mirror highlight utama — BERGESER mengikuti
+                        // bouncePhase (0..1..0, pegas bolak-balik) supaya
+                        // bercak terang ini terasa "memantul"/bergoyang di
+                        // dalam kapsul, bukan diam di satu titik selamanya.
+                        // Tetap kontras/kecil (radial, satu titik), bukan
+                        // menyebar rata ke seluruh pill.
                         val mirrorHighlight = Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.85f),
-                                Color.White.copy(alpha = 0.25f),
+                                Color.White.copy(alpha = 0.85f * dragEnergy),
+                                Color.White.copy(alpha = 0.25f * dragEnergy),
                                 Color.Transparent,
                             ),
-                            center = Offset(w * 0.24f, h * 0.10f),
+                            center = Offset(
+                                lerp(w * 0.14f, w * 0.36f, bouncePhase),
+                                h * (0.08f + 0.05f * bouncePhase),
+                            ),
                             radius = w * 0.42f,
                         )
-                        // Refleksi sekunder redup di pojok kanan-bawah —
-                        // liquid glass iOS punya dua titik highlight (satu
-                        // dominan, satu samar) supaya kesan cembungnya nyata.
+                        // Refleksi sekunder redup, bergerak BERLAWANAN arah
+                        // dari highlight utama — dua titik pantulan yang
+                        // saling menjauh/mendekat, meniru cahaya yang
+                        // memantul-mantul di permukaan cair cembung (liquid
+                        // glass iOS selalu punya dua titik highlight: satu
+                        // dominan, satu samar).
                         val counterHighlight = Brush.radialGradient(
                             colors = listOf(
                                 Color.White.copy(alpha = 0.18f),
                                 Color.Transparent,
                             ),
-                            center = Offset(w * 0.82f, h * 0.92f),
+                            center = Offset(lerp(w * 0.92f, w * 0.68f, bouncePhase), h * 0.92f),
                             radius = w * 0.35f,
                         )
                         // Refraksi tepi kiri & kanan — garis vertikal tipis
@@ -501,6 +637,28 @@ fun AetherBottomNavBar(
                             startY = h * 0.55f,
                             endY = h,
                         )
+                        // Sapuan cahaya diagonal tambahan yang bolak-balik
+                        // melintasi kapsul — HANYA dipakai saat shader lensa
+                        // (Android 13+, lihat graphicsLayer di atas) tidak
+                        // tersedia, supaya device lama tetap dapat kesan
+                        // "memantul" yang jelas tanpa perlu RuntimeShader.
+                        // Di device yang sudah pakai shader, sapuan serupa
+                        // (plus refraksi & distorsi latar) sudah dibuat di
+                        // dalamnya — jadi tidak digambar dobel di sini.
+                        val fallbackSweep = if (pillShader == null) {
+                            val sweepX = lerp(-0.3f, 1.3f, bouncePhase) * w
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = 0.30f * dragEnergy),
+                                    Color.Transparent,
+                                ),
+                                start = Offset(sweepX - w * 0.22f, 0f),
+                                end = Offset(sweepX + w * 0.22f, h),
+                            )
+                        } else {
+                            null
+                        }
                         onDrawWithContent {
                             drawContent()
                             drawRect(brush = bottomTint)
@@ -508,6 +666,7 @@ fun AetherBottomNavBar(
                             drawRect(brush = edgeRight)
                             drawRect(brush = counterHighlight)
                             drawRect(brush = mirrorHighlight)
+                            fallbackSweep?.let { drawRect(brush = it) }
                         }
                     }
                     .border(
