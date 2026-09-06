@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
@@ -20,7 +21,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
@@ -29,6 +36,7 @@ import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
+import kotlin.math.roundToInt
 
 private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 
@@ -47,7 +55,24 @@ fun MainScreen(
         listOf(MainTab.TWEAK, MainTab.MEMBERSHIP, MainTab.ABOUT, MainTab.SETTINGS)
     }
 
+    // Navbar ala iOS 26: menyembunyikan diri (geser ke bawah) saat konten
+    // di-scroll ke bawah, dan muncul lagi saat di-scroll ke atas. Tinggi bar
+    // diukur otomatis lewat onSizeChanged, jadi tidak perlu angka hardcode
+    // yang bisa basi kalau tampilan navbar berubah lagi nanti.
+    var navBarHeightPx by remember { mutableStateOf(0f) }
+    var navBarOffsetPx by remember { mutableStateOf(0f) }
+    val navBarScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val newOffset = navBarOffsetPx + available.y
+                navBarOffsetPx = newOffset.coerceIn(-navBarHeightPx, 0f)
+                return Offset.Zero
+            }
+        }
+    }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(navBarScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             AetherBottomNavBar(
@@ -59,6 +84,9 @@ fun MainScreen(
                 ),
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index -> selectedTab = navItems[index] },
+                modifier = Modifier
+                    .onSizeChanged { navBarHeightPx = it.height.toFloat() }
+                    .offset { IntOffset(x = 0, y = -navBarOffsetPx.roundToInt()) },
             )
         },
     ) { padding ->
