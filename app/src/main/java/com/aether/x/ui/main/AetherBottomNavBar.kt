@@ -55,7 +55,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -68,6 +67,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
@@ -415,7 +415,7 @@ fun AetherBottomNavBar(
                             }
                         }
                         false
-                    } catch (timeout: PointerEventTimeoutCancellationException) {
+                    } catch (timeout: TimeoutCancellationException) {
                         true
                     }
 
@@ -723,15 +723,15 @@ fun AetherBottomNavBar(
                     }
                     .border(
                         width = 1.dp,
-                        // Rim border liquid glass: gradasi dari terang
-                        // (rim highlight kaca) di atas ke tint tema tipis di
-                        // bawah — bukan warna tema solid di keliling penuh
-                        // seperti sebelumnya (itu salah satu penyebab pill
-                        // terlihat "outline teal tebal" alih-alih rim kaca).
+                        // Stroke tipis netral abu-abu/putih halus — sengaja
+                        // TIDAK memakai tint tema lagi (sebelumnya gradasi
+                        // turun ke warna tema di bagian bawah), supaya rim
+                        // kapsul terlihat kaca bening biasa, bukan dicat
+                        // warna tema.
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.65f),
-                                tint.copy(alpha = 0.45f),
+                                Color.White.copy(alpha = 0.55f),
+                                Color.White.copy(alpha = 0.18f),
                             ),
                         ),
                         shape = RoundedCornerShape(50),
