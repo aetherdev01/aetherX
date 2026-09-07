@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemGestureExclusion
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -343,12 +344,24 @@ fun AetherBottomNavBar(
                 barWidthPx = it.width.toFloat()
                 barHeightPx = it.height.toFloat()
             }
+            // Tab paling kiri (Dashboard) & paling kanan bisa tumpang tindih
+            // zona predictive-back-gesture sistem di tepi layar (gesture-nav
+            // devices) — tanpa ini, tap di area itu kadang "dimakan" sistem
+            // duluan sebelum sampai ke pointerInput di bawah, sehingga pill
+            // sama sekali tidak bereaksi walau jari benar-benar menyentuh
+            // tab-nya.
+            .systemGestureExclusion()
             .pointerInput(items.size, slotWidthPx) {
                 if (slotWidthPx <= 0f) return@pointerInput
                 awaitEachGesture {
                     // down: feedback instan (bulge) di posisi sentuhan,
                     // tanpa menunggu apakah ini akan jadi long-press/drag.
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    // Consume SEGERA — mengklaim gesture ini sebagai milik
+                    // navbar, supaya tidak ada arbitrase ambigu dengan
+                    // detector lain (nested scroll Scaffold, dsb.) yang bisa
+                    // bikin down event "direbut" sebelum sempat diproses.
+                    down.consume()
                     isPressed = true
                     val rawDown = (down.position.x / slotWidthPx) - 0.5f
                     val clampedDown = rawDown.coerceIn(0f, (items.size - 1).toFloat())
@@ -361,18 +374,25 @@ fun AetherBottomNavBar(
 
                     // Tunggu ambang long-press sambil tetap memantau apakah
                     // jari terangkat lebih dulu (berarti ini tap biasa).
+                    // Setiap event SELAMA jendela tunggu ini juga dikonsumsi
+                    // (sebelumnya tidak) — kalau dibiarkan un-consumed,
+                    // detector lain di ancestor bisa ikut memproses gesture
+                    // yang sama dan membuat loop ini tidak pernah melihat
+                    // event "up" secara normal.
                     val becameDrag = try {
                         withTimeout(viewConfiguration.longPressTimeoutMillis) {
                             while (true) {
                                 val event = awaitPointerEvent()
                                 val change = event.changes.firstOrNull { it.id == down.id }
                                 if (change == null || !change.pressed) return@withTimeout
+                                change.consume()
                             }
                         }
                         false
                     } catch (timeout: PointerEventTimeoutCancellationException) {
                         true
                     }
+
 
                     if (becameDrag) {
                         isDragging = true
@@ -694,33 +714,59 @@ fun AetherBottomNavBar(
                         shape = RoundedCornerShape(50),
                     ),
             ) {
-                // Refleksi cermin ikon — bukan cuma highlight cahaya, tapi
-                // BAYANGAN ikon itu sendiri, dibalik vertikal (scaleY = -1f)
-                // dan memudar ke bawah, seolah ikon di atas kapsul terpantul
-                // di permukaan kaca cair di bawahnya (gaya reflection Aqua).
-                // Label TIDAK ikut dipantulkan — di ukuran labelSmall,
-                // teks terbalik cuma jadi noise, bukan menambah realisme.
+                // Refleksi cermin ikon di TEPI kapsul (kiri & kanan), bukan
+                // di bawah — khas Liquid Glass iOS 26: kapsul ini lonjong
+                // horizontal, jadi lengkungan permukaannya paling tajam di
+                // kedua ujung bulat, bukan di atas/bawah (yang relatif
+                // datar). Di situlah pembiasan/pantulan paling terasa,
+                // seolah ikon "tertarik & terpantul cermin" ke arah kedua
+                // ujung — bukan sekadar bayangan jatuh di bawah ikon.
+                // Paling jelas TEPAT di tepi, memudar ke arah tengah kapsul
+                // (arah fade sama seperti edgeLeft/edgeRight di atas).
+                // Label tidak ikut dipantulkan (kekecilan, jadi noise).
                 if (reflectedItem != null) {
+                    val reflectionAlpha = (0.30f + dragEnergy * 0.15f).coerceIn(0.30f, 0.45f)
                     Icon(
                         imageVector = reflectedItem.icon,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 3.dp)
-                            .size(20.dp)
+                            .align(Alignment.CenterStart)
+                            .padding(start = 2.dp)
+                            .size(16.dp)
                             .graphicsLayer {
-                                scaleY = -1f
-                                alpha = (0.30f + dragEnergy * 0.15f).coerceIn(0.30f, 0.45f)
+                                scaleX = -1f
+                                alpha = reflectionAlpha
                             }
                             .drawWithContent {
                                 drawContent()
-                                // Mask fade: bagian ATAS ikon terbalik (=tepi
-                                // yang paling dekat dengan ikon asli di atas)
-                                // paling jelas, memudar total ke arah bawah.
+                                // Jelas di tepi kiri kapsul, memudar ke tengah.
                                 drawRect(
-                                    brush = Brush.verticalGradient(
+                                    brush = Brush.horizontalGradient(
                                         colors = listOf(Color.Black, Color.Transparent),
+                                    ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            },
+                    )
+                    Icon(
+                        imageVector = reflectedItem.icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 2.dp)
+                            .size(16.dp)
+                            .graphicsLayer {
+                                scaleX = -1f
+                                alpha = reflectionAlpha
+                            }
+                            .drawWithContent {
+                                drawContent()
+                                // Jelas di tepi kanan kapsul, memudar ke tengah.
+                                drawRect(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black),
                                     ),
                                     blendMode = BlendMode.DstIn,
                                 )
