@@ -54,7 +54,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
@@ -232,21 +231,29 @@ fun AetherBottomNavBar(
     var lastAnimatedPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
 
     // Spring "settle" untuk perpindahan tab yang sudah final (lepas jari /
-    // tap) — sedikit overshoot pegas supaya berhenti terasa kenyal. Dipakai
-    // sebagai SATU-SATUNYA jalur animasi menuju selectedIndex, supaya tidak
-    // pernah ada dua animasi berebut pillPosition di saat bersamaan (itu
-    // penyebab pill terlihat "jeduk"/instan saat tap-select tab jauh).
+    // tap) — dibuat lebih lembut & lebih kenyal di ujungnya dibanding
+    // sebelumnya: stiffness diturunkan (StiffnessMedium -> StiffnessMediumLow)
+    // supaya perjalanan pill antar-tab tidak terasa "meloncat" cepat/kaku,
+    // dan dampingRatio diturunkan sedikit (MediumBouncy -> ambang antara
+    // Medium & Low) supaya overshoot di akhir gerakan lebih terasa "jelly"
+    // sebelum berhenti — bukan berhenti mendadak begitu sampai target.
+    // Dipakai sebagai SATU-SATUNYA jalur animasi menuju selectedIndex,
+    // supaya tidak pernah ada dua animasi berebut pillPosition di saat
+    // bersamaan (itu penyebab pill terlihat "jeduk"/instan saat tap-select
+    // tab jauh).
     val settleSpec = spring<Float>(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessMedium,
+        dampingRatio = 0.55f,
+        stiffness = 210f,
     )
     // Spring "follow" dipakai SELAMA jari menahan & menggeser — redaman
     // lebih tinggi (kurang mantul) tapi kekakuan lebih rendah dari settle,
     // supaya pill terasa "berat/kenyal" mengikuti jari (ala iOS 26) alih-
-    // alih menempel mentah 1:1 pada posisi sentuhan setiap frame.
+    // alih menempel mentah 1:1 pada posisi sentuhan setiap frame. Stiffness
+    // diturunkan sedikit dari sebelumnya (380 -> 300) supaya gerak mengikuti
+    // jari terasa lebih mengalir/tidak kaku, sambil tetap cukup responsif.
     val followSpec = spring<Float>(
         dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = 380f,
+        stiffness = 300f,
     )
 
     // SATU-SATUNYA tempat yang menganimasikan pillPosition menuju tab yang
@@ -351,9 +358,28 @@ fun AetherBottomNavBar(
             // sama sekali tidak bereaksi walau jari benar-benar menyentuh
             // tab-nya.
             .systemGestureExclusion()
-            .pointerInput(items.size, slotWidthPx) {
-                if (slotWidthPx <= 0f) return@pointerInput
+            // PENTING: kunci pointerInput HANYA pada items.size, BUKAN pada
+            // slotWidthPx (Float hasil pengukuran layout). slotWidthPx bisa
+            // sedikit "jitter" antar-frame — misalnya saat barBulge/graphics
+            // Layer mengubah skala bar, atau saat AnimatedContent di
+            // MainScreen memicu reflow konten di atasnya — dan Compose akan
+            // MEMBATALKAN lalu me-restart seluruh coroutine pointerInput
+            // (termasuk loop awaitEachGesture yang sedang berjalan) setiap
+            // kali key berubah. Kalau restart ini kebetulan terjadi PERSIS
+            // di antara event down dan up jari (down sudah diproses, tapi
+            // sebelum up sempat terbaca), gesture lama mati begitu saja
+            // tanpa pernah memanggil onSelect — up jari berikutnya ditangkap
+            // oleh instance awaitEachGesture yang BARU, yang menganggapnya
+            // sebagai down baru. Inilah sebab bug "tap Dashboard dari tab
+            // lain kadang tidak masuk": slot pertama/terakhir paling sering
+            // kena reflow tepi saat transisi tab lain berlangsung. slotWidth
+            // yang dipakai DI DALAM gesture sekarang dibaca live dari
+            // barWidthPx terkini (lewat currentSlotWidth di bawah), bukan
+            // dari nilai yang di-capture saat gesture pertama kali dimulai.
+            .pointerInput(items.size) {
                 awaitEachGesture {
+                    val currentSlotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
+                    if (currentSlotWidth <= 0f) return@awaitEachGesture
                     // down: feedback instan (bulge) di posisi sentuhan,
                     // tanpa menunggu apakah ini akan jadi long-press/drag.
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -363,7 +389,7 @@ fun AetherBottomNavBar(
                     // bikin down event "direbut" sebelum sempat diproses.
                     down.consume()
                     isPressed = true
-                    val rawDown = (down.position.x / slotWidthPx) - 0.5f
+                    val rawDown = (down.position.x / currentSlotWidth) - 0.5f
                     val clampedDown = rawDown.coerceIn(0f, (items.size - 1).toFloat())
                     lastRawPosition = clampedDown
                     pillVelocity = 0f
@@ -406,7 +432,7 @@ fun AetherBottomNavBar(
                             val change = event.changes.firstOrNull { it.id == down.id }
                             if (change == null || !change.pressed) break
                             change.consume()
-                            val dragRaw = (change.position.x / slotWidthPx) - 0.5f
+                            val dragRaw = (change.position.x / currentSlotWidth) - 0.5f
                             val dragClamped = dragRaw.coerceIn(0f, (items.size - 1).toFloat())
                             lastRawPosition = dragClamped
                             previewIndex = dragClamped.roundToInt().coerceIn(0, items.lastIndex)
@@ -519,9 +545,13 @@ fun AetherBottomNavBar(
             // Semakin cepat pill bergeser, semakin ia melebar horizontal
             // dan memipih vertikal (seperti tetesan cair yang ditarik),
             // lalu membulat kembali begitu berhenti/melambat.
+            // Rentang squash & stretch sedikit diperlebar (0.26/0.16 ->
+            // 0.30/0.20) supaya efek jelly di akhir gerakan (saat velocity
+            // masih sisa sebelum meluruh ke nol berkat settleSpec yang kini
+            // lebih lembut) terasa lebih kenyal, bukan cuma di tengah gerak.
             val speed = abs(pillVelocity).coerceIn(0f, 0.6f)
-            val stretchFactor = 1f + (speed / 0.6f) * 0.26f
-            val squashFactor = 1f - (speed / 0.6f) * 0.16f
+            val stretchFactor = 1f + (speed / 0.6f) * 0.30f
+            val squashFactor = 1f - (speed / 0.6f) * 0.20f
 
             val pillWidthPx = pillWidth * (0.92f + 0.08f * bulge) * stretchFactor
             val pillHeightPx = pillHeightBase * bulge * squashFactor
@@ -536,13 +566,6 @@ fun AetherBottomNavBar(
             // peduli interaksi pengguna.
             val dragEnergy = (0.45f + (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.35f +
                 (if (isPressed) 0.2f else 0f)).coerceIn(0.45f, 1f)
-
-            // Item yang lagi "diwakili" pill saat ini (dibulatkan dari posisi
-            // pecahan selama drag/settle) — dipakai untuk menggambar refleksi
-            // cermin ikon di dalam kapsul, bukan cuma highlight cahaya.
-            val reflectedItem = items.getOrNull(
-                pillPosition.value.roundToInt().coerceIn(0, items.lastIndex),
-            )
 
             val tint = MaterialTheme.colorScheme.primary
 
@@ -714,65 +737,34 @@ fun AetherBottomNavBar(
                         shape = RoundedCornerShape(50),
                     ),
             ) {
-                // Refleksi cermin ikon di TEPI kapsul (kiri & kanan), bukan
-                // di bawah — khas Liquid Glass iOS 26: kapsul ini lonjong
-                // horizontal, jadi lengkungan permukaannya paling tajam di
-                // kedua ujung bulat, bukan di atas/bawah (yang relatif
-                // datar). Di situlah pembiasan/pantulan paling terasa,
-                // seolah ikon "tertarik & terpantul cermin" ke arah kedua
-                // ujung — bukan sekadar bayangan jatuh di bawah ikon.
-                // Paling jelas TEPAT di tepi, memudar ke arah tengah kapsul
-                // (arah fade sama seperti edgeLeft/edgeRight di atas).
-                // Label tidak ikut dipantulkan (kekecilan, jadi noise).
-                if (reflectedItem != null) {
-                    val reflectionAlpha = (0.30f + dragEnergy * 0.15f).coerceIn(0.30f, 0.45f)
-                    Icon(
-                        imageVector = reflectedItem.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 2.dp)
-                            .size(16.dp)
-                            .graphicsLayer {
-                                scaleX = -1f
-                                alpha = reflectionAlpha
-                            }
-                            .drawWithContent {
-                                drawContent()
-                                // Jelas di tepi kiri kapsul, memudar ke tengah.
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(Color.Black, Color.Transparent),
-                                    ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            },
-                    )
-                    Icon(
-                        imageVector = reflectedItem.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 2.dp)
-                            .size(16.dp)
-                            .graphicsLayer {
-                                scaleX = -1f
-                                alpha = reflectionAlpha
-                            }
-                            .drawWithContent {
-                                drawContent()
-                                // Jelas di tepi kanan kapsul, memudar ke tengah.
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black),
-                                    ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            },
-                    )
-                }
+                // Sheen kaca ala iOS (rujukan: pill "Arcade" di App Store) —
+                // BUKAN lagi refleksi cermin ikon yang dipantulkan/di-mirror
+                // di tepi kapsul (versi sebelumnya, terlihat seperti ikon
+                // ganda yang janggal). Sekarang hanya satu pita highlight
+                // melengkung tipis di tepi ATAS kapsul, memudar ke bawah —
+                // mensimulasikan cahaya yang menggelincir di permukaan kaca
+                // cembung tanpa menduplikasi ikon apa pun. Ikon & label tab
+                // di lapis atas (NavBarItem) tetap satu-satunya representasi
+                // visual dari tab tersebut.
+                val sheenAlpha = (0.16f + dragEnergy * 0.10f).coerceIn(0.16f, 0.26f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.55f)
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 10.dp)
+                        .padding(top = 3.dp)
+                        .clip(RoundedCornerShape(topStart = 50f, topEnd = 50f, bottomStart = 50f, bottomEnd = 50f))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = sheenAlpha),
+                                    Color.White.copy(alpha = sheenAlpha * 0.35f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
             }
         }
 
