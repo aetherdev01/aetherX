@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
@@ -515,6 +516,13 @@ fun AetherBottomNavBar(
             val dragEnergy = (0.45f + (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.35f +
                 (if (isPressed) 0.2f else 0f)).coerceIn(0.45f, 1f)
 
+            // Item yang lagi "diwakili" pill saat ini (dibulatkan dari posisi
+            // pecahan selama drag/settle) — dipakai untuk menggambar refleksi
+            // cermin ikon di dalam kapsul, bukan cuma highlight cahaya.
+            val reflectedItem = items.getOrNull(
+                pillPosition.value.roundToInt().coerceIn(0, items.lastIndex),
+            )
+
             val tint = MaterialTheme.colorScheme.primary
 
             // Dasar pill liquid glass ala iOS: HAMPIR NETRAL, bukan tint
@@ -684,7 +692,41 @@ fun AetherBottomNavBar(
                         ),
                         shape = RoundedCornerShape(50),
                     ),
-            )
+            ) {
+                // Refleksi cermin ikon — bukan cuma highlight cahaya, tapi
+                // BAYANGAN ikon itu sendiri, dibalik vertikal (scaleY = -1f)
+                // dan memudar ke bawah, seolah ikon di atas kapsul terpantul
+                // di permukaan kaca cair di bawahnya (gaya reflection Aqua).
+                // Label TIDAK ikut dipantulkan — di ukuran labelSmall,
+                // teks terbalik cuma jadi noise, bukan menambah realisme.
+                if (reflectedItem != null) {
+                    Icon(
+                        imageVector = reflectedItem.icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 3.dp)
+                            .size(20.dp)
+                            .graphicsLayer {
+                                scaleY = -1f
+                                alpha = (0.30f + dragEnergy * 0.15f).coerceIn(0.30f, 0.45f)
+                            }
+                            .drawWithContent {
+                                drawContent()
+                                // Mask fade: bagian ATAS ikon terbalik (=tepi
+                                // yang paling dekat dengan ikon asli di atas)
+                                // paling jelas, memudar total ke arah bawah.
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(Color.Black, Color.Transparent),
+                                    ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            },
+                    )
+                }
+            }
         }
 
         // Lapis 3: ikon + label tiap tab, sedikit inset agar tidak
