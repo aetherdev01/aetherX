@@ -18,6 +18,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,9 +68,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 
 /**
  * Navbar bawah bergaya "Liquid Glass" ala iOS 26 (rujukan: tab bar
@@ -398,30 +397,53 @@ fun AetherBottomNavBar(
                         pillPosition.animateTo(clampedDown, animationSpec = followSpec)
                     }
 
-                    // Tunggu ambang long-press sambil tetap memantau apakah
-                    // jari terangkat lebih dulu (berarti ini tap biasa).
-                    // Setiap event SELAMA jendela tunggu ini juga dikonsumsi
-                    // (sebelumnya tidak) — kalau dibiarkan un-consumed,
-                    // detector lain di ancestor bisa ikut memproses gesture
-                    // yang sama dan membuat loop ini tidak pernah melihat
-                    // event "up" secara normal.
-                    val becameDrag = try {
-                        withTimeout(viewConfiguration.longPressTimeoutMillis) {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id }
-                                if (change == null || !change.pressed) return@withTimeout
-                                change.consume()
-                            }
-                        }
-                        false
-                    } catch (timeout: TimeoutCancellationException) {
-                        true
+                    // Bedakan TAP vs DRAG berdasarkan JARAK geser (touch
+                    // slop), BUKAN berdasarkan berapa lama jari ditahan.
+                    // Sebelumnya dipakai withTimeout(longPressTimeoutMillis)
+                    // — itu sumber DUA bug yang dilaporkan sekaligus:
+                    // 1) "capsule tidak bisa di-slide": swipe natural (jari
+                    //    turun lalu LANGSUNG bergerak, tanpa jeda diam dulu)
+                    //    tidak pernah dianggap drag selama masih di bawah
+                    //    ambang waktu long-press — gerakan jari selama
+                    //    jendela tunggu itu cuma di-consume lalu DIBUANG,
+                    //    tidak pernah dipakai menggerakkan pill. Kalau jari
+                    //    keburu terangkat sebelum timeout, semuanya jatuh ke
+                    //    cabang "tap" yang cuma memakai posisi DOWN awal —
+                    //    jadi pill terasa tidak bisa digeser sama sekali,
+                    //    hanya bisa snap ke tab meski jari sudah menggeser
+                    //    jauh.
+                    // 2) "tap Dashboard kadang tidak masuk": withTimeout
+                    //    membatalkan (throw TimeoutCancellationException)
+                    //    coroutine yang SAMA yang juga sedang menunggu event
+                    //    "up". Kalau event up datang PERSIS di sekitar saat
+                    //    timeout menembak, ada race antara pembatalan
+                    //    timeout vs pembacaan event up — hasilnya kadang
+                    //    tidak konsisten (kadang gesture dianggap "up
+                    //    duluan", kadang "timeout duluan" walau urutan
+                    //    aslinya sama), sehingga sesekali tap normal gagal
+                    //    memanggil onSelect. awaitHorizontalTouchSlopOrCancellation
+                    //    di bawah ini tidak pakai timer sama sekali — ia
+                    //    hanya berhenti menunggu kalau jari benar-benar
+                    //    terangkat/dibatalkan, jadi tidak ada race semacam
+                    //    itu.
+                    val slopChange = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
+                        change.consume()
                     }
 
-
-                    if (becameDrag) {
+                    if (slopChange != null) {
                         isDragging = true
+                        val dragPointerId = slopChange.id
+                        // Posisi pertama diambil dari titik SAAT slop
+                        // terdeteksi (bukan menunggu event berikutnya) —
+                        // supaya pill langsung mulai mengikuti jari tanpa
+                        // "lompat" begitu drag resmi mulai.
+                        val firstRaw = (slopChange.position.x / currentSlotWidth) - 0.5f
+                        val firstClamped = firstRaw.coerceIn(0f, (items.size - 1).toFloat())
+                        lastRawPosition = firstClamped
+                        previewIndex = firstClamped.roundToInt().coerceIn(0, items.lastIndex)
+                        scope.launch {
+                            pillPosition.animateTo(firstClamped, animationSpec = followSpec)
+                        }
                         // Loop drag: ikuti jari sampai terangkat. Posisi
                         // mentah dikejar lewat spring "follow" (bukan
                         // snapTo instan) supaya gerakan pill terasa kenyal
@@ -429,7 +451,7 @@ fun AetherBottomNavBar(
                         // iOS 26 liquid nav.
                         while (true) {
                             val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id }
+                            val change = event.changes.firstOrNull { it.id == dragPointerId }
                             if (change == null || !change.pressed) break
                             change.consume()
                             val dragRaw = (change.position.x / currentSlotWidth) - 0.5f
@@ -459,24 +481,15 @@ fun AetherBottomNavBar(
                             }
                         }
                     } else {
-                        // Tap biasa (jari terangkat sebelum ambang long-press):
-                        // onSelect dipanggil LANGSUNG DI SINI berdasarkan
-                        // posisi sentuhan — bukan lewat Modifier.clickable
-                        // terpisah di NavBarItem anak. Sebelumnya ada DUA
-                        // gesture detector bertumpuk di area yang sama (ini
-                        // awaitEachGesture di Box induk, dan clickable di
-                        // Column anak): custom pointerInput induk berjalan
-                        // penuh menunggu ambang long-press TANPA meng-
-                        // konsumsi event tap biasa, sehingga resolusi
-                        // gesture-arbitration Compose antara induk & anak
-                        // jadi tidak konsisten — kadang clickable anak tidak
-                        // pernah menerima onClick-nya sama sekali, sehingga
-                        // tap ke tab (paling sering terlihat pada Dashboard/
-                        // index 0) tidak memicu navigasi sama sekali padahal
-                        // secara visual pill sempat bereaksi. Dengan memanggil
-                        // onSelect langsung dari sini, navigasi tidak lagi
-                        // bergantung pada apakah clickable anak "menang" event
-                        // atau tidak.
+                        // slopChange == null: jari terangkat/dibatalkan
+                        // SEBELUM pernah melewati touch slop horizontal —
+                        // ini tap murni. onSelect dipanggil LANGSUNG DI SINI
+                        // berdasarkan posisi sentuhan — bukan lewat
+                        // Modifier.clickable terpisah di NavBarItem anak,
+                        // supaya navigasi tidak bergantung pada arbitrase
+                        // gesture antara pointerInput induk & clickable anak
+                        // (dulu penyebab tap ke tab, paling sering Dashboard/
+                        // index 0, kadang tidak memicu navigasi).
                         isPressed = false
                         val tappedIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
                         previewIndex = selectedIndex

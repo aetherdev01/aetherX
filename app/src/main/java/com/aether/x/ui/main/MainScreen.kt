@@ -58,6 +58,32 @@ fun MainScreen(
         listOf(MainTab.TWEAK, MainTab.MEMBERSHIP, MainTab.ABOUT, MainTab.SETTINGS)
     }
 
+    // stringResource() harus dipanggil di scope @Composable biasa (bukan di
+    // dalam remember{}), jadi label diambil dulu di sini sebagai val — lalu
+    // dipakai sebagai KEY remember di bawah supaya list ikut dibangun ulang
+    // kalau saja label berubah (mis. ganti bahasa), tapi tidak pada setiap
+    // recompose lain yang tidak relevan (mis. navBarOffsetPx saat scroll).
+    val dashboardLabel = stringResource(R.string.nav_bottom_dashboard)
+    val membershipLabel = stringResource(R.string.nav_membership)
+    val aboutLabel = stringResource(R.string.nav_about)
+    val settingsLabel = stringResource(R.string.nav_settings)
+
+    // Dibuat sekali lewat remember, bukan literal listOf(...) langsung di
+    // parameter bottomBar — sebelumnya list ini (dan tiap AetherNavItem di
+    // dalamnya) dibuat ULANG setiap MainScreen recompose (mis. tiap kali
+    // navBarOffsetPx berubah saat scroll), padahal isinya selalu sama.
+    // Bukan penyebab langsung bug tap/drag di navbar (pointerInput di sana
+    // sudah dikunci ke items.size yang stabil), tapi tetap alokasi
+    // percuma pada tiap recompose yang sebaiknya dihindari.
+    val navBarItems = remember(dashboardLabel, membershipLabel, aboutLabel, settingsLabel) {
+        listOf(
+            AetherNavItem(Icons.Outlined.SpaceDashboard, dashboardLabel),
+            AetherNavItem(Icons.Outlined.WorkspacePremium, membershipLabel),
+            AetherNavItem(Icons.Outlined.Info, aboutLabel),
+            AetherNavItem(Icons.Outlined.Settings, settingsLabel),
+        )
+    }
+
     // HazeState menghubungkan konten (sumber blur, lewat hazeSource di bawah)
     // dengan navbar (penerima blur, lewat hazeEffect di AetherBottomNavBar) —
     // supaya navbar benar-benar menampilkan konten di baliknya secara buram
@@ -85,12 +111,7 @@ fun MainScreen(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             AetherBottomNavBar(
-                items = listOf(
-                    AetherNavItem(Icons.Outlined.SpaceDashboard, stringResource(R.string.nav_bottom_dashboard)),
-                    AetherNavItem(Icons.Outlined.WorkspacePremium, stringResource(R.string.nav_membership)),
-                    AetherNavItem(Icons.Outlined.Info, stringResource(R.string.nav_about)),
-                    AetherNavItem(Icons.Outlined.Settings, stringResource(R.string.nav_settings)),
-                ),
+                items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index -> selectedTab = navItems[index] },
                 hazeState = hazeState,
