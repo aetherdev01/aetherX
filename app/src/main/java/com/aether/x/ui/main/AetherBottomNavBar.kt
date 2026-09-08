@@ -4,6 +4,7 @@ import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.RuntimeShader
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.text.style.TextAlign
@@ -155,6 +157,7 @@ fun AetherBottomNavBar(
     val barShape = RoundedCornerShape(percent = 50)
     val outline = MaterialTheme.colorScheme.outline
     val density = LocalDensity.current
+    val context = LocalContext.current
 
     // Dukungan lensa liquid glass NYATA (AGSL RuntimeShader) hanya ada mulai
     // Android 13 (Tiramisu). Di bawah itu, kapsul tetap tampil lewat lapisan
@@ -490,6 +493,7 @@ fun AetherBottomNavBar(
                         val tappedIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
                         previewIndex = selectedIndex
                         Log.d("AetherNavBar", "TAP tappedIndex=$tappedIndex selectedIndex=$selectedIndex willCallOnSelect=${tappedIndex != selectedIndex}")
+                        Toast.makeText(context, "TAP idx=$tappedIndex sel=$selectedIndex call=${tappedIndex != selectedIndex}", Toast.LENGTH_SHORT).show()
                         if (tappedIndex != selectedIndex) {
                             onSelect(tappedIndex)
                         } else {
