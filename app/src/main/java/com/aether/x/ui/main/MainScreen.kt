@@ -113,7 +113,10 @@ fun MainScreen(
             AetherBottomNavBar(
                 items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
-                onSelect = { index -> selectedTab = navItems[index] },
+                onSelect = { index ->
+                    android.util.Log.d("AetherNavBar", "onSelect RECEIVED index=$index -> ${navItems[index]}")
+                    selectedTab = navItems[index]
+                },
                 hazeState = hazeState,
                 modifier = Modifier
                     .onSizeChanged { navBarHeightPx = it.height.toFloat() }

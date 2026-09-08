@@ -3,6 +3,7 @@ package com.aether.x.ui.main
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.RuntimeShader
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -385,6 +386,7 @@ fun AetherBottomNavBar(
                     lastRawPosition = clampedDown
                     pillVelocity = 0f
                     previewIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
+                    Log.d("AetherNavBar", "DOWN x=${down.position.x} slotW=$currentSlotWidth barW=$barWidthPx clampedDown=$clampedDown selectedIndex=$selectedIndex")
                     scope.launch {
                         pillPosition.animateTo(clampedDown, animationSpec = followSpec)
                     }
@@ -421,6 +423,7 @@ fun AetherBottomNavBar(
                     val slopChange = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
                         change.consume()
                     }
+                    Log.d("AetherNavBar", "SLOP result=${if (slopChange != null) "DRAG" else "TAP"}")
 
                     if (slopChange != null) {
                         isDragging = true
@@ -457,6 +460,7 @@ fun AetherBottomNavBar(
                         isDragging = false
                         isPressed = false
                         val finalIndex = previewIndex
+                        Log.d("AetherNavBar", "DRAG END finalIndex=$finalIndex selectedIndex=$selectedIndex willCallOnSelect=${finalIndex != selectedIndex}")
                         // onSelect dipanggil SEGERA — tidak menunggu animasi
                         // settle pill selesai — supaya transisi screen dan
                         // pill snap berjalan bersamaan, bukan berurutan.
@@ -485,6 +489,7 @@ fun AetherBottomNavBar(
                         isPressed = false
                         val tappedIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
                         previewIndex = selectedIndex
+                        Log.d("AetherNavBar", "TAP tappedIndex=$tappedIndex selectedIndex=$selectedIndex willCallOnSelect=${tappedIndex != selectedIndex}")
                         if (tappedIndex != selectedIndex) {
                             onSelect(tappedIndex)
                         } else {
