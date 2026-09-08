@@ -338,14 +338,6 @@ fun AetherBottomNavBar(
             .padding(horizontal = 28.dp, vertical = 14.dp)
             .fillMaxWidth()
             .height(66.dp)
-            .graphicsLayer {
-                // Bulge kapsul dipusatkan di tengah bar, jadi mengembang
-                // merata ke segala arah alih-alih menggeser posisi bar.
-                val scale = barBulge.value
-                scaleX = scale
-                scaleY = scale
-                transformOrigin = TransformOrigin.Center
-            }
             .onSizeChanged {
                 barWidthPx = it.width.toFloat()
                 barHeightPx = it.height.toFloat()
@@ -504,6 +496,39 @@ fun AetherBottomNavBar(
                 }
             },
     ) {
+        // Transform "bulge" (skala membesar saat ditekan) sengaja dipindah
+        // ke SATU Box pembungkus KHUSUS UNTUK VISUAL ini — TERPISAH dari Box
+        // induk di atas yang menangani pointerInput. SEBELUMNYA graphicsLayer
+        // scale ini menempel LANGSUNG di Box yang sama dengan pointerInput,
+        // sehingga posisi sentuh lokal yang dibaca gesture (down.position,
+        // change.position, dst.) ikut "melayang" mengikuti skala yang terus
+        // beranimasi selama jari ditahan (stiffness rendah -> settle-nya
+        // lambat, ratusan ms). Item paling jauh dari tengah bar — Dashboard,
+        // paling kiri — paling parah terdampak karena transformOrigin di
+        // tengah: pergeseran koordinat lokal akibat skala ini SENDIRI, walau
+        // jari sama sekali tidak bergerak di layar, cukup untuk melewati
+        // ambang touch-slop dan bikin tap ke Dashboard salah terbaca sebagai
+        // drag — lalu posisi akhir yang tersample kebetulan balik ke tab
+        // semula, sehingga onSelect tidak pernah terpanggil walau pill
+        // sempat terlihat bergerak ke arah Dashboard. Dengan scale dipindah
+        // ke Box anak murni-visual ini, Box induk (pointerInput) tidak lagi
+        // ikut tertransformasi sama sekali, jadi koordinat sentuh yang
+        // dibaca gesture selalu stabil — sementara efek "menyembul" saat
+        // ditekan tetap terlihat identik karena semua lapis visual di bawah
+        // ini (kaca, pill, ikon+label) tetap satu kesatuan di dalam Box
+        // pembungkus yang sama.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Bulge kapsul dipusatkan di tengah bar, jadi mengembang
+                    // merata ke segala arah alih-alih menggeser posisi bar.
+                    val scale = barBulge.value
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin.Center
+                },
+        ) {
         // Kaca bar (di-clip ke bentuk kapsul) — lapis terpisah PALING BAWAH,
         // agar pill di atasnya bisa "menyembul" melampaui tepi bar tanpa
         // ikut terpotong oleh clip milik kaca ini.
@@ -807,6 +832,7 @@ fun AetherBottomNavBar(
                         .fillMaxHeight(),
                 )
             }
+        }
         }
     }
 }
