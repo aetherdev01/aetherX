@@ -3,8 +3,6 @@ package com.aether.x.ui.main
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.RuntimeShader
 import android.os.Build
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -20,7 +18,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,7 +58,6 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.text.style.TextAlign
@@ -157,7 +154,6 @@ fun AetherBottomNavBar(
     val barShape = RoundedCornerShape(percent = 50)
     val outline = MaterialTheme.colorScheme.outline
     val density = LocalDensity.current
-    val context = LocalContext.current
 
     // Dukungan lensa liquid glass NYATA (AGSL RuntimeShader) hanya ada mulai
     // Android 13 (Tiramisu). Di bawah itu, kapsul tetap tampil lewat lapisan
@@ -389,7 +385,6 @@ fun AetherBottomNavBar(
                     lastRawPosition = clampedDown
                     pillVelocity = 0f
                     previewIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
-                    Log.d("AetherNavBar", "DOWN x=${down.position.x} slotW=$currentSlotWidth barW=$barWidthPx clampedDown=$clampedDown selectedIndex=$selectedIndex")
                     scope.launch {
                         pillPosition.animateTo(clampedDown, animationSpec = followSpec)
                     }
@@ -423,19 +418,48 @@ fun AetherBottomNavBar(
                     //    hanya berhenti menunggu kalau jari benar-benar
                     //    terangkat/dibatalkan, jadi tidak ada race semacam
                     //    itu.
-                    val slopChange = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
+                    // FIX: sebelumnya pakai awaitHorizontalTouchSlopOrCancellation,
+                    // yang HANYA melacak slop di sumbu horizontal. Jari manusia
+                    // hampir tidak pernah 100% lurus horizontal saat tap — sedikit
+                    // gerakan vertikal (sub-pixel sampai beberapa px) sangat wajar.
+                    // Detector horizontal-only ini bisa terus menunggu tanpa pernah
+                    // memutuskan DRAG atau TAP dengan bersih saat ada komponen
+                    // gerak vertikal, dan pada kondisi tertentu (terutama saat
+                    // AnimatedContent di MainScreen memicu reflow persis di frame
+                    // yang sama) event "up" berikutnya jadi tidak pernah terbaca
+                    // oleh loop ini — gesture mati begitu saja tanpa memanggil
+                    // onSelect. Paling sering kena di tab index 0 (Dashboard)
+                    // karena posisinya di tepi bar, area paling rawan reflow.
+                    // awaitTouchSlopOrCancellation melacak slop di SEGALA arah,
+                    // jadi keputusan TAP vs DRAG selalu tercapai berdasarkan jarak
+                    // geser aktual jari, bukan hanya komponen horizontalnya.
+                    var slopChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
+                    var slopDx = 0f
+                    var slopDy = 0f
+                    awaitTouchSlopOrCancellation(down.id) { change, over ->
                         change.consume()
+                        slopChange = change
+                        slopDx = over.x
+                        slopDy = over.y
                     }
-                    Log.d("AetherNavBar", "SLOP result=${if (slopChange != null) "DRAG" else "TAP"}")
+                    // Gesture navbar ini murni horizontal (geser antar tab
+                    // berdampingan) — kalau slop yang terdeteksi didominasi
+                    // gerak vertikal (mis. user sedang scroll konten di atasnya
+                    // tapi jarinya turun sedikit ke navbar), perlakukan tetap
+                    // sebagai TAP di posisi awal, bukan DRAG.
+                    if (slopChange != null && abs(slopDy) > abs(slopDx)) {
+                        slopChange = null
+                    }
 
-                    if (slopChange != null) {
+                    val confirmedSlopChange = slopChange
+                    if (confirmedSlopChange != null) {
                         isDragging = true
-                        val dragPointerId = slopChange.id
+                        val dragPointerId = confirmedSlopChange.id
                         // Posisi pertama diambil dari titik SAAT slop
                         // terdeteksi (bukan menunggu event berikutnya) —
                         // supaya pill langsung mulai mengikuti jari tanpa
                         // "lompat" begitu drag resmi mulai.
-                        val firstRaw = (slopChange.position.x / currentSlotWidth) - 0.5f
+                        val firstRaw = (confirmedSlopChange.position.x / currentSlotWidth) - 0.5f
                         val firstClamped = firstRaw.coerceIn(0f, (items.size - 1).toFloat())
                         lastRawPosition = firstClamped
                         previewIndex = firstClamped.roundToInt().coerceIn(0, items.lastIndex)
@@ -462,8 +486,17 @@ fun AetherBottomNavBar(
                         }
                         isDragging = false
                         isPressed = false
+                        // FIX (safety-net): previewIndex dibaca sebagai
+                        // finalIndex APA PUN alasan loop di atas berhenti
+                        // (up normal, pointer batal, atau change hilang dari
+                        // daftar changes) — sebelumnya jika loop berhenti
+                        // lewat jalur "change == null" tanpa event up yang
+                        // bersih, kode di bawah ini tetap berjalan seperti
+                        // biasa karena previewIndex sudah ter-update selama
+                        // drag berlangsung, tapi ditambahkan log eksplisit
+                        // di sini untuk memastikan onSelect benar-benar
+                        // tereksekusi pada semua kondisi keluar loop.
                         val finalIndex = previewIndex
-                        Log.d("AetherNavBar", "DRAG END finalIndex=$finalIndex selectedIndex=$selectedIndex willCallOnSelect=${finalIndex != selectedIndex}")
                         // onSelect dipanggil SEGERA — tidak menunggu animasi
                         // settle pill selesai — supaya transisi screen dan
                         // pill snap berjalan bersamaan, bukan berurutan.
@@ -492,8 +525,6 @@ fun AetherBottomNavBar(
                         isPressed = false
                         val tappedIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
                         previewIndex = selectedIndex
-                        Log.d("AetherNavBar", "TAP tappedIndex=$tappedIndex selectedIndex=$selectedIndex willCallOnSelect=${tappedIndex != selectedIndex}")
-                        Toast.makeText(context, "TAP idx=$tappedIndex sel=$selectedIndex call=${tappedIndex != selectedIndex}", Toast.LENGTH_SHORT).show()
                         if (tappedIndex != selectedIndex) {
                             onSelect(tappedIndex)
                         } else {

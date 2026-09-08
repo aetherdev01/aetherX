@@ -14,12 +14,9 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.WorkspacePremium
-import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +49,6 @@ fun MainScreen(
     onNavigateToGameBooster: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
-    val context = LocalContext.current
 
     val tweakViewModel: TweakViewModel = viewModel()
 
@@ -118,8 +114,6 @@ fun MainScreen(
                 items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index ->
-                    android.util.Log.d("AetherNavBar", "onSelect RECEIVED index=$index -> ${navItems[index]}")
-                    Toast.makeText(context, "onSelect RECEIVED -> ${navItems[index]}", Toast.LENGTH_SHORT).show()
                     selectedTab = navItems[index]
                 },
                 hazeState = hazeState,
@@ -143,9 +137,6 @@ fun MainScreen(
             },
             label = "mainTabContent",
         ) { tab ->
-            LaunchedEffect(tab) {
-                Toast.makeText(context, "CONTENT COMPOSED -> $tab", Toast.LENGTH_SHORT).show()
-            }
             when (tab) {
                 MainTab.TWEAK -> TweakScreen(
                     modifier = Modifier,
