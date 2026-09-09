@@ -787,53 +787,81 @@ fun AetherBottomNavBar(
                         shape = RoundedCornerShape(50),
                     ),
             ) {
-                // REFLECTION ICON + LABEL — lapisan kaca yang memantulkan
-                // isi tab aktif seperti contoh Liquid Glass iOS. Refleksi
-                // sengaja dibuat besar, terbalik vertikal, transparan dan
-                // sedikit blur sehingga tidak terlihat seperti ikon ganda
-                // yang ditempel. Karena layer ini berada DI BAWAH Row utama,
-                // ikon/label asli tetap tajam di atasnya. Saat drag, refleksi
-                // mengikuti previewIndex sehingga ikut berpindah bersama pill.
+                // Specular reflection ala Liquid Glass: bukan ikon yang
+                // di-flip penuh (yang akan terlihat seperti ikon ganda), tetapi
+                // pantulan konten yang sangat lembut dan ter-mask di permukaan
+                // kaca. Apple menjelaskan Liquid Glass sebagai material yang
+                // merefleksikan/merefraksikan cahaya dan konten sekitar; karena
+                // itu ghost reflection dibuat kecil, blur, terdistorsi, dan
+                // fade sebelum mencapai pusat capsule.
                 val reflectionIndex = if (isDragging) previewIndex else selectedIndex
                 val reflectionItem = items.getOrNull(reflectionIndex)
                 if (reflectionItem != null) {
+                    val reflectionAlpha = (0.055f + dragEnergy * 0.035f)
+                        .coerceIn(0.055f, 0.09f)
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(50))
                             .graphicsLayer {
-                                alpha = (0.16f + dragEnergy * 0.08f).coerceIn(0.16f, 0.24f)
-                                scaleY = -1.0f
-                                // Geser hasil mirror ke bawah sehingga hanya
-                                // bagian pantulannya yang terlihat di permukaan.
-                                translationY = with(density) { 22.dp.toPx() }
+                                alpha = reflectionAlpha
+                                // Refleksi hanya sedikit diregangkan dan
+                                // digeser, bukan mirror 1:1. Ini membuatnya
+                                // terasa seperti sampling permukaan kaca.
+                                scaleX = 1.08f
+                                scaleY = -0.42f
+                                translationY = with(density) { 13.dp.toPx() }
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                     renderEffect = AndroidRenderEffect
-                                        .createBlurEffect(3.5f, 3.5f, android.graphics.Shader.TileMode.CLAMP)
+                                        .createBlurEffect(5.5f, 3.5f, android.graphics.Shader.TileMode.CLAMP)
                                         .asComposeRenderEffect()
                                 }
                             },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
                                 imageVector = reflectionItem.icon,
                                 contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.9f),
-                                modifier = Modifier.size(30.dp),
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp),
                             )
                             Text(
                                 text = reflectionItem.label,
-                                color = Color.White.copy(alpha = 0.8f),
-                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Clip,
+                                modifier = Modifier.padding(start = 5.dp),
                             )
                         }
                     }
+
+                    // Mask lembut di atas ghost reflection. Area tengah
+                    // sengaja hampir transparan sehingga ikon/label asli
+                    // tetap dominan dan pantulan hanya muncul ketika cahaya
+                    // mengenai permukaan capsule.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.00f to Color.White.copy(alpha = 0.035f),
+                                        0.18f to Color.White.copy(alpha = 0.012f),
+                                        0.48f to Color.Transparent,
+                                        0.72f to Color.Transparent,
+                                        1.00f to Color.White.copy(alpha = 0.045f),
+                                    )
+                                )
+                            )
+                    )
                 }
 
                 // Pita highlight tipis di atas kaca. Ini memberi pantulan
