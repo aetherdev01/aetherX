@@ -371,14 +371,13 @@ fun AetherBottomNavBar(
                                 endY = h,
                             )
 
-                            // Efek pantulan cahaya melengkung (Edge Rim Reflection) di sisi kiri & kanan
-                            // Bergeser dan merenggang secara dinamis mengikuti lebar & kecepatan capsule
+                            // Diperbaiki: Menggunakan tanda kurung tutup ')' yang benar untuk listOf
                             val leftReflection = Brush.radialGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.35f),
                                     Color.White.copy(alpha = 0.08f),
-                                    Color.Transparent
-                                },
+                                    Color.Transparent,
+                                ),
                                 center = Offset(w * 0.08f, h * 0.5f),
                                 radius = w * 0.35f
                             )
@@ -386,7 +385,7 @@ fun AetherBottomNavBar(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.35f),
                                     Color.White.copy(alpha = 0.08f),
-                                    Color.Transparent
+                                    Color.Transparent,
                                 ),
                                 center = Offset(w * 0.92f, h * 0.5f),
                                 radius = w * 0.35f
