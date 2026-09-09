@@ -608,6 +608,10 @@ fun AetherBottomNavBar(
             val dragEnergy = (0.45f + (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.35f +
                 (if (isPressed) 0.2f else 0f)).coerceIn(0.45f, 1f)
 
+            val reflectionEnergy = (0.35f +
+                (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.45f +
+                (if (isPressed) 0.20f else 0f)).coerceIn(0.35f, 1f)
+
             val tint = MaterialTheme.colorScheme.primary
 
             // Dasar pill liquid glass ala iOS: HAMPIR NETRAL, bukan tint
@@ -805,9 +809,6 @@ fun AetherBottomNavBar(
                 // terlihat seperti ghost/duplicate. Pantulan dibuat dari
                 // beberapa lapisan cahaya tipis + edge glow yang bergerak
                 // mengikuti drag/settle.
-                val reflectionEnergy = (0.35f +
-                    (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.45f +
-                    if (isPressed) 0.20f else 0f).coerceIn(0.35f, 1f)
 
                 // Pita highlight tipis di atas kaca. Ini memberi pantulan
                 // cahaya tambahan tanpa menghilangkan refleksi ikon/label.
