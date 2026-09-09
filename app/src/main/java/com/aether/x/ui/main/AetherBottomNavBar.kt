@@ -766,12 +766,12 @@ fun AetherBottomNavBar(
                     // terlihat pada background gelap maupun terang. Dua garis
                     // tipis memberi efek kaca berlapis tanpa menjadi border tebal.
                     .border(
-                        width = 1.35.dp,
+                        width = 1.55.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.82f),
-                                Color.White.copy(alpha = 0.42f),
-                                Color.White.copy(alpha = 0.18f),
+                                Color.White.copy(alpha = 0.92f),
+                                Color.White.copy(alpha = 0.50f),
+                                Color.White.copy(alpha = 0.22f),
                             ),
                         ),
                         shape = RoundedCornerShape(50),
@@ -787,15 +787,57 @@ fun AetherBottomNavBar(
                         shape = RoundedCornerShape(50),
                     ),
             ) {
-                // Sheen kaca ala iOS (rujukan: pill "Arcade" di App Store) —
-                // BUKAN lagi refleksi cermin ikon yang dipantulkan/di-mirror
-                // di tepi kapsul (versi sebelumnya, terlihat seperti ikon
-                // ganda yang janggal). Sekarang hanya satu pita highlight
-                // melengkung tipis di tepi ATAS kapsul, memudar ke bawah —
-                // mensimulasikan cahaya yang menggelincir di permukaan kaca
-                // cembung tanpa menduplikasi ikon apa pun. Ikon & label tab
-                // di lapis atas (NavBarItem) tetap satu-satunya representasi
-                // visual dari tab tersebut.
+                // REFLECTION ICON + LABEL — lapisan kaca yang memantulkan
+                // isi tab aktif seperti contoh Liquid Glass iOS. Refleksi
+                // sengaja dibuat besar, terbalik vertikal, transparan dan
+                // sedikit blur sehingga tidak terlihat seperti ikon ganda
+                // yang ditempel. Karena layer ini berada DI BAWAH Row utama,
+                // ikon/label asli tetap tajam di atasnya. Saat drag, refleksi
+                // mengikuti previewIndex sehingga ikut berpindah bersama pill.
+                val reflectionIndex = if (isDragging) previewIndex else selectedIndex
+                val reflectionItem = items.getOrNull(reflectionIndex)
+                if (reflectionItem != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(50))
+                            .graphicsLayer {
+                                alpha = (0.16f + dragEnergy * 0.08f).coerceIn(0.16f, 0.24f)
+                                scaleY = -1.0f
+                                // Geser hasil mirror ke bawah sehingga hanya
+                                // bagian pantulannya yang terlihat di permukaan.
+                                translationY = with(density) { 22.dp.toPx() }
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    renderEffect = AndroidRenderEffect
+                                        .createBlurEffect(3.5f, 3.5f, android.graphics.Shader.TileMode.CLAMP)
+                                        .asComposeRenderEffect()
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                imageVector = reflectionItem.icon,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.size(30.dp),
+                            )
+                            Text(
+                                text = reflectionItem.label,
+                                color = Color.White.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                            )
+                        }
+                    }
+                }
+
+                // Pita highlight tipis di atas kaca. Ini memberi pantulan
+                // cahaya tambahan tanpa menghilangkan refleksi ikon/label.
                 val sheenAlpha = (0.16f + dragEnergy * 0.10f).coerceIn(0.16f, 0.26f)
                 Box(
                     modifier = Modifier
