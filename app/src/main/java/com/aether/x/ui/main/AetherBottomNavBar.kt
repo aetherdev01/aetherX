@@ -576,9 +576,9 @@ fun AetherBottomNavBar(
         // Lapis 2: pill besar — TIDAK di-clip, sehingga saat ditahan boleh
         // membesar melampaui tinggi bar (efek "menyembul" liquid glass).
         if (slotWidthPx > 0f) {
-            val insetPx = with(density) { 4.dp.toPx() }
+            val insetPx = with(density) { 8.dp.toPx() }
             val pillWidth = slotWidthPx - insetPx * 2f
-            val pillHeightBase = barHeightPx - insetPx * 2f
+            val pillHeightBase = (barHeightPx - with(density) { 10.dp.toPx() }).coerceAtLeast(with(density) { 42.dp.toPx() })
             val centerX = (pillPosition.value + 0.5f) * slotWidthPx
             val bulge = pillBulge.value
 
@@ -594,7 +594,7 @@ fun AetherBottomNavBar(
             val stretchFactor = 1f + (speed / 0.6f) * 0.30f
             val squashFactor = 1f - (speed / 0.6f) * 0.20f
 
-            val pillWidthPx = pillWidth * (0.92f + 0.08f * bulge) * stretchFactor
+            val pillWidthPx = pillWidth * (0.88f + 0.12f * bulge) * stretchFactor
             val pillHeightPx = pillHeightBase * bulge * squashFactor
             val pillWidthDp = with(density) { pillWidthPx.toDp() }
             val pillHeightDp = with(density) { pillHeightPx.toDp() }
@@ -619,8 +619,9 @@ fun AetherBottomNavBar(
             // terlihat solid teal pekat, bukan bening seperti kaca.
             val pillBrush = Brush.verticalGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.10f),
-                    Color.Black.copy(alpha = 0.16f),
+                    Color.White.copy(alpha = 0.12f),
+                    Color.White.copy(alpha = 0.035f),
+                    Color.Black.copy(alpha = 0.12f),
                 ),
             )
 
@@ -675,37 +676,47 @@ fun AetherBottomNavBar(
                     .drawWithCache {
                         val w = size.width
                         val h = size.height
-                        // Mirror highlight utama — BERGESER mengikuti
-                        // bouncePhase (0..1..0, pegas bolak-balik) supaya
-                        // bercak terang ini terasa "memantul"/bergoyang di
-                        // dalam kapsul, bukan diam di satu titik selamanya.
-                        // Tetap kontras/kecil (radial, satu titik), bukan
-                        // menyebar rata ke seluruh pill.
-                        val mirrorHighlight = Brush.radialGradient(
+                        // Highlight utama dibuat seperti refleksi permukaan
+                        // kaca cembung: tipis, memanjang, dan tidak terlalu
+                        // terang. Posisinya mengikuti gerakan capsule.
+                        val specularSpot = Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.85f * dragEnergy),
-                                Color.White.copy(alpha = 0.25f * dragEnergy),
+                                Color.White.copy(alpha = 0.38f * reflectionEnergy),
+                                Color.White.copy(alpha = 0.10f * reflectionEnergy),
                                 Color.Transparent,
                             ),
                             center = Offset(
-                                lerp(w * 0.14f, w * 0.36f, bouncePhase),
-                                h * (0.08f + 0.05f * bouncePhase),
+                                lerp(w * 0.12f, w * 0.40f, bouncePhase),
+                                h * (0.13f + 0.04f * bouncePhase),
                             ),
-                            radius = w * 0.42f,
+                            radius = w * 0.36f,
                         )
-                        // Refleksi sekunder redup, bergerak BERLAWANAN arah
-                        // dari highlight utama — dua titik pantulan yang
-                        // saling menjauh/mendekat, meniru cahaya yang
-                        // memantul-mantul di permukaan cair cembung (liquid
-                        // glass iOS selalu punya dua titik highlight: satu
-                        // dominan, satu samar).
-                        val counterHighlight = Brush.radialGradient(
+                        // Pita tipis diagonal yang memberi kesan permukaan
+                        // melengkung menangkap cahaya saat capsule bergeser.
+                        val specularBand = Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.18f),
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.13f * reflectionEnergy),
                                 Color.Transparent,
                             ),
-                            center = Offset(lerp(w * 0.92f, w * 0.68f, bouncePhase), h * 0.92f),
-                            radius = w * 0.35f,
+                            start = Offset(
+                                lerp(-w * 0.45f, w * 0.55f, bouncePhase),
+                                h * 0.02f,
+                            ),
+                            end = Offset(
+                                lerp(-w * 0.05f, w * 0.95f, bouncePhase),
+                                h * 0.98f,
+                            ),
+                        )
+                        // Highlight bawah jauh lebih lemah agar kaca punya
+                        // volume tanpa terlihat putih/abu-abu pekat.
+                        val lowerReflection = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.07f * reflectionEnergy),
+                                Color.Transparent,
+                            ),
+                            center = Offset(lerp(w * 0.90f, w * 0.70f, bouncePhase), h * 0.90f),
+                            radius = w * 0.32f,
                         )
                         // Refraksi tepi kiri & kanan — garis vertikal tipis
                         // menyala, khas distorsi cahaya pada pinggiran kaca
@@ -726,7 +737,7 @@ fun AetherBottomNavBar(
                         // tema muncul di permukaan (di luar border), supaya
                         // pill tetap terasa "kaca" alih-alih "plastik teal".
                         val bottomTint = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, tint.copy(alpha = 0.16f)),
+                            colors = listOf(Color.Transparent, tint.copy(alpha = 0.10f)),
                             startY = h * 0.55f,
                             endY = h,
                         )
@@ -757,8 +768,9 @@ fun AetherBottomNavBar(
                             drawRect(brush = bottomTint)
                             drawRect(brush = edgeLeft)
                             drawRect(brush = edgeRight)
-                            drawRect(brush = counterHighlight)
-                            drawRect(brush = mirrorHighlight)
+                            drawRect(brush = lowerReflection)
+                            drawRect(brush = specularSpot)
+                            drawRect(brush = specularBand)
                             fallbackSweep?.let { drawRect(brush = it) }
                         }
                     }
@@ -766,12 +778,12 @@ fun AetherBottomNavBar(
                     // terlihat pada background gelap maupun terang. Dua garis
                     // tipis memberi efek kaca berlapis tanpa menjadi border tebal.
                     .border(
-                        width = 1.55.dp,
+                        width = 1.2.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.92f),
-                                Color.White.copy(alpha = 0.50f),
-                                Color.White.copy(alpha = 0.22f),
+                                Color.White.copy(alpha = 0.78f),
+                                Color.White.copy(alpha = 0.36f),
+                                Color.White.copy(alpha = 0.16f),
                             ),
                         ),
                         shape = RoundedCornerShape(50),
@@ -787,82 +799,15 @@ fun AetherBottomNavBar(
                         shape = RoundedCornerShape(50),
                     ),
             ) {
-                // Specular reflection ala Liquid Glass: bukan ikon yang
-                // di-flip penuh (yang akan terlihat seperti ikon ganda), tetapi
-                // pantulan konten yang sangat lembut dan ter-mask di permukaan
-                // kaca. Apple menjelaskan Liquid Glass sebagai material yang
-                // merefleksikan/merefraksikan cahaya dan konten sekitar; karena
-                // itu ghost reflection dibuat kecil, blur, terdistorsi, dan
-                // fade sebelum mencapai pusat capsule.
-                val reflectionIndex = if (isDragging) previewIndex else selectedIndex
-                val reflectionItem = items.getOrNull(reflectionIndex)
-                if (reflectionItem != null) {
-                    val reflectionAlpha = (0.055f + dragEnergy * 0.035f)
-                        .coerceIn(0.055f, 0.09f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(50))
-                            .graphicsLayer {
-                                alpha = reflectionAlpha
-                                // Refleksi hanya sedikit diregangkan dan
-                                // digeser, bukan mirror 1:1. Ini membuatnya
-                                // terasa seperti sampling permukaan kaca.
-                                scaleX = 1.08f
-                                scaleY = -0.42f
-                                translationY = with(density) { 13.dp.toPx() }
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    renderEffect = AndroidRenderEffect
-                                        .createBlurEffect(5.5f, 3.5f, android.graphics.Shader.TileMode.CLAMP)
-                                        .asComposeRenderEffect()
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = reflectionItem.icon,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(26.dp),
-                            )
-                            Text(
-                                text = reflectionItem.label,
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Clip,
-                                modifier = Modifier.padding(start = 5.dp),
-                            )
-                        }
-                    }
-
-                    // Mask lembut di atas ghost reflection. Area tengah
-                    // sengaja hampir transparan sehingga ikon/label asli
-                    // tetap dominan dan pantulan hanya muncul ketika cahaya
-                    // mengenai permukaan capsule.
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0.00f to Color.White.copy(alpha = 0.035f),
-                                        0.18f to Color.White.copy(alpha = 0.012f),
-                                        0.48f to Color.Transparent,
-                                        0.72f to Color.Transparent,
-                                        1.00f to Color.White.copy(alpha = 0.045f),
-                                    )
-                                )
-                            )
-                    )
-                }
+                // Specular reflection ala Liquid Glass: satu highlight permukaan
+                // yang lembut dan terdistorsi. Tidak ada ikon/label yang
+                // dicerminkan sebagai gambar kedua, karena itu membuat kaca
+                // terlihat seperti ghost/duplicate. Pantulan dibuat dari
+                // beberapa lapisan cahaya tipis + edge glow yang bergerak
+                // mengikuti drag/settle.
+                val reflectionEnergy = (0.35f +
+                    (abs(pillVelocity) / 0.6f).coerceIn(0f, 1f) * 0.45f +
+                    if (isPressed) 0.20f else 0f).coerceIn(0.35f, 1f)
 
                 // Pita highlight tipis di atas kaca. Ini memberi pantulan
                 // cahaya tambahan tanpa menghilangkan refleksi ikon/label.
