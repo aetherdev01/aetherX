@@ -16,9 +16,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.systemGestureExclusion
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -221,7 +220,6 @@ fun AetherBottomNavBar(
     // dulu lewat exponential smoothing (rawVelocitySample -> pillVelocity)
     // sebelum dipakai untuk visual, supaya jelly mengalir, bukan gemetar.
     var pillVelocity by remember { mutableFloatStateOf(0f) }
-    var lastRawPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
     // Dipakai HANYA untuk menurunkan velocity dari pergerakan pillPosition
     // itu sendiri (lihat efek di bawah) — sumber jelly saat pill meluncur
     // otomatis lewat animasi settle/follow, bukan cuma dari drag jari
@@ -368,143 +366,108 @@ fun AetherBottomNavBar(
             // barWidthPx terkini (lewat currentSlotWidth di bawah), bukan
             // dari nilai yang di-capture saat gesture pertama kali dimulai.
             .pointerInput(items.size) {
-                awaitEachGesture {
-                    val currentSlotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                    if (currentSlotWidth <= 0f) return@awaitEachGesture
-                    // down: feedback instan (bulge) di posisi sentuhan,
-                    // tanpa menunggu apakah ini akan jadi long-press/drag.
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    // Consume SEGERA — mengklaim gesture ini sebagai milik
-                    // navbar, supaya tidak ada arbitrase ambigu dengan
-                    // detector lain (nested scroll Scaffold, dsb.) yang bisa
-                    // bikin down event "direbut" sebelum sempat diproses.
-                    down.consume()
-                    isPressed = true
-                    val rawDown = (down.position.x / currentSlotWidth) - 0.5f
-                    val clampedDown = rawDown.coerceIn(0f, (items.size - 1).toFloat())
-                    lastRawPosition = clampedDown
-                    pillVelocity = 0f
-                    previewIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
-                    scope.launch {
-                        pillPosition.animateTo(clampedDown, animationSpec = followSpec)
-                    }
-
-                    // Bedakan TAP vs DRAG berdasarkan JARAK geser (touch
-                    // slop), BUKAN berdasarkan berapa lama jari ditahan.
-                    // Sebelumnya dipakai withTimeout(longPressTimeoutMillis)
-                    // — itu sumber DUA bug yang dilaporkan sekaligus:
-                    // 1) "capsule tidak bisa di-slide": swipe natural (jari
-                    //    turun lalu LANGSUNG bergerak, tanpa jeda diam dulu)
-                    //    tidak pernah dianggap drag selama masih di bawah
-                    //    ambang waktu long-press — gerakan jari selama
-                    //    jendela tunggu itu cuma di-consume lalu DIBUANG,
-                    //    tidak pernah dipakai menggerakkan pill. Kalau jari
-                    //    keburu terangkat sebelum timeout, semuanya jatuh ke
-                    //    cabang "tap" yang cuma memakai posisi DOWN awal —
-                    //    jadi pill terasa tidak bisa digeser sama sekali,
-                    //    hanya bisa snap ke tab meski jari sudah menggeser
-                    //    jauh.
-                    // 2) "tap Dashboard kadang tidak masuk": withTimeout
-                    //    membatalkan (throw TimeoutCancellationException)
-                    //    coroutine yang SAMA yang juga sedang menunggu event
-                    //    "up". Kalau event up datang PERSIS di sekitar saat
-                    //    timeout menembak, ada race antara pembatalan
-                    //    timeout vs pembacaan event up — hasilnya kadang
-                    //    tidak konsisten (kadang gesture dianggap "up
-                    //    duluan", kadang "timeout duluan" walau urutan
-                    //    aslinya sama), sehingga sesekali tap normal gagal
-                    //    memanggil onSelect. awaitHorizontalTouchSlopOrCancellation
-                    //    di bawah ini tidak pakai timer sama sekali — ia
-                    //    hanya berhenti menunggu kalau jari benar-benar
-                    //    terangkat/dibatalkan, jadi tidak ada race semacam
-                    //    itu.
-                    // FIX: sebelumnya pakai awaitHorizontalTouchSlopOrCancellation,
-                    // yang HANYA melacak slop di sumbu horizontal. Jari manusia
-                    // hampir tidak pernah 100% lurus horizontal saat tap — sedikit
-                    // gerakan vertikal (sub-pixel sampai beberapa px) sangat wajar.
-                    // Detector horizontal-only ini bisa terus menunggu tanpa pernah
-                    // memutuskan DRAG atau TAP dengan bersih saat ada komponen
-                    // gerak vertikal, dan pada kondisi tertentu (terutama saat
-                    // AnimatedContent di MainScreen memicu reflow persis di frame
-                    // yang sama) event "up" berikutnya jadi tidak pernah terbaca
-                    // oleh loop ini — gesture mati begitu saja tanpa memanggil
-                    // onSelect. Paling sering kena di tab index 0 (Dashboard)
-                    // karena posisinya di tepi bar, area paling rawan reflow.
-                    // awaitTouchSlopOrCancellation melacak slop di SEGALA arah,
-                    // jadi keputusan TAP vs DRAG selalu tercapai berdasarkan jarak
-                    // geser aktual jari, bukan hanya komponen horizontalnya.
-                    var slopChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
-                    var slopDx = 0f
-                    var slopDy = 0f
-                    awaitTouchSlopOrCancellation(down.id) { change, over ->
-                        change.consume()
-                        slopChange = change
-                        slopDx = over.x
-                        slopDy = over.y
-                    }
-                    // Gesture navbar ini murni horizontal (geser antar tab
-                    // berdampingan) — kalau slop yang terdeteksi didominasi
-                    // gerak vertikal (mis. user sedang scroll konten di atasnya
-                    // tapi jarinya turun sedikit ke navbar), perlakukan tetap
-                    // sebagai TAP di posisi awal, bukan DRAG.
-                    if (slopChange != null && abs(slopDy) > abs(slopDx)) {
-                        slopChange = null
-                    }
-
-                    val confirmedSlopChange = slopChange
-                    if (confirmedSlopChange != null) {
-                        isDragging = true
-                        val dragPointerId = confirmedSlopChange.id
-                        // Posisi pertama diambil dari titik SAAT slop
-                        // terdeteksi (bukan menunggu event berikutnya) —
-                        // supaya pill langsung mulai mengikuti jari tanpa
-                        // "lompat" begitu drag resmi mulai.
-                        val firstRaw = (confirmedSlopChange.position.x / currentSlotWidth) - 0.5f
-                        val firstClamped = firstRaw.coerceIn(0f, (items.size - 1).toFloat())
-                        lastRawPosition = firstClamped
-                        previewIndex = firstClamped.roundToInt().coerceIn(0, items.lastIndex)
-                        scope.launch {
-                            pillPosition.animateTo(firstClamped, animationSpec = followSpec)
-                        }
-                        // Loop drag: ikuti jari sampai terangkat. Posisi
-                        // mentah dikejar lewat spring "follow" (bukan
-                        // snapTo instan) supaya gerakan pill terasa kenyal
-                        // dan tidak terlalu cepat/kaku — sesuai nuansa
-                        // iOS 26 liquid nav.
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == dragPointerId }
-                            if (change == null || !change.pressed) break
-                            change.consume()
-                            val dragRaw = (change.position.x / currentSlotWidth) - 0.5f
-                            val dragClamped = dragRaw.coerceIn(0f, (items.size - 1).toFloat())
-                            lastRawPosition = dragClamped
-                            previewIndex = dragClamped.roundToInt().coerceIn(0, items.lastIndex)
+                // GANTI TOTAL dari implementasi lama (raw awaitFirstDown +
+                // awaitTouchSlopOrCancellation + loop awaitPointerEvent
+                // manual di dalam awaitEachGesture). Root cause bug "tab
+                // Dashboard/index 0 tidak merespons": logic lama membaca
+                // lebar slot via closure luar (barWidthPx) sesaat gesture
+                // dimulai, lalu membatalkan+me-restart seluruh coroutine
+                // pointerInput setiap kali key berubah di tengah gesture —
+                // kombinasi ini membuat gesture di slot 0 (paling rentan
+                // kena reflow tepi bar) paling sering mati sebelum sempat
+                // memanggil onSelect sama sekali.
+                //
+                // FIX: pakai detectTapGestures — API BAWAAN Compose
+                // Foundation yang sudah dipakai jutaan kali di seluruh
+                // ekosistem Android (termasuk di dalam Modifier.clickable
+                // sendiri), jauh lebih teruji dibanding raw pointer-event
+                // loop manual. onTap dijamin terpanggil TEPAT SEKALI untuk
+                // setiap tap valid, dan index tab dihitung ULANG langsung
+                // dari offset yang diberikan Compose di callback onTap itu
+                // sendiri — bukan dari state closure yang bisa basi kalau
+                // composable sempat recompose di tengah gesture.
+                detectTapGestures(
+                    onPress = { offset ->
+                        isPressed = true
+                        val slotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
+                        if (slotWidth > 0f) {
+                            val raw = (offset.x / slotWidth) - 0.5f
+                            val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
+                            previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
                             scope.launch {
-                                pillPosition.animateTo(dragClamped, animationSpec = followSpec)
+                                pillPosition.animateTo(clamped, animationSpec = followSpec)
                             }
                         }
+                        // Tunggu sampai jari terangkat/dibatalkan supaya
+                        // isPressed balik ke false dengan benar (dipakai
+                        // untuk efek shadow/bulge saat ditekan).
+                        val released = tryAwaitRelease()
+                        isPressed = false
+                        if (!released) {
+                            // Gesture dibatalkan (mis. diambil alih scroll
+                            // detector lain) — kembalikan pill ke tab yang
+                            // sedang aktif, jangan biarkan menggantung di
+                            // posisi tekan yang batal.
+                            previewIndex = selectedIndex
+                            scope.launch {
+                                pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
+                            }
+                        }
+                    },
+                    onTap = { offset ->
+                        // Index dihitung LANGSUNG dari offset tap final yang
+                        // diberikan Compose — bukan dari lastRawPosition/
+                        // clampedDown yang sempat di-capture di closure lain
+                        // sebelumnya (itu yang jadi celah bug: nilai closure
+                        // bisa basi kalau composable sempat recompose/restart
+                        // di tengah gesture). Ini satu-satunya sumber
+                        // kebenaran untuk index yang di-tap.
+                        val slotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
+                        if (slotWidth > 0f) {
+                            val raw = (offset.x / slotWidth) - 0.5f
+                            val tappedIndex = raw.coerceIn(0f, (items.size - 1).toFloat())
+                                .roundToInt()
+                                .coerceIn(0, items.lastIndex)
+                            previewIndex = selectedIndex
+                            if (tappedIndex != selectedIndex) {
+                                onSelect(tappedIndex)
+                            } else {
+                                scope.launch {
+                                    pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+            .pointerInput(items.size) {
+                // Drag horizontal terpisah dari deteksi tap di atas —
+                // detectHorizontalDragGestures adalah API bawaan Compose
+                // yang sudah menangani touch-slop secara internal dengan
+                // benar (tidak perlu implementasi manual). Kedua pointerInput
+                // ini aman berjalan berdampingan pada modifier chain yang
+                // sama: Compose akan memberi kesempatan tap terlebih dahulu
+                // (via onPress/tryAwaitRelease) dan begitu jari benar-benar
+                // bergerak melewati slop, drag detector ini yang mengambil
+                // alih — sehingga tap singkat (termasuk index 0 / Dashboard)
+                // tidak pernah "tertelan" oleh detektor drag.
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        isDragging = true
+                        val slotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
+                        if (slotWidth > 0f) {
+                            val raw = (offset.x / slotWidth) - 0.5f
+                            val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
+                            previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
+                            scope.launch {
+                                pillPosition.animateTo(clamped, animationSpec = followSpec)
+                            }
+                        }
+                    },
+                    onDragEnd = {
                         isDragging = false
                         isPressed = false
-                        // FIX (safety-net): previewIndex dibaca sebagai
-                        // finalIndex APA PUN alasan loop di atas berhenti
-                        // (up normal, pointer batal, atau change hilang dari
-                        // daftar changes) — sebelumnya jika loop berhenti
-                        // lewat jalur "change == null" tanpa event up yang
-                        // bersih, kode di bawah ini tetap berjalan seperti
-                        // biasa karena previewIndex sudah ter-update selama
-                        // drag berlangsung, tapi ditambahkan log eksplisit
-                        // di sini untuk memastikan onSelect benar-benar
-                        // tereksekusi pada semua kondisi keluar loop.
                         val finalIndex = previewIndex
-                        // onSelect dipanggil SEGERA — tidak menunggu animasi
-                        // settle pill selesai — supaya transisi screen dan
-                        // pill snap berjalan bersamaan, bukan berurutan.
-                        // pillPosition SENGAJA tidak dianimasikan di sini:
-                        // begitu selectedIndex berubah, LaunchedEffect di atas
-                        // adalah satu-satunya yang menariknya ke slot final —
-                        // menghindari dua animasi berebut target di saat yang
-                        // sama (penyebab gerakan terlihat patah).
                         if (finalIndex != selectedIndex) {
                             onSelect(finalIndex)
                         } else {
@@ -512,25 +475,24 @@ fun AetherBottomNavBar(
                                 pillPosition.animateTo(finalIndex.toFloat(), animationSpec = settleSpec)
                             }
                         }
-                    } else {
-                        // slopChange == null: jari terangkat/dibatalkan
-                        // SEBELUM pernah melewati touch slop horizontal —
-                        // ini tap murni. onSelect dipanggil LANGSUNG DI SINI
-                        // berdasarkan posisi sentuhan — bukan lewat
-                        // Modifier.clickable terpisah di NavBarItem anak,
-                        // supaya navigasi tidak bergantung pada arbitrase
-                        // gesture antara pointerInput induk & clickable anak
-                        // (dulu penyebab tap ke tab, paling sering Dashboard/
-                        // index 0, kadang tidak memicu navigasi).
+                    },
+                    onDragCancel = {
+                        isDragging = false
                         isPressed = false
-                        val tappedIndex = clampedDown.roundToInt().coerceIn(0, items.lastIndex)
                         previewIndex = selectedIndex
-                        if (tappedIndex != selectedIndex) {
-                            onSelect(tappedIndex)
-                        } else {
-                            scope.launch {
-                                pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
-                            }
+                        scope.launch {
+                            pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
+                        }
+                    },
+                ) { change, _ ->
+                    change.consume()
+                    val slotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
+                    if (slotWidth > 0f) {
+                        val raw = (change.position.x / slotWidth) - 0.5f
+                        val clamped = raw.coerceIn(0f, (items.size - 1).toFloat())
+                        previewIndex = clamped.roundToInt().coerceIn(0, items.lastIndex)
+                        scope.launch {
+                            pillPosition.animateTo(clamped, animationSpec = followSpec)
                         }
                     }
                 }
