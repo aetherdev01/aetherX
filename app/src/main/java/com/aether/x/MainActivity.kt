@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +27,6 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.security.SignatureGuard
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
-import com.aether.x.data.DarkModePref
 import com.aether.x.ui.main.MainScreen
 import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
@@ -64,13 +62,11 @@ class MainActivity : ComponentActivity() {
             }
 
             appPrefs?.let { prefsValue ->
-                val darkTheme = when (prefsValue.darkModePref) {
-                    DarkModePref.SYSTEM -> isSystemInDarkTheme()
-                    DarkModePref.LIGHT -> false
-                    DarkModePref.DARK -> true
-                }
+                // AetherX uses a fixed dark visual system. The appearance
+                // selector is intentionally removed from Settings; persisted
+                // legacy values remain harmless for compatibility.
                 AetherXTheme(
-                    darkTheme = darkTheme,
+                    darkTheme = true,
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,

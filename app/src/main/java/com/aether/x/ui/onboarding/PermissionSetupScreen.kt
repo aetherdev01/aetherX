@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
@@ -35,12 +37,15 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -56,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -79,7 +85,9 @@ import com.aether.x.ui.theme.BgVoid
 import com.aether.x.ui.theme.OnAccentBlue
 import com.aether.x.ui.theme.Spacing
 import com.aether.x.ui.theme.StrokeSubtle
+import com.aether.x.ui.theme.SurfaceCard
 import com.aether.x.ui.theme.SurfaceCardAlt
+import com.aether.x.ui.theme.SurfaceRaised
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
@@ -178,8 +186,8 @@ fun PermissionSetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .padding(padding),
+                .padding(padding)
+                .statusBarsPadding(),
         ) {
             PermissionHeader()
 
@@ -189,27 +197,23 @@ fun PermissionSetupScreen(
                 pageSatisfied = pageSatisfied,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.xl, vertical = Spacing.md),
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
             )
 
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.weight(1f),
-
                 userScrollEnabled = true,
             ) { page ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = Spacing.xl)
-                        .padding(bottom = Spacing.xxl),
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 20.dp),
                 ) {
                     when (page) {
-                        0 -> AccessMethodPage(
-                            status = status,
-                            context = context,
-                        )
+                        0 -> AccessMethodPage(status = status, context = context)
                         1 -> WriteSettingsPage(status = status, context = context)
                         2 -> OverlayPage(status = status, context = context)
                         3 -> NotificationsPage(
@@ -226,54 +230,53 @@ fun PermissionSetupScreen(
                 }
             }
 
-            Column(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceCardAlt)
-                    .padding(horizontal = Spacing.xxl, vertical = Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .shadow(16.dp, RoundedCornerShape(30.dp)),
+                shape = RoundedCornerShape(30.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceCard.copy(alpha = 0.94f)),
+                border = BorderStroke(1.dp, StrokeSubtle.copy(alpha = 0.85f)),
             ) {
-                val isLastPage = pagerState.currentPage == pageCount - 1
-                val currentPageSatisfied = pageSatisfied.getOrNull(pagerState.currentPage) == true
-
-                val nextEnabled = !requireAccessToContinue || currentPageSatisfied
-
-                Button(
-                    onClick = {
-                        if (isLastPage) {
-                            onContinue()
-                        } else {
-                            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                        }
-                    },
-                    enabled = nextEnabled,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = MaterialTheme.shapes.large,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentBlue,
-                        contentColor = OnAccentBlue,
-                        disabledContainerColor = StrokeSubtle,
-                        disabledContentColor = TextMuted,
-                    ),
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = if (isLastPage) {
-                            stringResource(R.string.setup_action_continue)
-                        } else {
-                            stringResource(R.string.setup_action_next)
+                    val isLastPage = pagerState.currentPage == pageCount - 1
+                    val currentPageSatisfied = pageSatisfied.getOrNull(pagerState.currentPage) == true
+                    val nextEnabled = !requireAccessToContinue || currentPageSatisfied
+
+                    Button(
+                        onClick = {
+                            if (isLastPage) onContinue()
+                            else scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                         },
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                AnimatedVisibility(visible = !nextEnabled, enter = fadeIn(), exit = fadeOut()) {
-                    Text(
-                        text = stringResource(R.string.setup_locked_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                        enabled = nextEnabled,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentBlue,
+                            contentColor = OnAccentBlue,
+                            disabledContainerColor = SurfaceRaised,
+                            disabledContentColor = TextMuted,
+                        ),
+                    ) {
+                        Text(
+                            text = if (isLastPage) stringResource(R.string.setup_action_continue)
+                            else stringResource(R.string.setup_action_next),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    AnimatedVisibility(visible = !nextEnabled, enter = fadeIn(), exit = fadeOut()) {
+                        Text(
+                            text = stringResource(R.string.setup_locked_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        )
+                    }
                 }
             }
         }
@@ -521,15 +524,26 @@ private fun KernelWarningPage(
 
 @Composable
 private fun PageIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: androidx.compose.ui.graphics.Color) {
-    Box(
+    Surface(
         modifier = Modifier
-            .padding(top = Spacing.md)
-            .size(56.dp)
-            .clip(MaterialTheme.shapes.small)
-            .background(SurfaceCardAlt),
-        contentAlignment = Alignment.Center,
+            .padding(top = 12.dp)
+            .size(68.dp)
+            .shadow(12.dp, RoundedCornerShape(24.dp)),
+        shape = RoundedCornerShape(24.dp),
+        color = SurfaceRaised.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, tint.copy(alpha = 0.24f)),
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(28.dp))
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(tint.copy(alpha = 0.11f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(23.dp))
+            }
+        }
     }
 }
 
@@ -540,28 +554,32 @@ private fun PageTitle(title: String, subtitle: String) {
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = TextPrimary,
-        modifier = Modifier.padding(top = Spacing.lg),
+        modifier = Modifier.padding(top = 18.dp),
     )
     Text(
         text = subtitle,
         style = MaterialTheme.typography.bodyMedium,
         color = TextSecondary,
-        modifier = Modifier.padding(top = Spacing.xs),
+        modifier = Modifier.padding(top = 6.dp),
     )
 }
 
 @Composable
 private fun PermissionHeader() {
     Column(
-        modifier = Modifier
-            .padding(top = Spacing.md)
-            .padding(horizontal = Spacing.xxl),
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
     ) {
         Text(
             text = stringResource(R.string.setup_title),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
+        )
+        Text(
+            text = "Prepare AetherX for the first launch",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextMuted,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }
@@ -575,22 +593,19 @@ private fun PageDotsIndicator(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (index in 0 until pageCount) {
             val satisfied = pageSatisfied.getOrNull(index) == true
             val isCurrent = index == currentPage
-            val color = when {
-                satisfied -> AccentGreen
-                isCurrent -> AccentBlue
-                else -> StrokeSubtle
-            }
-            Icon(
-                imageVector = if (isCurrent || satisfied) Icons.Filled.Circle else Icons.Outlined.Circle,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(if (isCurrent) 10.dp else 8.dp),
+            val width = when { satisfied || isCurrent -> 24.dp else -> 7.dp }
+            val tint = when { satisfied -> AccentGreen else -> AccentBlue }
+            Box(
+                modifier = Modifier
+                    .size(width = width, height = 7.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (isCurrent || satisfied) tint else StrokeSubtle),
             )
         }
     }
@@ -601,17 +616,14 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(if (canContinue) AccentGreenContainer else SurfaceCardAlt)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (canContinue) AccentGreenContainer.copy(alpha = 0.72f) else SurfaceCardAlt)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(if (canContinue) AccentGreen else AccentRed),
+            modifier = Modifier.size(9.dp).clip(CircleShape).background(if (canContinue) AccentGreen else AccentRed),
         )
         Text(
             text = if (canContinue) stringResource(R.string.setup_ready_hint) else notReadyText,

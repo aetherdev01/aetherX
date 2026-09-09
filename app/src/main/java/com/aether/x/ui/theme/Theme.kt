@@ -61,11 +61,11 @@ private val AetherXLightScheme = lightColorScheme(
 // "tactile, jelas bisa disentuh". Hierarki ini yang menciptakan makna,
 // bukan sekadar variasi angka.
 private val AetherXShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),   // badge/chip kecil
-    small = RoundedCornerShape(12.dp),       // dropdown/menu item
-    medium = RoundedCornerShape(18.dp),      // compact panels
-    large = RoundedCornerShape(22.dp),       // buttons and interactive surfaces
-    extraLarge = RoundedCornerShape(28.dp),  // dialog/bottom sheet
+    extraSmall = RoundedCornerShape(12.dp),  // badge/chip kecil
+    small = RoundedCornerShape(16.dp),       // dropdown/menu item
+    medium = RoundedCornerShape(22.dp),      // compact panels
+    large = RoundedCornerShape(28.dp),       // buttons and interactive surfaces
+    extraLarge = RoundedCornerShape(32.dp),  // dialog/bottom sheet
 )
 
 @Composable
