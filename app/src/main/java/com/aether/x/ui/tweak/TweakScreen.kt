@@ -101,6 +101,7 @@ fun TweakScreen(
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: TweakViewModel = viewModel(),
     onNavigateToGameBooster: () -> Unit = {},
+    resetToDashboardKey: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
@@ -115,6 +116,16 @@ fun TweakScreen(
     val activity = context as? Activity
 
     var selectedSubTab by remember { mutableStateOf(TweakSubTab.DASHBOARD) }
+
+    // Bottom-nav Dashboard is a HOME command, not merely a top-level tab
+    // selection. It must also close the drawer and return from any internal
+    // Tweak screen to the dashboard when Dashboard is tapped again.
+    LaunchedEffect(resetToDashboardKey) {
+        if (resetToDashboardKey > 0) {
+            selectedSubTab = TweakSubTab.DASHBOARD
+            if (drawerState.isOpen) drawerState.close()
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {

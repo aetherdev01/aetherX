@@ -49,6 +49,11 @@ fun MainScreen(
     onNavigateToGameBooster: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
+    // Incremented every time the bottom Dashboard tab is pressed.
+    // This is intentionally separate from selectedTab so pressing Dashboard
+    // while already on the Dashboard root can still reset TweakScreen from
+    // an internal sub-screen (Game Profile, App Manager, etc.).
+    var dashboardRequest by remember { mutableStateOf(0) }
 
     val tweakViewModel: TweakViewModel = viewModel()
 
@@ -114,7 +119,11 @@ fun MainScreen(
                 items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index ->
-                    selectedTab = navItems[index]
+                    val target = navItems[index]
+                    if (target == MainTab.TWEAK) {
+                        dashboardRequest++
+                    }
+                    selectedTab = target
                 },
                 hazeState = hazeState,
                 modifier = Modifier
@@ -143,6 +152,7 @@ fun MainScreen(
                     contentPadding = padding,
                     viewModel = tweakViewModel,
                     onNavigateToGameBooster = onNavigateToGameBooster,
+                    resetToDashboardKey = dashboardRequest,
                 )
                 MainTab.MEMBERSHIP -> MembershipScreen(
                     modifier = Modifier,
