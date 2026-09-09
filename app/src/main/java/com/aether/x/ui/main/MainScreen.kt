@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,11 +50,11 @@ fun MainScreen(
     onNavigateToGameBooster: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
-    // Incremented every time the bottom Dashboard tab is pressed.
-    // This is intentionally separate from selectedTab so pressing Dashboard
-    // while already on the Dashboard root can still reset TweakScreen from
-    // an internal sub-screen (Game Profile, App Manager, etc.).
-    var dashboardRequest by remember { mutableStateOf(0) }
+
+    // Counter event, bukan Boolean, supaya setiap tap Dashboard dianggap
+    // sebagai perintah baru—even ketika tab utama memang sudah Dashboard.
+    // Ini memungkinkan TweakScreen mereset sub-tab internalnya ke HOME.
+    var dashboardRequest by remember { mutableIntStateOf(0) }
 
     val tweakViewModel: TweakViewModel = viewModel()
 
@@ -119,11 +120,11 @@ fun MainScreen(
                 items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index ->
-                    val target = navItems[index]
-                    if (target == MainTab.TWEAK) {
+                    val tab = navItems[index]
+                    selectedTab = tab
+                    if (tab == MainTab.TWEAK) {
                         dashboardRequest++
                     }
-                    selectedTab = target
                 },
                 hazeState = hazeState,
                 modifier = Modifier
@@ -152,7 +153,7 @@ fun MainScreen(
                     contentPadding = padding,
                     viewModel = tweakViewModel,
                     onNavigateToGameBooster = onNavigateToGameBooster,
-                    resetToDashboardKey = dashboardRequest,
+                    dashboardRequest = dashboardRequest,
                 )
                 MainTab.MEMBERSHIP -> MembershipScreen(
                     modifier = Modifier,
