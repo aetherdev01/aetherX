@@ -429,9 +429,13 @@ fun AetherBottomNavBar(
                                 .roundToInt()
                                 .coerceIn(0, items.lastIndex)
                             previewIndex = selectedIndex
-                            if (tappedIndex != selectedIndex) {
-                                onSelect(tappedIndex)
-                            } else {
+                            // Selalu kirim event klik, termasuk saat tab yang
+                            // ditekan sudah aktif. Ini penting untuk Dashboard:
+                            // MainScreen dapat mereset halaman/sub-tab internal
+                            // TweakScreen kembali ke Dashboard meski tab utama
+                            // tetap berada di index 0.
+                            onSelect(tappedIndex)
+                            if (tappedIndex == selectedIndex) {
                                 scope.launch {
                                     pillPosition.animateTo(selectedIndex.toFloat(), animationSpec = settleSpec)
                                 }

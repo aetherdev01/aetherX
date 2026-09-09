@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,6 +50,11 @@ fun MainScreen(
     onNavigateToGameBooster: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
+
+    // Counter event, bukan Boolean, supaya setiap tap Dashboard dianggap
+    // sebagai perintah baru—even ketika tab utama memang sudah Dashboard.
+    // Ini memungkinkan TweakScreen mereset sub-tab internalnya ke HOME.
+    var dashboardRequest by remember { mutableIntStateOf(0) }
 
     val tweakViewModel: TweakViewModel = viewModel()
 
@@ -114,7 +120,11 @@ fun MainScreen(
                 items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index ->
-                    selectedTab = navItems[index]
+                    val tab = navItems[index]
+                    selectedTab = tab
+                    if (tab == MainTab.TWEAK) {
+                        dashboardRequest++
+                    }
                 },
                 hazeState = hazeState,
                 modifier = Modifier
@@ -143,6 +153,7 @@ fun MainScreen(
                     contentPadding = padding,
                     viewModel = tweakViewModel,
                     onNavigateToGameBooster = onNavigateToGameBooster,
+                    dashboardRequest = dashboardRequest,
                 )
                 MainTab.MEMBERSHIP -> MembershipScreen(
                     modifier = Modifier,

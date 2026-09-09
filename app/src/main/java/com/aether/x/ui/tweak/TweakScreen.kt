@@ -101,6 +101,7 @@ fun TweakScreen(
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: TweakViewModel = viewModel(),
     onNavigateToGameBooster: () -> Unit = {},
+    dashboardRequest: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
@@ -115,6 +116,20 @@ fun TweakScreen(
     val activity = context as? Activity
 
     var selectedSubTab by remember { mutableStateOf(TweakSubTab.DASHBOARD) }
+
+    // Bottom tab Dashboard adalah perintah untuk kembali ke HOME/Dashboard,
+    // bukan sekadar memilih MainTab.TWEAK. Saat user sedang berada di
+    // Game Profile/Root Monitor/App Manager, MainTab.TWEAK tetap aktif sehingga
+    // klik Dashboard sebelumnya tidak mengubah apa pun. Request counter dari
+    // MainScreen membuat event klik tetap terdeteksi walaupun index tab sama.
+    LaunchedEffect(dashboardRequest) {
+        if (dashboardRequest > 0) {
+            selectedSubTab = TweakSubTab.DASHBOARD
+            if (drawerState.isOpen) {
+                drawerState.close()
+            }
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
