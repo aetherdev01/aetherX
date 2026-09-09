@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -86,11 +87,8 @@ fun AetherBottomNavBar(
     var isPressed by remember { mutableStateOf(false) }
     var dragVelocity by remember { mutableFloatStateOf(0f) }
 
-    // Memastikan status aktif (mengembang) bertahan selama ditekan atau di-slide
     val isActive = isPressed || isDragging
 
-    // Pegas (spring) utama untuk perpindahan capsule. 
-    // Damping diturunkan dari 0.82f agar pantulannya lebih terasa hidup (tidak flat).
     val settleSpec = remember {
         spring<Float>(
             dampingRatio = 0.60f,
@@ -106,11 +104,10 @@ fun AetherBottomNavBar(
         }
     }
 
-    // Efek menyembul/pegas pada capsule. Bereaksi pada isActive (press & drag).
     val pillBulge by animateFloatAsState(
         targetValue = if (isActive) 1.15f else 1f,
         animationSpec = spring(
-            dampingRatio = 0.55f, // Bouncier feel
+            dampingRatio = 0.55f,
             stiffness = 300f,
         ),
         label = "pillBulge",
@@ -124,16 +121,12 @@ fun AetherBottomNavBar(
         label = "barBulge",
     )
 
-    // Logika kalkulasi kecepatan untuk animasi jelly dinamis
     val currentVelocity = if (isDragging) dragVelocity else pillPosition.velocity
     val speed = abs(currentVelocity).coerceIn(0f, 7f)
     
-    // Stretch dan squash mengikuti kecepatan gerak
     val targetStretchX = 1f + (speed * 0.08f).coerceAtMost(0.35f)
     val targetSquashY = 1f - (speed * 0.04f).coerceAtMost(0.15f)
 
-    // Memberikan physics pegas tersendiri pada bentuk jelly agar saat berhenti 
-    // capsule bergoyang elastis (wobble) kembali ke bentuk padat.
     val stretchX by animateFloatAsState(
         targetValue = targetStretchX,
         animationSpec = spring(
@@ -220,7 +213,6 @@ fun AetherBottomNavBar(
                         isPressed = false
                         val finalIndex = previewIndex.coerceIn(0, items.lastIndex)
                         scope.launch {
-                            // Menurunkan momentum (velocity) dari tarikan tangan ke dalam pegas
                             pillPosition.animateTo(
                                 targetValue = finalIndex.toFloat(),
                                 initialVelocity = dragVelocity,
@@ -250,7 +242,6 @@ fun AetherBottomNavBar(
                     val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
                     if (slot > 0f) {
                         val deltaIndex = dragAmount / slot
-                        // Memetakan perubahan jarak mentah (frame-by-frame) menjadi pseudo-velocity
                         dragVelocity = deltaIndex * 60f
                         val next = (pillPosition.value + deltaIndex)
                             .coerceIn(0f, items.lastIndex.toFloat())
@@ -321,7 +312,6 @@ fun AetherBottomNavBar(
                 val baseWidth = (slotWidthPx - insetPx * 2f).coerceAtLeast(1f)
                 val baseHeight = (barHeightPx - insetPx * 2f).coerceAtLeast(1f)
 
-                // Kalkulasi akhir ukuran capsule (Membesar proportional & berekstensi jelly)
                 val pillWidthPx = baseWidth * pillBulge * stretchX
                 val pillHeightPx = baseHeight * pillBulge * squashY
 
@@ -360,7 +350,9 @@ fun AetherBottomNavBar(
                             )
                         )
                         .drawWithCache {
+                            val w = size.width
                             val h = size.height
+                            
                             val topReflection = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.20f),
@@ -378,10 +370,34 @@ fun AetherBottomNavBar(
                                 startY = h * 0.62f,
                                 endY = h,
                             )
+
+                            // Efek pantulan cahaya melengkung (Edge Rim Reflection) di sisi kiri & kanan
+                            // Bergeser dan merenggang secara dinamis mengikuti lebar & kecepatan capsule
+                            val leftReflection = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.35f),
+                                    Color.White.copy(alpha = 0.08f),
+                                    Color.Transparent
+                                },
+                                center = Offset(w * 0.08f, h * 0.5f),
+                                radius = w * 0.35f
+                            )
+                            val rightReflection = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.35f),
+                                    Color.White.copy(alpha = 0.08f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(w * 0.92f, h * 0.5f),
+                                radius = w * 0.35f
+                            )
+
                             onDrawWithContent {
                                 drawContent()
                                 drawRect(topReflection)
                                 drawRect(lowerTint)
+                                drawRect(leftReflection)
+                                drawRect(rightReflection)
                             }
                         }
                         .border(
@@ -445,9 +461,9 @@ private fun NavBarItem(
         label = "navItemColor",
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.18f else 1f, // Sedikit lebih besar
+        targetValue = if (emphasized) 1.18f else 1f,
         animationSpec = spring(
-            dampingRatio = 0.55f, // Efek pegas saat ditahan masuk ke text/icon
+            dampingRatio = 0.55f,
             stiffness = 250f,
         ),
         label = "navIconScale",

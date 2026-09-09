@@ -10,17 +10,19 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,6 +30,9 @@ import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -49,21 +54,17 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.SurfaceRaised
 import kotlinx.coroutines.delay
-import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 private val crosshairColorPalette = listOf(
     0xFFFFFFFFL,
@@ -93,7 +94,6 @@ private val styleOptions = listOf(
     StyleOption(CrosshairStyle.T_SHAPE, R.string.crosshair_style_t_shape),
     StyleOption(CrosshairStyle.DIAMOND, R.string.crosshair_style_diamond),
     StyleOption(CrosshairStyle.SQUARE, R.string.crosshair_style_square),
-
     StyleOption(CrosshairStyle.CHEVRON, R.string.crosshair_style_chevron),
     StyleOption(CrosshairStyle.DOUBLE_RING, R.string.crosshair_style_double_ring),
 )
@@ -118,17 +118,16 @@ fun CrosshairSettingsSection(
     onNudgePosition: (dx: Int, dy: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-
     var showColorPicker by remember { mutableStateOf(false) }
+    var showStylePicker by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-
             .background(MaterialTheme.colorScheme.surface),
     ) {
-
+        // Latar Ikon Samark
         Icon(
             imageVector = Icons.Outlined.CenterFocusStrong,
             contentDescription = null,
@@ -139,7 +138,7 @@ fun CrosshairSettingsSection(
         )
 
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-
+            // Header: Judul & Switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -149,7 +148,6 @@ fun CrosshairSettingsSection(
                     Text(
                         text = stringResource(R.string.crosshair_card_title),
                         style = MaterialTheme.typography.titleLarge,
-
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
@@ -168,7 +166,6 @@ fun CrosshairSettingsSection(
                             onEnabledChange(checked)
                         }
                     },
-
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = AccentBlue,
@@ -186,50 +183,118 @@ fun CrosshairSettingsSection(
             }
 
             if (enabled) {
+                Spacer(modifier = Modifier.height(24.dp))
 
+                // Pemilih Gaya (Membuka Pop Up Dialog)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .height(260.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceRaised)
+                        .clickable { showStylePicker = true }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    StyleIconList(
-                        selected = style,
-                        onSelect = onStyleChange,
-                        modifier = Modifier.width(56.dp),
+                    Text(
+                        text = "Gaya Crosshair",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
                     )
+                    // Preview Icon Aktif
+                    Box(modifier = Modifier.size(24.dp)) {
+                        StyleIconButtonInner(style = style, color = AccentBlue)
+                    }
+                }
 
-                    Column(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Area D-Pad & Slider Vertikal (Posisi & Ukuran)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceRaised)
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.crosshair_offset_format, offsetX, offsetY),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(bottom = 6.dp),
-                        )
-                        CrosshairPositionDial(
-                            rotationDegrees = rotationDegrees,
-                            onRotationChange = onRotationChange,
-                            onNudgePosition = onNudgePosition,
+                        PositionDPadOnly(
+                            offsetX = offsetX,
+                            offsetY = offsetY,
+                            onNudgePosition = onNudgePosition
                         )
                     }
 
-                    VerticalAccentSlider(
-                        label = stringResource(R.string.crosshair_size_label),
-                        valueText = "${(sizeDp / 40f).let { "%.1f".format(it) }}x",
-                        value = sizeDp.toFloat(),
-                        range = 12f..80f,
-                        onValueChange = { onSizeChange(it.toInt()) },
-                        modifier = Modifier.width(56.dp),
+                    Box(
+                        modifier = Modifier
+                            .width(64.dp)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceRaised)
+                            .padding(top = 12.dp, bottom = 12.dp)
+                    ) {
+                        VerticalAccentSlider(
+                            label = stringResource(R.string.crosshair_size_label),
+                            valueText = "${(sizeDp / 40f).let { "%.1f".format(it) }}x",
+                            value = sizeDp.toFloat(),
+                            range = 12f..80f,
+                            onValueChange = { onSizeChange(it.toInt()) },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Slider Rotasi Baru (Lebih Rapi & Bagus)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceRaised)
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Rotasi",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = "${rotationDegrees}°",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentBlue
+                        )
+                    }
+                    Slider(
+                        value = rotationDegrees.toFloat(),
+                        onValueChange = { onRotationChange(it.roundToInt()) },
+                        valueRange = 0f..360f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = AccentBlue,
+                            activeTrackColor = AccentBlue,
+                            inactiveTrackColor = AccentBlueDim
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Pilihan Warna
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     crosshairColorPalette.forEach { swatch ->
@@ -251,6 +316,19 @@ fun CrosshairSettingsSection(
         }
     }
 
+    // Dialog Pop-up Gaya Crosshair
+    if (showStylePicker) {
+        CrosshairStylePickerDialog(
+            currentStyle = style,
+            onDismiss = { showStylePicker = false },
+            onStyleSelected = { 
+                onStyleChange(it)
+                showStylePicker = false
+            }
+        )
+    }
+
+    // Dialog Color Picker (Asli)
     if (showColorPicker) {
         CrosshairColorPickerDialog(
             initialColorArgb = colorArgb,
@@ -263,23 +341,41 @@ fun CrosshairSettingsSection(
     }
 }
 
+// Dialog Pop-up Mengambang untuk Pilihan Style
 @Composable
-private fun StyleIconList(
-    selected: CrosshairStyle,
-    onSelect: (CrosshairStyle) -> Unit,
-    modifier: Modifier = Modifier,
+fun CrosshairStylePickerDialog(
+    currentStyle: CrosshairStyle,
+    onDismiss: () -> Unit,
+    onStyleSelected: (CrosshairStyle) -> Unit
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        items(styleOptions, key = { it.style.name }) { option ->
-            StyleIconButton(
-                style = option.style,
-                label = stringResource(option.labelRes),
-                isSelected = option.style == selected,
-                onClick = { onSelect(option.style) },
-            )
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Pilih Gaya Crosshair",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 64.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 8.dp)
+                ) {
+                    items(styleOptions, key = { it.style.name }) { option ->
+                        StyleIconButton(
+                            style = option.style,
+                            isSelected = option.style == currentStyle,
+                            onClick = { onStyleSelected(option.style) }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -287,293 +383,221 @@ private fun StyleIconList(
 @Composable
 private fun StyleIconButton(
     style: CrosshairStyle,
-    label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
-            .size(56.dp)
+            .size(64.dp)
             .clip(MaterialTheme.shapes.medium)
             .background(if (isSelected) AccentBlueDim else SurfaceRaised)
             .border(
                 width = if (isSelected) 1.5.dp else 0.dp,
                 color = if (isSelected) AccentBlue else Color.Transparent,
-                shape = MaterialTheme.shapes.large,
+                shape = MaterialTheme.shapes.medium,
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.size(26.dp)) {
-            val cx = size.width / 2f
-            val cy = size.height / 2f
-            val r = size.minDimension / 2.6f
-            val thickness = 2.2f
-            val drawColor = if (isSelected) AccentBlue else Color.White.copy(alpha = 0.6f)
-            when (style) {
-                CrosshairStyle.CROSS -> {
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
-                CrosshairStyle.PLUS -> {
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
-                CrosshairStyle.BULLET -> {
-                    drawCircle(drawColor, radius = r * 0.5f, center = Offset(cx, cy))
-                }
-                CrosshairStyle.PLUS_GAP -> {
-                    val gap = r * 0.35f
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - gap, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - gap), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + gap), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
-                CrosshairStyle.X_SHAPE -> {
-                    val d = r * 0.7071f
-                    drawLine(drawColor, Offset(cx - d, cy - d), Offset(cx + d, cy + d), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx - d, cy + d), Offset(cx + d, cy - d), thickness, StrokeCap.Round)
-                }
-                CrosshairStyle.DOT -> drawCircle(drawColor, radius = thickness * 1.6f, center = Offset(cx, cy))
-                CrosshairStyle.CIRCLE -> drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
-                CrosshairStyle.CIRCLE_DOT -> {
-                    drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
-                    drawCircle(drawColor, radius = thickness * 1.6f, center = Offset(cx, cy))
-                }
-                CrosshairStyle.CROSS_DOT -> {
-                    val gap = r * 0.35f
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - gap, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - gap), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + gap), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                    drawCircle(drawColor, radius = thickness * 1.4f, center = Offset(cx, cy))
-                }
-                CrosshairStyle.T_SHAPE -> {
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
+        Box(modifier = Modifier.size(26.dp)) {
+            StyleIconButtonInner(
+                style = style,
+                color = if (isSelected) AccentBlue else Color.White.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
 
-                CrosshairStyle.DIAMOND -> {
-                    val gap = r * 0.3f
-                    val d = r * 0.7071f
-                    val gapD = gap * 0.7071f
-                    drawLine(drawColor, Offset(cx - gapD, cy - gapD), Offset(cx - d, cy - d), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx - d, cy - d), Offset(cx, cy - r), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx + d, cy - d), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + d, cy - d), Offset(cx + gapD, cy - gapD), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + gapD, cy + gapD), Offset(cx + d, cy + d), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + d, cy + d), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + r), Offset(cx - d, cy + d), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx - d, cy + d), Offset(cx - gapD, cy + gapD), thickness, StrokeCap.Round)
-                }
+// Logika Canvas dipisah agar bisa digunakan ulang untuk preview kecil di bar utama
+@Composable
+private fun StyleIconButtonInner(style: CrosshairStyle, color: Color) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val r = size.minDimension / 2.6f
+        val thickness = 2.2f
 
-                CrosshairStyle.SQUARE -> {
-                    val s = r * 0.85f
-                    val corner = s * 0.5f
-
-                    drawLine(drawColor, Offset(cx - s, cy - s), Offset(cx - s + corner, cy - s), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx - s, cy - s), Offset(cx - s, cy - s + corner), thickness, StrokeCap.Round)
-
-                    drawLine(drawColor, Offset(cx + s, cy - s), Offset(cx + s - corner, cy - s), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + s, cy - s), Offset(cx + s, cy - s + corner), thickness, StrokeCap.Round)
-
-                    drawLine(drawColor, Offset(cx - s, cy + s), Offset(cx - s + corner, cy + s), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx - s, cy + s), Offset(cx - s, cy + s - corner), thickness, StrokeCap.Round)
-
-                    drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s - corner, cy + s), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + s, cy + s), Offset(cx + s, cy + s - corner), thickness, StrokeCap.Round)
-                }
-
-                CrosshairStyle.CHEVRON -> {
-                    val gap = r * 0.35f
-                    val arm = r * 0.45f
-                    val tip = r * 0.9f
-
-                    drawLine(drawColor, Offset(cx - arm, cy - tip), Offset(cx, cy - gap), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - gap), Offset(cx + arm, cy - tip), thickness, StrokeCap.Round)
-
-                    drawLine(drawColor, Offset(cx - arm, cy + tip), Offset(cx, cy + gap), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + gap), Offset(cx + arm, cy + tip), thickness, StrokeCap.Round)
-
-                    drawLine(drawColor, Offset(cx - tip, cy - arm), Offset(cx - gap, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx - gap, cy), Offset(cx - tip, cy + arm), thickness, StrokeCap.Round)
-
-                    drawLine(drawColor, Offset(cx + tip, cy - arm), Offset(cx + gap, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + gap, cy), Offset(cx + tip, cy + arm), thickness, StrokeCap.Round)
-                }
-
-                CrosshairStyle.DOUBLE_RING -> {
-                    drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
-                    drawCircle(drawColor, radius = r * 0.55f, center = Offset(cx, cy), style = Stroke(thickness))
-                }
-
-                CrosshairStyle.CIRCLE_PLUS -> {
-                    drawCircle(drawColor, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
-                    val armInner = r * 0.15f
-                    drawLine(drawColor, Offset(cx - r * 0.75f, cy), Offset(cx - armInner, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + armInner, cy), Offset(cx + r * 0.75f, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r * 0.75f), Offset(cx, cy - armInner), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + armInner), Offset(cx, cy + r * 0.75f), thickness, StrokeCap.Round)
-                }
-
-                CrosshairStyle.TICK_CROSS -> {
-                    val tickInner = r * 0.45f
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - tickInner, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + tickInner, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - tickInner), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + tickInner), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
-
-                CrosshairStyle.CIRCLE_DOT_TICKS -> {
-                    drawCircle(drawColor, radius = r * 0.7f, center = Offset(cx, cy), style = Stroke(thickness))
-                    drawCircle(drawColor, radius = thickness * 1.2f, center = Offset(cx, cy))
-                    val tickStart = r * 0.7f + thickness * 0.4f
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - tickStart, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + tickStart, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - tickStart), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + tickStart), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
-
-                CrosshairStyle.CIRCLE_CROSS_TICKS -> {
-                    drawCircle(drawColor, radius = r * 0.7f, center = Offset(cx, cy), style = Stroke(thickness))
-                    drawLine(drawColor, Offset(cx - r * 0.7f, cy), Offset(cx + r * 0.7f, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r * 0.7f), Offset(cx, cy + r * 0.7f), thickness, StrokeCap.Round)
-                    val tickStart2 = r * 0.7f + thickness * 0.4f
-                    drawLine(drawColor, Offset(cx - r, cy), Offset(cx - tickStart2, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx + tickStart2, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy - r), Offset(cx, cy - tickStart2), thickness, StrokeCap.Round)
-                    drawLine(drawColor, Offset(cx, cy + tickStart2), Offset(cx, cy + r), thickness, StrokeCap.Round)
-                }
+        when (style) {
+            CrosshairStyle.CROSS -> {
+                drawLine(color, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.PLUS -> {
+                drawLine(color, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.BULLET -> {
+                drawCircle(color, radius = r * 0.5f, center = Offset(cx, cy))
+            }
+            CrosshairStyle.PLUS_GAP -> {
+                val gap = r * 0.35f
+                drawLine(color, Offset(cx - r, cy), Offset(cx - gap, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + gap, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy - gap), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + gap), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.X_SHAPE -> {
+                val d = r * 0.7071f
+                drawLine(color, Offset(cx - d, cy - d), Offset(cx + d, cy + d), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - d, cy + d), Offset(cx + d, cy - d), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.DOT -> drawCircle(color, radius = thickness * 1.6f, center = Offset(cx, cy))
+            CrosshairStyle.CIRCLE -> drawCircle(color, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+            CrosshairStyle.CIRCLE_DOT -> {
+                drawCircle(color, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+                drawCircle(color, radius = thickness * 1.6f, center = Offset(cx, cy))
+            }
+            CrosshairStyle.CROSS_DOT -> {
+                val gap = r * 0.35f
+                drawLine(color, Offset(cx - r, cy), Offset(cx - gap, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + gap, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy - gap), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + gap), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                drawCircle(color, radius = thickness * 1.4f, center = Offset(cx, cy))
+            }
+            CrosshairStyle.T_SHAPE -> {
+                drawLine(color, Offset(cx - r, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.DIAMOND -> {
+                val gap = r * 0.3f
+                val d = r * 0.7071f
+                val gapD = gap * 0.7071f
+                drawLine(color, Offset(cx - gapD, cy - gapD), Offset(cx - d, cy - d), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - d, cy - d), Offset(cx, cy - r), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx + d, cy - d), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + d, cy - d), Offset(cx + gapD, cy - gapD), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + gapD, cy + gapD), Offset(cx + d, cy + d), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + d, cy + d), Offset(cx, cy + r), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + r), Offset(cx - d, cy + d), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - d, cy + d), Offset(cx - gapD, cy + gapD), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.SQUARE -> {
+                val s = r * 0.85f
+                val corner = s * 0.5f
+                drawLine(color, Offset(cx - s, cy - s), Offset(cx - s + corner, cy - s), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - s, cy - s), Offset(cx - s, cy - s + corner), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + s, cy - s), Offset(cx + s - corner, cy - s), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + s, cy - s), Offset(cx + s, cy - s + corner), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - s, cy + s), Offset(cx - s + corner, cy + s), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - s, cy + s), Offset(cx - s, cy + s - corner), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + s, cy + s), Offset(cx + s - corner, cy + s), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + s, cy + s), Offset(cx + s, cy + s - corner), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.CHEVRON -> {
+                val gap = r * 0.35f
+                val arm = r * 0.45f
+                val tip = r * 0.9f
+                drawLine(color, Offset(cx - arm, cy - tip), Offset(cx, cy - gap), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - gap), Offset(cx + arm, cy - tip), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - arm, cy + tip), Offset(cx, cy + gap), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + gap), Offset(cx + arm, cy + tip), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - tip, cy - arm), Offset(cx - gap, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx - gap, cy), Offset(cx - tip, cy + arm), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + tip, cy - arm), Offset(cx + gap, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + gap, cy), Offset(cx + tip, cy + arm), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.DOUBLE_RING -> {
+                drawCircle(color, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+                drawCircle(color, radius = r * 0.55f, center = Offset(cx, cy), style = Stroke(thickness))
+            }
+            CrosshairStyle.CIRCLE_PLUS -> {
+                drawCircle(color, radius = r, center = Offset(cx, cy), style = Stroke(thickness))
+                val armInner = r * 0.15f
+                drawLine(color, Offset(cx - r * 0.75f, cy), Offset(cx - armInner, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + armInner, cy), Offset(cx + r * 0.75f, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r * 0.75f), Offset(cx, cy - armInner), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + armInner), Offset(cx, cy + r * 0.75f), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.TICK_CROSS -> {
+                val tickInner = r * 0.45f
+                drawLine(color, Offset(cx - r, cy), Offset(cx - tickInner, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + tickInner, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy - tickInner), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + tickInner), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.CIRCLE_DOT_TICKS -> {
+                drawCircle(color, radius = r * 0.7f, center = Offset(cx, cy), style = Stroke(thickness))
+                drawCircle(color, radius = thickness * 1.2f, center = Offset(cx, cy))
+                val tickStart = r * 0.7f + thickness * 0.4f
+                drawLine(color, Offset(cx - r, cy), Offset(cx - tickStart, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + tickStart, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy - tickStart), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + tickStart), Offset(cx, cy + r), thickness, StrokeCap.Round)
+            }
+            CrosshairStyle.CIRCLE_CROSS_TICKS -> {
+                drawCircle(color, radius = r * 0.7f, center = Offset(cx, cy), style = Stroke(thickness))
+                drawLine(color, Offset(cx - r * 0.7f, cy), Offset(cx + r * 0.7f, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r * 0.7f), Offset(cx, cy + r * 0.7f), thickness, StrokeCap.Round)
+                val tickStart2 = r * 0.7f + thickness * 0.4f
+                drawLine(color, Offset(cx - r, cy), Offset(cx - tickStart2, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx + tickStart2, cy), Offset(cx + r, cy), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy - r), Offset(cx, cy - tickStart2), thickness, StrokeCap.Round)
+                drawLine(color, Offset(cx, cy + tickStart2), Offset(cx, cy + r), thickness, StrokeCap.Round)
             }
         }
     }
 }
 
 /**
- * Widget gabungan: ring rotasi (luar) + D-pad segitiga geser posisi
- * (dalam), persis satu widget bulat seperti pada gambar referensi —
- * bukan dua kontrol terpisah lagi.
- *
- * - Ring luar + handle bulat merah kecil yang bisa digeser BERPUTAR
- *   mengelilingi tepi lingkaran mengatur rotasi bentuk crosshair
- *   ([CrosshairView.rotationDegrees]), dengan angka derajat di tengah —
- *   pengganti `PositionJoystick` lama untuk rotasi, sudah dikonfirmasi
- *   benar sebelumnya dan TIDAK diubah cara kerjanya di sini.
- * - 4 segitiga di dalam ring (atas/bawah/kiri/kanan) menggeser POSISI
- *   crosshair di layar saat DITAHAN (repeat-loop selama jari menempel),
- *   terpisah secara fungsi dari rotasi meski satu widget visual — nilai
- *   X/Y hasil geser ditampilkan di label terpisah di atas widget ini
- *   (lihat `crosshair_offset_format`), bukan di tengah dial (tengah
- *   dial tetap menampilkan derajat rotasi).
+ * Komponen D-Pad murni (tanpa ring rotasi) agar UI lebih terfokus
  */
 @Composable
-private fun CrosshairPositionDial(
-    rotationDegrees: Int,
-    onRotationChange: (Int) -> Unit,
+private fun PositionDPadOnly(
+    offsetX: Int,
+    offsetY: Int,
     onNudgePosition: (dx: Int, dy: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dialSize = 190.dp
-    val handleTrackInset = 16.dp
-    val latestRotation by rememberUpdatedState(rotationDegrees)
-    val density = LocalDensity.current
     val nudgeStep = 6
-
     Box(
-        modifier = modifier
-            .size(dialSize)
-            .pointerInput(Unit) {
-                detectDragGestures { change, _ ->
-                    change.consume()
-                    val centerX = size.width / 2f
-                    val centerY = size.height / 2f
-                    val dx = change.position.x - centerX
-                    val dy = change.position.y - centerY
-                    // atan2 dengan sumbu Y dibalik (koordinat layar Y ke
-                    // bawah) supaya 0° berada tepat di atas dial (jam 12),
-                    // sesuai posisi handle pada gambar referensi.
-                    val angleRad = atan2(dx, -dy)
-                    var degrees = Math.toDegrees(angleRad.toDouble()).roundToInt()
-                    if (degrees < 0) degrees += 360
-                    if (degrees >= 360) degrees -= 360
-                    onRotationChange(degrees)
-                }
-            },
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-            val strokeWidth = 2.dp.toPx()
+        // Lingkaran tipis latar D-Pad
+        Canvas(modifier = Modifier.size(130.dp)) {
+            val strokeWidth = 1.dp.toPx()
             drawCircle(
-                color = AccentBlueDim,
-                radius = size.minDimension / 2f - strokeWidth,
-                style = Stroke(strokeWidth),
+                color = AccentBlueDim.copy(alpha = 0.5f),
+                radius = size.minDimension / 2f,
+                style = Stroke(strokeWidth)
             )
         }
 
-        // D-pad segitiga geser posisi, ditata di dalam ring rotasi.
         DPadTriangle(
             direction = DPadDirection.UP,
             onNudge = { onNudgePosition(0, -nudgeStep) },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 34.dp),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
         )
         DPadTriangle(
             direction = DPadDirection.DOWN,
             onNudge = { onNudgePosition(0, nudgeStep) },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 34.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
         )
         DPadTriangle(
             direction = DPadDirection.LEFT,
             onNudge = { onNudgePosition(-nudgeStep, 0) },
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 34.dp),
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp),
         )
         DPadTriangle(
             direction = DPadDirection.RIGHT,
             onNudge = { onNudgePosition(nudgeStep, 0) },
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 34.dp),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
         )
 
-        val trackRadiusPx = with(density) { (dialSize / 2f - handleTrackInset).toPx() }
-        val angleRad = Math.toRadians((latestRotation - 90).toDouble())
-        val handleOffsetPx = IntOffset(
-            x = (cos(angleRad) * trackRadiusPx).roundToInt(),
-            y = (sin(angleRad) * trackRadiusPx).roundToInt(),
-        )
-
-        Box(
-            modifier = Modifier
-                .offset { handleOffsetPx }
-                .size(HANDLE_SIZE_DP.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFE8402F))
-                .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
-        )
-
-        Text(
-            text = stringResource(R.string.crosshair_rotation_degrees_format, rotationDegrees),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = AccentBlue,
-        )
+        // Label Koordinat X Y di tengah
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = "X: $offsetX", style = MaterialTheme.typography.labelSmall, color = AccentBlue)
+            Text(text = "Y: $offsetY", style = MaterialTheme.typography.labelSmall, color = AccentBlue)
+        }
     }
 }
 
-private const val HANDLE_SIZE_DP = 18
-
 private enum class DPadDirection { UP, DOWN, LEFT, RIGHT }
 
-/**
- * Satu segitiga D-pad. Menahan (press-and-hold) memicu [onNudge] berulang
- * kali lewat `LaunchedEffect` + delay loop sampai jari diangkat; ketuk
- * singkat tetap menggeser 1 langkah.
- */
 @Composable
 private fun DPadTriangle(
     direction: DPadDirection,
@@ -602,7 +626,7 @@ private fun DPadTriangle(
 
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(36.dp)
             .pointerInput(direction) {
                 awaitPointerEventScope {
                     while (true) {
@@ -617,7 +641,7 @@ private fun DPadTriangle(
     ) {
         Canvas(
             modifier = Modifier
-                .size(14.dp)
+                .size(16.dp)
                 .rotate(triangleRotation),
         ) {
             val path = Path().apply {
@@ -641,20 +665,19 @@ private fun VerticalAccentSlider(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
             color = Color.White.copy(alpha = 0.75f),
         )
         Text(
             text = valueText,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
             color = AccentBlue,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -678,20 +701,20 @@ private fun VerticalAccentSlider(
                     .fillMaxHeight()
                     .width(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(SurfaceRaised),
+                    .background(Color.Black.copy(alpha = 0.3f)),
             ) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height((fraction * 200).dp.coerceAtMost(200.dp))
+                        .fillMaxHeight(fraction)
                         .clip(RoundedCornerShape(2.dp))
                         .background(AccentBlue),
                 )
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = (fraction * 200).dp.coerceAtMost(196.dp))
+                        .padding(bottom = (fraction * 120).dp.coerceAtMost(116.dp)) 
                         .size(width = 20.dp, height = 10.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(AccentBlue),
@@ -711,12 +734,12 @@ private fun ColorSwatchLarge(
     Box(
         modifier = modifier
             .height(52.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .clip(RoundedCornerShape(12.dp))
             .background(Color(color.toInt()))
             .border(
                 width = if (selected) 2.dp else 0.dp,
                 color = if (selected) AccentBlue else Color.Transparent,
-                shape = MaterialTheme.shapes.large,
+                shape = RoundedCornerShape(12.dp),
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -726,7 +749,7 @@ private fun ColorSwatchLarge(
                 imageVector = Icons.Outlined.Check,
                 contentDescription = null,
                 tint = contrastingCheckTint(Color(color.toInt())),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -750,12 +773,12 @@ private fun CustomColorSwatch(
     Box(
         modifier = modifier
             .height(52.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .clip(RoundedCornerShape(12.dp))
             .background(rainbowBrush)
             .border(
                 width = if (isCustomActive) 2.dp else 0.dp,
                 color = if (isCustomActive) AccentBlue else Color.Transparent,
-                shape = MaterialTheme.shapes.large,
+                shape = RoundedCornerShape(12.dp),
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
