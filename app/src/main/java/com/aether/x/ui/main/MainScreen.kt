@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -142,8 +144,28 @@ fun MainScreen(
                 .hazeSource(state = hazeState),
             targetState = selectedTab,
             transitionSpec = {
-                (fadeIn(tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220))) togetherWith
-                    (fadeOut(tween(140)) + scaleOut(targetScale = 1.02f, animationSpec = tween(140)))
+                // Direction-aware page transition: the incoming screen follows
+                // the same direction as the tab selection/drag. The movement
+                // is deliberately restrained so it feels like iOS navigation
+                // rather than a fast carousel.
+                val movingForward = targetState.ordinal > initialState.ordinal
+                val enterFrom = if (movingForward) { 0.065f } else { -0.065f }
+                val exitTo = if (movingForward) { -0.035f } else { 0.035f }
+
+                (slideInHorizontally(
+                    animationSpec = tween(durationMillis = 380),
+                    initialOffsetX = { fullWidth -> (fullWidth * enterFrom).roundToInt() },
+                ) + fadeIn(tween(300)) + scaleIn(
+                    initialScale = 0.985f,
+                    animationSpec = tween(360),
+                )) togetherWith
+                    (slideOutHorizontally(
+                        animationSpec = tween(durationMillis = 250),
+                        targetOffsetX = { fullWidth -> (fullWidth * exitTo).roundToInt() },
+                    ) + fadeOut(tween(190)) + scaleOut(
+                        targetScale = 0.992f,
+                        animationSpec = tween(220),
+                    ))
             },
             label = "mainTabContent",
         ) { tab ->

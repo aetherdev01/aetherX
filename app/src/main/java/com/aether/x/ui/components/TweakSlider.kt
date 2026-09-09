@@ -37,23 +37,14 @@ fun TweakSlider(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.End,
-            )
+            Text(label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            Text(valueText, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.End)
         }
         Text(
-            text = description,
-            style = MaterialTheme.typography.bodyMedium,
+            description,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp, bottom = 10.dp, end = 8.dp),
+            modifier = Modifier.padding(top = 3.dp, bottom = 7.dp, end = 8.dp),
         )
         Slider(
             value = value,
@@ -67,9 +58,9 @@ fun TweakSlider(
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,
                 activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                activeTickColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                activeTickColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f),
+                inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
             ),
         )
     }

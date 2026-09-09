@@ -49,7 +49,7 @@ fun <T> TweakDropdown(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             Icon(
@@ -57,22 +57,21 @@ fun <T> TweakDropdown(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
                 modifier = Modifier
-                    .padding(top = 2.dp)
-                    .size(30.dp),
+                    .size(24.dp),
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha),
             )
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha),
-                modifier = Modifier.padding(top = 4.dp, end = 8.dp),
+                modifier = Modifier.padding(top = 3.dp, end = 8.dp),
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
@@ -86,7 +85,7 @@ fun <T> TweakDropdown(
                         haptic.performIfEnabled(hapticEnabled, HapticFeedbackType.LongPress)
                         expanded = true
                     }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 11.dp, vertical = 9.dp),
             ) {
                 Text(
                     text = optionLabel(selected),

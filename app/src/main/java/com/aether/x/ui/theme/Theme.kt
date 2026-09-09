@@ -62,10 +62,10 @@ private val AetherXLightScheme = lightColorScheme(
 // bukan sekadar variasi angka.
 private val AetherXShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),   // badge/chip kecil
-    small = RoundedCornerShape(10.dp),       // dropdown/menu item
-    medium = RoundedCornerShape(14.dp),      // panel data (SectionCard dkk)
-    large = RoundedCornerShape(20.dp),       // tombol & elemen interaktif
-    extraLarge = RoundedCornerShape(26.dp),  // dialog/bottom sheet
+    small = RoundedCornerShape(12.dp),       // dropdown/menu item
+    medium = RoundedCornerShape(18.dp),      // compact panels
+    large = RoundedCornerShape(22.dp),       // buttons and interactive surfaces
+    extraLarge = RoundedCornerShape(28.dp),  // dialog/bottom sheet
 )
 
 @Composable

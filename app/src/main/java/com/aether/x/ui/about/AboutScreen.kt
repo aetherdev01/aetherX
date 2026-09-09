@@ -52,7 +52,7 @@ fun AboutScreen(
             .fillMaxSize()
             .padding(contentPadding)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+            .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         Text(

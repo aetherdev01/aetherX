@@ -34,7 +34,7 @@ fun StatusPill(
         modifier = modifier
             .clip(CircleShape)
             .background(containerColor)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingIcon != null) {

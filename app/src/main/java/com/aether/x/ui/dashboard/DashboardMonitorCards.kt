@@ -55,7 +55,7 @@ fun AetherXInfoCard(
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+            .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(

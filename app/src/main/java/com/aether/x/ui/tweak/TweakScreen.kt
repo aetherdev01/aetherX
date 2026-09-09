@@ -201,7 +201,7 @@ fun TweakScreen(
                             Modifier.verticalScroll(rememberScrollState())
                         },
                     )
-                    .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+                    .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
 
@@ -483,7 +483,7 @@ private fun TweakDrawerContent(
         text = stringResource(R.string.app_name),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+        modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.lg),
     )
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.nav_dashboard)) },
