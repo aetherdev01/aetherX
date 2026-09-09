@@ -259,10 +259,8 @@ fun AetherBottomNavBar(
                                 Color.White.copy(alpha = 0.045f),
                                 Color.Transparent,
                             ),
-                            startX = w * 0.18f,
-                            startY = 0f,
-                            endX = w * 0.82f,
-                            endY = h * 0.72f,
+                            start = androidx.compose.ui.geometry.Offset(w * 0.18f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(w * 0.82f, h * 0.72f),
                         )
                         onDrawWithContent {
                             drawContent()
