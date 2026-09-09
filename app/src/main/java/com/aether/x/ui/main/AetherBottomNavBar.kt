@@ -238,11 +238,9 @@ fun AetherBottomNavBar(
     // supaya tidak pernah ada dua animasi berebut pillPosition di saat
     // bersamaan (itu penyebab pill terlihat "jeduk"/instan saat tap-select
     // tab jauh).
-    // Spring santai ala iOS: tetap ada overshoot kecil, tetapi tidak
-    // "nyentak" atau berhenti terlalu cepat setelah berpindah tab.
     val settleSpec = spring<Float>(
-        dampingRatio = 0.78f,
-        stiffness = 165f,
+        dampingRatio = 0.72f,
+        stiffness = 175f,
     )
     // Spring "follow" dipakai SELAMA jari menahan & menggeser — redaman
     // lebih tinggi (kurang mantul) tapi kekakuan lebih rendah dari settle,
@@ -250,11 +248,9 @@ fun AetherBottomNavBar(
     // alih menempel mentah 1:1 pada posisi sentuhan setiap frame. Stiffness
     // diturunkan sedikit dari sebelumnya (380 -> 300) supaya gerak mengikuti
     // jari terasa lebih mengalir/tidak kaku, sambil tetap cukup responsif.
-    // Follow saat drag dibuat lebih tenang: pill tetap terasa punya massa
-    // dan sedikit pegas, tetapi tidak terlalu liar mengikuti jari.
     val followSpec = spring<Float>(
-        dampingRatio = 0.84f,
-        stiffness = 255f,
+        dampingRatio = 0.82f,
+        stiffness = 235f,
     )
 
     // SATU-SATUNYA tempat yang menganimasikan pillPosition menuju tab yang
@@ -277,10 +273,10 @@ fun AetherBottomNavBar(
     val pillBulge = remember { Animatable(1f) }
     LaunchedEffect(isPressed) {
         pillBulge.animateTo(
-            targetValue = if (isPressed) 1.13f else 1f,
+            targetValue = if (isPressed) 1.16f else 1f,
             animationSpec = spring(
-                dampingRatio = 0.80f,
-                stiffness = 175f,
+                dampingRatio = 0.78f,
+                stiffness = 155f,
             ),
         )
     }
@@ -292,10 +288,10 @@ fun AetherBottomNavBar(
     val barBulge = remember { Animatable(1f) }
     LaunchedEffect(isPressed) {
         barBulge.animateTo(
-            targetValue = if (isPressed) 1.018f else 1f,
+            targetValue = if (isPressed) 1.022f else 1f,
             animationSpec = spring(
-                dampingRatio = 0.84f,
-                stiffness = 145f,
+                dampingRatio = 0.82f,
+                stiffness = 125f,
             ),
         )
     }
@@ -458,6 +454,7 @@ fun AetherBottomNavBar(
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
                         isDragging = true
+                        isPressed = true
                         val slotWidth = if (barWidthPx > 0f) barWidthPx / items.size else 0f
                         if (slotWidth > 0f) {
                             val raw = (offset.x / slotWidth) - 0.5f
@@ -620,18 +617,11 @@ fun AetherBottomNavBar(
             // sedikit di dasar gradasi. Sebelumnya pillBrush mengisi seluruh
             // permukaan dengan cyan alpha 0.42, menutupi blur dan bikin pill
             // terlihat solid teal pekat, bukan bening seperti kaca.
-            // Permukaan capsule dibuat lebih transparan supaya blur Haze di
-            // belakang benar-benar terbaca. Tint cyan sangat tipis hanya
-            // untuk membantu warna ikon/label aktif terlihat lebih hidup.
             val pillBrush = Brush.verticalGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.12f),
-                    Color.White.copy(alpha = 0.045f),
-                    tint.copy(alpha = 0.075f),
-                    Color.Black.copy(alpha = 0.13f),
+                    Color.White.copy(alpha = 0.10f),
+                    Color.Black.copy(alpha = 0.16f),
                 ),
-                startY = 0f,
-                endY = pillHeightPx,
             )
 
             Box(
@@ -772,15 +762,16 @@ fun AetherBottomNavBar(
                             fallbackSweep?.let { drawRect(brush = it) }
                         }
                     }
-                    // Outer stroke + inner rim: kombinasi ini membuat
-                    // capsule tetap terbaca saat background di belakangnya
-                    // terang maupun gelap, tanpa terlihat seperti border solid.
+                    // Rim kaca dibuat lebih tegas agar stroke benar-benar
+                    // terlihat pada background gelap maupun terang. Dua garis
+                    // tipis memberi efek kaca berlapis tanpa menjadi border tebal.
                     .border(
-                        width = 1.dp,
+                        width = 1.35.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.70f),
-                                Color.White.copy(alpha = 0.24f),
+                                Color.White.copy(alpha = 0.82f),
+                                Color.White.copy(alpha = 0.42f),
+                                Color.White.copy(alpha = 0.18f),
                             ),
                         ),
                         shape = RoundedCornerShape(50),
@@ -789,8 +780,8 @@ fun AetherBottomNavBar(
                         width = 0.55.dp,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.22f),
-                                tint.copy(alpha = 0.20f),
+                                Color.White.copy(alpha = 0.34f),
+                                tint.copy(alpha = 0.28f),
                             ),
                         ),
                         shape = RoundedCornerShape(50),
@@ -866,12 +857,9 @@ private fun NavBarItem(
 ) {
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
-            // Cyan luminous untuk state aktif: lebih kontras terhadap kaca
-            // blur dan tetap terasa seperti sistem iOS yang memakai accent
-            // terang pada material translusen.
-            com.aether.x.ui.theme.AetherCyanSoft
+            MaterialTheme.colorScheme.onPrimaryContainer
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f)
+            MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
