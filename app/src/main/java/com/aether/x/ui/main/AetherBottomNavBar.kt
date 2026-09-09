@@ -7,8 +7,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -56,15 +57,15 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 /**
- * iOS-style liquid capsule bottom navigation.
+ * AetherX glass / liquid bottom navigation.
  *
  * Interaction model:
- * - Tap: capsule softly springs to the tapped tab.
- * - Drag: capsule follows the finger directly (no coroutine pile-up).
- * - Release: capsule settles to the nearest tab with a relaxed spring.
- * - While dragging/pressing: capsule grows, icons/labels grow slightly,
- *   and the capsule stretches in the direction of travel.
- * - No sparkle/sweep animation. The glass treatment is static/subtle.
+ * - One unified gesture state machine handles tap, hold, drag and release.
+ * - The capsule follows the finger directly while sliding.
+ * - Pressed/dragging state stays active until the finger is actually released.
+ * - The capsule gets larger, wider and slightly tilted while moving.
+ * - On release it relaxes into the nearest tab with a soft spring.
+ * - Glass blur is provided by Haze; no sparkle/shimmer animation is used.
  */
 data class AetherNavItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -91,43 +92,47 @@ fun AetherBottomNavBar(
     var barHeightPx by remember { mutableFloatStateOf(0f) }
     val slotWidthPx = if (barWidthPx > 0f) barWidthPx / items.size else 0f
 
-    val pillPosition = remember { Animatable(selectedIndex.toFloat()) }
+    val pillPosition = remember { Animatable(selectedIndex.coerceIn(0, items.lastIndex).toFloat()) }
     var previewIndex by remember { mutableStateOf(selectedIndex.coerceIn(0, items.lastIndex)) }
     var isDragging by remember { mutableStateOf(false) }
     var isPressed by remember { mutableStateOf(false) }
     var dragVelocity by remember { mutableFloatStateOf(0f) }
+    var dragStrength by remember { mutableFloatStateOf(0f) }
 
-    // Relaxed, controlled spring. The capsule should feel weighty rather than
-    // snapping aggressively after the finger is released.
     val settleSpec = remember {
         spring<Float>(
-            dampingRatio = 0.82f,
-            stiffness = 155f,
+            dampingRatio = 0.84f,
+            stiffness = 125f,
         )
     }
 
     LaunchedEffect(selectedIndex, items.size) {
         val target = selectedIndex.coerceIn(0, items.lastIndex).toFloat()
         previewIndex = target.roundToInt()
-        if (!isDragging) {
+        if (!isPressed && !isDragging) {
             pillPosition.animateTo(target, settleSpec)
         }
     }
 
-    // Capsule and bar only bulge while the finger is down.
+    val interaction = when {
+        isDragging -> 1f
+        isPressed -> 0.92f
+        else -> 0f
+    }
+
     val pillBulge by animateFloatAsState(
-        targetValue = if (isPressed) 1.115f else 1f,
+        targetValue = 1f + 0.105f * interaction,
         animationSpec = spring(
-            dampingRatio = 0.88f,
-            stiffness = 170f,
+            dampingRatio = 0.78f,
+            stiffness = 105f,
         ),
         label = "pillBulge",
     )
     val barBulge by animateFloatAsState(
-        targetValue = if (isPressed) 1.012f else 1f,
+        targetValue = 1f + 0.010f * interaction,
         animationSpec = spring(
-            dampingRatio = 0.90f,
-            stiffness = 160f,
+            dampingRatio = 0.86f,
+            stiffness = 105f,
         ),
         label = "barBulge",
     )
@@ -143,98 +148,75 @@ fun AetherBottomNavBar(
                 barHeightPx = it.height.toFloat()
             }
             .systemGestureExclusion()
-            // Tap detector is deliberately independent from the drag detector,
-            // while both use the same stable items.size key. Bar width is read
-            // live so a re-layout cannot invalidate the gesture state.
-            .pointerInput(items.size) {
-                detectTapGestures(
-                    onPress = { offset ->
-                        val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                        isPressed = true
-                        if (slot > 0f) {
-                            val target = ((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, (items.lastIndex).toFloat())
-                            previewIndex = target.roundToInt()
-                            scope.launch {
-                                pillPosition.animateTo(target, settleSpec)
-                            }
-                        }
-                        val released = tryAwaitRelease()
-                        isPressed = false
-                        if (!released && !isDragging) {
-                            previewIndex = selectedIndex.coerceIn(0, items.lastIndex)
-                            scope.launch {
-                                pillPosition.animateTo(previewIndex.toFloat(), settleSpec)
-                            }
-                        }
-                    },
-                    onTap = { offset ->
-                        val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                        if (slot > 0f) {
-                            val tapped = (((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, items.lastIndex.toFloat()))
-                                .roundToInt()
-                                .coerceIn(0, items.lastIndex)
-                            previewIndex = tapped
-                            onSelect(tapped)
-                            scope.launch {
-                                pillPosition.animateTo(tapped.toFloat(), settleSpec)
-                            }
-                        }
-                    },
-                )
-            }
-            .pointerInput(items.size) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        isDragging = true
-                        isPressed = true
-                        dragVelocity = 0f
-                        val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                        if (slot > 0f) {
-                            val start = ((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, items.lastIndex.toFloat())
-                            previewIndex = start.roundToInt()
-                            scope.launch { pillPosition.stop() }
-                            scope.launch { pillPosition.snapTo(start) }
-                        }
-                    },
-                    onDragEnd = {
-                        isDragging = false
-                        isPressed = false
-                        val finalIndex = previewIndex.coerceIn(0, items.lastIndex)
-                        dragVelocity = 0f
-                        scope.launch {
-                            // Always settle to an exact tab slot. This keeps
-                            // the capsule centered on the selected item.
-                            pillPosition.animateTo(finalIndex.toFloat(), settleSpec)
-                        }
-                        if (finalIndex != selectedIndex) {
-                            onSelect(finalIndex)
-                        }
-                    },
-                    onDragCancel = {
-                        isDragging = false
-                        isPressed = false
-                        dragVelocity = 0f
-                        previewIndex = selectedIndex.coerceIn(0, items.lastIndex)
-                        scope.launch {
-                            pillPosition.animateTo(previewIndex.toFloat(), settleSpec)
-                        }
-                    },
-                ) { change, dragAmount ->
-                    change.consume()
+            .pointerInput(items.size, barWidthPx) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
                     val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                    if (slot > 0f) {
-                        // Direct tracking during drag is intentional. It removes
-                        // the old per-event animateTo() race and makes the pill
-                        // stay underneath the finger even during rapid swipes.
-                        val deltaIndex = dragAmount / slot
-                        val next = (pillPosition.value + deltaIndex)
-                            .coerceIn(0f, items.lastIndex.toFloat())
-                        dragVelocity = deltaIndex
-                        scope.launch { pillPosition.snapTo(next) }
-                        previewIndex = next.roundToInt().coerceIn(0, items.lastIndex)
+                    if (slot <= 0f) return@awaitEachGesture
+
+                    isPressed = true
+                    isDragging = false
+                    dragVelocity = 0f
+                    dragStrength = 0.16f
+                    scope.launch { pillPosition.stop() }
+
+                    val touchTarget = ((down.position.x / slot) - 0.5f)
+                        .coerceIn(0f, items.lastIndex.toFloat())
+                    previewIndex = touchTarget.roundToInt().coerceIn(0, items.lastIndex)
+
+                    var lastX = down.position.x
+                    var totalTravel = 0f
+
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                        if (!change.pressed) break
+
+                        val dx = change.position.x - lastX
+                        lastX = change.position.x
+                        totalTravel += abs(dx)
+
+                        if (!isDragging && abs(change.position.x - down.position.x) > with(density) { 4.dp.toPx() }) {
+                            isDragging = true
+                        }
+
+                        if (isDragging) {
+                            change.consume()
+                            val deltaIndex = dx / slot
+                            val next = (pillPosition.value + deltaIndex)
+                                .coerceIn(0f, items.lastIndex.toFloat())
+
+                            dragVelocity = deltaIndex
+                            dragStrength = (dragStrength * 0.76f + abs(deltaIndex) * 0.90f)
+                                .coerceIn(0.18f, 1f)
+
+                            scope.launch { pillPosition.snapTo(next) }
+                            previewIndex = next.roundToInt().coerceIn(0, items.lastIndex)
+                        } else if (abs(change.position.x - down.position.x) < with(density) { 4.dp.toPx() }) {
+                            // Keep the elastic pressed state alive while the finger is resting.
+                            dragStrength = (dragStrength * 0.92f + 0.16f)
+                                .coerceIn(0.16f, 0.34f)
+                        }
+                    }
+
+                    val finalIndex = if (isDragging) {
+                        previewIndex.coerceIn(0, items.lastIndex)
+                    } else {
+                        touchTarget.roundToInt().coerceIn(0, items.lastIndex)
+                    }
+
+                    isPressed = false
+                    isDragging = false
+                    dragVelocity = 0f
+                    dragStrength = 0f
+
+                    previewIndex = finalIndex
+                    scope.launch {
+                        pillPosition.animateTo(finalIndex.toFloat(), settleSpec)
+                    }
+                    if (finalIndex != selectedIndex) {
+                        onSelect(finalIndex)
                     }
                 }
             },
@@ -248,49 +230,51 @@ fun AetherBottomNavBar(
                     transformOrigin = TransformOrigin.Center
                 },
         ) {
-            // Base glass bar. No shimmer/sparkle animation; only static soft
-            // glass shading and rim, keeping the visual calm and premium.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .shadow(
-                        elevation = 18.dp,
+                        elevation = if (isPressed) 20.dp else 16.dp,
                         shape = barShape,
-                        ambientColor = Color.Black.copy(alpha = 0.30f),
-                        spotColor = Color.Black.copy(alpha = 0.38f),
+                        ambientColor = Color.Black.copy(alpha = 0.25f),
+                        spotColor = Color.Black.copy(alpha = 0.34f),
                     )
                     .clip(barShape)
                     .hazeEffect(state = hazeState, style = HazeMaterials.thin())
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.10f),
-                                Color.White.copy(alpha = 0.045f),
-                                Color.Black.copy(alpha = 0.08f),
+                                Color.White.copy(alpha = 0.14f),
+                                Color.White.copy(alpha = 0.065f),
+                                Color.Black.copy(alpha = 0.085f),
                             )
                         )
                     )
                     .drawWithCache {
                         val w = size.width
                         val h = size.height
-                        val topGlow = Brush.verticalGradient(
+                        val glassHighlight = Brush.linearGradient(
                             colors = listOf(
                                 Color.White.copy(alpha = 0.18f),
+                                Color.White.copy(alpha = 0.045f),
                                 Color.Transparent,
                             ),
+                            startX = w * 0.18f,
                             startY = 0f,
-                            endY = h * 0.52f,
+                            endX = w * 0.82f,
+                            endY = h * 0.72f,
                         )
                         onDrawWithContent {
                             drawContent()
-                            drawRect(topGlow)
+                            drawRect(glassHighlight)
                         }
                     }
                     .border(
                         width = 1.dp,
                         brush = Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.38f),
+                                Color.White.copy(alpha = 0.42f),
+                                Color.White.copy(alpha = 0.16f),
                                 outline.copy(alpha = 0.34f),
                             )
                         ),
@@ -303,17 +287,24 @@ fun AetherBottomNavBar(
                 val baseWidth = (slotWidthPx - insetPx * 2f).coerceAtLeast(1f)
                 val baseHeight = (barHeightPx - insetPx * 2f).coerceAtLeast(1f)
 
-                val speed = abs(dragVelocity).coerceIn(0f, 0.55f)
-                // Softer jelly: modest stretch while moving, then immediately
-                // returns to the compact shape as the drag slows/stops.
-                val stretchX = 1f + (speed / 0.55f) * 0.13f
-                val squashY = 1f - (speed / 0.55f) * 0.07f
+                val speed = abs(dragVelocity).coerceIn(0f, 0.56f)
+                val velocityFactor = (speed / 0.56f).coerceIn(0f, 1f)
+                val tension = (dragStrength * 0.72f + velocityFactor * 0.65f)
+                    .coerceIn(0f, 1f)
+
+                // Organic jelly: sliding makes it wider and slightly shorter,
+                // while the pressed state keeps the whole capsule inflated.
+                val stretchX = 1f + 0.20f * tension
+                val squashY = 1f - 0.055f * tension
+                val extraHeight = 1f + 0.020f * interaction
                 val pillWidthPx = baseWidth * (0.95f + 0.05f * pillBulge) * stretchX
-                val pillHeightPx = baseHeight * pillBulge * squashY
+                val pillHeightPx = baseHeight * pillBulge * squashY * extraHeight
 
                 val centerX = (pillPosition.value + 0.5f) * slotWidthPx
                 val offsetX = centerX - pillWidthPx / 2f
                 val offsetY = (barHeightPx - pillHeightPx) / 2f
+
+                val rotation = (dragVelocity * 8.0f).coerceIn(-7f, 7f)
 
                 val pillWidthDp = with(density) { pillWidthPx.toDp() }
                 val pillHeightDp = with(density) { pillHeightPx.toDp() }
@@ -325,23 +316,24 @@ fun AetherBottomNavBar(
                         .graphicsLayer {
                             translationX = with(density) { offsetXDp.toPx() }
                             translationY = with(density) { offsetYDp.toPx() }
+                            rotationZ = rotation
                         }
                         .size(pillWidthDp, pillHeightDp)
                         .shadow(
-                            elevation = if (isPressed) 8.dp else 3.dp,
+                            elevation = if (isPressed) 11.dp else 4.dp,
                             shape = RoundedCornerShape(percent = 50),
-                            ambientColor = primary.copy(alpha = if (isPressed) 0.18f else 0.10f),
-                            spotColor = primary.copy(alpha = if (isPressed) 0.25f else 0.14f),
+                            ambientColor = primary.copy(alpha = if (isPressed) 0.19f else 0.10f),
+                            spotColor = primary.copy(alpha = if (isPressed) 0.28f else 0.14f),
                         )
                         .clip(RoundedCornerShape(percent = 50))
                         .hazeEffect(state = hazeState, style = HazeMaterials.regular())
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = 0.13f),
-                                    Color.White.copy(alpha = 0.07f),
-                                    primary.copy(alpha = 0.075f),
-                                    Color.Black.copy(alpha = 0.10f),
+                                    Color.White.copy(alpha = 0.18f),
+                                    Color.White.copy(alpha = 0.075f),
+                                    primary.copy(alpha = 0.085f),
+                                    Color.Black.copy(alpha = 0.085f),
                                 )
                             )
                         )
@@ -350,36 +342,35 @@ fun AetherBottomNavBar(
                             val h = size.height
                             val topReflection = Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.20f),
-                                    Color.White.copy(alpha = 0.045f),
+                                    Color.White.copy(alpha = 0.28f),
+                                    Color.White.copy(alpha = 0.055f),
                                     Color.Transparent,
                                 ),
                                 startY = 0f,
-                                endY = h * 0.62f,
+                                endY = h * 0.60f,
                             )
-                            val lowerTint = Brush.verticalGradient(
+                            val innerTint = Brush.radialGradient(
                                 colors = listOf(
+                                    Color.White.copy(alpha = 0.08f),
+                                    primary.copy(alpha = 0.055f),
                                     Color.Transparent,
-                                    primary.copy(alpha = 0.10f),
                                 ),
-                                startY = h * 0.62f,
-                                endY = h,
+                                center = androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.34f),
+                                radius = maxOf(w, h) * 0.85f,
                             )
                             onDrawWithContent {
                                 drawContent()
+                                drawRect(innerTint)
                                 drawRect(topReflection)
-                                drawRect(lowerTint)
                             }
                         }
-                        // Stronger, cleaner rim around the capsule. It stays
-                        // visible during drag and does not sparkle or animate.
                         .border(
-                            width = if (isPressed) 1.35.dp else 1.05.dp,
+                            width = if (isPressed) 1.45.dp else 1.05.dp,
                             brush = Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = 0.66f),
+                                    Color.White.copy(alpha = 0.72f),
                                     Color.White.copy(alpha = 0.30f),
-                                    outline.copy(alpha = 0.44f),
+                                    outline.copy(alpha = 0.48f),
                                 )
                             ),
                             shape = RoundedCornerShape(percent = 50),
@@ -428,24 +419,24 @@ private fun NavBarItem(
             MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = spring(
-            dampingRatio = 0.88f,
-            stiffness = 190f,
+            dampingRatio = 0.90f,
+            stiffness = 145f,
         ),
         label = "navItemColor",
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.12f else 1f,
+        targetValue = if (emphasized) 1.16f else 1f,
         animationSpec = spring(
-            dampingRatio = 0.88f,
-            stiffness = 180f,
+            dampingRatio = 0.78f,
+            stiffness = 135f,
         ),
         label = "navIconScale",
     )
     val labelScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.06f else 1f,
+        targetValue = if (emphasized) 1.08f else 1f,
         animationSpec = spring(
-            dampingRatio = 0.90f,
-            stiffness = 180f,
+            dampingRatio = 0.82f,
+            stiffness = 135f,
         ),
         label = "navLabelScale",
     )
@@ -462,6 +453,7 @@ private fun NavBarItem(
             modifier = Modifier.graphicsLayer {
                 scaleX = iconScale
                 scaleY = iconScale
+                transformOrigin = TransformOrigin.Center
             },
         )
         Text(
