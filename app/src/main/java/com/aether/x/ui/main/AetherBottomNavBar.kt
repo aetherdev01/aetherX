@@ -36,7 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -70,7 +74,6 @@ fun AetherBottomNavBar(
     val barShape = RoundedCornerShape(percent = 50)
     val outline = MaterialTheme.colorScheme.outline
     val primary = MaterialTheme.colorScheme.primary
-    val surface = MaterialTheme.colorScheme.surface
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
@@ -257,20 +260,50 @@ fun AetherBottomNavBar(
                     transformOrigin = TransformOrigin.Center
                 },
         ) {
-            // MAIN BAR
+            // Container Bar Utama
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .shadow(
-                        elevation = 8.dp, // Dikurangi agar tidak terlalu tebal
+                        elevation = 18.dp,
                         shape = barShape,
+                        ambientColor = Color.Black.copy(alpha = 0.30f),
+                        spotColor = Color.Black.copy(alpha = 0.38f),
                     )
                     .clip(barShape)
-                    .hazeEffect(state = hazeState, style = HazeMaterials.thin()) // Haze tetap dipertahankan untuk efek blur
-                    .background(surface.copy(alpha = 0.2f)) // Diganti solid transparan, menghilangkan Brush gradasi putih
+                    .hazeEffect(state = hazeState, style = HazeMaterials.thin())
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.04f), // Alpha diturunkan agar tidak telalu putih
+                                Color.White.copy(alpha = 0.01f),
+                                Color.Black.copy(alpha = 0.05f),
+                            )
+                        )
+                    )
+                    .drawWithCache {
+                        val h = size.height
+                        val topGlow = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.06f), // Alpha diturunkan tajam agar sekadar "glossy"
+                                Color.Transparent,
+                            ),
+                            startY = 0f,
+                            endY = h * 0.52f,
+                        )
+                        onDrawWithContent {
+                            drawContent()
+                            drawRect(topGlow)
+                        }
+                    }
                     .border(
                         width = 1.dp,
-                        color = outline.copy(alpha = 0.2f), // Border disederhanakan tanpa efek putih bercahaya
+                        brush = Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.15f), // Glow border atas dikurangi
+                                outline.copy(alpha = 0.20f),
+                            )
+                        ),
                         shape = barShape,
                     )
             )
@@ -292,7 +325,7 @@ fun AetherBottomNavBar(
                 val offsetXDp = with(density) { offsetX.toDp() }
                 val offsetYDp = with(density) { offsetY.toDp() }
 
-                // CAPSULE (PILL)
+                // Kapsul Liquid Glass
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
@@ -301,17 +334,82 @@ fun AetherBottomNavBar(
                         }
                         .size(pillWidthDp, pillHeightDp)
                         .shadow(
-                            elevation = if (isActive) 4.dp else 0.dp, // Mengurangi shadow berlebih pada kapsul
+                            elevation = if (isActive) 8.dp else 3.dp,
                             shape = RoundedCornerShape(percent = 50),
-                            ambientColor = primary.copy(alpha = if (isActive) 0.10f else 0.05f),
-                            spotColor = primary.copy(alpha = if (isActive) 0.15f else 0.05f),
+                            ambientColor = primary.copy(alpha = if (isActive) 0.18f else 0.10f),
+                            spotColor = primary.copy(alpha = if (isActive) 0.25f else 0.14f),
                         )
                         .clip(RoundedCornerShape(percent = 50))
-                        .hazeEffect(state = hazeState, style = HazeMaterials.regular()) // Haze dipertahankan
-                        .background(primary.copy(alpha = 0.25f)) // Transparan solid, menghapus gradasi putih dan hitam
+                        .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.08f), // Alpha diturunkan
+                                    Color.White.copy(alpha = 0.03f),
+                                    primary.copy(alpha = 0.075f),
+                                    Color.Black.copy(alpha = 0.05f),
+                                )
+                            )
+                        )
+                        .drawWithCache {
+                            val w = size.width
+                            val h = size.height
+                            
+                            val topReflection = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.08f), // Mengurangi putih mencolok
+                                    Color.White.copy(alpha = 0.02f),
+                                    Color.Transparent,
+                                ),
+                                startY = 0f,
+                                endY = h * 0.62f,
+                            )
+                            val lowerTint = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    primary.copy(alpha = 0.10f), // Tetap dipertahankan untuk kedalaman warna
+                                ),
+                                startY = h * 0.62f,
+                                endY = h,
+                            )
+
+                            // Efek liquid (pantulan samping) tetap ada tapi glow putihnya ditekan
+                            val leftReflection = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.10f), // Dari 0.35f -> 0.10f
+                                    Color.White.copy(alpha = 0.02f),
+                                    Color.Transparent,
+                                ),
+                                center = Offset(w * 0.08f, h * 0.5f),
+                                radius = w * 0.35f
+                            )
+                            val rightReflection = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.10f), // Dari 0.35f -> 0.10f
+                                    Color.White.copy(alpha = 0.02f),
+                                    Color.Transparent,
+                                ),
+                                center = Offset(w * 0.92f, h * 0.5f),
+                                radius = w * 0.35f
+                            )
+
+                            onDrawWithContent {
+                                drawContent()
+                                drawRect(topReflection)
+                                drawRect(lowerTint)
+                                drawRect(leftReflection)
+                                drawRect(rightReflection)
+                            }
+                        }
                         .border(
                             width = if (isActive) 1.35.dp else 1.05.dp,
-                            color = primary.copy(alpha = 0.3f), // Border disederhanakan 
+                            brush = Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.25f), // Border atas tidak lagi seputih dulu (dari 0.66f)
+                                    Color.White.copy(alpha = 0.10f),
+                                    outline.copy(alpha = 0.30f),
+                                )
+                            ),
                             shape = RoundedCornerShape(percent = 50),
                         )
                 )
@@ -353,7 +451,7 @@ private fun NavBarItem(
 ) {
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
-            MaterialTheme.colorScheme.onPrimaryContainer // Atau bisa diubah ke primary jika ingin lebih kontras
+            MaterialTheme.colorScheme.onPrimaryContainer
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
