@@ -147,9 +147,11 @@ fun AetherBottomNavBar(
     Box(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(horizontal = 28.dp, vertical = 14.dp)
+            // DIUBAH: Horizontal padding ditambah agar bar memendek, Vertical disesuaikan agar tidak terlalu mengambang
+            .padding(horizontal = 42.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .height(66.dp)
+            // DIUBAH: Height dikurangi dari 66.dp menjadi 58.dp agar lebih tipis/kecil
+            .height(58.dp)
             .onSizeChanged {
                 barWidthPx = it.width.toFloat()
                 barHeightPx = it.height.toFloat()
@@ -275,7 +277,7 @@ fun AetherBottomNavBar(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.04f), // Alpha diturunkan agar tidak telalu putih
+                                Color.White.copy(alpha = 0.04f), 
                                 Color.White.copy(alpha = 0.01f),
                                 Color.Black.copy(alpha = 0.05f),
                             )
@@ -285,7 +287,7 @@ fun AetherBottomNavBar(
                         val h = size.height
                         val topGlow = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.06f), // Alpha diturunkan tajam agar sekadar "glossy"
+                                Color.White.copy(alpha = 0.06f), 
                                 Color.Transparent,
                             ),
                             startY = 0f,
@@ -300,7 +302,7 @@ fun AetherBottomNavBar(
                         width = 1.dp,
                         brush = Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.15f), // Glow border atas dikurangi
+                                Color.White.copy(alpha = 0.15f), 
                                 outline.copy(alpha = 0.20f),
                             )
                         ),
@@ -344,7 +346,7 @@ fun AetherBottomNavBar(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = 0.08f), // Alpha diturunkan
+                                    Color.White.copy(alpha = 0.08f), 
                                     Color.White.copy(alpha = 0.03f),
                                     primary.copy(alpha = 0.075f),
                                     Color.Black.copy(alpha = 0.05f),
@@ -357,7 +359,7 @@ fun AetherBottomNavBar(
                             
                             val topReflection = Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.08f), // Mengurangi putih mencolok
+                                    Color.White.copy(alpha = 0.08f), 
                                     Color.White.copy(alpha = 0.02f),
                                     Color.Transparent,
                                 ),
@@ -367,16 +369,15 @@ fun AetherBottomNavBar(
                             val lowerTint = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    primary.copy(alpha = 0.10f), // Tetap dipertahankan untuk kedalaman warna
+                                    primary.copy(alpha = 0.10f), 
                                 ),
                                 startY = h * 0.62f,
                                 endY = h,
                             )
 
-                            // Efek liquid (pantulan samping) tetap ada tapi glow putihnya ditekan
                             val leftReflection = Brush.radialGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.10f), // Dari 0.35f -> 0.10f
+                                    Color.White.copy(alpha = 0.10f), 
                                     Color.White.copy(alpha = 0.02f),
                                     Color.Transparent,
                                 ),
@@ -385,7 +386,7 @@ fun AetherBottomNavBar(
                             )
                             val rightReflection = Brush.radialGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.10f), // Dari 0.35f -> 0.10f
+                                    Color.White.copy(alpha = 0.10f), 
                                     Color.White.copy(alpha = 0.02f),
                                     Color.Transparent,
                                 ),
@@ -405,7 +406,7 @@ fun AetherBottomNavBar(
                             width = if (isActive) 1.35.dp else 1.05.dp,
                             brush = Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = 0.25f), // Border atas tidak lagi seputih dulu (dari 0.66f)
+                                    Color.White.copy(alpha = 0.25f), 
                                     Color.White.copy(alpha = 0.10f),
                                     outline.copy(alpha = 0.30f),
                                 )
