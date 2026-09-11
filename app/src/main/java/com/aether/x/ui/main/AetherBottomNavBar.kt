@@ -1,3 +1,66 @@
+package com.aether.x.ui.main
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
+
+data class AetherNavItem(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+)
+
 @Composable
 fun AetherBottomNavBar(
     items: List<AetherNavItem>,
@@ -144,7 +207,6 @@ fun AetherBottomNavBar(
                             val start = ((offset.x / slot) - 0.5f)
                                 .coerceIn(0f, items.lastIndex.toFloat())
                             
-                            // Amankan posisi awal secara sinkron
                             dragPosition = start 
                             previewIndex = start.roundToInt()
                             
@@ -188,7 +250,6 @@ fun AetherBottomNavBar(
                         val deltaIndex = dragAmount / slot
                         dragVelocity = deltaIndex * 60f
                         
-                        // Perbaikan: Kalkulasi posisi drag menggunakan state yang 100% tersinkron
                         dragPosition = (dragPosition + deltaIndex).coerceIn(0f, items.lastIndex.toFloat())
                         
                         scope.launch { pillPosition.snapTo(dragPosition) }
@@ -206,7 +267,6 @@ fun AetherBottomNavBar(
                     transformOrigin = TransformOrigin.Center
                 },
         ) {
-            // Container Bar Utama
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -271,7 +331,6 @@ fun AetherBottomNavBar(
                 val offsetXDp = with(density) { offsetX.toDp() }
                 val offsetYDp = with(density) { offsetY.toDp() }
 
-                // Kapsul Liquid Glass
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
@@ -384,5 +443,73 @@ fun AetherBottomNavBar(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NavBarItem(
+    item: AetherNavItem,
+    selected: Boolean,
+    emphasized: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = spring(
+            dampingRatio = 0.65f,
+            stiffness = 200f,
+        ),
+        label = "navItemColor",
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (emphasized) 1.18f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.55f,
+            stiffness = 250f,
+        ),
+        label = "navIconScale",
+    )
+    val labelScale by animateFloatAsState(
+        targetValue = if (emphasized) 1.10f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.55f,
+            stiffness = 250f,
+        ),
+        label = "navLabelScale",
+    )
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = item.icon,
+            contentDescription = item.label,
+            tint = contentColor,
+            modifier = Modifier.graphicsLayer {
+                scaleX = iconScale
+                scaleY = iconScale
+            },
+        )
+        Text(
+            text = item.label,
+            color = contentColor,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 4.dp, start = 2.dp, end = 2.dp)
+                .graphicsLayer {
+                    scaleX = labelScale
+                    scaleY = labelScale
+                    transformOrigin = TransformOrigin(0.5f, 0f)
+                },
+        )
     }
 }
