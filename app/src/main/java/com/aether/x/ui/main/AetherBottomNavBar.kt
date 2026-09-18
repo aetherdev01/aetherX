@@ -2,7 +2,6 @@ package com.aether.x.ui.main
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -87,15 +86,15 @@ fun AetherBottomNavBar(
     var isPressed by remember { mutableStateOf(false) }
     var dragVelocity by remember { mutableFloatStateOf(0f) }
     
-    // State baru untuk melacak sinkronisasi pergerakan drag jari
     var dragPosition by remember { mutableFloatStateOf(0f) }
 
     val isActive = isPressed || isDragging
 
+    // 1. Animasi Fluid Physics: Stiffness diturunkan, damping disesuaikan untuk efek bouncy yang mulus
     val settleSpec = remember {
         spring<Float>(
-            dampingRatio = 0.60f,
-            stiffness = 220f,
+            dampingRatio = 0.55f,
+            stiffness = 150f, 
         )
     }
 
@@ -107,43 +106,21 @@ fun AetherBottomNavBar(
         }
     }
 
-    val pillBulge by animateFloatAsState(
-        targetValue = if (isActive) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 300f,
-        ),
-        label = "pillBulge",
-    )
-    val barBulge by animateFloatAsState(
-        targetValue = if (isActive) 1.03f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 250f,
-        ),
-        label = "barBulge",
-    )
-
     val currentVelocity = if (isDragging) dragVelocity else pillPosition.velocity
     val speed = abs(currentVelocity).coerceIn(0f, 7f)
     
     val targetStretchX = 1f + (speed * 0.08f).coerceAtMost(0.35f)
     val targetSquashY = 1f - (speed * 0.04f).coerceAtMost(0.15f)
 
+    // Efek peregangan (stretch) dibuat lebih empuk
     val stretchX by animateFloatAsState(
         targetValue = targetStretchX,
-        animationSpec = spring(
-            dampingRatio = 0.45f, 
-            stiffness = 350f
-        ),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 180f),
         label = "stretchX"
     )
     val squashY by animateFloatAsState(
         targetValue = targetSquashY,
-        animationSpec = spring(
-            dampingRatio = 0.45f,
-            stiffness = 350f
-        ),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 180f),
         label = "squashY"
     )
 
@@ -158,26 +135,21 @@ fun AetherBottomNavBar(
                 barHeightPx = it.height.toFloat()
             }
             .systemGestureExclusion()
+            // 2. Perbaikan Bug Glitch: Pemisahan state ketukan dan geseran
             .pointerInput(items.size) {
                 detectTapGestures(
                     onPress = { offset ->
                         val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
                         isPressed = true
                         if (slot > 0f) {
-                            val target = ((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, (items.lastIndex).toFloat())
+                            val target = ((offset.x / slot) - 0.5f).coerceIn(0f, (items.lastIndex).toFloat())
                             previewIndex = target.roundToInt()
-                            scope.launch {
-                                pillPosition.animateTo(target, settleSpec)
-                            }
+                            // Hapus animasi paksa di sini agar tidak konflik (flicker) dengan drag gesture
                         }
                         val released = tryAwaitRelease()
                         isPressed = false
                         if (!released && !isDragging) {
                             previewIndex = selectedIndex.coerceIn(0, items.lastIndex)
-                            scope.launch {
-                                pillPosition.animateTo(previewIndex.toFloat(), settleSpec)
-                            }
                         }
                     },
                     onTap = { offset ->
@@ -200,13 +172,10 @@ fun AetherBottomNavBar(
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
                         isDragging = true
-                        isPressed = true
                         dragVelocity = 0f
                         val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
                         if (slot > 0f) {
-                            val start = ((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, items.lastIndex.toFloat())
-                            
+                            val start = ((offset.x / slot) - 0.5f).coerceIn(0f, items.lastIndex.toFloat())
                             dragPosition = start 
                             previewIndex = start.roundToInt()
                             
@@ -216,7 +185,6 @@ fun AetherBottomNavBar(
                     },
                     onDragEnd = {
                         isDragging = false
-                        isPressed = false
                         val finalIndex = previewIndex.coerceIn(0, items.lastIndex)
                         scope.launch {
                             pillPosition.animateTo(
@@ -226,11 +194,10 @@ fun AetherBottomNavBar(
                             )
                             dragVelocity = 0f
                         }
-                        onSelect(finalIndex) // <--- FIXED: onSelect is always called
+                        onSelect(finalIndex)
                     },
                     onDragCancel = {
                         isDragging = false
-                        isPressed = false
                         previewIndex = selectedIndex.coerceIn(0, items.lastIndex)
                         scope.launch {
                             pillPosition.animateTo(
@@ -256,15 +223,7 @@ fun AetherBottomNavBar(
                 }
             },
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = barBulge
-                    scaleY = barBulge
-                    transformOrigin = TransformOrigin.Center
-                },
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -276,12 +235,13 @@ fun AetherBottomNavBar(
                     )
                     .clip(barShape)
                     .hazeEffect(state = hazeState, style = HazeMaterials.thin())
+                    // 4. Liquid Glass: Opacity sangat rendah (1-2%) agar blur kaca tembus pandang
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.04f), 
+                                Color.White.copy(alpha = 0.02f), 
                                 Color.White.copy(alpha = 0.01f),
-                                Color.Black.copy(alpha = 0.05f),
+                                Color.Black.copy(alpha = 0.02f),
                             )
                         )
                     )
@@ -304,8 +264,8 @@ fun AetherBottomNavBar(
                         width = 1.dp,
                         brush = Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.15f), 
-                                outline.copy(alpha = 0.20f),
+                                Color.White.copy(alpha = 0.20f), 
+                                outline.copy(alpha = 0.15f),
                             )
                         ),
                         shape = barShape,
@@ -317,8 +277,8 @@ fun AetherBottomNavBar(
                 val baseWidth = (slotWidthPx - insetPx * 2f).coerceAtLeast(1f)
                 val baseHeight = (barHeightPx - insetPx * 2f).coerceAtLeast(1f)
 
-                val pillWidthPx = baseWidth * pillBulge * stretchX
-                val pillHeightPx = baseHeight * pillBulge * squashY
+                val pillWidthPx = baseWidth * stretchX
+                val pillHeightPx = baseHeight * squashY
 
                 val centerX = (pillPosition.value + 0.5f) * slotWidthPx
                 val offsetX = centerX - pillWidthPx / 2f
@@ -336,21 +296,23 @@ fun AetherBottomNavBar(
                             translationY = with(density) { offsetYDp.toPx() }
                         }
                         .size(pillWidthDp, pillHeightDp)
+                        // 3. Efek Interaktif (Glow): Elevasi bayangan lebih luas dengan pendaran alpha primer kuat
                         .shadow(
-                            elevation = if (isActive) 8.dp else 3.dp,
+                            elevation = if (isActive) 16.dp else 6.dp,
                             shape = RoundedCornerShape(percent = 50),
-                            ambientColor = primary.copy(alpha = if (isActive) 0.18f else 0.10f),
-                            spotColor = primary.copy(alpha = if (isActive) 0.25f else 0.14f),
+                            ambientColor = primary.copy(alpha = if (isActive) 0.30f else 0.10f),
+                            spotColor = primary.copy(alpha = if (isActive) 0.70f else 0.25f),
                         )
                         .clip(RoundedCornerShape(percent = 50))
                         .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+                        // Liquid glass sangat transparan untuk indikator aktif
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = 0.08f), 
-                                    Color.White.copy(alpha = 0.03f),
-                                    primary.copy(alpha = 0.075f),
-                                    Color.Black.copy(alpha = 0.05f),
+                                    Color.White.copy(alpha = 0.02f), 
+                                    Color.White.copy(alpha = 0.01f),
+                                    primary.copy(alpha = 0.03f),
+                                    Color.Black.copy(alpha = 0.01f),
                                 )
                             )
                         )
@@ -407,7 +369,7 @@ fun AetherBottomNavBar(
                             width = if (isActive) 1.35.dp else 1.05.dp,
                             brush = Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = 0.25f), 
+                                    Color.White.copy(alpha = 0.30f), 
                                     Color.White.copy(alpha = 0.10f),
                                     outline.copy(alpha = 0.30f),
                                 )
@@ -433,7 +395,7 @@ fun AetherBottomNavBar(
                     NavBarItem(
                         item = item,
                         selected = active,
-                        emphasized = active && isActive,
+                        isPressed = isPressed && index == previewIndex,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
@@ -448,7 +410,7 @@ fun AetherBottomNavBar(
 private fun NavBarItem(
     item: AetherNavItem,
     selected: Boolean,
-    emphasized: Boolean,
+    isPressed: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val contentColor by animateColorAsState(
@@ -463,25 +425,26 @@ private fun NavBarItem(
         ),
         label = "navItemColor",
     )
-    val iconScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.18f else 1f,
+    
+    // 3. Efek Interaktif (Scale-down): Item mengecil ~5% (0.95f) saat ditekan dan ditahan
+    val itemScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.95f
+            selected -> 1.05f 
+            else -> 1f
+        },
         animationSpec = spring(
             dampingRatio = 0.55f,
             stiffness = 250f,
         ),
-        label = "navIconScale",
-    )
-    val labelScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.10f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 250f,
-        ),
-        label = "navLabelScale",
+        label = "navItemScale",
     )
 
     Column(
-        modifier = modifier,
+        modifier = modifier.graphicsLayer {
+            scaleX = itemScale
+            scaleY = itemScale
+        },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -489,10 +452,6 @@ private fun NavBarItem(
             imageVector = item.icon,
             contentDescription = item.label,
             tint = contentColor,
-            modifier = Modifier.graphicsLayer {
-                scaleX = iconScale
-                scaleY = iconScale
-            },
         )
         Text(
             text = item.label,
@@ -503,11 +462,6 @@ private fun NavBarItem(
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .padding(top = 4.dp, start = 2.dp, end = 2.dp)
-                .graphicsLayer {
-                    scaleX = labelScale
-                    scaleY = labelScale
-                    transformOrigin = TransformOrigin(0.5f, 0f)
-                },
         )
     }
 }
