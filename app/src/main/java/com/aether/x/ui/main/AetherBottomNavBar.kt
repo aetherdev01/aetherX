@@ -226,9 +226,7 @@ fun AetherBottomNavBar(
                             )
                             dragVelocity = 0f
                         }
-                        if (finalIndex != selectedIndex) {
-                            onSelect(finalIndex)
-                        }
+                        onSelect(finalIndex) // <--- FIXED: onSelect is always called
                     },
                     onDragCancel = {
                         isDragging = false
