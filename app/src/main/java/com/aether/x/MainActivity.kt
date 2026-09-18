@@ -116,7 +116,7 @@ private fun AetherXRoot(
         composable(AetherXRoutes.SPLASH_MAIN) {
 
             SplashScreen(
-                onDone = {
+                onSplashFinished = {
                     val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
                     navController.navigate(destination) {
                         popUpTo(AetherXRoutes.SPLASH_MAIN) { inclusive = true }
