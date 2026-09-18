@@ -69,9 +69,9 @@ fun SplashScreen(
                 .alpha(alphaAnim)
                 .scale(scaleAnim)
         ) {
-            // Pastikan kamu menggunakan nama file icon yang benar di res/drawable atau res/mipmap
+            // Memperbaiki pemanggilan Image: sekarang menggunakan R.drawable.logo dari source
             Image(
-                painter = painterResource(id = R.mipmap.ic_launcher_round), // Sesuaikan id dengan ikon AetherX
+                painter = painterResource(id = R.drawable.logo), 
                 contentDescription = "AetherX Logo",
                 modifier = Modifier.size(110.dp)
             )
