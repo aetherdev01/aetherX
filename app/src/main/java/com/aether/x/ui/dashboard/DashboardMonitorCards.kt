@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +51,7 @@ import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.theme.AetherMonoFamily
 import com.aether.x.ui.theme.Spacing
 
 @Composable
@@ -57,24 +59,26 @@ fun AetherXInfoCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
+        // fillMaxWidth tanpa padding horizontal ekstra untuk meminimalkan ruang kosong di layar
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         ),
-        shape = MaterialTheme.shapes.large
+        // Menggunakan radius medium (22.dp) untuk panel data statis
+        shape = MaterialTheme.shapes.medium 
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.xxl), // Area lebih besar
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_aetherx_logo),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(56.dp) // Ikon diperbesar
                     .clip(CircleShape)
             )
             Column(
@@ -84,12 +88,12 @@ fun AetherXInfoCard(
             ) {
                 Text(
                     text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge, // Gaya teks modern dan tebal
+                    fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     text = stringResource(R.string.dashboard_hero_kicker),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = Spacing.xs),
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                 )
@@ -110,19 +114,19 @@ fun GameActivitySection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = Spacing.sm),
+                .padding(bottom = Spacing.md),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.Outlined.SportsEsports,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.primary, // AetherCyan
+                modifier = Modifier.size(24.dp),
             )
             Text(
                 text = stringResource(R.string.dashboard_section_game_activity),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -132,25 +136,26 @@ fun GameActivitySection(
             loading -> Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(112.dp)
+                    .height(130.dp)
                     .padding(top = Spacing.md),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary, 
-                    modifier = Modifier.size(32.dp)
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(36.dp)
                 )
             }
             games.isEmpty() -> Text(
                 text = stringResource(R.string.dashboard_game_activity_empty),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Spacing.md),
             )
             else -> LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = Spacing.sm)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                // Mengurangi jarak margin agar item game lebih menempel ke tepi layar
+                contentPadding = PaddingValues(horizontal = Spacing.xs, vertical = Spacing.sm)
             ) {
                 items(games, key = { it.packageName }) { game ->
                     GameActivityCard(
@@ -172,25 +177,23 @@ private fun GameActivityCard(
 ) {
     Column(
         modifier = Modifier
-            .width(80.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .width(88.dp) // Lebar kartu game diperbesar
+            .clip(MaterialTheme.shapes.large) // Radius interaktif (28.dp)
             .clickable(onClick = onClick)
             .padding(vertical = Spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Frame seragam untuk ikon game agar terlihat rapi
         Surface(
-            modifier = Modifier.size(64.dp),
-            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.size(72.dp), // Area ikon diperbesar
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            tonalElevation = 1.dp
         ) {
             Image(
                 bitmap = entry.icon,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(MaterialTheme.shapes.medium)
+                    .clip(MaterialTheme.shapes.large)
             )
         }
         
@@ -198,8 +201,8 @@ private fun GameActivityCard(
         
         Text(
             text = entry.label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (isLastPlayed) FontWeight.Bold else FontWeight.Normal,
+            style = MaterialTheme.typography.labelLarge, // Font diperbesar 
+            fontWeight = if (isLastPlayed) FontWeight.ExtraBold else FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -208,7 +211,8 @@ private fun GameActivityCard(
             Text(
                 text = stringResource(R.string.dashboard_game_activity_last_used),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary, // AetherCyan
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -220,19 +224,18 @@ private fun GameActivityCard(
 fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) {
     SectionCard(
         title = stringResource(R.string.dashboard_section_device_info), 
-        modifier = modifier, 
+        modifier = modifier.fillMaxWidth(), 
         watermarkIcon = Icons.Outlined.PhoneAndroid
     ) {
         if (info == null) {
             Text(
                 text = stringResource(R.string.dashboard_device_info_loading),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             return@SectionCard
         }
 
-        // Grup Info Identitas Perangkat
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -240,13 +243,13 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = MaterialTheme.shapes.medium
                 )
-                .padding(Spacing.md),
+                .padding(Spacing.lg), // Padding internal diperbesar
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 text = stringResource(R.string.dashboard_device_info_group_identity),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
             DeviceInfoRow(
@@ -272,11 +275,10 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
         }
 
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = Spacing.sm),
+            modifier = Modifier.padding(vertical = Spacing.md),
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
 
-        // Grup Info Penggunaan (Usage)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -284,13 +286,13 @@ fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) 
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = MaterialTheme.shapes.medium
                 )
-                .padding(Spacing.md),
+                .padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
                 text = stringResource(R.string.dashboard_device_info_group_usage),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
             val usedRam = info.totalRamBytes - info.availableRamBytes
@@ -324,15 +326,15 @@ private fun UsageBarRow(
     val clampedProgress = progress.coerceIn(0f, 1f)
     val barColor = when {
         clampedProgress < 0.7f -> MaterialTheme.colorScheme.primary
-        clampedProgress < 0.9f -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.error
+        clampedProgress < 0.9f -> MaterialTheme.colorScheme.tertiary // AetherAmber
+        else -> MaterialTheme.colorScheme.error // AetherRed
     }
     
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = Spacing.xs),
+                .padding(bottom = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -341,19 +343,20 @@ private fun UsageBarRow(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(20.dp),
                 )
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = Spacing.sm),
                 )
             }
             Text(
                 text = stringResource(R.string.dashboard_device_usage_format, usedLabel, totalLabel),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = AetherMonoFamily, // Font khusus pembacaan nilai numerik
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -361,7 +364,7 @@ private fun UsageBarRow(
             progress = { clampedProgress },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(8.dp)
+                .height(10.dp) // Progress bar lebih tebal
                 .clip(RoundedCornerShape(999.dp)),
             color = barColor,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -385,18 +388,19 @@ private fun DeviceInfoRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(20.dp),
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = Spacing.sm),
             )
         }
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
+            fontFamily = AetherMonoFamily, // Font khusus pembacaan nilai teknis
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
