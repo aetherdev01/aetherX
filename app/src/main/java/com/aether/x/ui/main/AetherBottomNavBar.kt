@@ -107,6 +107,7 @@ fun AetherBottomNavBar(
     }
     var isDragging by remember { mutableStateOf(false) }
     var isPressed by remember { mutableStateOf(false) }
+    val isActive = isPressed || isDragging
     var dragVelocity by remember { mutableFloatStateOf(0f) }
     var dragPosition by remember {
         mutableFloatStateOf(selectedIndex.coerceIn(0, items.lastIndex).toFloat())
@@ -331,9 +332,9 @@ fun AetherBottomNavBar(
                         .roundToInt()
                         .coerceIn(0, items.lastIndex)
 
-                    // 1:1 with the finger during a slide.
-                    // snapTo is called directly to avoid a coroutine backlog.
-                    pillPosition.snapTo(dragPosition)
+                    // During drag, the capsule reads dragPosition directly (1:1 with the finger).
+                    // No suspend call is needed here, so there is no coroutine backlog.
+                    // pillPosition remains reserved for the release/settle animation.
                 }
             },
     ) {
@@ -391,8 +392,9 @@ fun AetherBottomNavBar(
                 val pillWidthPx = baseWidth * capsuleInteractionScale * stretchX
                 val pillHeightPx = baseHeight * capsuleInteractionScale * squashY
 
+                val visualPosition = if (isDragging) dragPosition else pillPosition.value
                 val centerX =
-                    (pillPosition.value + 0.5f) * slotWidthPx
+                    (visualPosition + 0.5f) * slotWidthPx
 
                 val offsetX = centerX - pillWidthPx / 2f
                 val offsetY = (barHeightPx - pillHeightPx) / 2f
