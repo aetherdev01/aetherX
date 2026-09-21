@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -223,15 +224,15 @@ fun TweakScreen(
                     // naik/turun. reorderable menahan scroll induk selama drag
                     // aktif sehingga geser tidak konflik dengan verticalScroll
                     // di Column pembungkus.
+                    val listState = rememberLazyListState()
                     val reorderState = rememberReorderableLazyListState(
-                        onMove = { from, to ->
-                            dashboardViewModel.swapCards(from.index, to.index)
-                        },
-                        onDragEnd = { _, _ -> dashboardViewModel.saveCardOrder() },
-                    )
+                        lazyListState = listState,
+                    ) { from, to ->
+                        dashboardViewModel.swapCards(from.index, to.index)
+                    }
 
                     LazyColumn(
-                        state = reorderState.listState,
+                        state = listState,
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 4000.dp),
@@ -246,7 +247,11 @@ fun TweakScreen(
                                         .fillMaxWidth()
                                         .cardEnterAnimation(index = index)
                                         .shadow(elevation, MaterialTheme.shapes.medium)
-                                        .longPressDraggableHandle(),
+                                        .longPressDraggableHandle(
+                                            onDragStopped = {
+                                                dashboardViewModel.saveCardOrder()
+                                            },
+                                        ),
                                 ) {
                                     when (cardId) {
                                         "info" -> AetherXInfoCard()
