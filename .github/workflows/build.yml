@@ -54,6 +54,34 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      # ── 7. Disable release signing ─────────────────────────────────────────────
+      - name: Disable release signing
+        shell: bash
+        run: |
+          python3 - <<'PY2'
+          from pathlib import Path
+          import re
+
+          p = Path("app/build.gradle.kts")
+          if not p.exists():
+              raise SystemExit("app/build.gradle.kts not found")
+
+          s = p.read_text()
+          patterns = [
+              r'^(\s*)signingConfig\s*=\s*signingConfigs\.[^\n]*\n',
+              r'^(\s*)signingConfig\s*=\s*signingConfigs\.getByName\([^\n]*\)\n',
+          ]
+          original = s
+          for pat in patterns:
+              s = re.sub(pat, lambda m: f"{m.group(1)}// signing disabled for CI unsigned release\n", s, flags=re.MULTILINE)
+
+          if s == original:
+              print("No release signing assignment found; continuing unsigned.")
+          else:
+              p.write_text(s)
+              print("Release signing assignment disabled.")
+          PY2
+
       # ── 8. Build Release APK ─────────────────────────────────────────────────
       # Flag speed-up: --build-cache (reuse task output antar run lewat cache
       # di step 6, termasuk cache task CMake/NDK native build) dan --parallel
@@ -67,19 +95,6 @@ jobs:
       # cuma menambah log verbose tanpa mempercepat build; --stacktrace
       # dipertahankan supaya error tetap gampang didiagnosis kalau gagal.
       - name: Build Release APK
-      # Make release genuinely unsigned: AGP otherwise requires storeFile
-      - name: Disable release signing
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/build.gradle")
-          s = p.read_text()
-          if "signingConfig null" not in s:
-              marker = "buildTypes {"
-              if marker in s:
-                  s = s.replace(marker, marker + "\n        release {\n            signingConfig null\n        }", 1)
-                  p.write_text(s)
-          PY
         run: ./gradlew assembleRelease --no-daemon --stacktrace --build-cache --parallel
 
       # ── 9. Upload artifact ───────────────────────────────────────────────────
