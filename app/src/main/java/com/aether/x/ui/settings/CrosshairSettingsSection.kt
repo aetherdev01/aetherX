@@ -165,11 +165,7 @@ fun CrosshairSettingsSection(
                         } else {
                             onEnabledChange(checked)
                         }
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = AccentBlue,
-                    ),
+                    }
                 )
             }
 

@@ -65,19 +65,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt")
             )
         }
-        debug {
-            // TIDAK pakai applicationIdSuffix — package name harus persis sama
-            // dengan release (com.aether.x), karena:
-            // 1. google-services.json cuma punya client untuk com.aether.x,
-            //    beda package name (mis. com.aether.x.debug) bikin
-            //    processDebugGoogleServices gagal ("No matching client found").
-            // 2. Signature/App Check tetap konsisten dengan satu applicationId.
-            //
-            // Pakai signingConfig release (aetherx.jks) juga di debug — kalau
-            // tetap gunakan release signing config agar build debug memakai
-            // kredensial signing proyek yang sama.
-            signingConfig = signingConfigs.getByName("release")
-        }
     }
 
     compileOptions {
