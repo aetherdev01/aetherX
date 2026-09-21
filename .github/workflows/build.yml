@@ -67,6 +67,19 @@ jobs:
       # cuma menambah log verbose tanpa mempercepat build; --stacktrace
       # dipertahankan supaya error tetap gampang didiagnosis kalau gagal.
       - name: Build Release APK
+      # Make release genuinely unsigned: AGP otherwise requires storeFile
+      - name: Disable release signing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          if "signingConfig null" not in s:
+              marker = "buildTypes {"
+              if marker in s:
+                  s = s.replace(marker, marker + "\n        release {\n            signingConfig null\n        }", 1)
+                  p.write_text(s)
+          PY
         run: ./gradlew assembleRelease --no-daemon --stacktrace --build-cache --parallel
 
       # ── 9. Upload artifact ───────────────────────────────────────────────────
