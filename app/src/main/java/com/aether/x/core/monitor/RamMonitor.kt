@@ -1,5 +1,6 @@
 package com.aether.x.core.monitor
 
+import androidx.annotation.Keep
 import android.util.Log
 
 /**
@@ -12,11 +13,12 @@ import android.util.Log
  * (RamCleanerViewModel) boleh langsung pakai ini tanpa cek
  * PrivilegeManager.status terlebih dahulu.
  *
- * Native lib yang dimuat SAMA dengan SignatureGuard/
+ * Native lib yang dimuat SAMA dengan 
  * DeviceFingerprint/RootSystemMonitor (satu libaetherX.so) —
  * System.loadLibrary aman dipanggil berkali-kali (JVM hanya memuat
  * native lib sekali per proses).
  */
+@Keep
 object RamMonitor {
 
     private const val TAG = "RamMonitor"

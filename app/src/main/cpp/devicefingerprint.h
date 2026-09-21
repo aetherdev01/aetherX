@@ -16,12 +16,12 @@
 //
 // SOLUSI: bukan ANDROID_ID mentah yang dikirim ke Firestore, tapi HASH-nya
 // yang dihitung di NATIVE dengan kunci HMAC yang di-XOR-obfuscate (pola
-// sama dengan sigcheck.cpp) — supaya orang yang cuma tahu ANDROID_ID device
+// sama dengan ) — supaya orang yang cuma tahu ANDROID_ID device
 // korban TETAP TIDAK BISA reproduksi fingerprint hash yang benar tanpa
 // reverse-engineer kunci HMAC dari binary native (jauh lebih sulit
 // dibanding baca field dari kode Kotlin/APK yang dekompilasi).
 //
-// CATATAN JUJUR SOAL BATASAN (sama semangatnya dengan SignatureGuard.kt):
+// CATATAN JUJUR SOAL BATASAN (sama semangatnya dengan signature guard.kt):
 // ini MENAIKKAN EFFORT untuk clone/forge device casual, BUKAN proteksi
 // sempurna. Siapa pun yang berhasil dump memori/hook fungsi nfgp lewat
 // Frida tetap bisa membaca hash yang dihasilkan untuk device tertentu

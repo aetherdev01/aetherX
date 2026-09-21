@@ -19,7 +19,7 @@ namespace aetherx::common {
 
 // Perbandingan byte-per-byte dalam waktu konstan, tidak short-circuit,
 // supaya durasi eksekusi tidak bocor informasi soal di mana perbedaan
-// pertama terjadi (mencegah timing attack terhadap hash signature/checksum).
+// pertama terjadi (mencegah timing attack terhadap hash checksum).
 inline bool constantTimeEquals(const uint8_t* a, const uint8_t* b, size_t len) {
     uint8_t diff = 0;
     for (size_t i = 0; i < len; i++) {

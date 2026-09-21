@@ -1,15 +1,12 @@
 package com.aether.x
 
 import android.app.Application
-import android.os.Process
 import com.aether.x.core.ads.InterstitialAdGate
 import com.aether.x.core.ads.InterstitialAdManager
 import com.aether.x.core.ads.RewardedAdManager
 import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.permission.PrivilegeManager
-import com.aether.x.core.security.AppCheckInitializer
-import com.aether.x.core.security.SignatureGuard
 import com.aether.x.data.FcmTokenRepository
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
@@ -45,14 +42,6 @@ class AetherXApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        try {
-            SignatureGuard.verifyOrDie(this)
-        } catch (e: UnsatisfiedLinkError) {
-            Process.killProcess(Process.myPid())
-            return
-        }
-
-        AppCheckInitializer.init(this)
         PrivilegeManager.init(this)
 
         FcmTokenRepository.subscribeToDefaultTopics()

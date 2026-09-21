@@ -24,7 +24,6 @@ import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.monitor.GameProfileMonitorService
 import com.aether.x.core.permission.PrivilegeManager
-import com.aether.x.core.security.SignatureGuard
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
 import com.aether.x.ui.main.MainScreen
@@ -43,8 +42,6 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        SignatureGuard.verifyOrDieAgain(this)
 
         (AetherXApp.rewardedAdManager as? UnityRewardedAdManager)?.initialize(this)
         (AetherXApp.interstitialAdManager as? UnityInterstitialAdManager)?.initialize(this)

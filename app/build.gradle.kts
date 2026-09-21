@@ -35,12 +35,6 @@ android {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
 
-        // Native signature guard (lihat app/src/main/cpp/sigcheck.cpp dan
-        // SignatureGuard.kt) — hash signing cert dibandingkan di sisi native
-        // supaya tidak muncul sebagai string plain di DEX/Kotlin bytecode.
-        // (cppFlags kosong dihapus — tidak berefek apa pun, lokasi
-        // CMakeLists.txt & versi CMake sudah cukup diatur di blok
-        // externalNativeBuild level android{} di bawah.)
     }
 
     externalNativeBuild {
@@ -68,8 +62,7 @@ android {
             isShrinkResources = true
             signingConfig     = signingConfigs.getByName("release")
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                getDefaultProguardFile("proguard-android-optimize.txt")
             )
         }
         debug {
@@ -81,11 +74,8 @@ android {
             // 2. Signature/App Check tetap konsisten dengan satu applicationId.
             //
             // Pakai signingConfig release (aetherx.jks) juga di debug — kalau
-            // pakai debug keystore bawaan Android, hash signing cert-nya
-            // tidak cocok dengan yang di-hardcode di sigcheck.cpp, dan
-            // SignatureGuard bakal langsung force-close app (lihat
-            // SignatureGuard.kt). local.properties (STORE_FILE dkk) tetap
-            // harus di-setup sebelum build debug, sama seperti build release.
+            // tetap gunakan release signing config agar build debug memakai
+            // kredensial signing proyek yang sama.
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -193,19 +183,6 @@ dependencies {
     // ditutup total — lihat core/messaging/AetherXFirebaseMessagingService.kt
     // dan data/FcmTokenRepository.kt.
     implementation(libs.firebase.messaging)
-
-    // ── Firebase App Check (Play Integrity) — GUARD anti brute-force lisensi ─
-    // Menandatangani setiap request Firestore dengan bukti bahwa request ini
-    // datang dari APK asli yang ditandatangani dengan kunci rilis kita dan
-    // lolos verifikasi integritas Google Play — bukan dari script/curl/APK
-    // hasil modifikasi. Firestore rules (lihat firestore.rules, fungsi
-    // isVerifiedApp()) menolak SEMUA request yang tidak membawa token App
-    // Check yang valid. Dependency ini TIDAK memakai version catalog (libs.*)
-    // karena entrinya belum ada di gradle/libs.versions.toml — koordinat Maven
-    // ditulis langsung di sini, cukup selaraskan versinya dengan BOM Firebase
-    // yang sudah dipakai (libs.firebase.bom) kalau nanti ingin dipindah ke
-    // catalog.
-    implementation("com.google.firebase:firebase-appcheck-playintegrity:18.0.0")
 
     // ── Ads: Unity Ads (rewarded ads untuk fitur non-member) ─────────────────
     // Dipakai lewat abstraksi RewardedAdManager (lihat core/ads/RewardedAdManager.kt)

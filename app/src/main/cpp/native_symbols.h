@@ -4,15 +4,6 @@
 
 extern "C" {
 
-JNIEXPORT jboolean JNICALL nvfy(JNIEnv* env, jobject thiz, jbyteArray actualHashBytes);
-JNIEXPORT jboolean JNICALL nvfy2(JNIEnv* env, jobject thiz, jbyteArray actualHashBytes);
-
-// nvint (native integrity/anti-tamper checksum guard) SUDAH DIHAPUS TOTAL —
-// dulu membandingkan checksum FNV-1a byte kode nvfy/nvfy2 di memori, tapi
-// placeholder checksum-nya tidak pernah diisi (selalu return "not
-// configured"), jadi tidak pernah benar-benar memverifikasi apapun.
-// Dihapus daripada dikonfigurasi.
-
 // nfgp: turunan device fingerprint hash (HMAC-SHA256) dari identifier
 // perangkat mentah — lihat devicefingerprint.h/.cpp untuk kontrak dan
 // alasan lengkap, dan DeviceFingerprint.kt untuk sisi pemanggil.

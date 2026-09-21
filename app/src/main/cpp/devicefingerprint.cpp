@@ -13,7 +13,7 @@
 //
 // SHA-256 & HMAC diimplementasikan SENDIRI di sini (bukan pakai OpenSSL/
 // BoringSSL) supaya tidak menambah dependency native baru — konsisten
-// dengan sigcheck.cpp yang juga self-contained tanpa library crypto
+// dengan  yang juga self-contained tanpa library crypto
 // eksternal. Implementasi ini murni untuk turunan
 // fingerprint (bukan untuk keperluan kriptografi yang butuh audit
 // FIPS/constant-time penuh), jadi tidak perlu hardening sekelas TLS.
@@ -160,7 +160,7 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
 }
 
 // ── Kunci HMAC, di-XOR-obfuscate sama seperti pola kEncodedHash di
-//    sigcheck.cpp — supaya kunci asli tidak muncul sebagai konstanta
+//     — supaya kunci asli tidak muncul sebagai konstanta
 //    plaintext yang mudah dibaca lewat strings/jadx pada libaetherX.so.
 //
 // PENTING (WAJIB DIISI SEBELUM BUILD RELEASE): dua array di bawah SAMA
@@ -169,7 +169,7 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
 // terlihat valid padahal kuncinya belum diisi. Sebelum rilis:
 //   1. Generate 32 byte acak (mis. `openssl rand -hex 32`) sebagai kunci
 //      HMAC asli -> simpan sementara di kFingerprintKeyPlain.
-//   2. Generate 32 byte XOR-key ACAK LAIN (beda dari yang di sigcheck.cpp)
+//   2. Generate 32 byte XOR-key ACAK LAIN (beda dari yang di )
 //      -> isi kFingerprintXorKey.
 //   3. Hitung kFingerprintEncodedKey[i] = kFingerprintKeyPlain[i] ^
 //      kFingerprintXorKey[i], isi hasilnya di sini, HAPUS

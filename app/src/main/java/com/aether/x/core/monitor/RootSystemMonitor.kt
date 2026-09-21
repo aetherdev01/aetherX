@@ -1,5 +1,6 @@
 package com.aether.x.core.monitor
 
+import androidx.annotation.Keep
 import android.util.Log
 import com.aether.x.core.security.SecretStrings
 import com.aether.x.core.shell.RootShellExecutor
@@ -24,12 +25,13 @@ import com.aether.x.core.shell.RootShellExecutor
  * root-only murni dari sisi kebijakan UI, bukan dari kemampuan teknis
  * baca filenya).
  *
- * Native lib yang dimuat sama dengan SignatureGuard/
+ * Native lib yang dimuat sama dengan 
  * DeviceFingerprint (satu libaetherX.so, lihat KDoc
  * CMakeLists.txt) — `System.loadLibrary` di `init` ini aman dipanggil
  * berkali-kali kalau class lain juga sudah memuatnya lebih dulu (JVM
  * hanya memuat native lib sekali per proses).
  */
+@Keep
 object RootSystemMonitor {
 
     private const val TAG = "RootSystemMonitor"

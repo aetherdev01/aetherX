@@ -54,17 +54,6 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # ── 7. Setup keystore ────────────────────────────────────────────────────
-      - name: Setup signing
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > aetherx.jks
-          printf '%s\n' \
-            "STORE_FILE=aetherx.jks" \
-            "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" \
-            "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" \
-            "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" \
-            > local.properties
-
       # ── 8. Build Release APK ─────────────────────────────────────────────────
       # Flag speed-up: --build-cache (reuse task output antar run lewat cache
       # di step 6, termasuk cache task CMake/NDK native build) dan --parallel

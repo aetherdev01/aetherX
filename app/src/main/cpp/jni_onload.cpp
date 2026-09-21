@@ -7,11 +7,6 @@
 
 namespace {
 
-const JNINativeMethod kSignatureGuardMethods[] = {
-    {"nativeVerify", "([B)Z", reinterpret_cast<void*>(nvfy)},
-    {"nativeVerifyRecheck", "([B)Z", reinterpret_cast<void*>(nvfy2)},
-};
-
 // Device fingerprint (lihat devicefingerprint.h/.cpp) — dipakai
 // DeviceFingerprint.kt untuk menurunkan deviceId yang dikunci lisensi,
 // menggantikan ANDROID_ID mentah.
@@ -21,8 +16,8 @@ const JNINativeMethod kDeviceFingerprintMethods[] = {
 
 // Monitor CPU/GPU real-time root-only (lihat sysmonitor.h/.cpp,
 // sysmonitor_jni.cpp) — dipakai RootSystemMonitor.kt. Kegagalan registrasi
-// di sini TIDAK fatal (return JNI_ERR) seperti sigOk/integrityOk, karena
-// fitur ini murni tambahan UI (monitor grafik), bukan pemblokir keamanan
+// di sini TIDAK fatal karena fitur ini murni tambahan UI (monitor grafik),
+// bukan pemblokir startup aplikasi.
 // app — kalau gagal, RootSystemMonitor.kt cukup melaporkan monitor tidak
 // tersedia.
 const JNINativeMethod kSysMonitorMethods[] = {
@@ -57,15 +52,6 @@ bool registerClass(JNIEnv* env, const char* classBinaryName,
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
     JNIEnv* env = nullptr;
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
-        return JNI_ERR;
-    }
-
-    const bool sigOk = registerClass(
-        env, "com/aether/x/core/security/SignatureGuard",
-        kSignatureGuardMethods,
-        sizeof(kSignatureGuardMethods) / sizeof(kSignatureGuardMethods[0]));
-
-    if (!sigOk) {
         return JNI_ERR;
     }
 
