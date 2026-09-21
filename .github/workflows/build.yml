@@ -74,7 +74,7 @@ jobs:
             exit 1
           fi
 
-          echo "$KEYSTORE_BASE64" | base64 -d > app/aetherx.jks
+          echo "$KEYSTORE_BASE64" | base64 -d > aetherx.jks
 
           {
             echo "STORE_FILE=aetherx.jks"
@@ -105,7 +105,7 @@ jobs:
       # walau build gagal di tengah jalan.
       - name: Cleanup keystore
         if: always()
-        run: rm -f app/aetherx.jks
+        run: rm -f aetherx.jks
 
       # ── 9. Upload artifact ───────────────────────────────────────────────────
       - name: Upload Release APK
