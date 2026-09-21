@@ -54,33 +54,36 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # ── 7. Disable release signing ─────────────────────────────────────────────
-      - name: Disable release signing
+      # ── 7. Setup release signing dari GitHub Secrets ─────────────────────────
+      # Keystore disimpan sebagai secret AETHERX_KEYSTORE_BASE64 (hasil `base64`
+      # dari file .jks/.keystore). Di-decode ke app/aetherx-release.jks, lalu
+      # local.properties ditulis supaya signingConfigs.create("release") di
+      # app/build.gradle.kts (yang membaca STORE_FILE/STORE_PASSWORD/KEY_ALIAS/
+      # KEY_PASSWORD) otomatis terisi — tidak perlu ubah file Gradle sama sekali.
+      # local.properties TIDAK di-commit, hanya ada selama runner CI hidup.
+      - name: Setup release signing
         shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          python3 - <<'PY2'
-          from pathlib import Path
-          import re
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret KEYSTORE_BASE64 kosong/belum diisi — APK tidak bisa di-sign."
+            exit 1
+          fi
 
-          p = Path("app/build.gradle.kts")
-          if not p.exists():
-              raise SystemExit("app/build.gradle.kts not found")
+          echo "$KEYSTORE_BASE64" | base64 -d > app/aetherx-release.jks
 
-          s = p.read_text()
-          patterns = [
-              r'^(\s*)signingConfig\s*=\s*signingConfigs\.[^\n]*\n',
-              r'^(\s*)signingConfig\s*=\s*signingConfigs\.getByName\([^\n]*\)\n',
-          ]
-          original = s
-          for pat in patterns:
-              s = re.sub(pat, lambda m: f"{m.group(1)}// signing disabled for CI unsigned release\n", s, flags=re.MULTILINE)
+          {
+            echo "STORE_FILE=aetherx-release.jks"
+            echo "STORE_PASSWORD=${KEYSTORE_PASSWORD}"
+            echo "KEY_ALIAS=${KEY_ALIAS}"
+            echo "KEY_PASSWORD=${KEY_PASSWORD}"
+          } >> local.properties
 
-          if s == original:
-              print("No release signing assignment found; continuing unsigned.")
-          else:
-              p.write_text(s)
-              print("Release signing assignment disabled.")
-          PY2
+          echo "Release signing siap (keystore ter-decode, local.properties tertulis)."
 
       # ── 8. Build Release APK ─────────────────────────────────────────────────
       # Flag speed-up: --build-cache (reuse task output antar run lewat cache
@@ -96,6 +99,13 @@ jobs:
       # dipertahankan supaya error tetap gampang didiagnosis kalau gagal.
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon --stacktrace --build-cache --parallel
+
+      # ── 8b. Bersihkan keystore dari runner ──────────────────────────────────
+      # Dijalankan selalu (if: always()) supaya file .jks tidak tertinggal
+      # walau build gagal di tengah jalan.
+      - name: Cleanup keystore
+        if: always()
+        run: rm -f app/aetherx-release.jks
 
       # ── 9. Upload artifact ───────────────────────────────────────────────────
       - name: Upload Release APK

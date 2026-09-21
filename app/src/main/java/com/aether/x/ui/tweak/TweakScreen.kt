@@ -1,5 +1,6 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -10,9 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,8 +26,6 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.DeveloperBoard
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.MonitorHeart
@@ -65,6 +67,7 @@ import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
@@ -94,6 +97,8 @@ import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun TweakScreen(
@@ -213,61 +218,46 @@ fun TweakScreen(
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
-                    var editingOrder by remember { mutableStateOf(false) }
+                    // Long-press sebuah card lalu geser untuk mengubah urutan —
+                    // tidak ada lagi tombol "Atur urutan" terpisah maupun panah
+                    // naik/turun. reorderable menahan scroll induk selama drag
+                    // aktif sehingga geser tidak konflik dengan verticalScroll
+                    // di Column pembungkus.
+                    val reorderState = rememberReorderableLazyListState(
+                        onMove = { from, to ->
+                            dashboardViewModel.swapCards(from.index, to.index)
+                        },
+                        onDragEnd = { _, _ -> dashboardViewModel.saveCardOrder() },
+                    )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                    LazyColumn(
+                        state = reorderState.listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 4000.dp),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                        userScrollEnabled = false,
                     ) {
-                        androidx.compose.material3.TextButton(onClick = { editingOrder = !editingOrder }) {
-                            Text(
-                                text = if (editingOrder) {
-                                    stringResource(R.string.dashboard_order_done)
-                                } else {
-                                    stringResource(R.string.dashboard_order_edit)
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        }
-                    }
-
-                    dashboardState.cardOrder.forEachIndexed { index, cardId ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().cardEnterAnimation(index = index),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                when (cardId) {
-                                    "info" -> AetherXInfoCard()
-                                    "activity" -> GameActivitySection(
-                                        games = dashboardState.installedGames,
-                                        loading = dashboardState.loadingGames,
-                                        lastPlayedPackage = dashboardState.lastPlayedPackage,
-                                        onGameClick = dashboardViewModel::onGameClick,
-                                    )
-                                    "device" -> DeviceInfoSection(info = dashboardState.deviceInfo)
-                                    "ram" -> RamCleanerCard()
-                                }
-                            }
-                            if (editingOrder) {
-                                Column {
-                                    IconButton(
-                                        onClick = { dashboardViewModel.moveCard(cardId, -1) },
-                                        enabled = index != 0,
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.KeyboardArrowUp,
-                                            contentDescription = stringResource(R.string.dashboard_order_move_up_cd),
+                        itemsIndexed(dashboardState.cardOrder, key = { _, cardId -> cardId }) { index, cardId ->
+                            ReorderableItem(reorderState, key = cardId) { isDragging ->
+                                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "cardDragElevation")
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .cardEnterAnimation(index = index)
+                                        .shadow(elevation, MaterialTheme.shapes.medium)
+                                        .longPressDraggableHandle(),
+                                ) {
+                                    when (cardId) {
+                                        "info" -> AetherXInfoCard()
+                                        "activity" -> GameActivitySection(
+                                            games = dashboardState.installedGames,
+                                            loading = dashboardState.loadingGames,
+                                            lastPlayedPackage = dashboardState.lastPlayedPackage,
+                                            onGameClick = dashboardViewModel::onGameClick,
                                         )
-                                    }
-                                    IconButton(
-                                        onClick = { dashboardViewModel.moveCard(cardId, 1) },
-                                        enabled = index != dashboardState.cardOrder.lastIndex,
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.KeyboardArrowDown,
-                                            contentDescription = stringResource(R.string.dashboard_order_move_down_cd),
-                                        )
+                                        "device" -> DeviceInfoSection(info = dashboardState.deviceInfo)
+                                        "ram" -> RamCleanerCard()
                                     }
                                 }
                             }

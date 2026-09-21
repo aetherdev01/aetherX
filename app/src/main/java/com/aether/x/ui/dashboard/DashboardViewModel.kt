@@ -63,21 +63,25 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * Pindah satu card dashboard naik/turun satu posisi dan simpan urutan
-     * baru ke DataStore — dipanggil dari tombol panah di
-     * [com.aether.x.ui.tweak.TweakScreen] saat "mode atur urutan" aktif.
-     * direction: -1 = naik, +1 = turun.
+     * Menukar posisi dua card secara real-time saat digeser (long-press + drag)
+     * di [com.aether.x.ui.tweak.TweakScreen]. Hanya update state lokal — belum
+     * ditulis ke DataStore supaya tidak spam I/O selama animasi drag berjalan.
      */
-    fun moveCard(cardId: String, direction: Int) {
+    fun swapCards(fromIndex: Int, toIndex: Int) {
         val current = _state.value.cardOrder.toMutableList()
-        val fromIndex = current.indexOf(cardId)
-        if (fromIndex < 0) return
-        val toIndex = (fromIndex + direction).coerceIn(0, current.lastIndex)
-        if (toIndex == fromIndex) return
-        current.removeAt(fromIndex)
-        current.add(toIndex, cardId)
+        if (fromIndex !in current.indices || toIndex !in current.indices) return
+        val movedItem = current.removeAt(fromIndex)
+        current.add(toIndex, movedItem)
         _state.update { it.copy(cardOrder = current) }
-        viewModelScope.launch { preferences.setDashboardCardOrder(current) }
+    }
+
+    /**
+     * Menyimpan urutan ke DataStore ketika pengguna melepaskan jari (drag end).
+     */
+    fun saveCardOrder() {
+        viewModelScope.launch {
+            preferences.setDashboardCardOrder(_state.value.cardOrder)
+        }
     }
 
     private fun reorderByLastPlayed(games: List<InstalledGameEntry>, lastPlayed: String?): List<InstalledGameEntry> {
