@@ -1,67 +1,55 @@
-name: Build AetherX
+name: AetherX Release Build
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    name: Build Release APK
+    name: Build AetherX Release
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout
+      # Checkout source code.
+      - name: Checkout Source
         uses: actions/checkout@v4
 
-      # ── 2. JDK 17 ────────────────────────────────────────────────────────────
-      - name: Set up JDK 17
+      # AetherX uses JDK 17 for the Android release build.
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
+          cache: gradle
 
-      # ── 3. Setup Gradle ───────────────────────────────────────────────────────
-      # build-scan-publish dimatikan default, cache read-write aktif otomatis
-      # lewat action ini (terpisah dari actions/cache manual di step 6).
+      # Configure Gradle and enable dependency/task caching.
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
 
-      # ── 4. Grant execute permission ──────────────────────────────────────────
-      - name: Grant execute permission
+      # Allow the Gradle wrapper to execute on the GitHub runner.
+      - name: Grant Gradle Permission
         run: chmod +x ./gradlew
 
-      # ── 5. Remove legacy Groovy build files (konflik dengan KTS) ─────────────
-      # Jika repo masih punya build.gradle / settings.gradle Groovy lama,
-      # Gradle akan membaca keduanya dan crash karena AGP versi berbeda.
-      - name: Remove legacy Groovy build files
+      # AetherX uses Kotlin DSL (.kts); remove obsolete Groovy files
+      # that could cause duplicate or conflicting Gradle configuration.
+      - name: Clean Legacy Gradle Files
         run: |
-          rm -f build.gradle settings.gradle
+          rm -f build.gradle
+          rm -f settings.gradle
           rm -f app/build.gradle
-          echo "=== Build files sekarang ==="
-          find . -name "*.gradle" -o -name "*.gradle.kts" | grep -v ".gradle/caches" | sort
 
-      # ── 6. Gradle cache ──────────────────────────────────────────────────────
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-
+          echo "=== Active Gradle files ==="
+          find .             \( -name "*.gradle" -o -name "*.gradle.kts" \)             -not -path "./.gradle/*"             | sort
 
-      # ── 7. Setup release signing dari GitHub Secrets ─────────────────────────
-      # Keystore disimpan sebagai secret AETHERX_KEYSTORE_BASE64 (hasil `base64`
-      # dari file .jks/.keystore). Di-decode ke app/aetherx-release.jks, lalu
-      # local.properties ditulis supaya signingConfigs.create("release") di
-      # app/build.gradle.kts (yang membaca STORE_FILE/STORE_PASSWORD/KEY_ALIAS/
-      # KEY_PASSWORD) otomatis terisi — tidak perlu ubah file Gradle sama sekali.
-      # local.properties TIDAK di-commit, hanya ada selama runner CI hidup.
-      - name: Setup release signing
+      # Create the release keystore from GitHub Secrets and validate it
+      # before Gradle starts. This prevents obscure packageRelease errors.
+      - name: Configure Release Signing
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -69,94 +57,128 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Secret KEYSTORE_BASE64 kosong/belum diisi — APK tidak bisa di-sign."
+          set -e
+
+          echo "=== Checking signing configuration ==="
+
+          [ -n "$KEYSTORE_BASE64" ] || { echo "::error::KEYSTORE_BASE64 is empty."; exit 1; }
+          [ -n "$KEYSTORE_PASSWORD" ] || { echo "::error::KEYSTORE_PASSWORD is empty."; exit 1; }
+          [ -n "$KEY_ALIAS" ] || { echo "::error::KEY_ALIAS is empty."; exit 1; }
+          [ -n "$KEY_PASSWORD" ] || { echo "::error::KEY_PASSWORD is empty."; exit 1; }
+
+          echo "Decoding release keystore..."
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > app/aetherx.jks
+
+          [ -s app/aetherx.jks ] || {
+            echo "::error::Decoded keystore is empty."
+            exit 1
+          }
+
+          echo "Validating keystore..."
+          if ! keytool -list             -keystore app/aetherx.jks             -storepass "$KEYSTORE_PASSWORD"             >/tmp/keystore-info.txt 2>/tmp/keystore-error.txt; then
+            echo "::error::Unable to open keystore. Check KEYSTORE_BASE64 and KEYSTORE_PASSWORD."
+            cat /tmp/keystore-error.txt
             exit 1
           fi
 
-          echo "$KEYSTORE_BASE64" | base64 -d > aetherx.jks
+          echo "Keystore password is valid."
+
+          echo "Validating key alias..."
+          if ! keytool -list             -keystore app/aetherx.jks             -storepass "$KEYSTORE_PASSWORD"             -alias "$KEY_ALIAS"             >/tmp/alias-info.txt 2>/tmp/alias-error.txt; then
+            echo "::error::KEY_ALIAS '$KEY_ALIAS' was not found in the keystore."
+            cat /tmp/alias-error.txt
+            exit 1
+          fi
+
+          echo "Key alias is valid: $KEY_ALIAS"
 
           {
-            echo "STORE_FILE=aetherx.jks"
+            echo "STORE_FILE=app/aetherx.jks"
             echo "STORE_PASSWORD=${KEYSTORE_PASSWORD}"
             echo "KEY_ALIAS=${KEY_ALIAS}"
             echo "KEY_PASSWORD=${KEY_PASSWORD}"
           } >> local.properties
 
-          echo "Release signing siap (keystore ter-decode, local.properties tertulis)."
+          echo "Release signing configuration is ready."
 
-      # ── 8. Build Release APK ─────────────────────────────────────────────────
-      # Flag speed-up: --build-cache (reuse task output antar run lewat cache
-      # di step 6, termasuk cache task CMake/NDK native build) dan --parallel
-      # (compile module/task independen bersamaan). --configuration-cache
-      # SENGAJA tidak dipakai di sini — project ini punya native build
-      # (externalNativeBuild/CMake, lihat app/build.gradle.kts) yang belum
-      # tentu 100% kompatibel dengan configuration cache di semua versi
-      # AGP/CMake, risikonya CI gagal bukan malah lebih cepat. Sudah
-      # diaktifkan di gradle.properties kalau nanti mau dicoba manual dulu
-      # di lokal sebelum dipakai di CI. --warning-mode all dibuang karena
-      # cuma menambah log verbose tanpa mempercepat build; --stacktrace
-      # dipertahankan supaya error tetap gampang didiagnosis kalau gagal.
+      # Compile the signed AetherX release APK.
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace --build-cache --parallel
+        run: |
+          ./gradlew assembleRelease             --no-daemon             --stacktrace             --build-cache             --parallel
 
-      # ── 8b. Bersihkan keystore dari runner ──────────────────────────────────
-      # Dijalankan selalu (if: always()) supaya file .jks tidak tertinggal
-      # walau build gagal di tengah jalan.
-      - name: Cleanup keystore
-        if: always()
-        run: rm -f aetherx.jks
+      # Rename the generated APK to a clean, user-friendly filename.
+      # Example: AetherX-v1.1-Beta.apk
+      - name: Rename Release APK
+        shell: bash
+        run: |
+          set -e
 
-      # ── 9. Upload artifact ───────────────────────────────────────────────────
-      - name: Upload Release APK
+          APK_DIR="app/build/outputs/apk/release"
+          APK_PATH=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" | head -n 1)
+
+          [ -n "$APK_PATH" ] || {
+            echo "::error::Release APK was not found."
+            exit 1
+          }
+
+          VERSION=$(grep -m1 'versionName' app/build.gradle.kts 2>/dev/null             | sed 's/.*= *"//'             | sed 's/".*//')
+
+          [ -n "$VERSION" ] || VERSION="Unknown"
+
+          SAFE_VERSION=$(printf '%s' "$VERSION" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          FINAL_APK="$APK_DIR/AetherX-v${SAFE_VERSION}.apk"
+
+          mv "$APK_PATH" "$FINAL_APK"
+
+          echo "APK_NAME=$(basename "$FINAL_APK")" >> "$GITHUB_ENV"
+          echo "APK_PATH=$FINAL_APK" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          echo "Final APK: $(basename "$FINAL_APK")"
+
+      # Store the final APK as a downloadable GitHub Actions artifact.
+      - name: Upload AetherX APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: aetherx-release-${{ github.run_number }}
-          path: app/build/outputs/apk/release/*.apk
+          name: AetherX-v${{ env.VERSION }}
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 7
 
-      # ── 10. Kirim APK ke Telegram ────────────────────────────────────────────
-      - name: Send APK to Telegram
+      # Send the same final APK to the configured Telegram chat.
+      - name: Send AetherX APK to Telegram
         if: success()
+        shell: bash
         run: |
           SHA="${{ github.sha }}"
           SHA_SHORT="${SHA:0:7}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          APK_PATH=$(find app/build/outputs/apk/release/ -maxdepth 1 -type f -name "*.apk" | head -n 1)
-          [ -n "$APK_PATH" ] || { echo "APK tidak ditemukan"; exit 1; }
-          APK_NAME=$(basename "$APK_PATH")
-
-          VERSION=$(grep -m1 'versionName' app/build.gradle.kts 2>/dev/null \
-                    | sed 's/.*= *"//' | sed 's/".*//')
-          [ -z "$VERSION" ] && VERSION="unknown"
 
           SIZE_BYTES=$(stat -c%s "$APK_PATH")
           SIZE_MB=$(awk "BEGIN {printf \"%.2f\", ${SIZE_BYTES}/1048576}")
 
-          CAPTION=$(printf \
-            '✅ Build <b>AetherX</b> berhasil\n\n📦 <b>File:</b> <code>%s</code>\n🏷 <b>Versi:</b> <code>%s</code>\n💾 <b>Ukuran:</b> <code>%s MB</code>\n🔖 <b>Commit:</b> <code>%s</code> — <a href="%s">lihat detail</a>' \
-            "$APK_NAME" "$VERSION" "$SIZE_MB" "$SHA_SHORT" "$RUN_URL")
+          CAPTION=$(printf             '🚀 <b>AetherX Release Build</b>\n\n📦 <b>APK:</b> <code>%s</code>\n🏷 <b>Version:</b> <code>%s</code>\n💾 <b>Size:</b> <code>%s MB</code>\n🔖 <b>Commit:</b> <code>%s</code>\n\n🔗 <a href="%s">GitHub Actions</a>'             "$APK_NAME" "$VERSION" "$SIZE_MB" "$SHA_SHORT" "$RUN_URL")
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
-            -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -F parse_mode="HTML" \
-            -F caption="${CAPTION}" \
-            -F document=@"${APK_PATH}" || true
+          curl -sS -X POST             "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument"             -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"             -F "parse_mode=HTML"             -F "caption=${CAPTION}"             -F "document=@${APK_PATH}"             || true
 
-      # ── 11. Notif Telegram (gagal) ───────────────────────────────────────────
-      - name: Telegram Notification (Failure)
+      # Notify Telegram if any workflow step fails.
+      - name: Telegram Build Failure
         if: failure()
+        shell: bash
         run: |
           SHA="${{ github.sha }}"
           SHA_SHORT="${SHA:0:7}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          TEXT=$(printf \
-            '❌ Build <b>AetherX</b> gagal\n\n🔖 <b>Commit:</b> <code>%s</code> — <a href="%s">lihat detail</a>' \
-            "$SHA_SHORT" "$RUN_URL")
+          TEXT=$(printf             '❌ <b>AetherX Release Build Failed</b>\n\n🔖 <b>Commit:</b> <code>%s</code>\n\n🔗 <a href="%s">Open build logs</a>'             "$SHA_SHORT" "$RUN_URL")
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d "text=${TEXT}" || true
+          curl -sS -X POST             "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"             -d "parse_mode=HTML"             --data-urlencode "text=${TEXT}"             || true
+
+      # Always remove temporary signing files from the runner.
+      - name: Cleanup Signing Files
+        if: always()
+        run: |
+          rm -f app/aetherx.jks
+          rm -f local.properties
+          echo "Temporary signing files removed."
