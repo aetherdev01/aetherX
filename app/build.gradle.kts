@@ -177,4 +177,5 @@ dependencies {
     // WAJIB isi GAME_ID & PLACEMENT_ID asli di UnityRewardedAdManager.kt sebelum
     // build release (lihat TODO di file itu dan core/ads/README.md).
     implementation(libs.unity.ads)
+    implementation(libs.reorderable) 
 }
