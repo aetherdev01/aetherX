@@ -102,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aetherx-release-${{ github.run_number }}
-          path: app/build/outputs/apk/release/AXKM_v*-release.apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 3
 
@@ -113,7 +113,8 @@ jobs:
           SHA="${{ github.sha }}"
           SHA_SHORT="${SHA:0:7}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          APK_PATH=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+          APK_PATH=$(find app/build/outputs/apk/release/ -maxdepth 1 -type f -name "*.apk" | head -n 1)
+          [ -n "$APK_PATH" ] || { echo "APK tidak ditemukan"; exit 1; }
           APK_NAME=$(basename "$APK_PATH")
 
           VERSION=$(grep -m1 'versionName' app/build.gradle.kts 2>/dev/null \
