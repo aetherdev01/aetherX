@@ -41,6 +41,7 @@ android {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
+            arguments += listOf("-DANDROID_STL=none")
         }
     }
 
@@ -65,6 +66,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE" // ganti "NONE" kalau mau nol info native sama sekali
+            }
         }
     }
 
@@ -77,7 +81,7 @@ android {
             isEnable = true
             reset()
             include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = true
+            isUniversalApk = false
         }
     }
 
@@ -96,6 +100,9 @@ android {
     }
 
     packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
         resources {
             excludes += setOf(
                 "META-INF/LICENSE.txt",

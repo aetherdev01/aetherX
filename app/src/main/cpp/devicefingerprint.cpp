@@ -6,25 +6,9 @@
 #include "common.h"
 #include "devicefingerprint.h"
 
-// devicefingerprint.cpp — turunan hash device fingerprint yang dikunci
-// lisensi, menggantikan ANDROID_ID mentah sebagai deviceId yang dikirim ke
-// Firestore (lihat devicefingerprint.h untuk latar belakang & kontrak
-// lengkap, dan DeviceFingerprint.kt untuk sisi pemanggil Kotlin).
-//
-// SHA-256 & HMAC diimplementasikan SENDIRI di sini (bukan pakai OpenSSL/
-// BoringSSL) supaya tidak menambah dependency native baru — konsisten
-// dengan  yang juga self-contained tanpa library crypto
-// eksternal. Implementasi ini murni untuk turunan
-// fingerprint (bukan untuk keperluan kriptografi yang butuh audit
-// FIPS/constant-time penuh), jadi tidak perlu hardening sekelas TLS.
-
 namespace {
-
 using aetherx::devicefingerprint::kDigestLen;
 using aetherx::devicefingerprint::kMaxInputLen;
-
-// ── SHA-256 (implementasi standar, single-shot, cocok untuk pesan pendek
-//    seperti gabungan identifier device yang jauh di bawah batas 2^64 bit) ──
 
 constexpr uint32_t kSha256InitialH[8] = {
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -49,22 +33,15 @@ inline uint32_t rotr(uint32_t x, int n) {
     return (x >> n) | (x << (32 - n));
 }
 
-// Hitung SHA-256 dari `data` (panjang `len`) ke `outDigest` (32 byte).
-// Mendukung panjang pesan hingga jauh di atas kebutuhan modul ini
-// (kMaxInputLen jauh di bawah batas praktis single-block-count 32-bit).
 void sha256(const uint8_t* data, size_t len, uint8_t outDigest[32]) {
     uint32_t h[8];
     std::memcpy(h, kSha256InitialH, sizeof(h));
 
     const uint64_t bitLen = static_cast<uint64_t>(len) * 8;
 
-    // Total panjang setelah padding: data + 0x80 + zero-pad + 8-byte length,
-    // dibulatkan ke kelipatan 64 byte.
     size_t paddedLen = len + 1 + 8;
     paddedLen = ((paddedLen + 63) / 64) * 64;
 
-    // kMaxInputLen (512) kecil, jadi buffer stack di bawah ini aman
-    // (maks sekitar 512 + 9 dibulatkan ke atas -> beberapa ratus byte lagi).
     uint8_t buffer[kMaxInputLen + 72];
     std::memset(buffer, 0, sizeof(buffer));
     std::memcpy(buffer, data, len);
@@ -115,8 +92,6 @@ void sha256(const uint8_t* data, size_t len, uint8_t outDigest[32]) {
     }
 }
 
-// ── HMAC-SHA256 standar (RFC 2104), blok SHA-256 = 64 byte ──
-
 constexpr size_t kShaBlockLen = 64;
 
 void hmacSha256(const uint8_t* key, size_t keyLen,
@@ -126,7 +101,6 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
     std::memset(keyBlock, 0, sizeof(keyBlock));
 
     if (keyLen > kShaBlockLen) {
-        // Kunci lebih panjang dari satu block: hash dulu jadi 32 byte.
         sha256(key, keyLen, keyBlock);
     } else {
         std::memcpy(keyBlock, key, keyLen);
@@ -139,7 +113,6 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
         opad[i] = static_cast<uint8_t>(keyBlock[i] ^ 0x5c);
     }
 
-    // inner = SHA256(ipad || msg)
     uint8_t innerBuf[kShaBlockLen + kMaxInputLen];
     const size_t innerMsgLen = (msgLen > kMaxInputLen) ? kMaxInputLen : msgLen;
     std::memcpy(innerBuf, ipad, kShaBlockLen);
@@ -147,33 +120,16 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
     uint8_t innerHash[kDigestLen];
     sha256(innerBuf, kShaBlockLen + innerMsgLen, innerHash);
 
-    // outer = SHA256(opad || inner)
     uint8_t outerBuf[kShaBlockLen + kDigestLen];
     std::memcpy(outerBuf, opad, kShaBlockLen);
     std::memcpy(outerBuf + kShaBlockLen, innerHash, kDigestLen);
     sha256(outerBuf, sizeof(outerBuf), outDigest);
 
-    // Bersihkan buffer yang sempat memuat turunan kunci.
     std::memset(keyBlock, 0, sizeof(keyBlock));
     std::memset(ipad, 0, sizeof(ipad));
     std::memset(opad, 0, sizeof(opad));
 }
 
-// ── Kunci HMAC, di-XOR-obfuscate sama seperti pola kEncodedHash di
-//     — supaya kunci asli tidak muncul sebagai konstanta
-//    plaintext yang mudah dibaca lewat strings/jadx pada libaetherX.so.
-//
-// PENTING (WAJIB DIISI SEBELUM BUILD RELEASE): dua array di bawah SAMA
-// PERSIS satu sama lain sebagai placeholder — ini SENGAJA, supaya build
-// development tidak pernah diam-diam menghasilkan fingerprint hash yang
-// terlihat valid padahal kuncinya belum diisi. Sebelum rilis:
-//   1. Generate 32 byte acak (mis. `openssl rand -hex 32`) sebagai kunci
-//      HMAC asli -> simpan sementara di kFingerprintKeyPlain.
-//   2. Generate 32 byte XOR-key ACAK LAIN (beda dari yang di )
-//      -> isi kFingerprintXorKey.
-//   3. Hitung kFingerprintEncodedKey[i] = kFingerprintKeyPlain[i] ^
-//      kFingerprintXorKey[i], isi hasilnya di sini, HAPUS
-//      kFingerprintKeyPlain dari histori/commit.
 constexpr int kKeyLen = 32;
 
 constexpr uint8_t kFingerprintXorKey[kKeyLen] = {
@@ -182,22 +138,26 @@ constexpr uint8_t kFingerprintXorKey[kKeyLen] = {
     0x77, 0xC0, 0x2E, 0x5F, 0x98, 0x03, 0x6B, 0xDA,
 };
 
-// Placeholder: SAMA PERSIS dengan kFingerprintXorKey di atas (lihat
-// catatan "WAJIB DIISI" di atas) — nilai ini WAJIB diganti sebelum build
-// release dengan hasil XOR kunci HMAC asli terhadap kFingerprintXorKey.
 constexpr uint8_t kFingerprintEncodedKey[kKeyLen] = {
     0x51, 0xC4, 0x2A, 0x9E, 0x7D, 0x3F, 0x86, 0x1B, 0x44, 0xF0, 0xD9, 0x62,
     0x0C, 0x8A, 0x55, 0xE1, 0x3C, 0x97, 0x6E, 0x21, 0xB8, 0x4D, 0xA5, 0x19,
     0x77, 0xC0, 0x2E, 0x5F, 0x98, 0x03, 0x6B, 0xDA,
 };
 
-constexpr bool kFingerprintKeyNotConfigured =
-    (kFingerprintXorKey[0] == kFingerprintEncodedKey[0]);
+constexpr bool arraysEqual(const uint8_t* a, const uint8_t* b, int n) {
+    for (int i = 0; i < n; i++) {
+        if (a[i] != b[i]) return false;
+    }
+    return true;
+}
 
-}  // namespace
+static_assert(!arraysEqual(kFingerprintXorKey, kFingerprintEncodedKey, kKeyLen),
+              "kFingerprintXorKey and kFingerprintEncodedKey are still identical placeholders — "
+              "generate the real HMAC key and XOR-encode it before building release.");
+}
 
-extern "C" JNIEXPORT jbyteArray JNICALL
-nfgp(JNIEnv* env, jobject /* thiz */, jbyteArray rawInput) {
+extern "C" jbyteArray JNICALL
+nfgp(JNIEnv* env, jobject, jbyteArray rawInput) {
     if (rawInput == nullptr) return nullptr;
 
     const jsize len = env->GetArrayLength(rawInput);
@@ -216,13 +176,6 @@ nfgp(JNIEnv* env, jobject /* thiz */, jbyteArray rawInput) {
     uint8_t digest[kDigestLen];
     hmacSha256(key, kKeyLen, inputBuf, useLen, digest);
     std::memset(key, 0, sizeof(key));
-
-    // Selama kunci belum dikonfigurasi (lihat catatan kFingerprintKeyNotConfigured
-    // di atas), tetap kembalikan hash yang konsisten (bukan gagal diam-diam) —
-    // supaya alur binding lisensi tetap bisa diuji end-to-end sebelum kunci
-    // asli diisi, tapi developer WAJIB mengganti kunci sebelum rilis karena
-    // nilai default ini bisa diketahui siapa pun yang baca source ini.
-    (void)kFingerprintKeyNotConfigured;
 
     jbyteArray result = env->NewByteArray(kDigestLen);
     if (result == nullptr) {

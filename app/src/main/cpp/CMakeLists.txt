@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # GANTI -O2 menjadi -Oz (untuk ukuran terkecil) atau -Os.
 # TAMBAHKAN -flto untuk Link-Time Optimization (membuat kode sangat sulit di-reverse dan lebih padat).
-set(CMAKE_CXX_FLAGS_RELEASE "-Oz -flto -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong")
+set(CMAKE_CXX_FLAGS_RELEASE "-Oz -flto -fvisibility=hidden -fvisibility-inlines-hidden -fstack-protector-strong -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -fmerge-all-constants")
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     devicefingerprint.cpp
@@ -15,12 +15,6 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
     rammonitor.cpp
     rammonitor_jni.cpp
     jni_onload.cpp
-)
-
-find_library(log-lib log)
-
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    ${log-lib}
 )
 
 # Tambahkan -flto juga di bagian linker

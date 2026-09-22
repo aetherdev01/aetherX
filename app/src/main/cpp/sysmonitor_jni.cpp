@@ -3,13 +3,6 @@
 #include "native_symbols.h"
 #include "sysmonitor.h"
 
-// sysmonitor_jni.cpp — lapisan tipis yang mengonversi struct native
-// (CpuSnapshot/GpuSnapshot, lihat sysmonitor.h) menjadi jfloatArray yang
-// dikonsumsi RootSystemMonitor.kt. Dipisah dari sysmonitor.cpp supaya
-// sysmonitor.cpp/.h tetap murni C++ tanpa dependensi JNI (lebih mudah
-// diuji/dipakai ulang kalau suatu saat perlu, walau saat ini hanya
-// dipanggil dari sini).
-
 using aetherx::sysmonitor::CpuSnapshot;
 using aetherx::sysmonitor::GpuSnapshot;
 using aetherx::sysmonitor::kMaxCpuCores;
@@ -18,19 +11,16 @@ using aetherx::sysmonitor::nsmReadGpu;
 using aetherx::sysmonitor::nsmResetCpuDelta;
 
 extern "C" {
-
-JNIEXPORT jfloatArray JNICALL nsmc(JNIEnv* env, jobject /* thiz */) {
+jfloatArray JNICALL nsmc(JNIEnv* env, jobject) {
     CpuSnapshot snapshot;
     if (!nsmReadCpu(&snapshot)) {
         return nullptr;
     }
 
-    // Elemen 0 = agregat, elemen 1..coreCount = per-core.
     jsize length = static_cast<jsize>(1 + snapshot.coreCount);
     jfloatArray result = env->NewFloatArray(length);
     if (result == nullptr) return nullptr;
 
-    // Buffer sementara di stack — kMaxCpuCores kecil (16), aman tanpa heap alloc.
     float buffer[kMaxCpuCores + 1];
     buffer[0] = snapshot.aggregateLoadPercent;
     for (int i = 0; i < snapshot.coreCount; i++) {
@@ -41,7 +31,7 @@ JNIEXPORT jfloatArray JNICALL nsmc(JNIEnv* env, jobject /* thiz */) {
     return result;
 }
 
-JNIEXPORT jfloatArray JNICALL nsmg(JNIEnv* env, jobject /* thiz */) {
+jfloatArray JNICALL nsmg(JNIEnv* env, jobject) {
     GpuSnapshot snapshot;
     if (!nsmReadGpu(&snapshot)) {
         return nullptr;
@@ -55,8 +45,7 @@ JNIEXPORT jfloatArray JNICALL nsmg(JNIEnv* env, jobject /* thiz */) {
     return result;
 }
 
-JNIEXPORT void JNICALL nsmr(JNIEnv* /* env */, jobject /* thiz */) {
+void JNICALL nsmr(JNIEnv*, jobject) {
     nsmResetCpuDelta();
 }
-
-}  // extern "C"
+}

@@ -1,35 +1,17 @@
 #include <jni.h>
-#include <android/log.h>
-
 #include "native_symbols.h"
 
-#define LOG_TAG "AetherXJNI"
-
 namespace {
-
-// Device fingerprint (lihat devicefingerprint.h/.cpp) — dipakai
-// DeviceFingerprint.kt untuk menurunkan deviceId yang dikunci lisensi,
-// menggantikan ANDROID_ID mentah.
 const JNINativeMethod kDeviceFingerprintMethods[] = {
     {"nativeDeriveFingerprint", "([B)[B", reinterpret_cast<void*>(nfgp)},
 };
 
-// Monitor CPU/GPU real-time root-only (lihat sysmonitor.h/.cpp,
-// sysmonitor_jni.cpp) — dipakai RootSystemMonitor.kt. Kegagalan registrasi
-// di sini TIDAK fatal karena fitur ini murni tambahan UI (monitor grafik),
-// bukan pemblokir startup aplikasi.
-// app — kalau gagal, RootSystemMonitor.kt cukup melaporkan monitor tidak
-// tersedia.
 const JNINativeMethod kSysMonitorMethods[] = {
     {"nativeReadCpuSnapshot", "()[F", reinterpret_cast<void*>(nsmc)},
     {"nativeReadGpuSnapshot", "()[F", reinterpret_cast<void*>(nsmg)},
     {"nativeResetCpuDelta", "()V", reinterpret_cast<void*>(nsmr)},
 };
 
-// RAM Cleaner (v3.5, lihat rammonitor.h/.cpp/_jni.cpp) — dipakai
-// RamMonitor.kt. Sama seperti kSysMonitorMethods, kegagalan registrasi
-// TIDAK fatal — RamMonitor.kt akan melaporkan isNativeAvailable=false dan
-// UI menyembunyikan kartu RAM Cleaner alih-alih crash.
 const JNINativeMethod kRamMonitorMethods[] = {
     {"nativeReadRamSnapshot", "()[F", reinterpret_cast<void*>(nrmc)},
 };
@@ -46,10 +28,9 @@ bool registerClass(JNIEnv* env, const char* classBinaryName,
     env->DeleteLocalRef(clazz);
     return ok;
 }
-
 }
 
-extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     JNIEnv* env = nullptr;
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
@@ -60,9 +41,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         kDeviceFingerprintMethods,
         sizeof(kDeviceFingerprintMethods) / sizeof(kDeviceFingerprintMethods[0]));
     if (!fingerprintOk) {
-        __android_log_print(
-            ANDROID_LOG_WARN, LOG_TAG,
-            "DeviceFingerprint native registration failed");
     }
 
     const bool sysMonitorOk = registerClass(
@@ -70,9 +48,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         kSysMonitorMethods,
         sizeof(kSysMonitorMethods) / sizeof(kSysMonitorMethods[0]));
     if (!sysMonitorOk) {
-        __android_log_print(
-            ANDROID_LOG_WARN, LOG_TAG,
-            "RootSystemMonitor native registration failed");
     }
 
     const bool ramMonitorOk = registerClass(
@@ -80,9 +55,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /* reserved */) {
         kRamMonitorMethods,
         sizeof(kRamMonitorMethods) / sizeof(kRamMonitorMethods[0]));
     if (!ramMonitorOk) {
-        __android_log_print(
-            ANDROID_LOG_WARN, LOG_TAG,
-            "RamMonitor native registration failed");
     }
 
     return JNI_VERSION_1_6;
