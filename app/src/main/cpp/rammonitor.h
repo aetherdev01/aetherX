@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace aetherx::rammonitor {
 struct RamSnapshot {

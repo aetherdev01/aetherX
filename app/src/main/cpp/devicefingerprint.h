@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
 namespace aetherx::devicefingerprint {
 inline constexpr int kDigestLen = 32;

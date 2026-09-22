@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
 namespace aetherx::common {
 inline bool constantTimeEquals(const uint8_t* a, const uint8_t* b, size_t len) {

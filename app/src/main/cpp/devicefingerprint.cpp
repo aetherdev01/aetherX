@@ -1,6 +1,6 @@
 #include <jni.h>
-#include <cstdint>
-#include <cstring>
+#include <stdint.h>
+#include <string.h>
 
 #include "native_symbols.h"
 #include "common.h"
@@ -35,7 +35,7 @@ inline uint32_t rotr(uint32_t x, int n) {
 
 void sha256(const uint8_t* data, size_t len, uint8_t outDigest[32]) {
     uint32_t h[8];
-    std::memcpy(h, kSha256InitialH, sizeof(h));
+    memcpy(h, kSha256InitialH, sizeof(h));
 
     const uint64_t bitLen = static_cast<uint64_t>(len) * 8;
 
@@ -43,8 +43,8 @@ void sha256(const uint8_t* data, size_t len, uint8_t outDigest[32]) {
     paddedLen = ((paddedLen + 63) / 64) * 64;
 
     uint8_t buffer[kMaxInputLen + 72];
-    std::memset(buffer, 0, sizeof(buffer));
-    std::memcpy(buffer, data, len);
+    memset(buffer, 0, sizeof(buffer));
+    memcpy(buffer, data, len);
     buffer[len] = 0x80;
     for (int i = 0; i < 8; i++) {
         buffer[paddedLen - 1 - i] = static_cast<uint8_t>(bitLen >> (8 * i));
@@ -98,12 +98,12 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
                  const uint8_t* msg, size_t msgLen,
                  uint8_t outDigest[kDigestLen]) {
     uint8_t keyBlock[kShaBlockLen];
-    std::memset(keyBlock, 0, sizeof(keyBlock));
+    memset(keyBlock, 0, sizeof(keyBlock));
 
     if (keyLen > kShaBlockLen) {
         sha256(key, keyLen, keyBlock);
     } else {
-        std::memcpy(keyBlock, key, keyLen);
+        memcpy(keyBlock, key, keyLen);
     }
 
     uint8_t ipad[kShaBlockLen];
@@ -115,19 +115,19 @@ void hmacSha256(const uint8_t* key, size_t keyLen,
 
     uint8_t innerBuf[kShaBlockLen + kMaxInputLen];
     const size_t innerMsgLen = (msgLen > kMaxInputLen) ? kMaxInputLen : msgLen;
-    std::memcpy(innerBuf, ipad, kShaBlockLen);
-    std::memcpy(innerBuf + kShaBlockLen, msg, innerMsgLen);
+    memcpy(innerBuf, ipad, kShaBlockLen);
+    memcpy(innerBuf + kShaBlockLen, msg, innerMsgLen);
     uint8_t innerHash[kDigestLen];
     sha256(innerBuf, kShaBlockLen + innerMsgLen, innerHash);
 
     uint8_t outerBuf[kShaBlockLen + kDigestLen];
-    std::memcpy(outerBuf, opad, kShaBlockLen);
-    std::memcpy(outerBuf + kShaBlockLen, innerHash, kDigestLen);
+    memcpy(outerBuf, opad, kShaBlockLen);
+    memcpy(outerBuf + kShaBlockLen, innerHash, kDigestLen);
     sha256(outerBuf, sizeof(outerBuf), outDigest);
 
-    std::memset(keyBlock, 0, sizeof(keyBlock));
-    std::memset(ipad, 0, sizeof(ipad));
-    std::memset(opad, 0, sizeof(opad));
+    memset(keyBlock, 0, sizeof(keyBlock));
+    memset(ipad, 0, sizeof(ipad));
+    memset(opad, 0, sizeof(opad));
 }
 
 constexpr int kKeyLen = 32;
@@ -175,14 +175,14 @@ nfgp(JNIEnv* env, jobject, jbyteArray rawInput) {
 
     uint8_t digest[kDigestLen];
     hmacSha256(key, kKeyLen, inputBuf, useLen, digest);
-    std::memset(key, 0, sizeof(key));
+    memset(key, 0, sizeof(key));
 
     jbyteArray result = env->NewByteArray(kDigestLen);
     if (result == nullptr) {
-        std::memset(digest, 0, sizeof(digest));
+        memset(digest, 0, sizeof(digest));
         return nullptr;
     }
     env->SetByteArrayRegion(result, 0, kDigestLen, reinterpret_cast<jbyte*>(digest));
-    std::memset(digest, 0, sizeof(digest));
+    memset(digest, 0, sizeof(digest));
     return result;
 }
