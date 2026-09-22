@@ -35,13 +35,18 @@ android {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
         }
 
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=none")
+            }
+        }
+
     }
 
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
-            arguments += listOf("-DANDROID_STL=none")
         }
     }
 
