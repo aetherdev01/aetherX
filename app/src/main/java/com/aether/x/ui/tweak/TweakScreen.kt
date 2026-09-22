@@ -1,6 +1,8 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -90,6 +92,7 @@ import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
+import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
@@ -236,16 +239,31 @@ fun TweakScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 4000.dp),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xl),
                         userScrollEnabled = false,
                     ) {
                         itemsIndexed(dashboardState.cardOrder, key = { _, cardId -> cardId }) { index, cardId ->
                             ReorderableItem(reorderState, key = cardId) { isDragging ->
-                                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "cardDragElevation")
+                                // Elevation/shadow pakai spring (bukan tween) supaya
+                                // "menyembul" saat ditahan terasa punya bobot/inersia,
+                                // lalu turun tenang (no bounce) saat card dilepas.
+                                val elevation by animateDpAsState(
+                                    targetValue = if (isDragging) 14.dp else 0.dp,
+                                    animationSpec = spring(
+                                        dampingRatio = if (isDragging) {
+                                            Spring.DampingRatioMediumBouncy
+                                        } else {
+                                            Spring.DampingRatioNoBouncy
+                                        },
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                    label = "cardDragElevation",
+                                )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .cardEnterAnimation(index = index)
+                                        .dragPopEffect(isDragging = isDragging)
                                         .shadow(elevation, MaterialTheme.shapes.medium)
                                         .longPressDraggableHandle(
                                             onDragStopped = {

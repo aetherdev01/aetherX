@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.theme.AetherMonoFamily
 import java.util.Locale
 
 /**
@@ -76,13 +77,16 @@ fun RamCleanerCard(modifier: Modifier = Modifier, viewModel: RamCleanerViewModel
                         stringResource(R.string.ram_cleaner_usage_unknown)
                     },
                     style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = AetherMonoFamily,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
                 )
                 if (usedPercent != null) {
                     Text(
                         text = stringResource(R.string.ram_cleaner_percent_format, usedPercent.toInt()),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontFamily = AetherMonoFamily,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                     )

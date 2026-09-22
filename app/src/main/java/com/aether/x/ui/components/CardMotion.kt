@@ -1,7 +1,9 @@
 package com.aether.x.ui.components
 
 import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -14,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.dp
 
@@ -54,3 +57,43 @@ fun Modifier.pressScale(
 
 @Composable
 fun rememberPressScaleInteractionSource(): MutableInteractionSource = remember { MutableInteractionSource() }
+
+/**
+ * Efek "pegas" saat card ditahan (long-press) untuk drag-reorder di
+ * Dashboard: begitu [isDragging] jadi true, card menyembul (scale up +
+ * sedikit terangkat) dengan pegas yang agak "hidup" (medium bounce), lalu
+ * saat dilepas kembali ke ukuran normal dengan pegas yang lebih tenang
+ * (no bounce) supaya tidak terasa mantul-mantul berlebihan saat mendarat
+ * di posisi barunya.
+ */
+@Composable
+fun Modifier.dragPopEffect(isDragging: Boolean): Modifier {
+    val popScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.045f else 1f,
+        animationSpec = if (isDragging) {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            )
+        } else {
+            spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            )
+        },
+        label = "dragPopScale",
+    )
+    val lift by animateFloatAsState(
+        targetValue = if (isDragging) -3f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        ),
+        label = "dragPopLift",
+    )
+    return this.graphicsLayer {
+        scaleX = popScale
+        scaleY = popScale
+        translationY = lift
+    }
+}
