@@ -62,6 +62,14 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun runStartupSequence() {
         viewModelScope.launch {
+            // User ID sudah ke-cache lokal (AetherXPreferences.getSyncedUserId)
+            // artinya device ini SUDAH PERNAH resolve+register sebelumnya —
+            // bukan pendaftaran baru. Untuk kasus ini splash tidak perlu
+            // menampilkan tahap "Mendaftarkan perangkat...": itu di sini
+            // cuma nge-update lastLoginAt, jadi dijalankan diam-diam di
+            // background tanpa memblokir/menunda progress splash.
+            val isReturningUser = preferences.getSyncedUserId() != null
+
             // 1) Resolusi/registrasi user ID — panggilan Firestore nyata ke
             // devices/{deviceId} lewat UserIdRepository (baca-atau-alokasikan
             // dengan retry+backoff sudah ada di dalamnya).
@@ -78,8 +86,15 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             // 2) Catat login device ke Firestore (firstLoginAt/lastLoginAt).
-            emit(SplashStage.REGISTERING_DEVICE, 0.45f, "Mendaftarkan perangkat...")
-            withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { deviceRegistry.recordDeviceLogin(userId) }
+            // User baru: ini pendaftaran sungguhan, jadi ditunggu & ditampilkan.
+            // User lama (sudah pernah login): jalan di background saja, splash
+            // langsung lanjut ke tahap berikutnya tanpa loading tambahan.
+            if (isReturningUser) {
+                viewModelScope.launch { deviceRegistry.recordDeviceLogin(userId) }
+            } else {
+                emit(SplashStage.REGISTERING_DEVICE, 0.45f, "Mendaftarkan perangkat...")
+                withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { deviceRegistry.recordDeviceLogin(userId) }
+            }
 
             // 3) Sinkronkan token FCM ke Firestore supaya notifikasi
             // maintenance/update/membership bisa diterima device ini.
