@@ -31,10 +31,6 @@ android {
         val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
 
         base.archivesName = "AXKM_v$versionName.r$ciRunNumber" + "_$versionCode"
-        ndk {
-            abiFilters += setOf("arm64-v8a", "armeabi-v7a")
-        }
-
         externalNativeBuild {
             cmake {
                 arguments += listOf("-DANDROID_STL=none")
