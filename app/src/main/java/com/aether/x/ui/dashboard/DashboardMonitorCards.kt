@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
@@ -490,9 +491,15 @@ private fun UsageBarRow(
             Spacer(modifier = Modifier.width(Spacing.sm))
             Text(
                 text = stringResource(R.string.dashboard_device_usage_format, usedLabel, totalLabel),
-                style = MaterialTheme.typography.titleMedium,
+                // Sebelumnya titleMedium (16sp) + Bold — di font monospace,
+                // ukuran+weight sebesar itu bikin angka terasa "kejedug"/berat
+                // dan kurang jelas dibaca (lihat feedback dari screenshot).
+                // Diturunkan ke bodyMedium (14sp) + SemiBold, disamakan skalanya
+                // dengan baris identitas perangkat di atasnya (DeviceInfoRow),
+                // plus sedikit letterSpacing supaya digit tidak berdesakan.
+                style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.3.sp),
                 fontFamily = AetherMonoFamily, // Font khusus pembacaan nilai numerik
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -502,7 +509,7 @@ private fun UsageBarRow(
             progress = { clampedProgress },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(10.dp) // Progress bar lebih tebal
+                .height(7.dp) // Sebelumnya 10dp — sedikit lebih ramping biar tidak dominan
                 .clip(RoundedCornerShape(999.dp)),
             color = barColor,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
