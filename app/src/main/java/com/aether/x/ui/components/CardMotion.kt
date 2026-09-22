@@ -69,7 +69,7 @@ fun rememberPressScaleInteractionSource(): MutableInteractionSource = remember {
 @Composable
 fun Modifier.dragPopEffect(isDragging: Boolean): Modifier {
     val popScale by animateFloatAsState(
-        targetValue = if (isDragging) 1.045f else 1f,
+        targetValue = if (isDragging) 1.035f else 1f,
         animationSpec = if (isDragging) {
             spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -84,7 +84,7 @@ fun Modifier.dragPopEffect(isDragging: Boolean): Modifier {
         label = "dragPopScale",
     )
     val lift by animateFloatAsState(
-        targetValue = if (isDragging) -3f else 0f,
+        targetValue = if (isDragging) -4f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow,

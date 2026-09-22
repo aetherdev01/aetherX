@@ -97,6 +97,7 @@ import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceInfoSection
+import com.aether.x.ui.dashboard.DeviceStatusSection
 import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.theme.Spacing
@@ -145,7 +146,7 @@ fun TweakScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshDetectedGames()
-
+                dashboardViewModel.refreshDeviceInfo()
                 viewModel.retryResolveUserIdIfMissing()
             }
         }
@@ -273,6 +274,10 @@ fun TweakScreen(
                                 ) {
                                     when (cardId) {
                                         "info" -> AetherXInfoCard()
+                                        "status" -> DeviceStatusSection(
+                                            info = dashboardState.deviceInfo,
+                                            rootGranted = privilegeStatus.rootGranted,
+                                        )
                                         "activity" -> GameActivitySection(
                                             games = dashboardState.installedGames,
                                             loading = dashboardState.loadingGames,

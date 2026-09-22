@@ -211,6 +211,150 @@ private fun GameActivityCard(
     }
 }
 
+
+@Composable
+fun DeviceStatusSection(
+    info: DeviceInfoSnapshot?,
+    rootGranted: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    SectionCard(
+        title = "Status Perangkat",
+        modifier = modifier.fillMaxWidth(),
+        watermarkIcon = Icons.Outlined.PhoneAndroid,
+    ) {
+        if (info == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "Mendeteksi perangkat...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            return@SectionCard
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PhoneAndroid,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(10.dp),
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Perangkat terdeteksi",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "${info.manufacturer} ${info.model}".trim(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            ) {
+                Text(
+                    text = "READY",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = Spacing.xs),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            DeviceStatusItem(
+                icon = Icons.Outlined.Android,
+                label = "Android",
+                value = "${info.androidVersion} • API ${info.sdkInt}",
+            )
+            DeviceStatusItem(
+                icon = Icons.Outlined.DeveloperBoard,
+                label = "Akses",
+                value = if (rootGranted) "Root aktif" else "No Root",
+            )
+            DeviceStatusItem(
+                icon = Icons.Outlined.Memory,
+                label = "RAM",
+                value = "${(info.availableRamBytes / (1024.0 * 1024.0 * 1024.0)).let { String.format(java.util.Locale.US, "%.1f", it) }} GB tersedia",
+            )
+            DeviceStatusItem(
+                icon = Icons.Outlined.SdStorage,
+                label = "Storage",
+                value = "${((info.totalStorageBytes - info.availableStorageBytes) / (1024.0 * 1024.0 * 1024.0)).let { String.format(java.util.Locale.US, "%.1f", it) }} GB terpakai",
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeviceStatusItem(
+    icon: ImageVector,
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(19.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(66.dp),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            fontFamily = AetherMonoFamily,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
 @Composable
 fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) {
     SectionCard(

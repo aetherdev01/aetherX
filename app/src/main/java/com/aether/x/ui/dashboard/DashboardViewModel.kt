@@ -25,7 +25,7 @@ data class DashboardUiState(
     val installedGames: List<InstalledGameEntry> = emptyList(),
     val loadingGames: Boolean = true,
     val lastPlayedPackage: String? = null,
-    val cardOrder: List<String> = listOf("info", "activity", "device", "ram"),
+    val cardOrder: List<String> = listOf("info", "status", "ram", "activity", "device"),
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,10 +56,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 it.copy(
                     lastPlayedPackage = prefs.lastPlayedGamePackage,
                     installedGames = reorderByLastPlayed(it.installedGames, prefs.lastPlayedGamePackage),
-                    cardOrder = prefs.dashboardCardOrder,
+                    cardOrder = normalizeCardOrder(prefs.dashboardCardOrder),
                 )
             }
         }.launchIn(viewModelScope)
+    }
+
+    private fun normalizeCardOrder(saved: List<String>): List<String> {
+        val defaults = listOf("info", "status", "ram", "activity", "device")
+        val known = saved.filter { it in defaults }.distinct()
+        return known + defaults.filterNot { it in known }
     }
 
     /**
