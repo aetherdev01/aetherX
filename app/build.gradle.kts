@@ -58,12 +58,26 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled   = false
-            isShrinkResources = false
+            isMinifyEnabled   = true
+            isShrinkResources = true
             signingConfig     = signingConfigs.getByName("release")
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt")
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
             )
+        }
+    }
+
+    // Split APK per-ABI supaya user tidak download native code arm64 DAN
+    // armeabi-v7a sekaligus dalam satu APK universal. Kalau distribusi lewat
+    // App Bundle (.aab), blok ini bisa diabaikan — Play Store sudah otomatis
+    // melakukan hal yang sama per-device.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
 

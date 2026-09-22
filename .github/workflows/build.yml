@@ -101,53 +101,78 @@ jobs:
 
           echo "Release signing configuration is ready."
 
-      # Compile the signed AetherX release APK.
-      - name: Build Release APK
+      # Compile the signed AetherX release APKs.
+      # NOTE: app/build.gradle.kts now enables `splits { abi { ... } }`
+      # with isUniversalApk = false, so this produces TWO release APKs
+      # (arm64-v8a and armeabi-v7a) instead of one. Everything below this
+      # step handles a variable number of output APKs rather than
+      # assuming a single file.
+      - name: Build Release APKs
         run: |
-          ./gradlew assembleRelease             --no-daemon             --stacktrace             --build-cache             --parallel
+          ./gradlew assembleRelease --no-daemon --stacktrace --build-cache --parallel
 
-      # Rename the generated APK to a clean, user-friendly filename.
-      # Example: AetherX-v1.1-Beta.apk
-      - name: Rename Release APK
+      # Rename each generated APK to a clean filename that keeps the
+      # per-ABI suffix so the two files don't collide.
+      # Example: AetherX-v1.1-Beta-arm64-v8a.apk, AetherX-v1.1-Beta-armeabi-v7a.apk
+      - name: Rename Release APKs
         shell: bash
         run: |
           set -e
 
           APK_DIR="app/build/outputs/apk/release"
-          APK_PATH=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" | head -n 1)
+          mapfile -t APK_PATHS < <(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" | sort)
 
-          [ -n "$APK_PATH" ] || {
-            echo "::error::Release APK was not found."
+          [ "${#APK_PATHS[@]}" -gt 0 ] || {
+            echo "::error::No release APKs were found."
             exit 1
           }
 
-          VERSION=$(grep -m1 'versionName' app/build.gradle.kts 2>/dev/null             | sed 's/.*= *"//'             | sed 's/".*//')
+          VERSION=$(grep -m1 'versionName' app/build.gradle.kts 2>/dev/null | sed 's/.*= *"//' | sed 's/".*//')
 
           [ -n "$VERSION" ] || VERSION="Unknown"
 
           SAFE_VERSION=$(printf '%s' "$VERSION" | sed 's/[^a-zA-Z0-9._-]/-/g')
-          FINAL_APK="$APK_DIR/AetherX-v${SAFE_VERSION}.apk"
 
-          mv "$APK_PATH" "$FINAL_APK"
+          FINAL_PATHS=()
+          for APK_PATH in "${APK_PATHS[@]}"; do
+            BASENAME=$(basename "$APK_PATH")
+            ABI=""
+            for CANDIDATE in arm64-v8a armeabi-v7a; do
+              case "$BASENAME" in
+                *"$CANDIDATE"*) ABI="$CANDIDATE" ;;
+              esac
+            done
 
-          echo "APK_NAME=$(basename "$FINAL_APK")" >> "$GITHUB_ENV"
-          echo "APK_PATH=$FINAL_APK" >> "$GITHUB_ENV"
+            if [ -n "$ABI" ]; then
+              FINAL_APK="$APK_DIR/AetherX-v${SAFE_VERSION}-${ABI}.apk"
+            else
+              FINAL_APK="$APK_DIR/AetherX-v${SAFE_VERSION}.apk"
+            fi
+
+            mv "$APK_PATH" "$FINAL_APK"
+            FINAL_PATHS+=("$FINAL_APK")
+            echo "Final APK: $(basename "$FINAL_APK")"
+          done
+
+          {
+            echo "APK_PATHS<<EOF"
+            printf '%s\n' "${FINAL_PATHS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-          echo "Final APK: $(basename "$FINAL_APK")"
-
-      # Store the final APK as a downloadable GitHub Actions artifact.
-      - name: Upload AetherX APK
+      # Store all final APKs as downloadable GitHub Actions artifacts.
+      - name: Upload AetherX APKs
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: AetherX-v${{ env.VERSION }}
-          path: ${{ env.APK_PATH }}
+          path: ${{ env.APK_PATHS }}
           if-no-files-found: error
           retention-days: 7
 
-      # Send the same final APK to the configured Telegram chat.
-      - name: Send AetherX APK to Telegram
+      # Send each final APK to the configured Telegram chat as its own message.
+      - name: Send AetherX APKs to Telegram
         if: success()
         shell: bash
         run: |
@@ -155,12 +180,16 @@ jobs:
           SHA_SHORT="${SHA:0:7}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          SIZE_BYTES=$(stat -c%s "$APK_PATH")
-          SIZE_MB=$(awk "BEGIN {printf \"%.2f\", ${SIZE_BYTES}/1048576}")
+          while IFS= read -r APK_PATH; do
+            [ -n "$APK_PATH" ] || continue
+            APK_NAME=$(basename "$APK_PATH")
+            SIZE_BYTES=$(stat -c%s "$APK_PATH")
+            SIZE_MB=$(awk "BEGIN {printf \"%.2f\", ${SIZE_BYTES}/1048576}")
 
-          CAPTION=$(printf             '🚀 <b>AetherX Release Build</b>\n\n📦 <b>APK:</b> <code>%s</code>\n🏷 <b>Version:</b> <code>%s</code>\n💾 <b>Size:</b> <code>%s MB</code>\n🔖 <b>Commit:</b> <code>%s</code>\n\n🔗 <a href="%s">GitHub Actions</a>'             "$APK_NAME" "$VERSION" "$SIZE_MB" "$SHA_SHORT" "$RUN_URL")
+            CAPTION=$(printf '🚀 <b>AetherX Release Build</b>\n\n📦 <b>APK:</b> <code>%s</code>\n🏷 <b>Version:</b> <code>%s</code>\n💾 <b>Size:</b> <code>%s MB</code>\n🔖 <b>Commit:</b> <code>%s</code>\n\n🔗 <a href="%s">GitHub Actions</a>' "$APK_NAME" "$VERSION" "$SIZE_MB" "$SHA_SHORT" "$RUN_URL")
 
-          curl -sS -X POST             "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument"             -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"             -F "parse_mode=HTML"             -F "caption=${CAPTION}"             -F "document=@${APK_PATH}"             || true
+            curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" -F "parse_mode=HTML" -F "caption=${CAPTION}" -F "document=@${APK_PATH}" || true
+          done <<< "${{ env.APK_PATHS }}"
 
       # Notify Telegram if any workflow step fails.
       - name: Telegram Build Failure
