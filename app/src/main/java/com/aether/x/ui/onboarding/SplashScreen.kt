@@ -15,13 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,115 +32,109 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.theme.AetherMonoFamily
 import com.aether.x.ui.theme.Spacing
-import kotlinx.coroutines.delay
 
+/**
+ * Splash yang benar-benar menjalankan urutan startup ke Firebase lewat
+ * [SplashViewModel] (resolusi user ID, registrasi device, sync token FCM,
+ * cek status maintenance) — progres & teks status di sini mencerminkan
+ * tahap nyata yang sedang berjalan, bukan simulasi delay.
+ */
 @Composable
 fun SplashScreen(
     onSplashFinished: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: SplashViewModel = viewModel(),
 ) {
     var startAnimation by remember { mutableStateOf(false) }
-    
-    // State untuk progres dan teks status
-    var currentProgress by remember { mutableFloatStateOf(0f) }
-    var currentStatusText by remember { mutableStateOf("Menyiapkan antarmuka...") }
+    val uiState by viewModel.state.collectAsState()
 
-    // Animasi masuk (Scale & Alpha)
     val alphaAnim by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
         animationSpec = tween(durationMillis = 800),
-        label = "splashAlpha"
+        label = "splashAlpha",
     )
     val scaleAnim by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0.85f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 120f),
-        label = "splashScale"
+        label = "splashScale",
     )
-
-    // Animasi halus untuk pergerakan bar progres
     val progressAnim by animateFloatAsState(
-        targetValue = currentProgress,
+        targetValue = uiState.progress,
         animationSpec = tween(durationMillis = 400),
-        label = "progressBarAnim"
+        label = "progressBarAnim",
     )
 
-    LaunchedEffect(key1 = true) {
+    LaunchedEffect(Unit) {
         startAnimation = true
-        
-        // Daftar simulasi proses (Target Progres, Teks Status)
-        val loadingSteps = listOf(
-            0.15f to "Menginisialisasi core system...",
-            0.35f to "Mengecek environment root...",
-            0.50f to "Menghubungkan ke server daemon...",
-            0.75f to "Memverifikasi integritas data...",
-            0.90f to "Memuat konfigurasi engine...",
-            1.00f to "Selesai."
-        )
+    }
 
-        // Iterasi setiap langkah dengan jeda waktu yang agak acak agar terasa natural
-        for (step in loadingSteps) {
-            // Beri jeda acak antara 300ms hingga 600ms per step
-            delay((300..600).random().toLong())
-            currentProgress = step.first
-            currentStatusText = step.second
+    // Baru pindah layar setelah SEMUA tahap startup nyata selesai
+    // (bukan setelah delay tetap habis).
+    LaunchedEffect(uiState.finished) {
+        if (uiState.finished) {
+            onSplashFinished()
         }
-
-        // Tahan sebentar di progres 100% sebelum pindah layar
-        delay(300L)
-        onSplashFinished()
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 48.dp) // Membatasi lebar elemen agar rapi
+                .padding(horizontal = 48.dp)
                 .alpha(alphaAnim)
-                .scale(scaleAnim)
+                .scale(scaleAnim),
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo), 
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "AetherX Logo",
-                modifier = Modifier.size(110.dp)
+                modifier = Modifier.size(110.dp),
             )
-            
+
             Spacer(modifier = Modifier.height(56.dp))
-            
-            // Bar Progres Linier
+
             LinearProgressIndicator(
                 progress = { progressAnim },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
-                    .clip(RoundedCornerShape(999.dp)), // Menggunakan bentuk pil membulat
-                color = MaterialTheme.colorScheme.primary, // Akan mengambil AetherCyan
+                    .clip(RoundedCornerShape(999.dp)),
+                color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
-            
+
             Spacer(modifier = Modifier.height(Spacing.md))
-            
-            // Teks Indikator Status
+
             Text(
-                text = currentStatusText,
+                text = uiState.statusText,
                 style = MaterialTheme.typography.labelMedium,
-                fontFamily = AetherMonoFamily, // Memberikan kesan terminal/syslog
+                fontFamily = AetherMonoFamily,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
+
+            // Gagal terhubung (mis. offline) — splash BERHENTI di sini dan
+            // menampilkan tombol coba lagi, bukan diam-diam lanjut ke MAIN
+            // tanpa user ID tersinkron.
+            if (uiState.failed) {
+                Spacer(modifier = Modifier.height(Spacing.lg))
+                Button(onClick = { viewModel.retry() }) {
+                    Text("Coba Lagi")
+                }
+            }
         }
     }
 }
