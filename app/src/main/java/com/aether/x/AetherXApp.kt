@@ -1,10 +1,10 @@
 package com.aether.x
 
 import android.app.Application
+import com.aether.x.core.ads.AdMobInterstitialAdManager
 import com.aether.x.core.ads.InterstitialAdGate
 import com.aether.x.core.ads.InterstitialAdManager
 import com.aether.x.core.ads.RewardedAdManager
-import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.FcmTokenRepository
@@ -29,8 +29,10 @@ class AetherXApp : Application() {
             UnityRewardedAdManager(testMode = BuildConfig.DEBUG)
         }
 
+        // v3.5: interstitial pindah dari Unity Ads ke AdMob — Unity tetap
+        // dipakai untuk rewardedAdManager di atas, tidak dihapus.
         val interstitialAdManager: InterstitialAdManager by lazy {
-            UnityInterstitialAdManager(testMode = BuildConfig.DEBUG)
+            AdMobInterstitialAdManager(testMode = BuildConfig.DEBUG)
         }
 
         val interstitialAdGate: InterstitialAdGate by lazy {

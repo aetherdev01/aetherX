@@ -216,5 +216,14 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/logo" />
 
+        <!-- AdMob App ID — WAJIB plaintext di sini (bukan lewat SecretStrings
+             seperti ad unit ID), karena AdMob SDK membacanya langsung dari
+             manifest lewat resolveInfo sebelum kode Kotlin sempat jalan.
+             Ad unit interstitial-nya sendiri tetap terenkripsi, lihat
+             AdMobInterstitialAdManager.kt. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-5043818314955328~5157778665" />
+
     </application>
 </manifest>

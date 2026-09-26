@@ -20,7 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.aether.x.BuildConfig
-import com.aether.x.core.ads.UnityInterstitialAdManager
+import com.aether.x.core.ads.AdMobInterstitialAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.monitor.GameProfileMonitorService
 import com.aether.x.core.permission.PrivilegeManager
@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         (AetherXApp.rewardedAdManager as? UnityRewardedAdManager)?.initialize(this)
-        (AetherXApp.interstitialAdManager as? UnityInterstitialAdManager)?.initialize(this)
+        (AetherXApp.interstitialAdManager as? AdMobInterstitialAdManager)?.initialize(this)
 
         var keepSplashScreen = true
         splashScreen.setKeepOnScreenCondition { keepSplashScreen }

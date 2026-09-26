@@ -199,5 +199,12 @@ dependencies {
     // WAJIB isi GAME_ID & PLACEMENT_ID asli di UnityRewardedAdManager.kt sebelum
     // build release (lihat TODO di file itu dan core/ads/README.md).
     implementation(libs.unity.ads)
+
+    // ── Ads: AdMob (interstitial) ─────────────────────────────────────────
+    // Menggantikan UnityInterstitialAdManager sebagai provider interstitial
+    // — lihat core/ads/AdMobInterstitialAdManager.kt & core/ads/README.md.
+    // Unity Ads TETAP dipakai untuk rewarded (UnityRewardedAdManager), jadi
+    // dependency unity.ads di atas TIDAK dihapus.
+    implementation(libs.play.services.ads)
     implementation(libs.reorderable) 
 }
