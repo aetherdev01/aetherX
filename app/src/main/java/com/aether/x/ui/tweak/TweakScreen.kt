@@ -96,7 +96,6 @@ import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
-import com.aether.x.ui.dashboard.DeviceInfoSection
 import com.aether.x.ui.dashboard.DeviceStatusSection
 import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
@@ -284,7 +283,6 @@ fun TweakScreen(
                                             lastPlayedPackage = dashboardState.lastPlayedPackage,
                                             onGameClick = dashboardViewModel::onGameClick,
                                         )
-                                        "device" -> DeviceInfoSection(info = dashboardState.deviceInfo)
                                         "ram" -> RamCleanerCard()
                                     }
                                 }

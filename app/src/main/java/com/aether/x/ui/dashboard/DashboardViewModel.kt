@@ -25,8 +25,10 @@ data class DashboardUiState(
     val installedGames: List<InstalledGameEntry> = emptyList(),
     val loadingGames: Boolean = true,
     val lastPlayedPackage: String? = null,
-    val cardOrder: List<String> = listOf("info", "status", "ram", "activity", "device"),
+    val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
+
+private val DEFAULT_CARD_ORDER = listOf("info", "status", "ram", "activity")
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -34,6 +36,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state.asStateFlow()
+
+    // True while the user has a local reorder that has not yet been persisted.
+    // DataStore can emit the previous value during that short window; applying
+    // it would make the Dashboard visually jump back to the old order.
+    @Volatile
+    private var cardOrderDirty = false
 
     init {
         _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(application)) }
@@ -56,14 +64,18 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 it.copy(
                     lastPlayedPackage = prefs.lastPlayedGamePackage,
                     installedGames = reorderByLastPlayed(it.installedGames, prefs.lastPlayedGamePackage),
-                    cardOrder = normalizeCardOrder(prefs.dashboardCardOrder),
+                    cardOrder = if (cardOrderDirty) {
+                        this@DashboardViewModel._state.value.cardOrder
+                    } else {
+                        normalizeCardOrder(prefs.dashboardCardOrder)
+                    },
                 )
             }
         }.launchIn(viewModelScope)
     }
 
     private fun normalizeCardOrder(saved: List<String>): List<String> {
-        val defaults = listOf("info", "status", "ram", "activity", "device")
+        val defaults = DEFAULT_CARD_ORDER
         val known = saved.filter { it in defaults }.distinct()
         return known + defaults.filterNot { it in known }
     }
@@ -78,6 +90,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         if (fromIndex !in current.indices || toIndex !in current.indices) return
         val movedItem = current.removeAt(fromIndex)
         current.add(toIndex, movedItem)
+        cardOrderDirty = true
         _state.update { it.copy(cardOrder = current) }
     }
 
@@ -85,8 +98,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
      * Menyimpan urutan ke DataStore ketika pengguna melepaskan jari (drag end).
      */
     fun saveCardOrder() {
+        val orderToPersist = _state.value.cardOrder
         viewModelScope.launch {
-            preferences.setDashboardCardOrder(_state.value.cardOrder)
+            runCatching {
+                preferences.setDashboardCardOrder(orderToPersist)
+            }.onSuccess {
+                // Only clear the dirty flag after the write has completed.
+                // This prevents an in-flight stale DataStore emission from
+                // restoring the previous layout while the write is running.
+                cardOrderDirty = false
+            }
         }
     }
 

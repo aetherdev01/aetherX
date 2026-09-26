@@ -3,7 +3,6 @@ package com.aether.x.core.overlay
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -14,7 +13,6 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
-import com.aether.x.MainActivity
 import com.aether.x.R
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.CrosshairStyle
@@ -97,33 +95,17 @@ class CrosshairOverlayService : Service() {
             val manager = getSystemService(NotificationManager::class.java)
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                getString(R.string.crosshair_notification_channel),
+                getString(R.string.app_name),
                 NotificationManager.IMPORTANCE_MIN,
             )
             manager?.createNotificationChannel(channel)
         }
 
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-
-        val stopIntent = PendingIntent.getService(
-            this,
-            0,
-            Intent(this, CrosshairOverlayService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.logo)
-            .setContentTitle(getString(R.string.crosshair_notification_title))
-            .setContentText(getString(R.string.crosshair_notification_text))
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText("Overlay aktif")
             .setOngoing(true)
-            .setContentIntent(contentIntent)
-            .addAction(0, getString(R.string.overlay_notification_action_stop), stopIntent)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
     }

@@ -22,7 +22,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * sebelum "ram" ada) tanpa mereset seluruh urutan custom mereka ke
  * default. Lihat pemakaiannya di parsing `dashboardCardOrder` di bawah.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("info", "activity", "device", "ram")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("info", "status", "ram", "activity")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 

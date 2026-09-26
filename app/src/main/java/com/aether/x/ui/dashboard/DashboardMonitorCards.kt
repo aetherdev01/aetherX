@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Android
-import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
@@ -29,9 +27,7 @@ import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,7 +46,6 @@ import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.device.DeviceInfoSnapshot
-import com.aether.x.core.device.toGbLabel
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.AetherMonoFamily
 import com.aether.x.ui.theme.Spacing
@@ -352,211 +347,6 @@ private fun DeviceStatusItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-fun DeviceInfoSection(info: DeviceInfoSnapshot?, modifier: Modifier = Modifier) {
-    SectionCard(
-        title = stringResource(R.string.dashboard_section_device_info),
-        modifier = modifier.fillMaxWidth(),
-        watermarkIcon = Icons.Outlined.PhoneAndroid
-    ) {
-        if (info == null) {
-            Text(
-                text = stringResource(R.string.dashboard_device_info_loading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@SectionCard
-        }
-
-        // Sebelumnya tiap grup punya background abu-abu + padding sendiri di
-        // DALAM SectionCard yang sudah punya padding (20dp) — hasilnya "kotak
-        // dalam kotak" dengan spacing dobel dan terasa sempit/berantakan.
-        // Sekarang grup cukup dipisah lewat label kecil, tanpa background
-        // tambahan, spacing antar baris lebih lega (lg, bukan md) supaya
-        // enak dibaca.
-        DeviceInfoGroupLabel(stringResource(R.string.dashboard_device_info_group_identity))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-        ) {
-            DeviceInfoRow(
-                icon = Icons.Outlined.PhoneAndroid,
-                label = stringResource(R.string.dashboard_device_model),
-                value = "${info.manufacturer} ${info.model}".trim(),
-            )
-            DeviceInfoRow(
-                icon = Icons.Outlined.DeveloperBoard,
-                label = stringResource(R.string.dashboard_device_chipset),
-                value = info.board.ifBlank { "-" },
-            )
-            DeviceInfoRow(
-                icon = Icons.Outlined.Android,
-                label = stringResource(R.string.dashboard_device_android_version),
-                value = stringResource(R.string.dashboard_device_android_version_format, info.androidVersion, info.sdkInt),
-            )
-            DeviceInfoRow(
-                icon = Icons.Outlined.Memory,
-                label = stringResource(R.string.dashboard_device_cpu_abi),
-                value = info.cpuAbi.ifBlank { "-" },
-            )
-        }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = Spacing.xs),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        )
-
-        DeviceInfoGroupLabel(stringResource(R.string.dashboard_device_info_group_usage))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-        ) {
-            val usedRam = info.totalRamBytes - info.availableRamBytes
-            UsageBarRow(
-                icon = Icons.Outlined.Memory,
-                label = stringResource(R.string.dashboard_device_ram),
-                usedLabel = usedRam.toGbLabel(),
-                totalLabel = info.totalRamBytes.toGbLabel(),
-                progress = if (info.totalRamBytes > 0) usedRam.toFloat() / info.totalRamBytes.toFloat() else 0f,
-            )
-            val usedStorage = info.totalStorageBytes - info.availableStorageBytes
-            UsageBarRow(
-                icon = Icons.Outlined.SdStorage,
-                label = stringResource(R.string.dashboard_device_storage),
-                usedLabel = usedStorage.toGbLabel(),
-                totalLabel = info.totalStorageBytes.toGbLabel(),
-                progress = if (info.totalStorageBytes > 0) usedStorage.toFloat() / info.totalStorageBytes.toFloat() else 0f,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DeviceInfoGroupLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = Spacing.xs),
-    )
-}
-
-@Composable
-private fun UsageBarRow(
-    icon: ImageVector,
-    label: String,
-    usedLabel: String,
-    totalLabel: String,
-    progress: Float,
-) {
-    val clampedProgress = progress.coerceIn(0f, 1f)
-    val barColor = when {
-        clampedProgress < 0.7f -> MaterialTheme.colorScheme.primary
-        clampedProgress < 0.9f -> MaterialTheme.colorScheme.tertiary // AetherAmber
-        else -> MaterialTheme.colorScheme.error // AetherRed
-    }
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = Spacing.sm),
-                )
-            }
-            Spacer(modifier = Modifier.width(Spacing.sm))
-            Text(
-                text = stringResource(R.string.dashboard_device_usage_format, usedLabel, totalLabel),
-                // Sebelumnya titleMedium (16sp) + Bold — di font monospace,
-                // ukuran+weight sebesar itu bikin angka terasa "kejedug"/berat
-                // dan kurang jelas dibaca (lihat feedback dari screenshot).
-                // Diturunkan ke bodyMedium (14sp) + SemiBold, disamakan skalanya
-                // dengan baris identitas perangkat di atasnya (DeviceInfoRow),
-                // plus sedikit letterSpacing supaya digit tidak berdesakan.
-                style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.3.sp),
-                fontFamily = AetherMonoFamily, // Font khusus pembacaan nilai numerik
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        LinearProgressIndicator(
-            progress = { clampedProgress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(7.dp) // Sebelumnya 10dp — sedikit lebih ramping biar tidak dominan
-                .clip(RoundedCornerShape(999.dp)),
-            color = barColor,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun DeviceInfoRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f, fill = false),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = Spacing.sm),
-            )
-        }
-        Spacer(modifier = Modifier.width(Spacing.sm))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontFamily = AetherMonoFamily, // Font khusus pembacaan nilai teknis
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = androidx.compose.ui.text.style.TextAlign.End,
         )
     }
 }

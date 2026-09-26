@@ -8,7 +8,6 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.aether.x.MainActivity
 import com.aether.x.R
-import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.core.overlay.CrosshairOverlayService
 import com.aether.x.data.AetherXPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -73,10 +72,8 @@ class CrosshairTileService : TileService() {
             preferences.setCrosshairEnabled(newValue)
             if (newValue) {
                 CrosshairOverlayService.start(app)
-                AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = true)
             } else {
                 CrosshairOverlayService.stop(app)
-                AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = false)
             }
             updateTileState(newValue)
         }

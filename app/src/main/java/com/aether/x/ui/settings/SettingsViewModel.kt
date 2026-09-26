@@ -51,12 +51,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             if (enabled && canDrawOverlays()) {
                 CrosshairOverlayService.start(app)
 
-                AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = true)
             } else {
                 CrosshairOverlayService.stop(app)
-                if (!enabled) {
-                    AetherXNotifier.notifyFeatureToggled(app, app.getString(R.string.feature_name_crosshair), enabled = false)
-                }
             }
             maybeShowAd(activity)
         }
