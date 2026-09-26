@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SdStorage
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -293,7 +295,7 @@ fun DeviceStatusSection(
 
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             DeviceStatusItem(
-                icon = Icons.Outlined.Android,
+                icon = Icons.Outlined.PhoneAndroid,
                 label = "Android",
                 value = "${info.androidVersion} • API ${info.sdkInt}",
             )
