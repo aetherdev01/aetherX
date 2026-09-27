@@ -30,7 +30,7 @@ class RootProcCpuReader(
 
         if (!result.success && result.output.isEmpty()) return null
 
-        val aggregate = parseCpuLine(result.output.firstOrNull { it.startsWith("cpu ") })
+        val aggregate = parseCpuLine(result.output.firstOrNull { it.trimStart().startsWith("cpu ") })
             ?: return null
 
         val currentTotal = aggregate.first

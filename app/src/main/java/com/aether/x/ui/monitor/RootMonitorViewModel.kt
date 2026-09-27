@@ -2,6 +2,9 @@ package com.aether.x.ui.monitor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.core.monitor.GpuLoadSnapshot
+import com.aether.x.core.monitor.RootGpuSysfsReader
+import com.aether.x.core.monitor.RootProcCpuReader
 import com.aether.x.core.monitor.RootSystemMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -69,7 +72,8 @@ class RootMonitorViewModel : ViewModel() {
     private var gpuPollingJob: Job? = null
 
     fun onResume() {
-        if (!RootSystemMonitor.isNativeAvailable) return
+        // Native reader is preferred, but the root /proc fallback must still
+        // be allowed to run when the native library is unavailable/broken.
         if (pollingJob?.isActive == true) return
 
         RootSystemMonitor.resetDelta()
@@ -77,7 +81,7 @@ class RootMonitorViewModel : ViewModel() {
         rootGpuReader.reset()
         _state.update {
             RootMonitorUiState(
-                nativeAvailable = true,
+                nativeAvailable = RootSystemMonitor.isNativeAvailable,
                 cpuAggregateHistory = emptyList(),
                 cpuPerCoreLatest = emptyList(),
                 gpuLoadHistory = emptyList(),
