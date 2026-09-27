@@ -24,9 +24,9 @@ bool parseStatLine(const char* line, long long* outTotal, long long* outIdle) {
     while (*cursor != '\0' && *cursor != ' ') cursor++;
     while (*cursor == ' ') cursor++;
 
-    long long values[10] = {};
+    long long values[16] = {};
     int count = 0;
-    while (count < 10 && *cursor != '\0' && *cursor != '\n') {
+    while (count < 16 && *cursor != '\0' && *cursor != '\n') {
         char* endPtr = nullptr;
         long long v = strtoll(cursor, &endPtr, 10);
         if (endPtr == cursor) break;
@@ -103,7 +103,9 @@ bool nsmReadCpu(CpuSnapshot* out) {
     while (fgets(line, sizeof(line), f) != nullptr) {
         if (strncmp(line, "cpu", 3) != 0) break;
 
-        bool isAggregate = (line[3] == ' ');
+        const char labelChar = line[3];
+        if (labelChar != ' ' && (labelChar < '0' || labelChar > '9')) break;
+        const bool isAggregate = (labelChar == ' ');
 
         if (isAggregate && !loggedFirstLine) {
             char trimmed[256];

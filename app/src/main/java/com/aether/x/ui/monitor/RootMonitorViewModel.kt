@@ -57,6 +57,9 @@ const val CPU_STALLED_THRESHOLD = 10
  */
 class RootMonitorViewModel : ViewModel() {
 
+    private val rootCpuFallback = RootProcCpuReader()
+    private val rootGpuReader = RootGpuSysfsReader()
+
     private val _state = MutableStateFlow(
         RootMonitorUiState(nativeAvailable = RootSystemMonitor.isNativeAvailable),
     )
@@ -70,6 +73,8 @@ class RootMonitorViewModel : ViewModel() {
         if (pollingJob?.isActive == true) return
 
         RootSystemMonitor.resetDelta()
+        rootCpuFallback.reset()
+        rootGpuReader.reset()
         _state.update {
             RootMonitorUiState(
                 nativeAvailable = true,
@@ -83,10 +88,18 @@ class RootMonitorViewModel : ViewModel() {
 
         pollingJob = viewModelScope.launch {
             while (true) {
-                val cpu = withContext(Dispatchers.IO) { RootSystemMonitor.readCpuSnapshot() }
+                val cpu = withContext(Dispatchers.IO) {
+                    val native = RootSystemMonitor.readCpuSnapshot()
+                    if (native?.aggregatePercent?.let { it >= 0f } == true) {
+                        native
+                    } else {
+                        rootCpuFallback.read()
+                    }
+                }
 
-                // Sampel pertama setelah reset selalu -1 (belum ada delta pembanding) — dibuang, tidak masuk history.
-                if (cpu != null && cpu.aggregatePercent >= 0f) {
+                // Native /proc reader is preferred. If Android restricts the app UID
+                // from reading /proc/stat, the root-shell reader takes over automatically.
+                if (cpu?.aggregatePercent?.let { it >= 0f } == true) {
                     _state.update { current ->
                         current.copy(
                             cpuAggregateHistory = (current.cpuAggregateHistory + cpu.aggregatePercent).takeLast(HISTORY_SIZE),
@@ -113,7 +126,20 @@ class RootMonitorViewModel : ViewModel() {
         // lewat su shell, bukan native fopen, karena sysfs GPU umumnya root-only).
         gpuPollingJob = viewModelScope.launch {
             while (true) {
-                val gpu = withContext(Dispatchers.IO) { RootSystemMonitor.readGpuSnapshotViaRoot() }
+                val gpu = withContext(Dispatchers.IO) {
+                    val discovered = rootGpuReader.read()
+                    if (discovered?.loadPercent != null || discovered?.freqMhz != null) {
+                        val legacy = if (discovered.loadPercent == null) {
+                            RootSystemMonitor.readGpuSnapshotViaRoot()
+                        } else null
+                        GpuLoadSnapshot(
+                            loadPercent = discovered.loadPercent ?: legacy?.loadPercent,
+                            freqMhz = discovered.freqMhz ?: legacy?.freqMhz,
+                        )
+                    } else {
+                        RootSystemMonitor.readGpuSnapshotViaRoot()
+                    }
+                }
 
                 if (gpu?.loadPercent != null) {
                     _state.update { current ->

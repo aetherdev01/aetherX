@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 namespace aetherx::sysmonitor {
-inline constexpr int kMaxCpuCores = 16;
+inline constexpr int kMaxCpuCores = 64;
 
 struct CpuSnapshot {
     int coreCount = 0;
