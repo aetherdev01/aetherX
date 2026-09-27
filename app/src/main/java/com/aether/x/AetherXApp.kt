@@ -2,6 +2,8 @@ package com.aether.x
 
 import android.app.Application
 import com.aether.x.core.ads.AdMobInterstitialAdManager
+import com.aether.x.core.ads.FallbackInterstitialAdManager
+import com.aether.x.core.ads.UnityInterstitialAdManager
 import com.aether.x.core.ads.InterstitialAdGate
 import com.aether.x.core.ads.InterstitialAdManager
 import com.aether.x.core.ads.RewardedAdManager
@@ -29,10 +31,13 @@ class AetherXApp : Application() {
             UnityRewardedAdManager(testMode = BuildConfig.DEBUG)
         }
 
-        // v3.5: interstitial pindah dari Unity Ads ke AdMob — Unity tetap
-        // dipakai untuk rewardedAdManager di atas, tidak dihapus.
+        // Interstitial memakai AdMob sebagai provider utama dan Unity Ads
+        // sebagai fallback. Keduanya dipreload sejak aplikasi dibuka.
         val interstitialAdManager: InterstitialAdManager by lazy {
-            AdMobInterstitialAdManager(testMode = BuildConfig.DEBUG)
+            FallbackInterstitialAdManager(
+                adMob = AdMobInterstitialAdManager(testMode = BuildConfig.DEBUG),
+                unity = UnityInterstitialAdManager(testMode = BuildConfig.DEBUG),
+            )
         }
 
         val interstitialAdGate: InterstitialAdGate by lazy {

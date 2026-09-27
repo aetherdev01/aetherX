@@ -10,10 +10,9 @@ class InterstitialAdGate(
         if (isMember) return
 
         if (!adManager.isReady) {
-            // Iklan belum siap saat dibutuhkan — minta muat lagi sekarang juga
-            // (bukan cuma menunggu retry loop internal yang bisa lagi delay
-            // panjang), supaya kunjungan layar berikutnya punya peluang lebih
-            // besar dapat iklan yang sudah siap.
+            // Kedua network dipreload sejak startup. Jika keduanya belum siap
+            // pada trigger ini, jangan menunda aksi user; biarkan preload
+            // berjalan dan gunakan iklan pada trigger berikutnya.
             adManager.preload()
             return
         }
@@ -21,8 +20,14 @@ class InterstitialAdGate(
         val now = System.currentTimeMillis()
         if (now - lastShownAtMillis < COOLDOWN_MILLIS) return
 
-        lastShownAtMillis = now
-        adManager.show(activity) {  }
+        adManager.show(activity) { result ->
+            // Jangan mengunci cooldown ketika provider gagal atau belum siap.
+            if (result is InterstitialAdResult.Shown) {
+                lastShownAtMillis = System.currentTimeMillis()
+            } else {
+                adManager.preload()
+            }
+        }
     }
 
     private companion object {
