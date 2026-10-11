@@ -1,11 +1,11 @@
 package com.aether.x.ui.main
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -19,10 +19,13 @@ import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -30,26 +33,33 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.AetherXApp
 import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
+import com.aether.x.ui.theme.AetherAmber
+import com.aether.x.ui.theme.AetherBlue
+import com.aether.x.ui.theme.AetherCyan
+import com.aether.x.ui.theme.AetherViolet
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 
 @Composable
 fun MainScreen(
     onManageAccess: () -> Unit,
-    onNavigateToGameBooster: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
 
@@ -59,51 +69,68 @@ fun MainScreen(
     var dashboardRequest by remember { mutableIntStateOf(0) }
 
     val tweakViewModel: TweakViewModel = viewModel()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     WhatsNewDialog()
+
+    // ── Iklan interstitial: trigger "kembali ke aplikasi" ──────────────────
+    // Dipicu saat user kembali ke app setelah ditinggal >= 20 detik (bukan
+    // saat cold start, dan tidak pernah memblokir UI). Cooldown + pengecualian
+    // member ditegakkan di InterstitialAdGate.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        var stoppedAt = 0L
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> stoppedAt = System.currentTimeMillis()
+                Lifecycle.Event.ON_START -> {
+                    val away = if (stoppedAt == 0L) 0L else System.currentTimeMillis() - stoppedAt
+                    val activity = context as? Activity
+                    if (activity != null && away > 0L) {
+                        scope.launch {
+                            AetherXApp.interstitialAdGate.onReturnToApp(
+                                activity = activity,
+                                isMember = tweakViewModel.state.value.isMembershipActive,
+                                awayMillis = away,
+                            )
+                        }
+                    }
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val navItems = remember {
         listOf(MainTab.TWEAK, MainTab.MEMBERSHIP, MainTab.ABOUT, MainTab.SETTINGS)
     }
 
-    // stringResource() harus dipanggil di scope @Composable biasa (bukan di
-    // dalam remember{}), jadi label diambil dulu di sini sebagai val — lalu
-    // dipakai sebagai KEY remember di bawah supaya list ikut dibangun ulang
-    // kalau saja label berubah (mis. ganti bahasa), tapi tidak pada setiap
-    // recompose lain yang tidak relevan (mis. navBarOffsetPx saat scroll).
+    // stringResource() harus dipanggil di scope @Composable biasa, lalu dipakai
+    // sebagai key remember supaya list tidak dibangun ulang di tiap recompose.
     val dashboardLabel = stringResource(R.string.nav_bottom_dashboard)
     val membershipLabel = stringResource(R.string.nav_membership)
     val aboutLabel = stringResource(R.string.nav_about)
     val settingsLabel = stringResource(R.string.nav_settings)
 
-    // Dibuat sekali lewat remember, bukan literal listOf(...) langsung di
-    // parameter bottomBar — sebelumnya list ini (dan tiap AetherNavItem di
-    // dalamnya) dibuat ULANG setiap MainScreen recompose (mis. tiap kali
-    // navBarOffsetPx berubah saat scroll), padahal isinya selalu sama.
-    // Bukan penyebab langsung bug tap/drag di navbar (pointerInput di sana
-    // sudah dikunci ke items.size yang stabil), tapi tetap alokasi
-    // percuma pada tiap recompose yang sebaiknya dihindari.
+    // Tiap tab punya warna aksen sendiri (cyan / violet / biru / amber) —
+    // dipakai pill capsule dan ikon aktif supaya tab bar berwarna.
     val navBarItems = remember(dashboardLabel, membershipLabel, aboutLabel, settingsLabel) {
         listOf(
-            AetherNavItem(Icons.Outlined.SpaceDashboard, dashboardLabel),
-            AetherNavItem(Icons.Outlined.WorkspacePremium, membershipLabel),
-            AetherNavItem(Icons.Outlined.Info, aboutLabel),
-            AetherNavItem(Icons.Outlined.Settings, settingsLabel),
+            AetherNavItem(Icons.Outlined.SpaceDashboard, dashboardLabel, AetherCyan),
+            AetherNavItem(Icons.Outlined.WorkspacePremium, membershipLabel, AetherViolet),
+            AetherNavItem(Icons.Outlined.Info, aboutLabel, AetherBlue),
+            AetherNavItem(Icons.Outlined.Settings, settingsLabel, AetherAmber),
         )
     }
 
-    // HazeState menghubungkan konten (sumber blur, lewat hazeSource di bawah)
-    // dengan navbar (penerima blur, lewat hazeEffect di AetherBottomNavBar) —
-    // supaya navbar benar-benar menampilkan konten di baliknya secara buram
-    // real-time, bukan cuma translusensi statis.
-    val hazeState = rememberHazeState()
-
-    // Navbar ala iOS 26: menyembunyikan diri (geser ke bawah) saat konten
-    // di-scroll ke bawah, dan muncul lagi saat di-scroll ke atas. Tinggi bar
-    // diukur otomatis lewat onSizeChanged, jadi tidak perlu angka hardcode
-    // yang bisa basi kalau tampilan navbar berubah lagi nanti.
-    var navBarHeightPx by remember { mutableStateOf(0f) }
-    var navBarOffsetPx by remember { mutableStateOf(0f) }
+    // Navbar menyembunyikan diri (geser ke bawah) saat konten di-scroll ke
+    // bawah dan muncul lagi saat di-scroll ke atas. State ini hanya dibaca di
+    // lambda `offset { }` (fase layout), jadi scroll tidak memicu recomposition.
+    var navBarHeightPx by remember { mutableFloatStateOf(0f) }
+    var navBarOffsetPx by remember { mutableFloatStateOf(0f) }
     val navBarScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -123,49 +150,45 @@ fun MainScreen(
                 selectedIndex = navItems.indexOf(selectedTab),
                 onSelect = { index ->
                     val tab = navItems[index]
+                    val changed = tab != selectedTab
                     selectedTab = tab
                     if (tab == MainTab.TWEAK) {
                         dashboardRequest++
                     }
+                    if (changed) {
+                        val activity = context as? Activity
+                        if (activity != null) {
+                            scope.launch {
+                                AetherXApp.interstitialAdGate.onNavigation(
+                                    activity = activity,
+                                    isMember = tweakViewModel.state.value.isMembershipActive,
+                                )
+                            }
+                        }
+                    }
                 },
-                hazeState = hazeState,
                 modifier = Modifier
                     .onSizeChanged { navBarHeightPx = it.height.toFloat() }
                     .offset { IntOffset(x = 0, y = -navBarOffsetPx.roundToInt()) },
             )
         },
     ) { padding ->
-        // Transisi antar tab: fade + scale halus (bukan potong langsung),
-        // supaya perpindahan konten terasa mulus mengikuti indikator navbar
-        // yang meluncur di bawah.
+        // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA
+        // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
+        // terasa berat di perangkat mid-range.
         AnimatedContent(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = hazeState),
+            modifier = Modifier.fillMaxSize(),
             targetState = selectedTab,
             transitionSpec = {
-                // Direction-aware page transition: the incoming screen follows
-                // the same direction as the tab selection/drag. The movement
-                // is deliberately restrained so it feels like iOS navigation
-                // rather than a fast carousel.
-                val movingForward = targetState.ordinal > initialState.ordinal
-                val enterFrom = if (movingForward) { 0.065f } else { -0.065f }
-                val exitTo = if (movingForward) { -0.035f } else { 0.035f }
-
+                val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
                 (slideInHorizontally(
-                    animationSpec = tween(durationMillis = 380),
-                    initialOffsetX = { fullWidth -> (fullWidth * enterFrom).roundToInt() },
-                ) + fadeIn(tween(300)) + scaleIn(
-                    initialScale = 0.985f,
-                    animationSpec = tween(360),
-                )) togetherWith
+                    animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                    initialOffsetX = { fullWidth -> (fullWidth * 0.05f * dir).roundToInt() },
+                ) + fadeIn(tween(220))) togetherWith
                     (slideOutHorizontally(
-                        animationSpec = tween(durationMillis = 250),
-                        targetOffsetX = { fullWidth -> (fullWidth * exitTo).roundToInt() },
-                    ) + fadeOut(tween(190)) + scaleOut(
-                        targetScale = 0.992f,
-                        animationSpec = tween(220),
-                    ))
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                        targetOffsetX = { fullWidth -> (-fullWidth * 0.03f * dir).roundToInt() },
+                    ) + fadeOut(tween(140)))
             },
             label = "mainTabContent",
         ) { tab ->
@@ -174,7 +197,6 @@ fun MainScreen(
                     modifier = Modifier,
                     contentPadding = padding,
                     viewModel = tweakViewModel,
-                    onNavigateToGameBooster = onNavigateToGameBooster,
                     dashboardRequest = dashboardRequest,
                 )
                 MainTab.MEMBERSHIP -> MembershipScreen(

@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
  * kebutuhannya cuma satu garis halus + fill gradasi tipis, dan menambah
  * dependency baru untuk itu tidak sepadan dibanding ~60 baris Canvas
  * (project ini juga sudah punya beberapa Canvas custom lain, lihat
- * CrosshairPreview.kt/GameBoosterSidebarContent.kt untuk pola serupa).
+ * CrosshairPreview.kt untuk pola serupa).
  *
  * @param values histori nilai (0f..maxValue), item terlama di index 0,
  *   terbaru di index terakhir — grafik digambar kiri (lama) ke kanan (baru).

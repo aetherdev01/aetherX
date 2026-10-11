@@ -22,7 +22,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * sebelum "ram" ada) tanpa mereset seluruh urutan custom mereka ke
  * default. Lihat pemakaiannya di parsing `dashboardCardOrder` di bawah.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("info", "status", "ram", "activity")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("info", "bonus", "status", "ram", "activity")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
@@ -74,18 +74,14 @@ data class AppPreferences(
     val lastPlayedGamePackage: String? = null,
     val lastPlayedGameAtMillis: Long? = null,
 
-    val gameBoosterMode: GameMode = GameMode.MID,
-
-    val gameBoosterDndEnabled: Boolean = false,
-
-    val gameBoosterFpsOverlayEnabled: Boolean = true,
-
-    val gameBoosterRotationLocked: Boolean = false,
-    val gameBoosterTouchBoostEnabled: Boolean = false,
-
     val dashboardCardOrder: List<String> = DEFAULT_DASHBOARD_CARD_ORDER,
 
     val lastSeenChangelogVersionCode: Int = 0,
+
+    /** yyyyMMdd klaim bonus harian terakhir (zona waktu device), null = belum pernah. */
+    val dailyBonusLastDate: String? = null,
+    /** Jumlah hari beruntun klaim bonus harian. */
+    val dailyBonusStreak: Int = 0,
 ) {
 
     val isMembershipActive: Boolean
@@ -152,15 +148,13 @@ class AetherXPreferences(private val context: Context) {
         val LAST_PLAYED_GAME_PACKAGE = stringPreferencesKey("last_played_game_package")
         val LAST_PLAYED_GAME_AT_MILLIS = longPreferencesKey("last_played_game_at_millis")
 
-        val GAME_BOOSTER_MODE = stringPreferencesKey("game_booster_mode")
-        val GAME_BOOSTER_DND_ENABLED = booleanPreferencesKey("game_booster_dnd_enabled")
-        val GAME_BOOSTER_FPS_OVERLAY_ENABLED = booleanPreferencesKey("game_booster_fps_overlay_enabled")
-        val GAME_BOOSTER_ROTATION_LOCKED = booleanPreferencesKey("game_booster_rotation_locked")
-        val GAME_BOOSTER_TOUCH_BOOST_ENABLED = booleanPreferencesKey("game_booster_touch_boost_enabled")
 
         val DASHBOARD_CARD_ORDER = stringPreferencesKey("dashboard_card_order")
 
         val LAST_SEEN_CHANGELOG_VERSION_CODE = intPreferencesKey("last_seen_changelog_version_code")
+
+        val DAILY_BONUS_LAST_DATE = stringPreferencesKey("daily_bonus_last_date")
+        val DAILY_BONUS_STREAK = intPreferencesKey("daily_bonus_streak")
     }
 
     val preferences: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
@@ -207,18 +201,22 @@ class AetherXPreferences(private val context: Context) {
             activeGameProfilePackage = prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE],
             lastPlayedGamePackage = prefs[Keys.LAST_PLAYED_GAME_PACKAGE],
             lastPlayedGameAtMillis = prefs[Keys.LAST_PLAYED_GAME_AT_MILLIS],
-            gameBoosterMode = runCatching { GameMode.valueOf(prefs[Keys.GAME_BOOSTER_MODE] ?: "") }.getOrDefault(GameMode.MID),
-            gameBoosterDndEnabled = prefs[Keys.GAME_BOOSTER_DND_ENABLED] ?: false,
-            gameBoosterFpsOverlayEnabled = prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] ?: true,
-            gameBoosterRotationLocked = prefs[Keys.GAME_BOOSTER_ROTATION_LOCKED] ?: false,
-            gameBoosterTouchBoostEnabled = prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] ?: false,
             dashboardCardOrder = prefs[Keys.DASHBOARD_CARD_ORDER]
                 ?.split(",")
                 ?.filter { it.isNotBlank() && it in DEFAULT_DASHBOARD_CARD_ORDER }
-                ?.let { stored -> stored + DEFAULT_DASHBOARD_CARD_ORDER.minus(stored.toSet()) }
+                ?.distinct()
+                ?.let { stored ->
+                    val merged = stored.toMutableList()
+                    DEFAULT_DASHBOARD_CARD_ORDER.forEachIndexed { i, id ->
+                        if (id !in merged) merged.add(i.coerceAtMost(merged.size), id)
+                    }
+                    merged.toList()
+                }
                 ?.takeIf { it.isNotEmpty() }
                 ?: DEFAULT_DASHBOARD_CARD_ORDER,
             lastSeenChangelogVersionCode = prefs[Keys.LAST_SEEN_CHANGELOG_VERSION_CODE] ?: 0,
+            dailyBonusLastDate = prefs[Keys.DAILY_BONUS_LAST_DATE],
+            dailyBonusStreak = prefs[Keys.DAILY_BONUS_STREAK] ?: 0,
         )
     }
 
@@ -441,26 +439,6 @@ class AetherXPreferences(private val context: Context) {
         }
     }
 
-    suspend fun setGameBoosterMode(mode: GameMode) {
-        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_MODE] = mode.name }
-    }
-
-    suspend fun setGameBoosterDndEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_DND_ENABLED] = enabled }
-    }
-
-    suspend fun setGameBoosterFpsOverlayEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_FPS_OVERLAY_ENABLED] = enabled }
-    }
-
-    suspend fun setGameBoosterRotationLocked(locked: Boolean) {
-        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_ROTATION_LOCKED] = locked }
-    }
-
-    suspend fun setGameBoosterTouchBoostEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[Keys.GAME_BOOSTER_TOUCH_BOOST_ENABLED] = enabled }
-    }
-
     suspend fun setDashboardCardOrder(order: List<String>) {
         context.dataStore.edit { prefs -> prefs[Keys.DASHBOARD_CARD_ORDER] = order.joinToString(",") }
     }
@@ -481,6 +459,13 @@ class AetherXPreferences(private val context: Context) {
             val current = RewardQuotaSerializer.deserialize(prefs[Keys.REWARD_QUOTA_JSON]).toMutableMap()
             current[state.featureKey] = state
             prefs[Keys.REWARD_QUOTA_JSON] = RewardQuotaSerializer.serialize(current)
+        }
+    }
+
+    suspend fun setDailyBonusClaimed(dateKey: String, streak: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.DAILY_BONUS_LAST_DATE] = dateKey
+            prefs[Keys.DAILY_BONUS_STREAK] = streak
         }
     }
 }

@@ -2,13 +2,13 @@ package com.aether.x.ui.main
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.Icon
@@ -29,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -36,409 +36,264 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.materials.HazeMaterials
+import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 data class AetherNavItem(
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val icon: ImageVector,
     val label: String,
+    /** Warna aksen tab ini — dipakai untuk pill, glow, dan ikon aktif. */
+    val accent: Color,
 )
 
+/**
+ * Tab bar capsule v3.6.
+ *
+ * Kenapa ditulis ulang (lebih ringan dari versi sebelumnya):
+ *  - TIDAK ada blur real-time (Haze) lagi — itu dua layer blur penuh yang
+ *    dirender ulang tiap frame di belakang bar dan jadi biang jank di
+ *    perangkat mid-range. Dependency Haze ikut dihapus dari APK.
+ *  - Pill digambar di fase DRAW (`drawBehind`) dan posisinya dibaca dari
+ *    `Animatable` di dalam lambda draw, jadi saat pill meluncur TIDAK ada
+ *    recomposition sama sekali (versi lama mengubah ukuran/offset Box di
+ *    komposisi tiap frame -> layout ulang tiap frame).
+ *  - Satu pointerInput saja (tap + drag digabung), tanpa coroutine per
+ *    event drag.
+ *
+ * Animasi: pill meluncur dengan spring yang tenang (nyaris tanpa
+ * overshoot), memanjang sedikit searah kecepatan ("liquid stretch") lalu
+ * kembali ke bentuk kapsul, warnanya meleburkan aksen tab asal -> tujuan.
+ */
 @Composable
 fun AetherBottomNavBar(
     items: List<AetherNavItem>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
-    hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) return
 
+    val count = items.size
+    val lastIndex = count - 1
     val barShape = RoundedCornerShape(percent = 50)
+    val surface = MaterialTheme.colorScheme.surface
     val outline = MaterialTheme.colorScheme.outline
-    val primary = MaterialTheme.colorScheme.primary
-    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    var barWidthPx by remember { mutableFloatStateOf(0f) }
-    var barHeightPx by remember { mutableFloatStateOf(0f) }
-    val slotWidthPx = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-
-    val pillPosition = remember { Animatable(selectedIndex.toFloat()) }
-    var previewIndex by remember { mutableStateOf(selectedIndex.coerceIn(0, items.lastIndex)) }
-    var isDragging by remember { mutableStateOf(false) }
-    var isPressed by remember { mutableStateOf(false) }
+    // Posisi pill dalam satuan "indeks slot" (0f..lastIndex). Dibaca HANYA di
+    // lambda draw -> tidak memicu recomposition.
+    val pillPosition = remember { Animatable(selectedIndex.coerceIn(0, lastIndex).toFloat()) }
+    var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
     var dragVelocity by remember { mutableFloatStateOf(0f) }
-    
-    // State baru untuk melacak sinkronisasi pergerakan drag jari
-    var dragPosition by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var previewIndex by remember { mutableIntStateOf(selectedIndex.coerceIn(0, lastIndex)) }
+    var pressed by remember { mutableStateOf(false) }
 
-    val isActive = isPressed || isDragging
+    val settleSpec = remember { spring<Float>(dampingRatio = 0.82f, stiffness = 420f) }
 
-    val settleSpec = remember {
-        spring<Float>(
-            dampingRatio = 0.60f,
-            stiffness = 220f,
-        )
+    LaunchedEffect(selectedIndex, count) {
+        val target = selectedIndex.coerceIn(0, lastIndex)
+        previewIndex = target
+        if (!isDragging) pillPosition.animateTo(target.toFloat(), settleSpec)
     }
 
-    LaunchedEffect(selectedIndex, items.size) {
-        val target = selectedIndex.coerceIn(0, items.lastIndex).toFloat()
-        previewIndex = target.roundToInt()
-        if (!isDragging) {
-            pillPosition.animateTo(target, settleSpec)
-        }
-    }
-
-    val pillBulge by animateFloatAsState(
-        targetValue = if (isActive) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 300f,
-        ),
-        label = "pillBulge",
-    )
-    val barBulge by animateFloatAsState(
-        targetValue = if (isActive) 1.03f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 250f,
-        ),
-        label = "barBulge",
-    )
-
-    val currentVelocity = if (isDragging) dragVelocity else pillPosition.velocity
-    val speed = abs(currentVelocity).coerceIn(0f, 7f)
-    
-    val targetStretchX = 1f + (speed * 0.08f).coerceAtMost(0.35f)
-    val targetSquashY = 1f - (speed * 0.04f).coerceAtMost(0.15f)
-
-    val stretchX by animateFloatAsState(
-        targetValue = targetStretchX,
-        animationSpec = spring(
-            dampingRatio = 0.45f, 
-            stiffness = 350f
-        ),
-        label = "stretchX"
-    )
-    val squashY by animateFloatAsState(
-        targetValue = targetSquashY,
-        animationSpec = spring(
-            dampingRatio = 0.45f,
-            stiffness = 350f
-        ),
-        label = "squashY"
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 1.05f else 1f,
+        animationSpec = tween(durationMillis = 140),
+        label = "pillPress",
     )
 
     Box(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(horizontal = 42.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.xxl, vertical = Spacing.md)
             .fillMaxWidth()
-            .height(58.dp)
-            .onSizeChanged {
-                barWidthPx = it.width.toFloat()
-                barHeightPx = it.height.toFloat()
-            }
+            .height(60.dp)
+            .shadow(
+                elevation = 14.dp,
+                shape = barShape,
+                ambientColor = Color.Black.copy(alpha = 0.35f),
+                spotColor = Color.Black.copy(alpha = 0.45f),
+            )
+            .clip(barShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        lerp(surface, Color.White, 0.06f).copy(alpha = 0.97f),
+                        surface.copy(alpha = 0.97f),
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(Color.White.copy(alpha = 0.14f), outline.copy(alpha = 0.35f)),
+                ),
+                shape = barShape,
+            )
+            // Tanpa ini, zona gestur back/predictive-back di tepi kiri layar
+            // menelan tap pada tab paling kiri (Dashboard).
             .systemGestureExclusion()
-            .pointerInput(items.size) {
-                detectTapGestures(
-                    onPress = { offset ->
-                        val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                        isPressed = true
-                        if (slot > 0f) {
-                            val target = ((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, (items.lastIndex).toFloat())
-                            previewIndex = target.roundToInt()
-                            scope.launch {
-                                pillPosition.animateTo(target, settleSpec)
-                            }
+            .pointerInput(count) {
+                awaitEachGesture {
+                    val slot = size.width.toFloat() / count
+                    if (slot <= 0f) return@awaitEachGesture
+
+                    fun slotAt(x: Float) = ((x / slot) - 0.5f).coerceIn(0f, lastIndex.toFloat())
+
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    pressed = true
+
+                    var moved = false
+                    var lastX = down.position.x
+                    var finalX = down.position.x
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        finalX = change.position.x
+                        if (change.changedToUp()) {
+                            change.consume()
+                            break
                         }
-                        val released = tryAwaitRelease()
-                        isPressed = false
-                        if (!released && !isDragging) {
-                            previewIndex = selectedIndex.coerceIn(0, items.lastIndex)
-                            scope.launch {
-                                pillPosition.animateTo(previewIndex.toFloat(), settleSpec)
-                            }
+                        val dx = change.position.x - lastX
+                        if (!moved && abs(change.position.x - down.position.x) > viewConfiguration.touchSlop) {
+                            moved = true
+                            isDragging = true
+                            dragPosition = pillPosition.value
                         }
-                    },
-                    onTap = { offset ->
-                        val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                        if (slot > 0f) {
-                            val tapped = (((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, items.lastIndex.toFloat()))
-                                .roundToInt()
-                                .coerceIn(0, items.lastIndex)
-                            previewIndex = tapped
-                            onSelect(tapped)
-                            scope.launch {
-                                pillPosition.animateTo(tapped.toFloat(), settleSpec)
-                            }
+                        if (moved) {
+                            change.consume()
+                            dragVelocity = (dx / slot) * 60f
+                            dragPosition = slotAt(change.position.x)
+                            previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
                         }
-                    },
-                )
-            }
-            .pointerInput(items.size) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        isDragging = true
-                        isPressed = true
-                        dragVelocity = 0f
-                        val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                        if (slot > 0f) {
-                            val start = ((offset.x / slot) - 0.5f)
-                                .coerceIn(0f, items.lastIndex.toFloat())
-                            
-                            dragPosition = start 
-                            previewIndex = start.roundToInt()
-                            
-                            scope.launch { pillPosition.stop() }
-                            scope.launch { pillPosition.snapTo(start) }
-                        }
-                    },
-                    onDragEnd = {
-                        isDragging = false
-                        isPressed = false
-                        val finalIndex = previewIndex.coerceIn(0, items.lastIndex)
-                        scope.launch {
-                            pillPosition.animateTo(
-                                targetValue = finalIndex.toFloat(),
-                                initialVelocity = dragVelocity,
-                                animationSpec = settleSpec
-                            )
-                            dragVelocity = 0f
-                        }
-                        onSelect(finalIndex) // <--- FIXED: onSelect is always called
-                    },
-                    onDragCancel = {
-                        isDragging = false
-                        isPressed = false
-                        previewIndex = selectedIndex.coerceIn(0, items.lastIndex)
-                        scope.launch {
-                            pillPosition.animateTo(
-                                targetValue = previewIndex.toFloat(),
-                                initialVelocity = dragVelocity,
-                                animationSpec = settleSpec
-                            )
-                            dragVelocity = 0f
-                        }
-                    },
-                ) { change, dragAmount ->
-                    change.consume()
-                    val slot = if (barWidthPx > 0f) barWidthPx / items.size else 0f
-                    if (slot > 0f) {
-                        val deltaIndex = dragAmount / slot
-                        dragVelocity = deltaIndex * 60f
-                        
-                        dragPosition = (dragPosition + deltaIndex).coerceIn(0f, items.lastIndex.toFloat())
-                        
-                        scope.launch { pillPosition.snapTo(dragPosition) }
-                        previewIndex = dragPosition.roundToInt().coerceIn(0, items.lastIndex)
+                        lastX = change.position.x
                     }
+
+                    pressed = false
+                    val target = (if (moved) dragPosition else slotAt(finalX))
+                        .roundToInt().coerceIn(0, lastIndex)
+                    previewIndex = target
+                    val startFrom = dragPosition
+                    val wasDragging = moved
+                    scope.launch {
+                        if (wasDragging) pillPosition.snapTo(startFrom)
+                        isDragging = false
+                        dragVelocity = 0f
+                        pillPosition.animateTo(target.toFloat(), settleSpec)
+                    }
+                    onSelect(target)
                 }
             },
     ) {
+        // ── Pill (digambar di draw phase) ────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = barBulge
-                    scaleY = barBulge
-                    transformOrigin = TransformOrigin.Center
-                },
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .shadow(
-                        elevation = 18.dp,
-                        shape = barShape,
-                        ambientColor = Color.Black.copy(alpha = 0.30f),
-                        spotColor = Color.Black.copy(alpha = 0.38f),
+                .drawBehind {
+                    val slot = size.width / count
+                    val inset = 4.dp.toPx()
+                    val pos = if (isDragging) dragPosition else pillPosition.value
+                    val velocity = if (isDragging) dragVelocity else pillPosition.velocity
+
+                    // Stretch searah gerak, dibatasi supaya tetap kapsul rapi.
+                    val stretch = 1f + (abs(velocity) * 0.07f).coerceAtMost(0.22f)
+                    val squash = 1f - (abs(velocity) * 0.025f).coerceAtMost(0.07f)
+
+                    val baseW = slot - inset * 2f
+                    val baseH = size.height - inset * 2f
+                    val w = baseW * stretch * pressScale
+                    val h = baseH * squash * pressScale
+                    val cx = (pos + 0.5f) * slot
+                    val left = cx - w / 2f
+                    val top = (size.height - h) / 2f
+
+                    // Warna melebur antara aksen dua tab terdekat.
+                    val lo = floor(pos).toInt().coerceIn(0, lastIndex)
+                    val hi = (lo + 1).coerceAtMost(lastIndex)
+                    val t = (pos - lo).coerceIn(0f, 1f)
+                    val accent = lerp(items[lo].accent, items[hi].accent, t)
+
+                    val corner = CornerRadius(h / 2f, h / 2f)
+
+                    // Glow lembut di belakang pill.
+                    drawRoundRect(
+                        color = accent.copy(alpha = 0.16f),
+                        topLeft = Offset(left - 4.dp.toPx(), top - 3.dp.toPx()),
+                        size = Size(w + 8.dp.toPx(), h + 6.dp.toPx()),
+                        cornerRadius = CornerRadius((h + 6.dp.toPx()) / 2f),
                     )
-                    .clip(barShape)
-                    .hazeEffect(state = hazeState, style = HazeMaterials.thin())
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.04f), 
-                                Color.White.copy(alpha = 0.01f),
-                                Color.Black.copy(alpha = 0.05f),
-                            )
-                        )
-                    )
-                    .drawWithCache {
-                        val h = size.height
-                        val topGlow = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.06f), 
-                                Color.Transparent,
-                            ),
-                            startY = 0f,
-                            endY = h * 0.52f,
-                        )
-                        onDrawWithContent {
-                            drawContent()
-                            drawRect(topGlow)
-                        }
-                    }
-                    .border(
-                        width = 1.dp,
+                    // Badan pill: gradient aksen transparan.
+                    drawRoundRect(
                         brush = Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.15f), 
-                                outline.copy(alpha = 0.20f),
-                            )
+                            colors = listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.16f)),
+                            startY = top,
+                            endY = top + h,
                         ),
-                        shape = barShape,
+                        topLeft = Offset(left, top),
+                        size = Size(w, h),
+                        cornerRadius = corner,
                     )
-            )
+                    // Highlight tipis di tepi atas + garis tepi aksen.
+                    drawRoundRect(
+                        color = accent.copy(alpha = 0.55f),
+                        topLeft = Offset(left, top),
+                        size = Size(w, h),
+                        cornerRadius = corner,
+                        style = Stroke(width = 1.dp.toPx()),
+                    )
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                            startY = top,
+                            endY = top + h * 0.55f,
+                        ),
+                        topLeft = Offset(left + 2.dp.toPx(), top + 1.dp.toPx()),
+                        size = Size(w - 4.dp.toPx(), h * 0.55f),
+                        cornerRadius = CornerRadius(h / 2f),
+                    )
+                },
+        )
 
-            if (slotWidthPx > 0f && barHeightPx > 0f) {
-                val insetPx = with(density) { 3.dp.toPx() }
-                val baseWidth = (slotWidthPx - insetPx * 2f).coerceAtLeast(1f)
-                val baseHeight = (barHeightPx - insetPx * 2f).coerceAtLeast(1f)
-
-                val pillWidthPx = baseWidth * pillBulge * stretchX
-                val pillHeightPx = baseHeight * pillBulge * squashY
-
-                val centerX = (pillPosition.value + 0.5f) * slotWidthPx
-                val offsetX = centerX - pillWidthPx / 2f
-                val offsetY = (barHeightPx - pillHeightPx) / 2f
-
-                val pillWidthDp = with(density) { pillWidthPx.toDp() }
-                val pillHeightDp = with(density) { pillHeightPx.toDp() }
-                val offsetXDp = with(density) { offsetX.toDp() }
-                val offsetYDp = with(density) { offsetY.toDp() }
-
-                Box(
+        // ── Item (recompose hanya saat indeks aktif berubah) ─────────────
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = Spacing.xs, vertical = Spacing.xs),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            items.forEachIndexed { index, item ->
+                val active = if (isDragging || pressed) index == previewIndex else index == selectedIndex
+                NavBarItem(
+                    item = item,
+                    selected = active,
                     modifier = Modifier
-                        .graphicsLayer {
-                            translationX = with(density) { offsetXDp.toPx() }
-                            translationY = with(density) { offsetYDp.toPx() }
-                        }
-                        .size(pillWidthDp, pillHeightDp)
-                        .shadow(
-                            elevation = if (isActive) 8.dp else 3.dp,
-                            shape = RoundedCornerShape(percent = 50),
-                            ambientColor = primary.copy(alpha = if (isActive) 0.18f else 0.10f),
-                            spotColor = primary.copy(alpha = if (isActive) 0.25f else 0.14f),
-                        )
-                        .clip(RoundedCornerShape(percent = 50))
-                        .hazeEffect(state = hazeState, style = HazeMaterials.regular())
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.08f), 
-                                    Color.White.copy(alpha = 0.03f),
-                                    primary.copy(alpha = 0.075f),
-                                    Color.Black.copy(alpha = 0.05f),
-                                )
-                            )
-                        )
-                        .drawWithCache {
-                            val w = size.width
-                            val h = size.height
-                            
-                            val topReflection = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.08f), 
-                                    Color.White.copy(alpha = 0.02f),
-                                    Color.Transparent,
-                                ),
-                                startY = 0f,
-                                endY = h * 0.62f,
-                            )
-                            val lowerTint = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    primary.copy(alpha = 0.10f), 
-                                ),
-                                startY = h * 0.62f,
-                                endY = h,
-                            )
-
-                            val leftReflection = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.10f), 
-                                    Color.White.copy(alpha = 0.02f),
-                                    Color.Transparent,
-                                ),
-                                center = Offset(w * 0.08f, h * 0.5f),
-                                radius = w * 0.35f
-                            )
-                            val rightReflection = Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.10f), 
-                                    Color.White.copy(alpha = 0.02f),
-                                    Color.Transparent,
-                                ),
-                                center = Offset(w * 0.92f, h * 0.5f),
-                                radius = w * 0.35f
-                            )
-
-                            onDrawWithContent {
-                                drawContent()
-                                drawRect(topReflection)
-                                drawRect(lowerTint)
-                                drawRect(leftReflection)
-                                drawRect(rightReflection)
-                            }
-                        }
-                        .border(
-                            width = if (isActive) 1.35.dp else 1.05.dp,
-                            brush = Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.25f), 
-                                    Color.White.copy(alpha = 0.10f),
-                                    outline.copy(alpha = 0.30f),
-                                )
-                            ),
-                            shape = RoundedCornerShape(percent = 50),
-                        )
+                        .weight(1f)
+                        .fillMaxHeight(),
                 )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items.forEachIndexed { index, item ->
-                    val active = if (isActive) {
-                        index == previewIndex
-                    } else {
-                        index == selectedIndex
-                    }
-                    NavBarItem(
-                        item = item,
-                        selected = active,
-                        emphasized = active && isActive,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-                }
             }
         }
     }
@@ -448,36 +303,18 @@ fun AetherBottomNavBar(
 private fun NavBarItem(
     item: AetherNavItem,
     selected: Boolean,
-    emphasized: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = spring(
-            dampingRatio = 0.65f,
-            stiffness = 200f,
-        ),
-        label = "navItemColor",
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val tint by animateColorAsState(
+        targetValue = if (selected) item.accent else muted,
+        animationSpec = tween(durationMillis = 180),
+        label = "navTint",
     )
-    val iconScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.18f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 250f,
-        ),
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
         label = "navIconScale",
-    )
-    val labelScale by animateFloatAsState(
-        targetValue = if (emphasized) 1.10f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.55f,
-            stiffness = 250f,
-        ),
-        label = "navLabelScale",
     )
 
     Column(
@@ -488,26 +325,21 @@ private fun NavBarItem(
         Icon(
             imageVector = item.icon,
             contentDescription = item.label,
-            tint = contentColor,
+            tint = tint,
             modifier = Modifier.graphicsLayer {
-                scaleX = iconScale
-                scaleY = iconScale
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin.Center
             },
         )
         Text(
             text = item.label,
-            color = contentColor,
+            color = tint,
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            modifier = Modifier
-                .padding(top = 4.dp, start = 2.dp, end = 2.dp)
-                .graphicsLayer {
-                    scaleX = labelScale
-                    scaleY = labelScale
-                    transformOrigin = TransformOrigin(0.5f, 0f)
-                },
+            modifier = Modifier.padding(top = Spacing.xs, start = 2.dp, end = 2.dp),
         )
     }
 }

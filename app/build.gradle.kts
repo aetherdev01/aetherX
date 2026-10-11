@@ -136,30 +136,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 
-    // ── SavedState (FITUR BARU — Game Booster) ───────────────────────────────
-    // Dideklarasikan eksplisit (bukan hanya transitive lewat lifecycle-runtime-
-    // ktx) karena dipakai LANGSUNG oleh ComposeOverlayLifecycleOwner
-    // (SavedStateRegistryController, setViewTreeSavedStateRegistryOwner) untuk
-    // menjalankan ComposeView floating sidebar Game Booster yang di-attach
-    // manual ke WindowManager dari Service, bukan dari Activity/Fragment biasa
-    // yang sudah otomatis menyediakan owner ini.
-    implementation(libs.androidx.savedstate)
-
-    // ── Compose ───────────────────────────────────────────────────────────────
+    // ── Compose (animation & ui-graphics sudah ikut transitive lewat ui/material3,
+    //    ui-tooling & ui-tooling-preview dibuang karena tidak ada @Preview) ──────
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
-    debugImplementation(libs.androidx.ui.tooling)
-
-    // ── Haze: blur kaca real-time di belakang navbar (efek "Liquid Glass"
-    //    ala iOS 26). hazeSource() dipasang di konten layar, hazeEffect()
-    //    di navbar — lihat AetherBottomNavBar.kt & MainScreen.kt. ─────────
-    implementation(libs.haze)
-    implementation(libs.haze.materials)
 
     // ── Activity & Navigation ─────────────────────────────────────────────────
     implementation(libs.androidx.activity.compose)
@@ -171,40 +153,20 @@ dependencies {
     // ── Coroutines ────────────────────────────────────────────────────────────
     implementation(libs.kotlinx.coroutines.android)
 
-    // ── Privilege backend: libsu (mode root — Magisk / KernelSU / APatch).
-    //    v3.1: AetherX sekarang PURE ROOT — Shizuku dan seluruh mode
-    //    non-root DIHAPUS TOTAL, hanya backend ini yang tersisa. ───────────
+    // ── Privilege backend: libsu (mode root — Magisk / KernelSU / APatch) ────
     implementation(libs.libsu.core)
 
-    // ── Firebase: counter Firestore untuk ID pengguna global berurutan ───────
+    // ── Firebase: hanya Firestore (ID pengguna, lisensi, maintenance, update)
+    //    dan Cloud Messaging (push). Analytics / Auth / Functions DIHAPUS —
+    //    tidak ada satu pun import-nya di kode. ──────────────────────────────
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
-
-    // ── Firebase Auth (anonymous sign-in) + Cloud Functions — dipakai
-    // data/LicenseRepository.kt untuk verifikasi lisensi lewat callable
-    // function di server (Firebase.auth, Firebase.functions).
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.functions)
-
-    // ── Firebase Cloud Messaging: notifikasi push realtime (maintenance/
-    // update/membership) yang tetap sampai walau aplikasi di-background atau
-    // ditutup total — lihat core/messaging/AetherXFirebaseMessagingService.kt
-    // dan data/FcmTokenRepository.kt.
     implementation(libs.firebase.messaging)
 
-    // ── Ads: Unity Ads (rewarded ads untuk fitur non-member) ─────────────────
-    // Dipakai lewat abstraksi RewardedAdManager (lihat core/ads/RewardedAdManager.kt)
-    // — bukan direferensikan langsung di luar core/ads/UnityRewardedAdManager.kt.
-    // WAJIB isi GAME_ID & PLACEMENT_ID asli di UnityRewardedAdManager.kt sebelum
-    // build release (lihat TODO di file itu dan core/ads/README.md).
+    // ── Ads: Unity Ads (rewarded + fallback interstitial) & AdMob (interstitial) ──
     implementation(libs.unity.ads)
-
-    // ── Ads: AdMob (interstitial) ─────────────────────────────────────────
-    // Menggantikan UnityInterstitialAdManager sebagai provider interstitial
-    // — lihat core/ads/AdMobInterstitialAdManager.kt & core/ads/README.md.
-    // Unity Ads TETAP dipakai untuk rewarded (UnityRewardedAdManager), jadi
-    // dependency unity.ads di atas TIDAK dihapus.
     implementation(libs.play.services.ads)
-    implementation(libs.reorderable) 
+
+    // ── Reorder kartu dashboard dengan long-press + drag ─────────────────────
+    implementation(libs.reorderable)
 }

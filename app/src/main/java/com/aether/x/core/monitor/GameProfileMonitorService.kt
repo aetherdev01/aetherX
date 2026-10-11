@@ -12,9 +12,6 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.aether.x.MainActivity
 import com.aether.x.R
-import com.aether.x.core.apps.GameProfileCatalog
-import com.aether.x.core.booster.GameBoosterFeatureFlag
-import com.aether.x.core.overlay.GameBoosterOverlayService
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.data.AetherXPreferences
@@ -56,7 +53,6 @@ class GameProfileMonitorService : Service() {
 
     private var activeProfilePackage: String? = null
 
-    private var activeBoosterPackage: String? = null
     private var pollLoopStarted = false
 
     override fun onCreate() {
@@ -137,8 +133,6 @@ class GameProfileMonitorService : Service() {
 
         val foregroundPackage = foregroundAppReader.readForegroundPackage(executor)
 
-        handleGameBoosterAutoTrigger(foregroundPackage)
-
         val profiles = preferences.getGameProfiles()
         if (profiles.isEmpty()) {
 
@@ -173,41 +167,7 @@ class GameProfileMonitorService : Service() {
         }
     }
 
-    private suspend fun handleGameBoosterAutoTrigger(foregroundPackage: String?) {
-
-        if (!GameBoosterFeatureFlag.autoTriggerOnGameOpenEnabled) return
-
-        val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return
-        val current = activeBoosterPackage
-
-        when {
-            foregroundPackage != null &&
-                foregroundPackage != current &&
-                GameProfileCatalog.isKnownGamePackage(applicationContext, foregroundPackage) -> {
-                val label = runCatching {
-                    applicationContext.packageManager
-                        .getApplicationLabel(applicationContext.packageManager.getApplicationInfo(foregroundPackage, 0))
-                        .toString()
-                }.getOrDefault(foregroundPackage)
-                GameBoosterOverlayService.start(applicationContext, foregroundPackage, label)
-                activeBoosterPackage = foregroundPackage
-            }
-
-            current != null && foregroundPackage != current -> {
-                val stillInRecents = recentTasksReader.isPackageInRecentTasks(executor, current)
-                if (stillInRecents == false) {
-                    GameBoosterOverlayService.stop(applicationContext)
-                    activeBoosterPackage = null
-                }
-            }
-        }
-    }
-
     private suspend fun resetActiveProfileIfAny() {
-        if (activeBoosterPackage != null) {
-            GameBoosterOverlayService.stop(applicationContext)
-            activeBoosterPackage = null
-        }
         val current = activeProfilePackage ?: preferences.getActiveGameProfilePackage() ?: return
         val executor: ShellExecutor = PrivilegeManager.getExecutorAwaitingConnection() ?: return
         repository.resetRootTweaksOnly(executor, packageName = current)

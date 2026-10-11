@@ -302,7 +302,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
     }
 
     companion object {
-        private const val PRESET_FEATURE_KEY = "kernel_preset"
+        private const val PRESET_FEATURE_KEY = com.aether.x.data.RewardFeatureKeys.KERNEL_PRESET
         const val PRESET_FREE_USES_PER_DAY = 3
     }
 }

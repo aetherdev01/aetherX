@@ -2,6 +2,11 @@ package com.aether.x.data
 
 import org.json.JSONObject
 
+/** Kunci fitur yang dipakai bersama oleh RewardGate, Kernel Manager, dan Bonus Harian. */
+object RewardFeatureKeys {
+    const val KERNEL_PRESET = "kernel_preset"
+}
+
 data class RewardQuotaState(
     val featureKey: String,
     val dateKey: String,

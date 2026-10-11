@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.BuildConfig
 import com.aether.x.R
+import com.aether.x.ui.theme.Spacing
 import com.aether.x.ui.components.PopupDialog
 
 /**
@@ -45,17 +46,15 @@ fun WhatsNewDialog(viewModel: WhatsNewViewModel = viewModel()) {
         scrollableContent = true,
     ) {
         val items = listOf(
-            R.string.whatsnew_item_game_booster,
-            R.string.whatsnew_item_kernel_preset,
-            R.string.whatsnew_item_theme,
-            R.string.whatsnew_item_dashboard_order,
-            R.string.whatsnew_item_quick_tile,
-            R.string.whatsnew_item_widget,
-            R.string.whatsnew_item_notif_action,
+            R.string.whatsnew_item_daily_bonus,
+            R.string.whatsnew_item_new_ui,
+            R.string.whatsnew_item_dashboard_detail,
+            R.string.whatsnew_item_smooth,
+            R.string.whatsnew_item_pro_price,
         )
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             items.forEach { resId ->
                 Row(verticalAlignment = Alignment.Top) {
@@ -69,7 +68,7 @@ fun WhatsNewDialog(viewModel: WhatsNewViewModel = viewModel()) {
                         text = stringResource(resId),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = Spacing.sm),
                     )
                 }
             }

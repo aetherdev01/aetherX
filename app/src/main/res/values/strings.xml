@@ -106,13 +106,11 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_theme">Tema Terang/Gelap/Ikuti Sistem bisa diatur di Settings</string>
-    <string name="whatsnew_item_kernel_preset">Preset cepat Kernel Manager: Hemat Baterai, Seimbang, Performa</string>
-    <string name="whatsnew_item_dashboard_order">Urutan card Dashboard sekarang bisa diatur sesuai selera</string>
-    <string name="whatsnew_item_notif_action">Notifikasi Crosshair/FPS Monitor/Game Booster kini punya tombol matikan langsung</string>
-    <string name="whatsnew_item_quick_tile">Tile Quick Settings baru untuk toggle Crosshair &amp; Monitor FPS tanpa buka app</string>
-    <string name="whatsnew_item_widget">Widget layar utama baru: pantau CPU/GPU/suhu sekilas</string>
-    <string name="whatsnew_item_game_booster">Game Booster kini aktif otomatis saat game dibuka</string>
+    <string name="whatsnew_item_daily_bonus">Bonus Harian baru: tonton 1 iklan, dapat kredit Preset Kernel (makin besar tiap hari beruntun)</string>
+    <string name="whatsnew_item_new_ui">Tampilan lebih berwarna dengan jarak dan tipografi yang konsisten</string>
+    <string name="whatsnew_item_dashboard_detail">Dashboard lebih detail: RAM, storage, baterai, chipset, CPU, kernel, refresh rate, dan uptime</string>
+    <string name="whatsnew_item_smooth">Splash, tab bar, dan transisi layar baru yang lebih smooth dan ringan</string>
+    <string name="whatsnew_item_pro_price">Membership Pro kini hanya Rp15.000 per bulan</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah
@@ -168,19 +166,17 @@
          tambahkan Bebas Iklan") -->
     <string name="membership_benefit_4">Bebas iklan di seluruh aplikasi</string>
     <string name="membership_pro_title">Langganan Membership Pro</string>
-    <!-- FITUR BARU (lihat perintah rework "tambahkan opsi harga Rp10.000
-         / 1 Minggu, 25.000 / 1 bulan"): dua paket berlangganan, pengguna
-         pilih salah satu lewat MembershipPlanSelector sebelum menghubungi
-         admin Telegram bukan lagi satu harga tetap tanpa pilihan. -->
-    <string name="membership_pro_plan_weekly_label">1 Minggu</string>
-    <string name="membership_pro_plan_weekly_price">Rp10.000</string>
+    <!-- v3.6: HANYA satu paket langganan, Rp15.000 / bulan (paket mingguan
+         dihapus). Label, harga, dan satuan dipakai MembershipPlanCard dan
+         dikirim sebagai pesan otomatis ke admin Telegram. -->
     <string name="membership_pro_plan_monthly_label">1 Bulan</string>
-    <string name="membership_pro_plan_monthly_price">Rp25.000</string>
+    <string name="membership_pro_plan_monthly_price">Rp15.000</string>
+    <string name="membership_pro_plan_price_unit">/bulan</string>
     <string name="membership_pro_plan_monthly_badge">Lebih Hemat</string>
-    <string name="membership_pro_description">Pilih paket, lalu hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi Membership Pro.</string>
+    <string name="membership_pro_description">Langganan Membership Pro Rp15.000 per bulan. Hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi.</string>
     <string name="membership_pro_cta">Langganan Sekarang</string>
-    <!-- %1$s diisi label paket terpilih (mis. "1 Minggu") dan %2$s harganya
-         (mis. "Rp10.000") pesan ini otomatis terisi di kolom chat
+    <!-- %1$s diisi label paket (mis. "1 Bulan") dan %2$s harganya
+         (mis. "Rp15.000") pesan ini otomatis terisi di kolom chat
          Telegram supaya admin langsung tahu paket yang diinginkan
          pengguna tanpa pengguna perlu mengetik ulang manual. -->
     <string name="membership_pro_telegram_prefill">Halo admin AetherX, saya ingin berlangganan Membership Pro paket %1$s (%2$s).</string>
@@ -254,8 +250,8 @@
     <!-- FITUR BARU (rework total Dashboard): section "Aktivitas Game"
          daftar game terpasang yang bisa di-scroll horizontal, game
          terakhir dipakai ditandai chip khusus. Monitor CPU/GPU/Suhu
-         (dashboard_monitor_*) DIHAPUS dari Dashboard, dipindah jadi
-         domain khusus Game Booster. -->
+         (dashboard_monitor_*) DIHAPUS dari Dashboard, tidak lagi
+         ditampilkan di Dashboard. -->
     <string name="dashboard_section_game_activity">Aktivitas Game</string>
     <string name="dashboard_game_activity_last_used">Terakhir dipakai</string>
     <string name="dashboard_game_activity_empty">Belum ada game terpasang yang dikenali</string>
@@ -582,123 +578,6 @@
     <string name="crosshair_notification_channel">Overlay Crosshair</string>
     <string name="crosshair_notification_title">Crosshair AetherX aktif</string>
     <string name="crosshair_notification_text">Ketuk untuk membuka pengaturan crosshair</string>
-
-    <!-- ================= FITUR BARU: Game Booster ================= -->
-    <!-- lihat perintah rework: "buatkan game booster screen dengan layar
-         lanskap serta ada list game discroll atau gaya rog, ada pilihan
-         menu banyak, dari tampilkan fps, mode game, jangan ganggu,
-         screenshot, mode boost, mode hemat, ada monitoring seperti
-         grafik, saat buka gamenya ada animasi splash dari game
-         boosternya, lalu saat buka game game booster jadi side
-         bar/floating dan gampang diakses serta smooth" -->
-    <string name="game_booster_title">Game Booster</string>
-    <string name="game_booster_subtitle">Pilih game untuk mulai boost performa</string>
-    <string name="game_booster_empty_games">Belum ada game terpasang yang dikenali</string>
-    <!-- RILIS v2.0 (lihat perintah rework "jadikan opsi drawer game
-         booster sementara tidak bisa diakses"): badge singkat di item
-         drawer yang dikunci, lihat GAME_BOOSTER_DRAWER_LOCKED di
-         TweakScreen.kt. -->
-    <string name="game_booster_drawer_locked_badge">Segera Hadir</string>
-
-    <string name="game_booster_menu_fps">Tampilkan FPS</string>
-    <string name="game_booster_menu_dnd">Jangan Ganggu</string>
-    <string name="game_booster_menu_screenshot">Screenshot</string>
-    <string name="game_booster_mode_hemat">Hemat</string>
-    <string name="game_booster_mode_normal">Normal</string>
-    <string name="game_booster_mode_boost">Boost</string>
-
-    <!-- FITUR BARU (lihat perintah rework "rework total tampilan game
-         booster seperti di foto pertama"): label menu grid radial
-         GameBoosterScreen, meniru teks persis pada foto referensi 1
-         ("Refresh Rate", "Information Monitor", "Jangan Ganggu",
-         "Crosshair", "Boost Cepat", "Kalibrasi Gyro" [tidak diimplementasi
-         lihat KDoc GameBoosterScreen], "Preset Cepat", "Kunci Rotasi",
-         "Akselerasi Sentuhan", "Tangkapan Layar", "WhatsApp"). Beberapa
-         me-reuse LOGIC yang sama dengan sidebar (mis. Tangkapan Layar ->
-         viewModel.onScreenshot yang sama dengan onScreenshot sidebar)
-         tapi teks tampilan sengaja dibuat string terpisah supaya bisa
-         match persis literal foto referensi tanpa memengaruhi teks
-         sidebar yang sudah ada. -->
-    <string name="game_booster_radial_refresh_rate">Refresh Rate</string>
-    <string name="game_booster_radial_information_monitor">Information\nMonitor</string>
-    <string name="game_booster_radial_dnd">Jangan\nGanggu</string>
-    <string name="game_booster_radial_crosshair">Crosshair</string>
-    <string name="game_booster_radial_quick_boost">Boost Cepat</string>
-    <string name="game_booster_radial_quick_preset">Preset Cepat</string>
-    <string name="game_booster_radial_rotation_lock">Kunci Rotasi</string>
-    <string name="game_booster_radial_touch_boost">Akselerasi\nSentuhan</string>
-    <string name="game_booster_radial_screenshot">Tangkapan\nLayar</string>
-    <string name="game_booster_radial_whatsapp">WhatsApp</string>
-    <string name="game_booster_radial_ax_mode">AXKM-MODE</string>
-
-    <string name="game_booster_metrics_title">Monitoring</string>
-    <string name="game_booster_metrics_fps">FPS</string>
-    <string name="game_booster_metrics_cpu">CPU</string>
-    <string name="game_booster_metrics_gpu">GPU</string>
-    <string name="game_booster_metrics_ram">RAM</string>
-    <string name="game_booster_metrics_temp">Suhu</string>
-    <string name="game_booster_metrics_fps_unavailable_hint">Aktifkan Root di tab Tweak untuk FPS real-time</string>
-
-    <string name="game_booster_bubble_content_desc">Buka Game Booster</string>
-    <string name="game_booster_sidebar_close">Tutup</string>
-    <string name="game_booster_sidebar_end_session">Akhiri Sesi Boost</string>
-
-    <!-- FITUR BARU (lihat perintah rework "rework total juga untuk
-         floating game booster nya seperti foto ke 2"): label header &
-         tombol khusus card floating compact, beda konteks dari
-         game_booster_launch_cta (yang untuk layar PEMILIHAN game sebelum
-         sesi dimulai) string ini untuk saat sesi SUDAH aktif. -->
-    <string name="game_booster_sidebar_header">AetherX Corner</string>
-    <string name="game_booster_sidebar_launch">Luncurkan</string>
-
-    <string name="game_booster_screenshot_needs_privilege">Aktifkan akses Root dulu untuk mengambil tangkapan layar</string>
-    <string name="game_booster_screenshot_success">Tangkapan layar tersimpan</string>
-    <string name="game_booster_screenshot_failed">Gagal mengambil tangkapan layar</string>
-
-    <string name="game_booster_notification_channel">Game Booster Aktif</string>
-    <string name="game_booster_notification_title_format">Game Booster %1$s</string>
-    <string name="game_booster_notification_text">Ketuk untuk membuka sidebar</string>
-
-    <string name="game_booster_splash_preparing">Menyiapkan boost performa…</string>
-
-    <!-- REWORK TOTAL (lihat perintah rework: "diakses dengan geser dari
-         kiri layar ke kanan layar... ui GB lebih mirip Game Booster
-         ROG/Lainnya... bisa di minimize dengan mudah... lengkap dengan
-         fitur Monitoring, mode Boost, Low, banyak quick tile/panel"):
-         seluruh label panel BARU GameBoosterPanelContent.kt, MENGGANTIKAN
-         string literal hardcoded sementara yang dipakai saat rework awal
-         (upload project waktu itu belum menyertakan folder res/) — lihat
-         komentar "// STRING BARU" yang sudah dihapus dari
-         GameBoosterPanelContent.kt begitu key-key di bawah ini dipakai. -->
-    <string name="game_booster_panel_title">AetherX Booster</string>
-    <string name="game_booster_panel_minimize">Sembunyikan panel</string>
-    <string name="game_booster_panel_end_session">Akhiri sesi boost</string>
-
-    <string name="game_booster_panel_tab_tools">Gaming tools</string>
-    <string name="game_booster_panel_tab_games">Games</string>
-
-    <string name="game_booster_panel_monitor_average_jitter">Average %1$d FPS   Jitter %2$d</string>
-    <string name="game_booster_panel_monitor_realtime">Real-time %1$d FPS</string>
-    <string name="game_booster_panel_monitor_fps_unavailable_hint">Aktifkan Root untuk FPS real-time</string>
-
-    <string name="game_booster_panel_mode_balanced">Balanced</string>
-    <string name="game_booster_panel_mode_performance">Performance</string>
-
-    <string name="game_booster_panel_tile_settings_title">Pengaturan</string>
-    <string name="game_booster_panel_tile_settings_subtitle">Performa app</string>
-    <string name="game_booster_panel_tile_clear_memory_title">Bersihkan memori</string>
-    <string name="game_booster_panel_tile_clear_memory_subtitle">Percepat kinerja</string>
-
-    <string name="game_booster_panel_quick_voice_changer">Voice changer</string>
-    <string name="game_booster_panel_quick_screenshot">Screenshot</string>
-    <string name="game_booster_panel_quick_record">Record</string>
-    <string name="game_booster_panel_quick_dnd">DND</string>
-    <string name="game_booster_panel_quick_on_screen">On-screen</string>
-    <string name="game_booster_panel_quick_brightness">Brightness</string>
-    <string name="game_booster_panel_quick_wifi">Wi-Fi</string>
-    <string name="game_booster_panel_quick_more_tools">More tools</string>
-
-    <string name="game_booster_panel_open_game">Buka</string>
 
     <!-- v3.1 PURE ROOT: pesan feedback konkret untuk setiap hasil aksi
          permintaan akses root, ditampilkan lewat Snackbar menggantikan

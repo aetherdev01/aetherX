@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -71,15 +72,15 @@ import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.cardEnterAnimation
-import com.aether.x.ui.components.pressScale
-import com.aether.x.ui.components.rememberPressScaleInteractionSource
 import com.aether.x.ui.theme.AccentAmber
 import com.aether.x.ui.theme.AccentAmberContainer
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
 import com.aether.x.ui.theme.AccentGreenContainer
 import com.aether.x.ui.theme.AccentRed
-import com.aether.x.ui.theme.OnAccentBlue
+import com.aether.x.ui.theme.AetherCyan
+import com.aether.x.ui.theme.AetherViolet
+import com.aether.x.ui.theme.Spacing
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -102,8 +103,8 @@ fun MembershipScreen(
             .fillMaxSize()
             .padding(contentPadding)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.section),
     ) {
         Column {
             Text(
@@ -116,7 +117,7 @@ fun MembershipScreen(
                 text = stringResource(R.string.membership_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = Spacing.line),
             )
         }
 
@@ -209,7 +210,7 @@ fun MembershipScreen(
                         if (submitting) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
@@ -243,7 +244,7 @@ fun MembershipScreen(
             watermarkIcon = Icons.Outlined.CardGiftcard,
             modifier = Modifier.cardEnterAnimation(index = 2),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 BenefitRow(text = stringResource(R.string.membership_benefit_1))
                 BenefitRow(text = stringResource(R.string.membership_benefit_2))
                 BenefitRow(text = stringResource(R.string.membership_benefit_3))
@@ -263,151 +264,129 @@ fun MembershipScreen(
     }
 }
 
-private enum class MembershipPlan(
-    val labelRes: Int,
-    val priceRes: Int,
-) {
-    WEEKLY(R.string.membership_pro_plan_weekly_label, R.string.membership_pro_plan_weekly_price),
-    MONTHLY(R.string.membership_pro_plan_monthly_label, R.string.membership_pro_plan_monthly_price),
-}
-
+/**
+ * v3.6 — langganan HANYA satu opsi: Rp15.000 / bulan. Paket mingguan dan
+ * pilihan paket dihapus total; tidak ada lagi state "selectedPlan".
+ */
 @Composable
 private fun MembershipProCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val telegramUrl = stringResource(R.string.membership_pro_telegram_url)
-    var selectedPlan by remember { mutableStateOf(MembershipPlan.MONTHLY) }
-    val selectedLabel = stringResource(selectedPlan.labelRes)
-    val selectedPrice = stringResource(selectedPlan.priceRes)
+    val planLabel = stringResource(R.string.membership_pro_plan_monthly_label)
+    val planPrice = stringResource(R.string.membership_pro_plan_monthly_price)
 
     SectionCard(
         title = stringResource(R.string.membership_pro_title),
         watermarkIcon = Icons.Outlined.WorkspacePremium,
         modifier = modifier,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                MembershipPlanOption(
-                    plan = MembershipPlan.WEEKLY,
-                    selected = selectedPlan == MembershipPlan.WEEKLY,
-                    onClick = { selectedPlan = MembershipPlan.WEEKLY },
-                    modifier = Modifier.weight(1f),
+        MembershipPlanCard()
+
+        Text(
+            text = stringResource(R.string.membership_pro_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Button(
+            onClick = {
+                val prefillMessage = context.getString(
+                    R.string.membership_pro_telegram_prefill,
+                    planLabel,
+                    planPrice,
                 )
-                MembershipPlanOption(
-                    plan = MembershipPlan.MONTHLY,
-                    selected = selectedPlan == MembershipPlan.MONTHLY,
-                    onClick = { selectedPlan = MembershipPlan.MONTHLY },
-                    modifier = Modifier.weight(1f),
-                )
-            }
 
-            Text(
-                text = stringResource(R.string.membership_pro_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                val uri = Uri.parse(telegramUrl).buildUpon()
+                    .appendQueryParameter("text", prefillMessage)
+                    .build()
+                val intent = Intent(Intent.ACTION_VIEW, uri)
+                try {
+                    context.startActivity(intent)
+                } catch (e: ActivityNotFoundException) {
 
-            Button(
-                onClick = {
-                    val prefillMessage = context.getString(
-                        R.string.membership_pro_telegram_prefill,
-                        selectedLabel,
-                        selectedPrice,
-                    )
-
-                    val uri = Uri.parse(telegramUrl).buildUpon()
-                        .appendQueryParameter("text", prefillMessage)
-                        .build()
-                    val intent = Intent(Intent.ACTION_VIEW, uri)
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF29A9EA),
-                    contentColor = Color.White,
-                ),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_social_telegram),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(CircleShape),
-                    )
-                    Text(
-                        text = stringResource(R.string.membership_pro_cta),
-                        fontWeight = FontWeight.SemiBold,
-                    )
                 }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = MaterialTheme.shapes.large,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF29A9EA),
+                contentColor = Color.White,
+            ),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_social_telegram),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape),
+                )
+                Text(
+                    text = stringResource(R.string.membership_pro_cta),
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }
 }
 
+/** Kartu harga tunggal: "1 Bulan — Rp15.000 /bulan". */
 @Composable
-private fun MembershipPlanOption(
-    plan: MembershipPlan,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val borderColor = if (selected) AccentBlue else MaterialTheme.colorScheme.outlineVariant
-    val backgroundColor = if (selected) AccentBlue.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
-    val interactionSource = rememberPressScaleInteractionSource()
-    Column(
+private fun MembershipPlanCard(modifier: Modifier = Modifier) {
+    val shape = MaterialTheme.shapes.large
+    Row(
         modifier = modifier
-            .pressScale(interactionSource)
-            .clip(MaterialTheme.shapes.large)
-            .background(backgroundColor)
-            .border(1.5.dp, borderColor, MaterialTheme.shapes.large)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(AetherViolet.copy(alpha = 0.22f), AetherCyan.copy(alpha = 0.12f)),
+                ),
+            )
+            .border(1.5.dp, AetherViolet.copy(alpha = 0.7f), shape)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.line)) {
             Text(
-                text = stringResource(plan.labelRes),
+                text = stringResource(R.string.membership_pro_plan_monthly_label),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            if (plan == MembershipPlan.MONTHLY) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(AccentBlue),
-                ) {
-                    Text(
-                        text = stringResource(R.string.membership_pro_plan_monthly_badge),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = OnAccentBlue,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(AetherViolet),
+            ) {
+                Text(
+                    text = stringResource(R.string.membership_pro_plan_monthly_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF140C33),
+                    modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
+                )
             }
         }
-        Text(
-            text = stringResource(plan.priceRes),
-            style = MaterialTheme.typography.titleLarge,
-            color = if (selected) AccentBlue else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = stringResource(R.string.membership_pro_plan_monthly_price),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = AetherViolet,
+            )
+            Text(
+                text = stringResource(R.string.membership_pro_plan_price_unit),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 2.dp, bottom = 3.dp),
+            )
+        }
     }
 }
 
@@ -422,8 +401,8 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
         watermarkIcon = Icons.Outlined.PhoneAndroid,
         modifier = modifier,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.line)) {
                 Text(
                     text = stringResource(R.string.membership_device_id_label),
                     style = MaterialTheme.typography.bodySmall,
@@ -434,7 +413,7 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
                         .fillMaxWidth()
                         .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = Spacing.md, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
@@ -508,8 +487,8 @@ private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surface)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -531,7 +510,7 @@ private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long
                 text = statusSubtitle(status, expiresAtMillis),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = Spacing.line),
             )
         }
     }
@@ -557,7 +536,7 @@ private fun MembershipIcon(status: MembershipUiStatus) {
 
 @Composable
 private fun BenefitRow(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
         Icon(
             imageVector = Icons.Outlined.CheckCircle,
             contentDescription = null,

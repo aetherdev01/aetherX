@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,87 +21,87 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.theme.Spacing
 
 /**
- * Shared AetherX surface. Every feature screen uses this surface so cards,
- * section headers and controls keep one consistent visual rhythm.
+ * Surface kartu bersama AetherX. Semua layar fitur memakai ini supaya
+ * radius, border, padding, dan jarak teks identik.
+ *
+ * v3.6:
+ *  - [accent] — tiap kartu boleh punya warna sendiri (default = primary/cyan)
+ *    yang dipakai untuk chip ikon judul, garis highlight atas, dan border.
+ *  - Jarak konsisten dari token [Spacing]: padding dalam [Spacing.card],
+ *    judul -> isi [Spacing.cardGap].
+ *  - Dekorasi (gradient + ikon watermark) dibuat sesederhana mungkin agar
+ *    ringan saat banyak kartu di-scroll.
  */
 @Composable
 fun SectionCard(
     title: String? = null,
     modifier: Modifier = Modifier,
     watermarkIcon: ImageVector? = null,
+    accent: Color = MaterialTheme.colorScheme.primary,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(28.dp)
-    val surface = MaterialTheme.colorScheme.surface
-    val primary = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(24.dp)
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.56f)),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.20f)),
     ) {
-        Box(
-            modifier = Modifier
-                .clip(shape)
-                .clipToBounds()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.035f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.055f),
-                        )
-                    )
-                )
-        ) {
+        Box {
+            // Highlight warna di sisi atas kartu.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(64.dp)
                     .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                primary.copy(alpha = 0.18f),
-                                primary.copy(alpha = 0.035f),
-                                Color.Transparent,
-                            )
-                        )
-                    )
-                    .padding(top = 2.dp)
+                        Brush.verticalGradient(
+                            listOf(accent.copy(alpha = 0.14f), Color.Transparent),
+                        ),
+                    ),
             )
 
-            if (watermarkIcon != null) {
-                Icon(
-                    imageVector = watermarkIcon,
-                    contentDescription = null,
-                    tint = primary.copy(alpha = 0.035f),
-                    modifier = Modifier
-                        .size(120.dp)
-                        .align(Alignment.TopEnd)
-                        .padding(18.dp),
-                )
-            }
-
             Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(Spacing.card),
+                verticalArrangement = Arrangement.spacedBy(Spacing.cardGap),
             ) {
                 if (title != null) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    ) {
+                        if (watermarkIcon != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(accent.copy(alpha = 0.16f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = watermarkIcon,
+                                    contentDescription = null,
+                                    tint = accent,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
                 content()
             }

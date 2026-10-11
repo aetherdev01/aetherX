@@ -51,6 +51,30 @@ import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.AetherMonoFamily
 import com.aether.x.ui.theme.Spacing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.BatteryFull
+import androidx.compose.material.icons.outlined.Monitor
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import com.aether.x.core.device.toGbLabel
+import com.aether.x.ui.theme.AetherAmber
+import com.aether.x.ui.theme.AetherBlue
+import com.aether.x.ui.theme.AetherCyan
+import com.aether.x.ui.theme.AetherGreen
+import com.aether.x.ui.theme.AetherOrange
+import com.aether.x.ui.theme.AetherPink
+import com.aether.x.ui.theme.AetherRed
+import com.aether.x.ui.theme.AetherViolet
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun AetherXInfoCard(
@@ -255,11 +279,14 @@ fun DeviceStatusSection(
                     imageVector = Icons.Outlined.PhoneAndroid,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(Spacing.md),
                 )
             }
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(Spacing.line),
+            ) {
                 Text(
                     text = "Perangkat terdeteksi",
                     style = MaterialTheme.typography.titleSmall,
@@ -280,7 +307,7 @@ fun DeviceStatusSection(
             ) {
                 Text(
                     text = "READY",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
@@ -293,34 +320,172 @@ fun DeviceStatusSection(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        // ── Penggunaan: bar berwarna sesuai beban (hijau -> amber -> merah) ──
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.item)) {
+            UsageBar(
+                icon = Icons.Outlined.Memory,
+                label = "RAM",
+                detail = "${info.usedRamBytes.toGbLabel()} / ${info.totalRamBytes.toGbLabel()}",
+                fraction = info.ramUsedFraction,
+            )
+            UsageBar(
+                icon = Icons.Outlined.SdStorage,
+                label = "Storage",
+                detail = "${info.usedStorageBytes.toGbLabel()} / ${info.totalStorageBytes.toGbLabel()}",
+                fraction = info.storageUsedFraction,
+            )
+            if (info.batteryPercent >= 0) {
+                val tempText = info.batteryTempC?.let { " • ${String.format(Locale.US, "%.1f", it)}°C" }.orEmpty()
+                UsageBar(
+                    icon = if (info.isCharging) Icons.Outlined.BatteryChargingFull else Icons.Outlined.BatteryFull,
+                    label = "Baterai",
+                    detail = "${info.batteryPercent}%${if (info.isCharging) " • mengisi" else ""}$tempText",
+                    fraction = info.batteryPercent / 100f,
+                    // Baterai: rendah = buruk (kebalikan RAM/Storage).
+                    invert = true,
+                )
+            }
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = Spacing.xs),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        )
+
+        // ── Detail: tiap baris punya warna ikon sendiri ───────────────────────
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.item)) {
             DeviceStatusItem(
                 icon = Icons.Outlined.PhoneAndroid,
+                tint = AetherBlue,
                 label = "Android",
                 value = "${info.androidVersion} • API ${info.sdkInt}",
             )
             DeviceStatusItem(
                 icon = Icons.Outlined.DeveloperBoard,
+                tint = AetherViolet,
+                label = "Chipset",
+                value = info.socModel.ifBlank { info.hardware.ifBlank { info.board } }.ifBlank { "-" },
+            )
+            DeviceStatusItem(
+                icon = Icons.Outlined.Speed,
+                tint = AetherCyan,
+                label = "CPU",
+                value = "${info.cpuCores} core • ${info.cpuAbi.ifBlank { "-" }}",
+            )
+            if (info.refreshRateHz > 0f) {
+                DeviceStatusItem(
+                    icon = Icons.Outlined.Monitor,
+                    tint = AetherPink,
+                    label = "Layar",
+                    value = "${info.refreshRateHz.roundToInt()} Hz",
+                )
+            }
+            if (info.kernelVersion.isNotBlank()) {
+                DeviceStatusItem(
+                    icon = Icons.Outlined.Terminal,
+                    tint = AetherOrange,
+                    label = "Kernel",
+                    value = info.kernelVersion,
+                )
+            }
+            DeviceStatusItem(
+                icon = Icons.Outlined.Schedule,
+                tint = AetherAmber,
+                label = "Uptime",
+                value = formatUptime(info.uptimeMillis),
+            )
+            DeviceStatusItem(
+                icon = Icons.Outlined.Security,
+                tint = if (rootGranted) AetherGreen else AetherRed,
                 label = "Akses",
                 value = if (rootGranted) "Root aktif" else "No Root",
             )
-            DeviceStatusItem(
-                icon = Icons.Outlined.Memory,
-                label = "RAM",
-                value = "${(info.availableRamBytes / (1024.0 * 1024.0 * 1024.0)).let { String.format(java.util.Locale.US, "%.1f", it) }} GB tersedia",
+        }
+    }
+}
+
+/** Bar penggunaan berlabel; warna otomatis mengikuti beban. */
+@Composable
+private fun UsageBar(
+    icon: ImageVector,
+    label: String,
+    detail: String,
+    fraction: Float,
+    invert: Boolean = false,
+) {
+    val clamped = fraction.coerceIn(0f, 1f)
+    // Beban tinggi = merah. Untuk baterai (invert) sisa rendah = merah.
+    val load = if (invert) 1f - clamped else clamped
+    val color = when {
+        load < 0.60f -> AetherGreen
+        load < 0.85f -> AetherAmber
+        else -> AetherRed
+    }
+    val animated by animateFloatAsState(
+        targetValue = clamped,
+        animationSpec = tween(durationMillis = 500),
+        label = "usageBar",
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(19.dp),
             )
-            DeviceStatusItem(
-                icon = Icons.Outlined.SdStorage,
-                label = "Storage",
-                value = "${((info.totalStorageBytes - info.availableStorageBytes) / (1024.0 * 1024.0 * 1024.0)).let { String.format(java.util.Locale.US, "%.1f", it) }} GB terpakai",
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(66.dp),
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.labelLarge,
+                fontFamily = AetherMonoFamily,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
         }
+        LinearProgressIndicator(
+            progress = { animated },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(999.dp)),
+            color = color,
+            trackColor = color.copy(alpha = 0.16f),
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
+    }
+}
+
+private fun formatUptime(millis: Long): String {
+    val totalMinutes = (millis / 60_000L).coerceAtLeast(0L)
+    val days = totalMinutes / (60 * 24)
+    val hours = (totalMinutes / 60) % 24
+    val minutes = totalMinutes % 60
+    return when {
+        days > 0 -> "${days}h ${hours}j ${minutes}m"
+        hours > 0 -> "${hours}j ${minutes}m"
+        else -> "${minutes}m"
     }
 }
 
 @Composable
 private fun DeviceStatusItem(
     icon: ImageVector,
+    tint: Color,
     label: String,
     value: String,
 ) {
@@ -332,7 +497,7 @@ private fun DeviceStatusItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = tint,
             modifier = Modifier.size(19.dp),
         )
         Text(

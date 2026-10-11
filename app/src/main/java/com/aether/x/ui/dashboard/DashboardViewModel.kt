@@ -8,7 +8,7 @@ import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.apps.GameProfileCatalog
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.data.AetherXPreferences
-import com.aether.x.ui.booster.GameBoosterSplashActivity
+import com.aether.x.core.apps.GameLaunchTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +28,7 @@ data class DashboardUiState(
     val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
 
-private val DEFAULT_CARD_ORDER = listOf("info", "status", "ram", "activity")
+private val DEFAULT_CARD_ORDER = listOf("info", "bonus", "status", "ram", "activity")
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -76,8 +76,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun normalizeCardOrder(saved: List<String>): List<String> {
         val defaults = DEFAULT_CARD_ORDER
-        val known = saved.filter { it in defaults }.distinct()
-        return known + defaults.filterNot { it in known }
+        val result = saved.filter { it in defaults }.distinct().toMutableList()
+        // Kartu baru (mis. "bonus") disisipkan di posisi default-nya, bukan
+        // ditaruh paling bawah, untuk user yang sudah punya urutan tersimpan.
+        defaults.forEachIndexed { defaultIndex, id ->
+            if (id !in result) result.add(defaultIndex.coerceAtMost(result.size), id)
+        }
+        return result
     }
 
     /**
@@ -118,12 +123,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun onGameClick(packageName: String) {
-        val label = state.value.installedGames.firstOrNull { it.packageName == packageName }?.label ?: packageName
-        GameBoosterSplashActivity.launch(getApplication(), packageName, label)
+        viewModelScope.launch {
+            GameLaunchTracker.launchAndTrack(getApplication(), packageName)
+        }
     }
 
     fun refreshDeviceInfo() {
         val app = getApplication<Application>()
-        _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(app)) }
+        viewModelScope.launch {
+            val info = withContext(Dispatchers.IO) { DeviceInfoProvider.read(app) }
+            _state.update { it.copy(deviceInfo = info) }
+        }
     }
 }

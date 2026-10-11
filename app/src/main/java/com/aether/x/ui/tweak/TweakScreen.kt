@@ -94,6 +94,7 @@ import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.AetherXInfoCard
+import com.aether.x.ui.dashboard.DailyBonusCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceStatusSection
@@ -109,7 +110,6 @@ fun TweakScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: TweakViewModel = viewModel(),
-    onNavigateToGameBooster: () -> Unit = {},
     dashboardRequest: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -187,10 +187,6 @@ fun TweakScreen(
                         selectedSubTab = tab
                         coroutineScope.launch { drawerState.close() }
                     },
-                    onNavigateToGameBooster = {
-                        coroutineScope.launch { drawerState.close() }
-                        onNavigateToGameBooster()
-                    },
                 )
             }
         },
@@ -239,7 +235,7 @@ fun TweakScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 4000.dp),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.xl),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.section),
                         userScrollEnabled = false,
                     ) {
                         itemsIndexed(dashboardState.cardOrder, key = { _, cardId -> cardId }) { index, cardId ->
@@ -273,6 +269,7 @@ fun TweakScreen(
                                 ) {
                                     when (cardId) {
                                         "info" -> AetherXInfoCard()
+                                        "bonus" -> DailyBonusCard()
                                         "status" -> DeviceStatusSection(
                                             info = dashboardState.deviceInfo,
                                             rootGranted = privilegeStatus.rootGranted,
@@ -484,16 +481,11 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
 
 private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR }
 
-private const val GAME_BOOSTER_DRAWER_LOCKED = true
-
-private val LOCKED_ITEM_NO_OP_CLICK: () -> Unit = {}
-
 @Composable
 private fun TweakDrawerContent(
     selected: TweakSubTab,
     showRootOnlyItems: Boolean,
     onSelect: (TweakSubTab) -> Unit,
-    onNavigateToGameBooster: () -> Unit,
 ) {
     Text(
         text = stringResource(R.string.app_name),
@@ -524,27 +516,6 @@ private fun TweakDrawerContent(
         onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-    )
-
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.game_booster_title)) },
-        icon = { Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null) },
-        badge = {
-
-            if (GAME_BOOSTER_DRAWER_LOCKED) {
-                Text(
-                    text = stringResource(R.string.game_booster_drawer_locked_badge),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        selected = false,
-        onClick = if (GAME_BOOSTER_DRAWER_LOCKED) LOCKED_ITEM_NO_OP_CLICK else onNavigateToGameBooster,
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier
-            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
-            .alpha(if (GAME_BOOSTER_DRAWER_LOCKED) 0.38f else 1f),
     )
 
     if (showRootOnlyItems) {

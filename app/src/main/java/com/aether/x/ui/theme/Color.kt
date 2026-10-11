@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 // dengan pembacaan tegangan/frekuensi/suhu kernel setiap hari.
 //
 // PENTING soal nama variabel di bawah: puluhan layar (MembershipScreen,
-// GameBoosterScreen/PanelContent/SidebarContent, PermissionSetupScreen,
+// PermissionSetupScreen,
 // BuildPropScreen, GameProfileScreen, AppManagerScreen, RootMonitorSection,
 // UpdateGate, CrosshairSettingsSection, dll — total 13+ file) meng-import
 // nama-nama token LAMA ini SECARA LANGSUNG (bukan lewat MaterialTheme.
@@ -60,6 +60,18 @@ val OnAetherRed = Color(0xFF2B0704)
 val AetherAmber = Color(0xFFF2B84E)
 val AetherAmberContainer = Color(0xFF3A2C0A)
 val OnAetherAmberContainer = Color(0xFFFFD9A0)
+
+// Aksen tambahan (v3.6 — "UI lebih berwarna"): dipakai untuk membedakan
+// kategori kartu/tab (biru = info/sistem, hijau = sehat/OK, pink = hiburan/
+// game, oranye = aksi/bonus) supaya layar tidak monoton cyan.
+val AetherBlue = Color(0xFF5AA9FF)
+val AetherBlueContainer = Color(0xFF14243D)
+val AetherGreen = Color(0xFF5BE38A)
+val AetherGreenContainer = Color(0xFF123222)
+val AetherPink = Color(0xFFFF7AB6)
+val AetherPinkContainer = Color(0xFF3A1829)
+val AetherOrange = Color(0xFFFF9A5C)
+val AetherOrangeContainer = Color(0xFF3A2112)
 
 // Teks: putih KEBIRUAN dingin, bukan krem hangat (menghindari palet "warm
 // cream + terracotta" yang jadi ciri khas AI-generated design).

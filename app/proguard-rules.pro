@@ -24,10 +24,12 @@
 # refleksi, supaya shrinking tidak mematahkan Firebase/libsu/Unity Ads.
 # ─────────────────────────────────────────────────────────────────────────
 
-# Firebase (Analytics, Firestore, Auth, Functions, Messaging) — Firestore
-# deserialize dokumen ke data class lewat refleksi.
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
+# Firebase (Firestore, Messaging) & Play Services Ads membawa consumer
+# proguard rules sendiri lewat AAR-nya, jadi TIDAK perlu `-keep` seluruh
+# package (rule lama `-keep class com.google.firebase.** { *; }` dan
+# `com.google.android.gms.** { *; }` mencegah R8 membuang kode tak terpakai
+# dan menggendutkan APK). Firestore tetap aman karena model data yang
+# dipetakan lewat refleksi ada di com.aether.x.data (dikunci di bawah).
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 
@@ -48,11 +50,6 @@
 -keep class com.unity3d.services.** { *; }
 -dontwarn com.unity3d.ads.**
 -dontwarn com.unity3d.services.**
-
-# Haze (blur) — beberapa versi awal punya internal API yang diakses reflektif
-# oleh modul haze-materials.
--keep class dev.chrisbanes.haze.** { *; }
--dontwarn dev.chrisbanes.haze.**
 
 # DataStore Preferences
 -keep class androidx.datastore.*.** { *; }
