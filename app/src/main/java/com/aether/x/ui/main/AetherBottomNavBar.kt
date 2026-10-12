@@ -54,6 +54,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.theme.Spacing
+import com.aether.x.ui.components.LocalAetherHazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import com.aether.x.ui.theme.LocalGlassIntensity
 import kotlin.math.abs
 import kotlin.math.floor
@@ -71,9 +74,8 @@ data class AetherNavItem(
  * Tab bar capsule v3.6.
  *
  * Kenapa ditulis ulang (lebih ringan dari versi sebelumnya):
- *  - TIDAK ada blur real-time (Haze) lagi — itu dua layer blur penuh yang
- *    dirender ulang tiap frame di belakang bar dan jadi biang jank di
- *    perangkat mid-range. Dependency Haze ikut dihapus dari APK.
+ *  - Backdrop blur menggunakan Haze dengan sampling terkontrol agar konten
+ *    di bawah kapsul benar-benar ditangkap dan diburamkan, bukan diblur dekorasinya.
  *  - Pill digambar di fase DRAW (`drawBehind`) dan posisinya dibaca dari
  *    `Animatable` di dalam lambda draw, jadi saat pill meluncur TIDAK ada
  *    recomposition sama sekali (versi lama mengubah ukuran/offset Box di
@@ -138,11 +140,18 @@ fun AetherBottomNavBar(
                 spotColor = Color.Black.copy(alpha = 0.45f),
             )
             .clip(barShape)
+            // zIndex 1 lets the capsule sample the tab content source at zIndex 0.
+            .hazeSource(LocalAetherHazeState.current, zIndex = 1f)
+            .hazeEffect(state = LocalAetherHazeState.current) {
+                // Slider Appearance controls this actual captured-background blur.
+                blurRadius = (glassIntensity * 30f).dp
+                backgroundColor = surface.copy(alpha = 0.24f + (1f - glassIntensity) * 0.20f)
+            }
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        lerp(surface, Color.White, 0.06f).copy(alpha = 0.97f),
-                        surface.copy(alpha = 0.97f),
+                        lerp(surface, Color.White, 0.04f).copy(alpha = 0.12f),
+                        surface.copy(alpha = 0.08f),
                     ),
                 ),
             )

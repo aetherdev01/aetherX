@@ -5,12 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -32,6 +36,9 @@ import com.aether.x.ui.navigation.AetherXRoutes
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
 import com.aether.x.ui.theme.AetherXTheme
+import com.aether.x.ui.components.LocalAetherHazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -102,6 +109,7 @@ private fun AetherXRoot(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val rootHazeState = rememberHazeState()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val appPrefsForService by preferences.preferences.collectAsStateWithLifecycle(initialValue = null)
     LaunchedEffect(privilegeStatus.rootGranted, appPrefsForService?.gameProfiles?.keys) {
@@ -114,50 +122,56 @@ private fun AetherXRoot(
         }
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
-        composable(AetherXRoutes.SPLASH_MAIN) {
-
-            SplashScreen(
-                onSplashFinished = {
-                    val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
-                    navController.navigate(destination) {
-                        popUpTo(AetherXRoutes.SPLASH_MAIN) { inclusive = true }
-                    }
-                },
-            )
+    CompositionLocalProvider(LocalAetherHazeState provides rootHazeState) {
+        Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier.fillMaxSize().hazeSource(rootHazeState, zIndex = -1f),
+            ) {
+            composable(AetherXRoutes.SPLASH_MAIN) {
+    
+                SplashScreen(
+                    onSplashFinished = {
+                        val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
+                        navController.navigate(destination) {
+                            popUpTo(AetherXRoutes.SPLASH_MAIN) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable(AetherXRoutes.PERMISSION_ONBOARDING) {
+                PermissionSetupScreen(
+                    onContinue = {
+                        scope.launch {
+                            preferences.setOnboardingCompleted(true)
+                            // Onboarding baru = instalasi baru, bukan update dari versi lama —
+                            // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
+                            // pakai versi sebelumnya (lihat WhatsNewViewModel).
+                            preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
+                        }
+    
+                        navController.navigate(AetherXRoutes.MAIN) {
+                            popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
+                        }
+                    },
+                    requireAccessToContinue = true,
+                )
+            }
+            composable(AetherXRoutes.MAIN) {
+                MainScreen(
+                    onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
+                )
+            }
+            composable(AetherXRoutes.MANAGE_ACCESS) {
+                PermissionSetupScreen(
+                    onContinue = { navController.popBackStack() },
+                    requireAccessToContinue = false,
+                )
+            }
         }
-        composable(AetherXRoutes.PERMISSION_ONBOARDING) {
-            PermissionSetupScreen(
-                onContinue = {
-                    scope.launch {
-                        preferences.setOnboardingCompleted(true)
-                        // Onboarding baru = instalasi baru, bukan update dari versi lama —
-                        // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
-                        // pakai versi sebelumnya (lihat WhatsNewViewModel).
-                        preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
-                    }
-
-                    navController.navigate(AetherXRoutes.MAIN) {
-                        popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
-                    }
-                },
-                requireAccessToContinue = true,
-            )
-        }
-        composable(AetherXRoutes.MAIN) {
-            MainScreen(
-                onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
-            )
-        }
-        composable(AetherXRoutes.MANAGE_ACCESS) {
-            PermissionSetupScreen(
-                onContinue = { navController.popBackStack() },
-                requireAccessToContinue = false,
-            )
+            MaintenanceGate()
+            UpdateGate()
         }
     }
-
-    MaintenanceGate()
-
-    UpdateGate()
 }

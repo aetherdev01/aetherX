@@ -14,3 +14,11 @@
 - This is a source patch, not a signed APK.
 - Full Android compilation was not possible from the supplied archive because the Gradle wrapper, `settings.gradle(.kts)`, and `gradle/libs.versions.toml` version catalog are absent.
 - Glass intensity currently controls translucent surfaces and blurred decorative highlights. It does not implement a true real-time backdrop blur behind every dialog/window; that requires a separate window-level blur implementation and device testing.
+
+
+## Follow-up patch v3 — backdrop blur and compatibility diagnostics
+- Added Haze 1.6.1 source capture so the bottom capsule blurs the actual app content beneath it rather than blurring a decorative gradient.
+- The glass-intensity slider now controls the real navbar backdrop blur radius, with a tinted translucent surface for contrast.
+- Central `PopupDialog` and `PopupDialogPanel` now use `HazeDialog` and share the MainScreen backdrop state; the crosshair style picker and reboot confirmation use the shared blurred dialog path too.
+- Replaced the narrow CPU0-only probe with a read-only compatibility diagnostic that checks CPU policy interfaces, devfreq/GPU interfaces, thermal zones, ZRAM/swap, Android/ABI/kernel, and root-manager indicators without writing sysfs.
+- Static validation is possible here, but an actual Gradle build and device/chipset/root-manager test matrix still need the full root Gradle project and physical/emulated test devices. No unsupported capability is reported as universally available.

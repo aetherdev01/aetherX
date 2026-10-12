@@ -127,6 +127,9 @@ kotlin {
 }
 
 dependencies {
+    // True backdrop blur for the capsule navigation and Compose dialogs.
+    implementation("dev.chrisbanes.haze:haze:1.6.1")
+
     // ── Core ─────────────────────────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

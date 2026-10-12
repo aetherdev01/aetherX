@@ -15,11 +15,9 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,10 +39,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.core.kernel.KernelDiagnostics
 import com.aether.x.data.AppFontStyle
 import com.aether.x.data.CardStylePref
 import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.components.cardEnterAnimation
 
 @Composable
@@ -117,9 +117,9 @@ fun SettingsScreen(
                     else OutlinedButton(onClick = { viewModel.setCardStyle(style) }) { Text(label) }
                 }
             }
-            Text("Intensitas glass ${"%.0f".format(prefs.glassIntensity * 100)}%", style = MaterialTheme.typography.labelLarge)
+            Text("Blur latar ${"%.0f".format(prefs.glassIntensity * 100)}%", style = MaterialTheme.typography.labelLarge)
             Slider(value = prefs.glassIntensity, onValueChange = viewModel::setGlassIntensity, valueRange = 0f..1f)
-            Text("Mengatur transparansi dan kekuatan tampilan permukaan glass. Efek blur latar sistem bergantung pada dukungan perangkat/Android.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Mengatur kekuatan blur latar yang ditangkap di navbar dan dialog, serta tingkat tint permukaannya. Pada perangkat lambat, turunkan nilai untuk menjaga kelancaran.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         SectionCard(
@@ -145,12 +145,12 @@ fun SettingsScreen(
                 onClick = {
                     commandBusy = true
                     scope.launch {
-                        val result = viewModel.runRootCommand("echo 'CPU GOVERNORS'; for f in /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors; do [ -r \"$f\" ] && cat \"$f\"; done; echo 'ZRAM'; cat /proc/swaps; echo 'THERMAL ZONES'; for z in /sys/class/thermal/thermal_zone*/type; do [ -r \"$z\" ] && printf '%s: ' \"$z\" && cat \"$z\"; done; echo 'MOUNT'; mount | head -n 25")
+                        val result = viewModel.runRootCommand(KernelDiagnostics.readOnlyCommand)
                         commandResult = (if (result.first) "Diagnostik selesai" else "Diagnostik gagal") + "\n" + result.second
                         commandBusy = false
                     }
                 }, enabled = !commandBusy, modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (commandBusy) "Mengumpulkan diagnostik…" else "Diagnostik kernel lanjutan") }
+            ) { Text(if (commandBusy) "Mengumpulkan diagnostik…" else "Diagnostik kernel (read-only)") }
             commandResult?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
 
@@ -193,22 +193,21 @@ fun SettingsScreen(
     }
 
     pendingCommand?.let { command ->
-        AlertDialog(
+        PopupDialog(
             onDismissRequest = { pendingCommand = null },
-            title = { Text("Konfirmasi tindakan sistem") },
-            text = { Text("Jalankan '$command'? Perangkat akan memulai ulang dan aplikasi yang terbuka bisa kehilangan data yang belum disimpan.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingCommand = null
-                    commandBusy = true
-                    scope.launch {
-                        val result = viewModel.runRootCommand(command)
-                        commandResult = (if (result.first) "Perintah diterima" else "Perintah gagal") + "\n" + result.second
-                        commandBusy = false
-                    }
-                }) { Text("Lanjutkan") }
+            title = "Konfirmasi tindakan sistem",
+            message = "Jalankan '$command'? Perangkat akan memulai ulang dan aplikasi yang terbuka bisa kehilangan data yang belum disimpan.",
+            confirmLabel = "Lanjutkan",
+            onConfirm = {
+                pendingCommand = null
+                commandBusy = true
+                scope.launch {
+                    val result = viewModel.runRootCommand(command)
+                    commandResult = (if (result.first) "Perintah diterima" else "Perintah gagal") + "\n" + result.second
+                    commandBusy = false
+                }
             },
-            dismissButton = { TextButton(onClick = { pendingCommand = null }) { Text("Batal") } },
+            dismissLabel = "Batal",
         )
     }
 }

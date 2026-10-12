@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,6 +42,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.AetherXApp
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import com.aether.x.ui.components.LocalAetherHazeState
 import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.membership.MembershipScreen
@@ -61,6 +65,7 @@ private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 fun MainScreen(
     onManageAccess: () -> Unit,
 ) {
+    val hazeState = rememberHazeState()
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
 
     // Counter event, bukan Boolean, supaya setiap tap Dashboard dianggap
@@ -71,8 +76,6 @@ fun MainScreen(
     val tweakViewModel: TweakViewModel = viewModel()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    WhatsNewDialog()
 
     // ── Iklan interstitial: trigger "kembali ke aplikasi" ──────────────────
     // Dipicu saat user kembali ke app setelah ditinggal >= 20 detik (bukan
@@ -141,7 +144,9 @@ fun MainScreen(
         }
     }
 
-    Scaffold(
+    CompositionLocalProvider(LocalAetherHazeState provides hazeState) {
+        WhatsNewDialog()
+        Scaffold(
         modifier = Modifier.nestedScroll(navBarScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -177,7 +182,7 @@ fun MainScreen(
         // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
         // terasa berat di perangkat mid-range.
         AnimatedContent(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
             targetState = selectedTab,
             transitionSpec = {
                 val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
@@ -213,6 +218,7 @@ fun MainScreen(
                     onManageAccess = onManageAccess,
                 )
             }
+        }
         }
     }
 }

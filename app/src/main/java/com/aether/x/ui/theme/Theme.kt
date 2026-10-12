@@ -13,6 +13,8 @@ import com.aether.x.data.AppFontStyle
 import com.aether.x.data.CardStylePref
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.LocalHazeStyle
 
 // v3.5 — skema warna dibangun dari token "Aether" baru (lihat Color.kt untuk
 // filosofi lengkapnya). primary/secondary/tertiary dipetakan dengan makna
@@ -109,7 +111,16 @@ fun AetherXTheme(
         labelMedium = baseTypography.labelMedium.copy(fontFamily = selectedFamily),
         labelSmall = baseTypography.labelSmall.copy(fontFamily = selectedFamily),
     )
-    CompositionLocalProvider(LocalCardStyle provides cardStyle, LocalGlassIntensity provides glassIntensity.coerceIn(0f, 1f)) {
+    val normalizedGlassIntensity = glassIntensity.coerceIn(0f, 1f)
+    CompositionLocalProvider(
+        LocalCardStyle provides cardStyle,
+        LocalGlassIntensity provides normalizedGlassIntensity,
+        LocalHazeStyle provides HazeStyle(
+            backgroundColor = colorScheme.surface.copy(alpha = 0.62f - normalizedGlassIntensity * 0.24f),
+            blurRadius = (normalizedGlassIntensity * 30f).dp,
+            noiseFactor = 0.04f,
+        ),
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = selectedTypography,

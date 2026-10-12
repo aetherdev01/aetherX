@@ -57,7 +57,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import dev.chrisbanes.haze.HazeDialog
+import com.aether.x.ui.components.LocalAetherHazeState
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.theme.AccentBlue
@@ -344,7 +345,10 @@ fun CrosshairStylePickerDialog(
     onDismiss: () -> Unit,
     onStyleSelected: (CrosshairStyle) -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    HazeDialog(
+        hazeState = LocalAetherHazeState.current,
+        onDismissRequest = onDismiss,
+    ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
