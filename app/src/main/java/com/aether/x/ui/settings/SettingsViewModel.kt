@@ -14,6 +14,9 @@ import com.aether.x.core.overlay.CrosshairOverlayService
 import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
+import com.aether.x.data.AppFontStyle
+import com.aether.x.data.CardStylePref
+import com.aether.x.core.shell.RootShellExecutor
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.data.DarkModePref
 import com.aether.x.data.FpsMonitorStyle
@@ -101,6 +104,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         if (activity == null) return
         val isMember = preferences.preferences.first().isMembershipActive
         AetherXApp.interstitialAdGate.maybeShow(activity, isMember = isMember)
+    }
+
+    fun setAppFontStyle(value: AppFontStyle) { viewModelScope.launch { preferences.setAppFontStyle(value) } }
+    fun setCardStyle(value: CardStylePref) { viewModelScope.launch { preferences.setCardStyle(value) } }
+    fun setGlassIntensity(value: Float) { viewModelScope.launch { preferences.setGlassIntensity(value) } }
+
+    suspend fun runRootCommand(command: String): Pair<Boolean, String> {
+        val result = RootShellExecutor().exec(command)
+        return result.success to (result.output + result.error).joinToString("\n").ifBlank { if (result.success) "Perintah dikirim." else "Perintah gagal." }
     }
 
     fun setDarkModePref(value: DarkModePref) {

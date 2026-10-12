@@ -21,12 +21,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.theme.Spacing
+import com.aether.x.ui.theme.LocalCardStyle
+import com.aether.x.ui.theme.LocalGlassIntensity
+import com.aether.x.data.CardStylePref
 
 /**
  * Surface kartu bersama AetherX. Semua layar fitur memakai ini supaya
@@ -48,14 +52,31 @@ fun SectionCard(
     accent: Color = MaterialTheme.colorScheme.primary,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val cardStyle = LocalCardStyle.current
+    val glassIntensity = LocalGlassIntensity.current
+    val shape = when (cardStyle) {
+        CardStylePref.GLASS -> RoundedCornerShape(26.dp)
+        CardStylePref.SOFT -> RoundedCornerShape(20.dp)
+        CardStylePref.OUTLINED -> RoundedCornerShape(14.dp)
+    }
+    val surface = MaterialTheme.colorScheme.surface
+    val container = when (cardStyle) {
+        CardStylePref.GLASS -> surface.copy(alpha = 1f - glassIntensity * 0.08f)
+        CardStylePref.SOFT -> surface
+        CardStylePref.OUTLINED -> MaterialTheme.colorScheme.background
+    }
+    val borderColor = when (cardStyle) {
+        CardStylePref.GLASS -> accent.copy(alpha = 0.12f + glassIntensity * 0.22f)
+        CardStylePref.SOFT -> MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+        CardStylePref.OUTLINED -> MaterialTheme.colorScheme.outline.copy(alpha = 0.9f)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.20f)),
+        colors = CardDefaults.cardColors(containerColor = container),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (cardStyle == CardStylePref.SOFT) 2.dp else 0.dp),
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Box {
             // Highlight warna di sisi atas kartu.
@@ -63,9 +84,10 @@ fun SectionCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp)
+                    .blur((glassIntensity * 14f).dp)
                     .background(
                         Brush.verticalGradient(
-                            listOf(accent.copy(alpha = 0.14f), Color.Transparent),
+                            listOf(accent.copy(alpha = if (cardStyle == CardStylePref.GLASS) 0.04f + glassIntensity * 0.12f else 0.06f), Color.Transparent),
                         ),
                     ),
             )

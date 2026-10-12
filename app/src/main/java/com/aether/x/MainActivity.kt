@@ -66,6 +66,9 @@ class MainActivity : ComponentActivity() {
                         com.aether.x.data.DarkModePref.LIGHT -> false
                         com.aether.x.data.DarkModePref.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
                     },
+                    fontStyle = prefsValue.appFontStyle,
+                    cardStyle = prefsValue.cardStylePref,
+                    glassIntensity = prefsValue.glassIntensity,
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,

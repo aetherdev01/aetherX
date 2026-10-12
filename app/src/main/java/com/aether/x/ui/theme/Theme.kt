@@ -6,6 +6,11 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.text.font.FontFamily
+import com.aether.x.data.AppFontStyle
+import com.aether.x.data.CardStylePref
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -68,18 +73,48 @@ private val AetherXShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),  // dialog/bottom sheet
 )
 
+val LocalCardStyle = staticCompositionLocalOf { CardStylePref.GLASS }
+val LocalGlassIntensity = staticCompositionLocalOf { 0.45f }
+
 @Composable
 fun AetherXTheme(
-
     darkTheme: Boolean = false,
+    fontStyle: AppFontStyle = AppFontStyle.DEFAULT,
+    cardStyle: CardStylePref = CardStylePref.GLASS,
+    glassIntensity: Float = 0.45f,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) AetherXDarkScheme else AetherXLightScheme
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AetherXTypography,
-        shapes = AetherXShapes,
-        content = content,
+    val selectedFamily = when (fontStyle) {
+        AppFontStyle.DEFAULT -> PoppinsFamily
+        AppFontStyle.SERIF -> FontFamily.Serif
+        AppFontStyle.MONO -> FontFamily.Monospace
+    }
+    val baseTypography = AetherXTypography
+    val selectedTypography = baseTypography.copy(
+        displayLarge = baseTypography.displayLarge.copy(fontFamily = selectedFamily),
+        displayMedium = baseTypography.displayMedium.copy(fontFamily = selectedFamily),
+        displaySmall = baseTypography.displaySmall.copy(fontFamily = selectedFamily),
+        headlineLarge = baseTypography.headlineLarge.copy(fontFamily = selectedFamily),
+        headlineMedium = baseTypography.headlineMedium.copy(fontFamily = selectedFamily),
+        headlineSmall = baseTypography.headlineSmall.copy(fontFamily = selectedFamily),
+        titleLarge = baseTypography.titleLarge.copy(fontFamily = selectedFamily),
+        titleMedium = baseTypography.titleMedium.copy(fontFamily = selectedFamily),
+        titleSmall = baseTypography.titleSmall.copy(fontFamily = selectedFamily),
+        bodyLarge = baseTypography.bodyLarge.copy(fontFamily = selectedFamily),
+        bodyMedium = baseTypography.bodyMedium.copy(fontFamily = selectedFamily),
+        bodySmall = baseTypography.bodySmall.copy(fontFamily = selectedFamily),
+        labelLarge = baseTypography.labelLarge.copy(fontFamily = selectedFamily),
+        labelMedium = baseTypography.labelMedium.copy(fontFamily = selectedFamily),
+        labelSmall = baseTypography.labelSmall.copy(fontFamily = selectedFamily),
     )
+    CompositionLocalProvider(LocalCardStyle provides cardStyle, LocalGlassIntensity provides glassIntensity.coerceIn(0f, 1f)) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = selectedTypography,
+            shapes = AetherXShapes,
+            content = content,
+        )
+    }
 }

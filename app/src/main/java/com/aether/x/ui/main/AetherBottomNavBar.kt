@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.theme.Spacing
+import com.aether.x.ui.theme.LocalGlassIntensity
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -98,6 +99,7 @@ fun AetherBottomNavBar(
     val barShape = RoundedCornerShape(percent = 50)
     val surface = MaterialTheme.colorScheme.surface
     val outline = MaterialTheme.colorScheme.outline
+    val glassIntensity = LocalGlassIntensity.current
     val scope = rememberCoroutineScope()
 
     // Posisi pill dalam satuan "indeks slot" (0f..lastIndex). Dibaca HANYA di
@@ -119,7 +121,7 @@ fun AetherBottomNavBar(
 
     val pressScale by animateFloatAsState(
         targetValue = if (pressed) 1.085f else 1f,
-        animationSpec = spring(dampingRatio = 0.48f, stiffness = 360f),
+        animationSpec = spring(dampingRatio = 0.38f, stiffness = 300f),
         label = "pillPress",
     )
 
@@ -240,7 +242,7 @@ fun AetherBottomNavBar(
 
                     // Glow lembut di belakang pill.
                     drawRoundRect(
-                        color = accent.copy(alpha = 0.16f),
+                        color = accent.copy(alpha = 0.08f + glassIntensity * 0.20f),
                         topLeft = Offset(left - 4.dp.toPx(), top - 3.dp.toPx()),
                         size = Size(w + 8.dp.toPx(), h + 6.dp.toPx()),
                         cornerRadius = CornerRadius((h + 6.dp.toPx()) / 2f),
@@ -248,7 +250,7 @@ fun AetherBottomNavBar(
                     // Badan pill: gradient aksen transparan.
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.16f)),
+                            colors = listOf(accent.copy(alpha = 0.18f + glassIntensity * 0.28f), accent.copy(alpha = 0.08f + glassIntensity * 0.16f)),
                             startY = top,
                             endY = top + h,
                         ),
