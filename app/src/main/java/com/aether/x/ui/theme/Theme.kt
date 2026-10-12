@@ -116,6 +116,10 @@ fun AetherXTheme(
         LocalCardStyle provides cardStyle,
         LocalGlassIntensity provides normalizedGlassIntensity,
         LocalHazeStyle provides HazeStyle(
+            // Explicitly select the `tints: List<HazeTint>` constructor.
+            // Without this named argument, Haze 1.6.x exposes two overloads
+            // with defaulted tint/tints parameters and Kotlin reports ambiguity.
+            tints = emptyList(),
             backgroundColor = colorScheme.surface.copy(alpha = 0.62f - normalizedGlassIntensity * 0.24f),
             blurRadius = (normalizedGlassIntensity * 30f).dp,
             noiseFactor = 0.04f,

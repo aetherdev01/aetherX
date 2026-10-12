@@ -1,4 +1,4 @@
-# AetherX 3.6 — Follow-up source patch v3
+# AetherX 3.6 — Follow-up source patch v4 (HazeStyle overload fix)
 
 ## What changed
 
@@ -29,3 +29,10 @@ The local static validation currently reports **13/13 checks passed**, including
 ## What is not claimed as tested
 
 This archive is the Android **app module**, not the complete Gradle project. The supplied files do not include the root `settings.gradle(.kts)`, root build file/version catalog, or Gradle wrapper, and no Android SDK/device lab is available in this workspace. Therefore there is no verified APK build and no claim of tested runtime compatibility across Snapdragon, MediaTek, Exynos, Magisk, KernelSU, APatch, OEM ROMs, or battery-saver/GPU blur-disable conditions. Integrate this module into the complete project, build it, then run the diagnostics on representative devices before release.
+
+
+## v4 compiler fix
+
+- Fixes the Kotlin overload ambiguity at `Theme.kt` where `HazeStyle` exposes both `tint: HazeTint?` and `tints: List<HazeTint>` constructors with default parameters.
+- Adds `tints = emptyList()` so the compiler selects the list-based constructor explicitly while preserving the existing translucent background and blur-radius behavior.
+- Re-ran `validation/validate_patch.py`: **13/13 checks passed**. This is a targeted source fix; a full release build still requires the complete Gradle project.
