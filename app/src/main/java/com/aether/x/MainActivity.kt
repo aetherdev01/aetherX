@@ -59,11 +59,13 @@ class MainActivity : ComponentActivity() {
             }
 
             appPrefs?.let { prefsValue ->
-                // AetherX uses a fixed dark visual system. The appearance
-                // selector is intentionally removed from Settings; persisted
-                // legacy values remain harmless for compatibility.
+                // Preferensi lama tetap dihormati, tetapi default baru adalah tema terang.
                 AetherXTheme(
-                    darkTheme = true,
+                    darkTheme = when (prefsValue.darkModePref) {
+                        com.aether.x.data.DarkModePref.DARK -> true
+                        com.aether.x.data.DarkModePref.LIGHT -> false
+                        com.aether.x.data.DarkModePref.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                    },
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,

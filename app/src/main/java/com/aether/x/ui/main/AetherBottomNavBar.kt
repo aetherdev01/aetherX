@@ -118,8 +118,8 @@ fun AetherBottomNavBar(
     }
 
     val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 1.05f else 1f,
-        animationSpec = tween(durationMillis = 140),
+        targetValue = if (pressed) 1.085f else 1f,
+        animationSpec = spring(dampingRatio = 0.48f, stiffness = 360f),
         label = "pillPress",
     )
 

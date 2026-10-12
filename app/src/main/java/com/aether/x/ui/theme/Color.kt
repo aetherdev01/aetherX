@@ -81,16 +81,16 @@ val TextMuted = Color(0xFF56637A)
 
 // Skema TERANG (dipakai saat DarkModePref.LIGHT) — cyan digelapkan supaya
 // kontras aman di atas putih, tetap satu keluarga warna dengan mode gelap.
-val LightBg = Color(0xFFF3F6FA)
-val LightSurfaceVariant = Color(0xFFE7ECF3)
-val LightOutline = Color(0xFFD7DEE8)
-val LightPrimary = Color(0xFF0E8C7B)
-val LightPrimaryContainer = Color(0xFFCFF3EC)
-val OnLightPrimaryContainer = Color(0xFF04352D)
-val LightSecondary = Color(0xFF6C5CE0)
-val LightSecondaryContainer = Color(0xFFE7E1FF)
-val LightTextPrimary = Color(0xFF121722)
-val LightTextSecondary = Color(0xFF545F72)
+val LightBg = Color(0xFFF7F6F8)
+val LightSurfaceVariant = Color(0xFFF0EDF2)
+val LightOutline = Color(0xFFE2DDE5)
+val LightPrimary = Color(0xFF73566F)
+val LightPrimaryContainer = Color(0xFFEDE2EC)
+val OnLightPrimaryContainer = Color(0xFF39283A)
+val LightSecondary = Color(0xFF827487)
+val LightSecondaryContainer = Color(0xFFECE7EE)
+val LightTextPrimary = Color(0xFF28252B)
+val LightTextSecondary = Color(0xFF69636D)
 
 // --- Alias KOMPATIBILITAS MUNDUR (nama lama -> nilai baru) ------------------
 // Lihat catatan panjang di atas. JANGAN dihapus tanpa mengaudit ulang 13+

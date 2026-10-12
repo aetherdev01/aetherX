@@ -33,7 +33,7 @@ enum class FpsMonitorStyle { ROG, CLASSIC }
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
 
-    val darkModePref: DarkModePref = DarkModePref.DARK,
+    val darkModePref: DarkModePref = DarkModePref.LIGHT,
 
     val dpiValue: Int = -1,
     val widthValue: Int = -1,
@@ -162,7 +162,7 @@ class AetherXPreferences(private val context: Context) {
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
 
             darkModePref = runCatching { DarkModePref.valueOf(prefs[Keys.DARK_MODE] ?: "") }
-                .getOrDefault(DarkModePref.DARK),
+                .getOrDefault(DarkModePref.LIGHT),
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,

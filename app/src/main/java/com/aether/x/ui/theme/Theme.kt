@@ -71,7 +71,7 @@ private val AetherXShapes = Shapes(
 @Composable
 fun AetherXTheme(
 
-    darkTheme: Boolean = true,
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) AetherXDarkScheme else AetherXLightScheme
