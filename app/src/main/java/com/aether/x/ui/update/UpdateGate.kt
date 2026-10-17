@@ -165,7 +165,7 @@ private val DESCRIPTION_MAX_HEIGHT = 180.dp
 
 @Composable
 private fun UpdateDescriptionBlock(description: String) {
-    val lines = parseUpdateDescription(description)
+    val lines = parseUpdateDescription(description, dark = com.aether.x.ui.theme.LocalAetherPalette.current.isDark)
 
     Column(
         modifier = Modifier

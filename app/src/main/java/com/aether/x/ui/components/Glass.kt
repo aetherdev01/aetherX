@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -17,11 +18,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import com.aether.x.data.CardStyle
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
 
@@ -52,8 +54,8 @@ fun Modifier.aetherCardSurface(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        p.surface.copy(alpha = 0.90f - 0.36f * b),
-                        p.surface.copy(alpha = 0.80f - 0.34f * b),
+                        p.surface.copy(alpha = 0.94f - 0.16f * b),
+                        p.surface.copy(alpha = 0.88f - 0.16f * b),
                     ),
                 ),
             )
@@ -84,17 +86,48 @@ fun Modifier.aetherCardSurface(
 }
 
 /**
- * Panel kaca serbaguna (dialog, drawer). Transparansinya mengikuti slider
- * blur tapi dibatasi supaya teks tetap terbaca di atas konten apa pun.
+ * HazeState "root" milik seluruh UI app (dipasang di MainActivity). Dialog
+ * (jendela terpisah) memakainya untuk mem-blur isi layar di belakangnya.
+ * null = blur tidak tersedia (mis. preview) -> panel jatuh ke tint pekat.
+ */
+val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
+
+/** Radius blur (dp) dari slider 0f..1f. 0 berarti blur dimatikan. */
+fun blurRadiusFor(blur: Float): Float = 6f + 34f * blur
+
+/**
+ * Panel blur serbaguna (dialog, drawer). Isi di belakang panel di-BLUR
+ * sungguhan lewat Haze (`hazeEffect`), lalu diberi tint tipis supaya teks
+ * tetap terbaca. Slider blur menentukan radius blur; di 0 blur mati dan
+ * panel jadi hampir pekat.
+ *
+ * [hazeState] harus berupa state yang sumbernya (`hazeSource`) adalah
+ * SIBLING panel ini, bukan induknya. Dialog memakai state root.
  */
 @Composable
-fun Modifier.glassPanel(shape: Shape, minAlpha: Float = 0.74f): Modifier {
+fun Modifier.glassPanel(
+    shape: Shape,
+    minAlpha: Float = 0.60f,
+    hazeState: HazeState? = LocalHazeState.current,
+): Modifier {
     val p = LocalAetherPalette.current
     val b = LocalAetherStyle.current.blur
-    val top = (0.98f - 0.22f * b).coerceAtLeast(minAlpha)
-    val bottom = (0.95f - 0.20f * b).coerceAtLeast(minAlpha - 0.04f)
+    val blurOn = hazeState != null && b > 0.01f
+    val radius = blurRadiusFor(b).dp
+    val top = if (blurOn) (0.84f - 0.20f * b).coerceAtLeast(minAlpha) else 0.97f
+    val bottom = if (blurOn) (0.80f - 0.18f * b).coerceAtLeast(minAlpha - 0.04f) else 0.95f
     return this
         .clip(shape)
+        .then(
+            if (blurOn) {
+                Modifier.hazeEffect(state = hazeState) {
+                    blurRadius = radius
+                    noiseFactor = 0.03f
+                }
+            } else {
+                Modifier
+            },
+        )
         .background(
             Brush.verticalGradient(
                 listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
@@ -158,27 +191,18 @@ fun AetherBackground(
 }
 
 /**
- * Efek blur-di-belakang untuk jendela Dialog (platform cross-window blur,
- * Android 12+; app ini minSdk 31). Dipanggil DI DALAM content Dialog.
- * Kalau perangkat/ROM mematikan blur lintas-jendela, efek ini diam-diam
- * tidak berpengaruh dan panel kaca dialog tetap tampil dengan scrim biasa.
+ * Redup (dim) di belakang jendela Dialog. Blur-nya sendiri sekarang dikerjakan
+ * Haze pada panel dialog ([glassPanel]) — blur lintas-jendela bawaan platform
+ * (FLAG_BLUR_BEHIND) dihapus karena sering dimatikan ROM/penghemat baterai
+ * sehingga yang tampil cuma transparan. Dipanggil DI DALAM content Dialog.
  */
 @Composable
-fun DialogWindowBlur() {
+fun DialogWindowDim() {
     val blur = LocalAetherStyle.current.blur
-    val density = LocalDensity.current
     val window = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect {
         if (window == null) return@SideEffect
-        val radiusPx = with(density) { (blur * 36f).dp.toPx() }.toInt()
-        if (radiusPx > 0) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            val attrs = window.attributes
-            attrs.blurBehindRadius = radiusPx
-            window.attributes = attrs
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-        }
-        window.setDimAmount(0.20f + 0.10f * (1f - blur))
+        window.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        window.setDimAmount(0.28f - 0.10f * blur)
     }
 }

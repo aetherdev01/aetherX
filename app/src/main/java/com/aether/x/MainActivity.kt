@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.aether.x.ui.components.LocalHazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -140,10 +144,16 @@ private fun AetherXRoot(
         }
     }
 
+    // v3.8 — HazeState root: seluruh UI app adalah SUMBER blur; dialog (jendela
+    // terpisah) mem-blur isi layar di belakangnya lewat state ini.
+    val rootHaze = rememberHazeState(blurEnabled = true)
+
+    CompositionLocalProvider(LocalHazeState provides rootHaze) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .hazeSource(rootHaze),
     ) {
     NavHost(navController = navController, startDestination = startDestination) {
         composable(AetherXRoutes.SPLASH_MAIN) {
@@ -201,4 +211,5 @@ private fun AetherXRoot(
     MaintenanceGate()
 
     UpdateGate()
+    }
 }

@@ -92,7 +92,7 @@ fun PopupDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
-        DialogWindowBlur()
+        DialogWindowDim()
         Column(
             modifier = modifier
                 .fillMaxWidth()
@@ -214,7 +214,7 @@ fun PopupDialogPanel(
             usePlatformDefaultWidth = false,
         ),
     ) {
-        DialogWindowBlur()
+        DialogWindowDim()
         Column(
             modifier = modifier
                 .fillMaxWidth()

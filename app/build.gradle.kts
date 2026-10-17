@@ -23,8 +23,8 @@ android {
         applicationId = "com.aether.x"
         minSdk        = 31
         targetSdk     = 36
-        versionCode   = 30601210
-        versionName   = "3.6"
+        versionCode   = 30801211
+        versionName   = "3.8"
 
         // Nomor run CI (GitHub Actions) — dipakai untuk bagian "rXXX" di nama APK.
         // Di lokal (bukan CI) akan fallback ke "0" karena env var ini tidak ada.
@@ -169,4 +169,5 @@ dependencies {
 
     // ── Reorder kartu dashboard dengan long-press + drag ─────────────────────
     implementation(libs.reorderable)
+    implementation(libs.haze)
 }

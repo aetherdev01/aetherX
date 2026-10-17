@@ -111,8 +111,8 @@ fun AppearanceSettingsSection(
 
         var sliderValue by remember(blurStrength) { mutableFloatStateOf(blurStrength.toFloat()) }
         TweakSlider(
-            label = "Blur & kaca",
-            description = "Kekuatan blur dialog, transparansi navbar dan card kaca. 0 = tanpa blur.",
+            label = "Blur",
+            description = "Kekuatan blur sungguhan di dialog, drawer, dan navbar. 0 = blur mati.",
             valueText = "${sliderValue.roundToInt()}%",
             value = sliderValue,
             range = 0f..100f,
@@ -198,7 +198,7 @@ private fun AccentSwatch(color: Color, selected: Boolean, onClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Outlined.Check,
                 contentDescription = null,
-                tint = Color.White,
+                tint = com.aether.x.ui.theme.onColorFor(color),
                 modifier = Modifier.size(20.dp),
             )
         }

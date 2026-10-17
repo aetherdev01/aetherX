@@ -25,6 +25,10 @@ playServicesAds         = "23.6.0"
 
 reorderable = "3.1.0"
 
+# v3.8 — blur backdrop sungguhan. 1.6.10 = rilis terakhir yang sepaket dengan
+# Compose 1.8 (BOM 2025.05); 1.7.x ke atas menarik Compose 1.9-1.12.
+haze = "1.6.10"
+
 [plugins]
 android-application     = { id = "com.android.application",             version.ref = "agp"    }
 kotlin-android          = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
@@ -64,3 +68,5 @@ play-services-ads                       = { group = "com.google.android.gms",   
 
 
 reorderable                             = { group = "sh.calvin.reorderable",      name = "reorderable",                 version.ref = "reorderable"         }
+
+haze                                    = { group = "dev.chrisbanes.haze",        name = "haze",                        version.ref = "haze"                }

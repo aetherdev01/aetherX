@@ -82,7 +82,7 @@ fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
                 .height(50.dp),
             shape = MaterialTheme.shapes.large,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF29A9EA),
+                containerColor = Color(0xFF1B7FB8),
                 contentColor = Color.White,
             ),
         ) {

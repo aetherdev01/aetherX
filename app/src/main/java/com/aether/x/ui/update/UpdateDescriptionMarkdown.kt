@@ -12,11 +12,11 @@ private val COLOR_TAG_REGEX = Regex("""\[(\w+)](.*?)\[/\1]""", RegexOption.DOT_M
 private val BOLD_REGEX = Regex("""\*\*(.+?)\*\*""")
 private val ITALIC_REGEX = Regex("""(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|_(.+?)_""")
 
-private fun parseInlineMarkdown(line: String): AnnotatedString = buildAnnotatedString {
-    appendWithColorTags(line)
+private fun parseInlineMarkdown(line: String, dark: Boolean): AnnotatedString = buildAnnotatedString {
+    appendWithColorTags(line, dark)
 }
 
-private fun AnnotatedString.Builder.appendWithColorTags(text: String) {
+private fun AnnotatedString.Builder.appendWithColorTags(text: String, dark: Boolean) {
     var lastIndex = 0
     for (match in COLOR_TAG_REGEX.findAll(text)) {
         if (match.range.first > lastIndex) {
@@ -24,7 +24,7 @@ private fun AnnotatedString.Builder.appendWithColorTags(text: String) {
         }
         val colorName = match.groupValues[1]
         val inner = match.groupValues[2]
-        val color = colorFor(colorName)
+        val color = colorFor(colorName, dark)
         if (color != null) {
             withStyle(SpanStyle(color = color)) { appendWithBold(inner) }
         } else {
@@ -71,19 +71,16 @@ private fun AnnotatedString.Builder.appendWithItalic(text: String) {
     }
 }
 
-// v3.6 — warna tag changelog dari server dibuat konstan (bukan token tema):
-// fungsi parser ini bukan @Composable, dan nada tengah ini terbaca baik di
-// latar terang maupun gelap.
-private val TAG_BLUE = Color(0xFF2F80ED)
-private val TAG_GREEN = Color(0xFF2E9E5B)
-private val TAG_AMBER = Color(0xFFD98A00)
-private val TAG_RED = Color(0xFFE03E3E)
-
-private fun colorFor(name: String): Color? = when (name.lowercase()) {
-    "blue" -> TAG_BLUE
-    "green" -> TAG_GREEN
-    "amber", "yellow" -> TAG_AMBER
-    "red" -> TAG_RED
+// v3.8 — warna tag changelog dari server: dua set nada. Satu nada tengah TIDAK
+// bisa terbaca baik di putih DAN di gelap sekaligus (amber/hijau tengah hanya
+// ~2.8-3.4:1 di atas putih), jadi dipilih per mode. Semua >= 4.5:1 di
+// permukaan masing-masing. Fungsi parser ini bukan @Composable, jadi mode
+// gelap dikirim sebagai parameter.
+private fun colorFor(name: String, dark: Boolean): Color? = when (name.lowercase()) {
+    "blue" -> if (dark) Color(0xFF6CA8FF) else Color(0xFF1F63C2)
+    "green" -> if (dark) Color(0xFF5BE38A) else Color(0xFF1E7A38)
+    "amber", "yellow" -> if (dark) Color(0xFFF2B84E) else Color(0xFF9A5B00)
+    "red" -> if (dark) Color(0xFFFF7A70) else Color(0xFFC62828)
     else -> null
 }
 
@@ -92,14 +89,14 @@ data class UpdateDescriptionLine(
     val isBullet: Boolean,
 )
 
-fun parseUpdateDescription(description: String): List<UpdateDescriptionLine> {
+fun parseUpdateDescription(description: String, dark: Boolean = false): List<UpdateDescriptionLine> {
     if (description.isBlank()) return emptyList()
     return description.trimEnd().split("\n").map { rawLine ->
         val trimmed = rawLine.trimStart()
         val isBullet = trimmed.startsWith("- ")
         val content = if (isBullet) trimmed.removePrefix("- ") else rawLine
         UpdateDescriptionLine(
-            text = parseInlineMarkdown(content),
+            text = parseInlineMarkdown(content, dark),
             isBullet = isBullet,
         )
     }

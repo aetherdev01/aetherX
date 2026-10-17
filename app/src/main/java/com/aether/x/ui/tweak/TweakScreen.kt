@@ -80,6 +80,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.components.glassPanel
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -119,6 +121,9 @@ fun TweakScreen(
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    // v3.8 — sumber blur drawer: isi layar Tweak (SIBLING sheet di dalam
+    // ModalNavigationDrawer). Sheet mem-blur isi ini saat terbuka.
+    val drawerHaze = rememberHazeState(blurEnabled = true)
     val coroutineScope = rememberCoroutineScope()
 
     val dashboardViewModel: DashboardViewModel = viewModel()
@@ -192,7 +197,8 @@ fun TweakScreen(
                         topEnd = 28.dp,
                         bottomEnd = 28.dp,
                     ),
-                    minAlpha = 0.80f,
+                    minAlpha = 0.66f,
+                    hazeState = drawerHaze,
                 ),
             ) {
                 TweakDrawerContent(
@@ -206,7 +212,12 @@ fun TweakScreen(
             }
         },
     ) {
-        Column(modifier = modifier.fillMaxSize().padding(contentPadding)) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .hazeSource(drawerHaze)
+                .padding(contentPadding),
+        ) {
             Column(
                 modifier = Modifier
                     .weight(1f)

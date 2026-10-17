@@ -53,7 +53,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.blurRadiusFor
 import com.aether.x.ui.theme.LocalAetherPalette
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
@@ -71,10 +74,8 @@ data class AetherNavItem(
 /**
  * Tab bar capsule v3.6 — kaca.
  *
- *  - Latar kaca: gradasi transparan (makin transparan sesuai slider blur) +
- *    garis tepi berkilau. Tanpa blur backdrop real-time (penyebab jank di
- *    perangkat mid-range pada versi sebelumnya); kesan kaca datang dari
- *    transparansi di atas latar aurora.
+ *  - v3.8: latar capsule mem-BLUR konten tab yang lewat di belakangnya
+ *    (Haze, radius dari slider blur) + tint tipis + garis tepi berkilau.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
  *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
@@ -89,6 +90,8 @@ fun AetherBottomNavBar(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Sumber blur = konten tab di belakang navbar (SIBLING navbar, bukan induknya). */
+    hazeState: HazeState? = null,
 ) {
     if (items.isEmpty()) return
 
@@ -130,7 +133,10 @@ fun AetherBottomNavBar(
         }
     }
 
-    val barAlpha = (0.94f - 0.24f * blur).coerceIn(0.6f, 1f)
+    val blurOn = hazeState != null && blur > 0.01f
+    val barBlurRadius = blurRadiusFor(blur).dp
+    // Blur nyata: tint cukup tipis supaya blur-nya kelihatan tapi ikon tetap terbaca.
+    val barAlpha = if (blurOn) (0.80f - 0.22f * blur).coerceIn(0.55f, 0.9f) else 0.96f
 
     Box(
         modifier = modifier
@@ -206,6 +212,16 @@ fun AetherBottomNavBar(
                     spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
                 )
                 .clip(barShape)
+                .then(
+                    if (blurOn) {
+                        Modifier.hazeEffect(state = hazeState) {
+                            blurRadius = barBlurRadius
+                            noiseFactor = 0.03f
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
                 .background(
                     Brush.verticalGradient(
                         listOf(

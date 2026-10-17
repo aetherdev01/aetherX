@@ -62,7 +62,7 @@ import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.glassPanel
-import com.aether.x.ui.components.DialogWindowBlur
+import com.aether.x.ui.components.DialogWindowDim
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.TextSecondary
 import com.aether.x.ui.theme.AccentBlueDim
@@ -348,7 +348,7 @@ fun CrosshairStylePickerDialog(
     onStyleSelected: (CrosshairStyle) -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        DialogWindowBlur()
+        DialogWindowDim()
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = Color.Transparent,

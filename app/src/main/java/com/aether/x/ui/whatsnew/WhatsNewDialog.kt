@@ -47,8 +47,8 @@ fun WhatsNewDialog(viewModel: WhatsNewViewModel = viewModel()) {
     ) {
         val items = listOf(
             R.string.whatsnew_item_appearance,
-            R.string.whatsnew_item_glass,
-            R.string.whatsnew_item_dashboard,
+            R.string.whatsnew_item_blur,
+            R.string.whatsnew_item_colors,
             R.string.whatsnew_item_advanced,
             R.string.whatsnew_item_adblock,
         )
