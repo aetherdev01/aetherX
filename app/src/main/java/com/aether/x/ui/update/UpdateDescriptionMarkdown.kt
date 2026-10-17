@@ -7,10 +7,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import com.aether.x.ui.theme.AccentAmber
-import com.aether.x.ui.theme.AccentBlue
-import com.aether.x.ui.theme.AccentGreen
-import com.aether.x.ui.theme.AccentRed
 
 private val COLOR_TAG_REGEX = Regex("""\[(\w+)](.*?)\[/\1]""", RegexOption.DOT_MATCHES_ALL)
 private val BOLD_REGEX = Regex("""\*\*(.+?)\*\*""")
@@ -75,11 +71,19 @@ private fun AnnotatedString.Builder.appendWithItalic(text: String) {
     }
 }
 
+// v3.6 — warna tag changelog dari server dibuat konstan (bukan token tema):
+// fungsi parser ini bukan @Composable, dan nada tengah ini terbaca baik di
+// latar terang maupun gelap.
+private val TAG_BLUE = Color(0xFF2F80ED)
+private val TAG_GREEN = Color(0xFF2E9E5B)
+private val TAG_AMBER = Color(0xFFD98A00)
+private val TAG_RED = Color(0xFFE03E3E)
+
 private fun colorFor(name: String): Color? = when (name.lowercase()) {
-    "blue" -> AccentBlue
-    "green" -> AccentGreen
-    "amber", "yellow" -> AccentAmber
-    "red" -> AccentRed
+    "blue" -> TAG_BLUE
+    "green" -> TAG_GREEN
+    "amber", "yellow" -> TAG_AMBER
+    "red" -> TAG_RED
     else -> null
 }
 

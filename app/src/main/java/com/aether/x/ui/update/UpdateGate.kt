@@ -110,7 +110,7 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
                 shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentBlue,
-                    contentColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
             ) {
                 Row(

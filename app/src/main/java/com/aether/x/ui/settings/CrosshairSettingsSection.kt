@@ -57,11 +57,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeDialog
-import com.aether.x.ui.components.LocalAetherHazeState
+import androidx.compose.ui.window.Dialog
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
+import com.aether.x.ui.components.aetherCardSurface
+import com.aether.x.ui.components.glassPanel
+import com.aether.x.ui.components.DialogWindowBlur
 import com.aether.x.ui.theme.AccentBlue
+import com.aether.x.ui.theme.TextSecondary
 import com.aether.x.ui.theme.AccentBlueDim
 import com.aether.x.ui.theme.SurfaceRaised
 import kotlinx.coroutines.delay
@@ -125,8 +128,7 @@ fun CrosshairSettingsSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surface),
+            .aetherCardSurface(MaterialTheme.shapes.medium),
     ) {
         // Latar Ikon Samark
         Icon(
@@ -196,7 +198,7 @@ fun CrosshairSettingsSection(
                     Text(
                         text = "Gaya Crosshair",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     // Preview Icon Aktif
                     Box(modifier = Modifier.size(24.dp)) {
@@ -265,7 +267,7 @@ fun CrosshairSettingsSection(
                         Text(
                             text = "Rotasi",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = TextSecondary
                         )
                         Text(
                             text = "${rotationDegrees}°",
@@ -345,20 +347,18 @@ fun CrosshairStylePickerDialog(
     onDismiss: () -> Unit,
     onStyleSelected: (CrosshairStyle) -> Unit
 ) {
-    HazeDialog(
-        hazeState = LocalAetherHazeState.current,
-        onDismissRequest = onDismiss,
-    ) {
+    Dialog(onDismissRequest = onDismiss) {
+        DialogWindowBlur()
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth().glassPanel(RoundedCornerShape(16.dp))
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = "Pilih Gaya Crosshair",
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 LazyVerticalGrid(
@@ -402,7 +402,7 @@ private fun StyleIconButton(
         Box(modifier = Modifier.size(26.dp)) {
             StyleIconButtonInner(
                 style = style,
-                color = if (isSelected) AccentBlue else Color.White.copy(alpha = 0.6f)
+                color = if (isSelected) AccentBlue else TextSecondary
             )
         }
     }
@@ -550,6 +550,7 @@ private fun PositionDPadOnly(
     modifier: Modifier = Modifier,
 ) {
     val nudgeStep = 6
+    val ringColor = AccentBlueDim.copy(alpha = 0.5f)
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -558,7 +559,7 @@ private fun PositionDPadOnly(
         Canvas(modifier = Modifier.size(130.dp)) {
             val strokeWidth = 1.dp.toPx()
             drawCircle(
-                color = AccentBlueDim.copy(alpha = 0.5f),
+                color = ringColor,
                 radius = size.minDimension / 2f,
                 style = Stroke(strokeWidth)
             )
@@ -624,6 +625,8 @@ private fun DPadTriangle(
         DPadDirection.LEFT -> 270f
     }
 
+    val heldColor = AccentBlue
+    val idleColor = TextSecondary
     Box(
         modifier = modifier
             .size(36.dp)
@@ -650,7 +653,7 @@ private fun DPadTriangle(
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(path, color = if (isHeld) AccentBlue else Color.White.copy(alpha = 0.55f))
+            drawPath(path, color = if (isHeld) heldColor else idleColor)
         }
     }
 }
@@ -672,7 +675,7 @@ private fun VerticalAccentSlider(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.75f),
+            color = TextSecondary,
         )
         Text(
             text = valueText,

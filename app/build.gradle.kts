@@ -23,7 +23,7 @@ android {
         applicationId = "com.aether.x"
         minSdk        = 31
         targetSdk     = 36
-        versionCode   = 30600001
+        versionCode   = 30601210
         versionName   = "3.6"
 
         // Nomor run CI (GitHub Actions) — dipakai untuk bagian "rXXX" di nama APK.
@@ -127,9 +127,6 @@ kotlin {
 }
 
 dependencies {
-    // True backdrop blur for the capsule navigation and Compose dialogs.
-    implementation("dev.chrisbanes.haze:haze:1.6.1")
-
     // ── Core ─────────────────────────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

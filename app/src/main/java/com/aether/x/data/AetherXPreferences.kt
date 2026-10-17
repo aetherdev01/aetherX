@@ -22,23 +22,59 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * sebelum "ram" ada) tanpa mereset seluruh urutan custom mereka ke
  * default. Lihat pemakaiannya di parsing `dashboardCardOrder` di bawah.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("info", "bonus", "status", "ram", "activity")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("bonus", "status", "ram", "activity")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
+
+/**
+ * v3.6 — preset warna aksen tema. Nilai disimpan sebagai ARGB Long (bukan
+ * Compose Color) supaya layer data tidak bergantung pada Compose. Tiap
+ * preset punya varian terang (kontras aman di atas putih) dan gelap.
+ * Default ORCHID: ungu keunguan yang netral di atas putih dan sengaja
+ * BUKAN biru/hijau.
+ */
+enum class AccentPreset(val label: String, val lightArgb: Long, val darkArgb: Long) {
+    ORCHID("Orchid", 0xFF7048E8, 0xFFA78BFA),
+    ROSE("Rose", 0xFFD6336C, 0xFFF783AC),
+    CORAL("Coral", 0xFFE8590C, 0xFFFF9A5C),
+    AMBER("Amber", 0xFFC77700, 0xFFF2B84E),
+    OCEAN("Ocean", 0xFF1C7ED6, 0xFF5AA9FF),
+    MINT("Mint", 0xFF0CA678, 0xFF4ADE9F),
+    GRAPHITE("Graphite", 0xFF343A40, 0xFFCED4DA),
+}
+
+/** v3.6 — pilihan font UI. POPPINS = font bawaan app (res/font), sisanya font sistem. */
+enum class AppFont(val label: String) {
+    POPPINS("Poppins"),
+    SYSTEM("Sistem"),
+    SERIF("Serif"),
+    MONO("Mono"),
+    CASUAL("Casual"),
+}
+
+/** v3.6 — gaya card: kaca transparan, solid, hanya garis tepi, atau tonal berwarna aksen. */
+enum class CardStyle(val label: String) {
+    GLASS("Kaca"),
+    SOLID("Solid"),
+    OUTLINE("Garis"),
+    SOFT("Lembut"),
+}
 
 enum class CrosshairStyle { CROSS, DOT, CIRCLE, CIRCLE_DOT, PLUS_GAP, X_SHAPE, CROSS_DOT, T_SHAPE, DIAMOND, SQUARE, CHEVRON, DOUBLE_RING, PLUS, BULLET, CIRCLE_PLUS, TICK_CROSS, CIRCLE_DOT_TICKS, CIRCLE_CROSS_TICKS }
 
 enum class FpsMonitorStyle { ROG, CLASSIC }
-enum class AppFontStyle { DEFAULT, SERIF, MONO }
-enum class CardStylePref { GLASS, SOFT, OUTLINED }
 
 data class AppPreferences(
     val onboardingCompleted: Boolean = false,
 
     val darkModePref: DarkModePref = DarkModePref.LIGHT,
-    val appFontStyle: AppFontStyle = AppFontStyle.DEFAULT,
-    val cardStylePref: CardStylePref = CardStylePref.GLASS,
-    val glassIntensity: Float = 0.45f,
+
+    val accentPreset: AccentPreset = AccentPreset.ORCHID,
+    val appFont: AppFont = AppFont.POPPINS,
+    val cardStyle: CardStyle = CardStyle.GLASS,
+    /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
+    val blurStrength: Int = 60,
+
 
     val dpiValue: Int = -1,
     val widthValue: Int = -1,
@@ -98,9 +134,10 @@ class AetherXPreferences(private val context: Context) {
     private object Keys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
-        val APP_FONT_STYLE = stringPreferencesKey("app_font_style")
-        val CARD_STYLE = stringPreferencesKey("card_style_pref")
-        val GLASS_INTENSITY = floatPreferencesKey("glass_intensity")
+        val ACCENT_PRESET = stringPreferencesKey("accent_preset")
+        val APP_FONT = stringPreferencesKey("app_font")
+        val CARD_STYLE = stringPreferencesKey("card_style")
+        val BLUR_STRENGTH = intPreferencesKey("blur_strength")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
@@ -171,9 +208,13 @@ class AetherXPreferences(private val context: Context) {
 
             darkModePref = runCatching { DarkModePref.valueOf(prefs[Keys.DARK_MODE] ?: "") }
                 .getOrDefault(DarkModePref.LIGHT),
-            appFontStyle = runCatching { AppFontStyle.valueOf(prefs[Keys.APP_FONT_STYLE] ?: "") }.getOrDefault(AppFontStyle.DEFAULT),
-            cardStylePref = runCatching { CardStylePref.valueOf(prefs[Keys.CARD_STYLE] ?: "") }.getOrDefault(CardStylePref.GLASS),
-            glassIntensity = (prefs[Keys.GLASS_INTENSITY] ?: 0.45f).coerceIn(0f, 1f),
+            accentPreset = runCatching { AccentPreset.valueOf(prefs[Keys.ACCENT_PRESET] ?: "") }
+                .getOrDefault(AccentPreset.ORCHID),
+            appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
+                .getOrDefault(AppFont.POPPINS),
+            cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
+                .getOrDefault(CardStyle.GLASS),
+            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 60).coerceIn(0, 100),
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -239,9 +280,21 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { it[Keys.DARK_MODE] = value.name }
     }
 
-    suspend fun setAppFontStyle(value: AppFontStyle) { context.dataStore.edit { it[Keys.APP_FONT_STYLE] = value.name } }
-    suspend fun setCardStyle(value: CardStylePref) { context.dataStore.edit { it[Keys.CARD_STYLE] = value.name } }
-    suspend fun setGlassIntensity(value: Float) { context.dataStore.edit { it[Keys.GLASS_INTENSITY] = value.coerceIn(0f, 1f) } }
+    suspend fun setAccentPreset(value: AccentPreset) {
+        context.dataStore.edit { it[Keys.ACCENT_PRESET] = value.name }
+    }
+
+    suspend fun setAppFont(value: AppFont) {
+        context.dataStore.edit { it[Keys.APP_FONT] = value.name }
+    }
+
+    suspend fun setCardStyle(value: CardStyle) {
+        context.dataStore.edit { it[Keys.CARD_STYLE] = value.name }
+    }
+
+    suspend fun setBlurStrength(value: Int) {
+        context.dataStore.edit { it[Keys.BLUR_STRENGTH] = value.coerceIn(0, 100) }
+    }
 
     suspend fun saveTweakState(
         pointerSpeed: Int,

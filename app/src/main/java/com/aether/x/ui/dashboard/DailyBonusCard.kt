@@ -36,6 +36,7 @@ import com.aether.x.core.ads.DailyBonusManager
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.AetherGreen
 import com.aether.x.ui.theme.AetherOrange
+import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
 
 /**
@@ -105,14 +106,14 @@ fun DailyBonusCard(
             shape = MaterialTheme.shapes.large,
             colors = ButtonDefaults.buttonColors(
                 containerColor = AetherOrange,
-                contentColor = Color(0xFF2A1405),
+                contentColor = LocalAetherPalette.current.onBonus,
             ),
         ) {
             when {
                 state.claiming -> CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp,
-                    color = Color(0xFF2A1405),
+                    color = LocalAetherPalette.current.onBonus,
                 )
                 state.claimedToday -> Text("Sudah diklaim", fontWeight = FontWeight.SemiBold)
                 else -> Row(

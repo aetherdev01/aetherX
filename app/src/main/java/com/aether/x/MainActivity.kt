@@ -3,18 +3,23 @@ package com.aether.x
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
+import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -30,15 +35,13 @@ import com.aether.x.core.monitor.GameProfileMonitorService
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.AppPreferences
+import com.aether.x.data.DarkModePref
 import com.aether.x.ui.main.MainScreen
 import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
 import com.aether.x.ui.theme.AetherXTheme
-import com.aether.x.ui.components.LocalAetherHazeState
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -66,20 +69,35 @@ class MainActivity : ComponentActivity() {
             }
 
             appPrefs?.let { prefsValue ->
-                // Preferensi lama tetap dihormati, tetapi default baru adalah tema terang.
+                val systemDark = isSystemInDarkTheme()
+                val darkTheme = when (prefsValue.darkModePref) {
+                    DarkModePref.SYSTEM -> systemDark
+                    DarkModePref.LIGHT -> false
+                    DarkModePref.DARK -> true
+                }
+
+                // Ikon status bar & navigation bar mengikuti tema APP (bukan tema
+                // sistem), supaya tetap terbaca saat tema app dan HP berbeda.
+                SideEffect {
+                    val barStyle = if (darkTheme) {
+                        SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+                    }
+                    enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+                }
+
                 AetherXTheme(
-                    darkTheme = when (prefsValue.darkModePref) {
-                        com.aether.x.data.DarkModePref.DARK -> true
-                        com.aether.x.data.DarkModePref.LIGHT -> false
-                        com.aether.x.data.DarkModePref.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-                    },
-                    fontStyle = prefsValue.appFontStyle,
-                    cardStyle = prefsValue.cardStylePref,
-                    glassIntensity = prefsValue.glassIntensity,
+                    darkTheme = darkTheme,
+                    accent = prefsValue.accentPreset,
+                    font = prefsValue.appFont,
+                    cardStyle = prefsValue.cardStyle,
+                    blurStrength = prefsValue.blurStrength,
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,
                         preferences = preferences,
+                        appPrefs = prefsValue,
                     )
                 }
             }
@@ -91,6 +109,7 @@ class MainActivity : ComponentActivity() {
 private fun AetherXRoot(
     onboardingCompleted: Boolean,
     preferences: AetherXPreferences,
+    appPrefs: AppPreferences,
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
@@ -109,7 +128,6 @@ private fun AetherXRoot(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val rootHazeState = rememberHazeState()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val appPrefsForService by preferences.preferences.collectAsStateWithLifecycle(initialValue = null)
     LaunchedEffect(privilegeStatus.rootGranted, appPrefsForService?.gameProfiles?.keys) {
@@ -122,15 +140,22 @@ private fun AetherXRoot(
         }
     }
 
-    CompositionLocalProvider(LocalAetherHazeState provides rootHazeState) {
-        Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-                navController = navController,
-                startDestination = startDestination,
-                modifier = Modifier.fillMaxSize().hazeSource(rootHazeState, zIndex = -1f),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable(AetherXRoutes.SPLASH_MAIN) {
+
+            // Splash bergaya terminal & selalu gelap, apa pun tema aplikasinya.
+            AetherXTheme(
+                darkTheme = true,
+                accent = appPrefs.accentPreset,
+                font = appPrefs.appFont,
+                cardStyle = appPrefs.cardStyle,
+                blurStrength = appPrefs.blurStrength,
             ) {
-            composable(AetherXRoutes.SPLASH_MAIN) {
-    
                 SplashScreen(
                     onSplashFinished = {
                         val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
@@ -140,38 +165,40 @@ private fun AetherXRoot(
                     },
                 )
             }
-            composable(AetherXRoutes.PERMISSION_ONBOARDING) {
-                PermissionSetupScreen(
-                    onContinue = {
-                        scope.launch {
-                            preferences.setOnboardingCompleted(true)
-                            // Onboarding baru = instalasi baru, bukan update dari versi lama —
-                            // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
-                            // pakai versi sebelumnya (lihat WhatsNewViewModel).
-                            preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
-                        }
-    
-                        navController.navigate(AetherXRoutes.MAIN) {
-                            popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
-                        }
-                    },
-                    requireAccessToContinue = true,
-                )
-            }
-            composable(AetherXRoutes.MAIN) {
-                MainScreen(
-                    onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
-                )
-            }
-            composable(AetherXRoutes.MANAGE_ACCESS) {
-                PermissionSetupScreen(
-                    onContinue = { navController.popBackStack() },
-                    requireAccessToContinue = false,
-                )
-            }
         }
-            MaintenanceGate()
-            UpdateGate()
+        composable(AetherXRoutes.PERMISSION_ONBOARDING) {
+            PermissionSetupScreen(
+                onContinue = {
+                    scope.launch {
+                        preferences.setOnboardingCompleted(true)
+                        // Onboarding baru = instalasi baru, bukan update dari versi lama —
+                        // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
+                        // pakai versi sebelumnya (lihat WhatsNewViewModel).
+                        preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
+                    }
+
+                    navController.navigate(AetherXRoutes.MAIN) {
+                        popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
+                    }
+                },
+                requireAccessToContinue = true,
+            )
+        }
+        composable(AetherXRoutes.MAIN) {
+            MainScreen(
+                onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
+            )
+        }
+        composable(AetherXRoutes.MANAGE_ACCESS) {
+            PermissionSetupScreen(
+                onContinue = { navController.popBackStack() },
+                requireAccessToContinue = false,
+            )
         }
     }
+    }
+
+    MaintenanceGate()
+
+    UpdateGate()
 }

@@ -1,117 +1,158 @@
 package com.aether.x.ui.theme
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import com.aether.x.data.AccentPreset
 
 // ============================================================================
-// v3.5 — REWORK VISUAL TOTAL. Palet SEBELUM ini secara eksplisit diberi
-// komentar "Thor-style" dan "matches Thor's app-source bar" di kode — nama
-// variabelnya sendiri pun ada sisa seperti `AccentBlue` yang warnanya
-// sebenarnya hijau lime, jejak copy-paste dari app root-tools lain bernama
-// Thor tanpa benar-benar disesuaikan ke identitas AetherX sendiri.
+// v3.6 — SISTEM WARNA BERBASIS PALET (terang/gelap + preset aksen).
 //
-// Arah baru: "Aether" secara harfiah berarti udara murni/langit atas yang
-// bercahaya dalam mitologi Yunani — jadi identitas visualnya dibangun dari
-// situ: dasar gelap ber-nuansa BIRU KEHITAMAN (bukan hitam pekat/krem hangat
-// generik) dengan SATU aksen cyan luminous yang terasa seperti sinyal/
-// voltase/oscilloscope trace — cocok untuk audiens app ini (komunitas root
-// Magisk/KernelSU, tweaker performa, gamer) yang literally berinteraksi
-// dengan pembacaan tegangan/frekuensi/suhu kernel setiap hari.
+// Sebelumnya semua warna adalah konstanta gelap yang di-hardcode. Sekarang
+// satu sumber kebenaran: [AetherPalette], dibangun oleh [aetherPalette]
+// dari (mode terang/gelap, preset aksen) dan dibagikan lewat
+// [LocalAetherPalette] oleh AetherXTheme.
 //
-// PENTING soal nama variabel di bawah: puluhan layar (MembershipScreen,
-// PermissionSetupScreen,
-// BuildPropScreen, GameProfileScreen, AppManagerScreen, RootMonitorSection,
-// UpdateGate, CrosshairSettingsSection, dll — total 13+ file) meng-import
-// nama-nama token LAMA ini SECARA LANGSUNG (bukan lewat MaterialTheme.
-// colorScheme). Nama-nama itu SENGAJA DIPERTAHANKAN persis sebagai alias ke
-// nilai warna BARU di bawah — supaya rework visual ini otomatis menjalar ke
-// SEMUA layar tersebut tanpa perlu menyentuh satu-satu (dan tanpa risiko
-// gagal compile). Kalau menambah pemakaian warna baru, pakai nama
-// `Aether*` di bawah — nama `Accent*`/`Bg*` yang lama jangan dipakai lagi
-// di kode BARU (dipertahankan murni demi kompatibilitas mundur).
+// Nama token LAMA (AccentBlue, TextMuted, SurfaceRaised, dst.) SENGAJA
+// dipertahankan sebagai properti @Composable di bagian bawah file ini,
+// supaya 13+ layar yang meng-import-nya langsung otomatis ikut tema tanpa
+// diubah satu-satu. Konsekuensinya: token lama HANYA boleh dibaca di
+// konteks @Composable. Di dalam lambda draw/remember/onClick, ambil nilainya
+// ke variabel lokal dulu (`val accent = AccentBlue`) lalu pakai variabelnya.
 // ============================================================================
 
-// --- Token BARU (pakai ini untuk kode baru) ---------------------------------
+@Immutable
+data class AetherPalette(
+    val isDark: Boolean,
+    // Permukaan
+    val bg: Color,
+    val surface: Color,
+    val surfaceAlt: Color,
+    val surfaceRaised: Color,
+    val stroke: Color,
+    // Teks
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val textMuted: Color,
+    // Aksen utama (mengikuti preset pilihan user)
+    val accent: Color,
+    val accentSoft: Color,
+    val accentContainer: Color,
+    val onAccent: Color,
+    // Premium/membership — emas, supaya tidak bentrok dengan aksen utama
+    val premium: Color,
+    val premiumContainer: Color,
+    // Status
+    val success: Color,
+    val successContainer: Color,
+    val warning: Color,
+    val warningContainer: Color,
+    val danger: Color,
+    val onDanger: Color,
+    // Bonus harian
+    val bonus: Color,
+    val onBonus: Color,
+)
 
-// Permukaan dasar: "ruang malam", bukan hitam pekat netral.
-val VoidBg = Color(0xFF0A0E16)
-val SurfaceCard = Color(0xFF12161F)
-val SurfaceCardAlt = Color(0xFF161C28)
-val SurfaceRaised = Color(0xFF1A2030)
-val StrokeSubtle = Color(0xFF262E40)
+fun aetherPalette(dark: Boolean, preset: AccentPreset): AetherPalette {
+    val accent = Color(if (dark) preset.darkArgb else preset.lightArgb)
 
-// Aksen utama: "Aether Cyan" — sinyal/voltase, dipakai untuk SEMUA state
-// aktif/primer (switch on, progress bar, tombol utama, watermark ikon).
-val AetherCyan = Color(0xFF3FE1C9)
-val AetherCyanSoft = Color(0xFF8FF2E1)
-val AetherCyanContainer = Color(0xFF163832)
-val OnAetherCyan = Color(0xFF04211C)
+    val bg = if (dark) Color(0xFF0D0D11) else Color(0xFFF5F5F8)
+    val surface = if (dark) Color(0xFF16161C) else Color(0xFFFFFFFF)
+    val surfaceAlt = if (dark) Color(0xFF1C1C24) else Color(0xFFF0F0F4)
+    val surfaceRaised = if (dark) Color(0xFF24242E) else Color(0xFFE9E9EF)
+    val stroke = if (dark) Color(0xFF2E2E3A) else Color(0xFFDEDEE6)
 
-// Aksen kedua: "Aether Violet" — SENGAJA dipisah dan HANYA dipakai untuk
-// konteks premium/membership, supaya cyan tetap murni berarti "performa/
-// aktif" dan violet murni berarti "premium".
-val AetherViolet = Color(0xFF9B8CFB)
-val AetherVioletContainer = Color(0xFF241A44)
-val OnAetherVioletContainer = Color(0xFFD6CCFF)
+    val premium = if (dark) Color(0xFFF2B84E) else Color(0xFFB7791F)
+    val success = if (dark) Color(0xFF5BE38A) else Color(0xFF2B8A3E)
+    val warning = if (dark) Color(0xFFF2B84E) else Color(0xFFD9730D)
+    val bonus = if (dark) Color(0xFFFF9A5C) else Color(0xFFE8590C)
 
-// Status: merah tetap merah (konvensi universal), amber untuk peringatan
-// menengah (suhu/kuota/membership akan habis).
-val AetherRed = Color(0xFFFF6459)
-val OnAetherRed = Color(0xFF2B0704)
-val AetherAmber = Color(0xFFF2B84E)
-val AetherAmberContainer = Color(0xFF3A2C0A)
-val OnAetherAmberContainer = Color(0xFFFFD9A0)
+    return AetherPalette(
+        isDark = dark,
+        bg = bg,
+        surface = surface,
+        surfaceAlt = surfaceAlt,
+        surfaceRaised = surfaceRaised,
+        stroke = stroke,
+        textPrimary = if (dark) Color(0xFFF2F2F6) else Color(0xFF15151A),
+        textSecondary = if (dark) Color(0xFFA4A4B2) else Color(0xFF55555F),
+        textMuted = if (dark) Color(0xFF6C6C7A) else Color(0xFF7B7B87),
+        accent = accent,
+        accentSoft = lerp(accent, if (dark) Color.White else surface, 0.35f),
+        accentContainer = lerp(surface, accent, if (dark) 0.22f else 0.12f),
+        // Aksen terang (mis. Amber/Mint gelap) butuh teks gelap, sisanya putih.
+        onAccent = if (accent.luminance() > 0.45f) Color(0xFF1A1A1A) else Color.White,
+        premium = premium,
+        premiumContainer = lerp(surface, premium, if (dark) 0.22f else 0.14f),
+        success = success,
+        successContainer = lerp(surface, success, if (dark) 0.20f else 0.12f),
+        warning = warning,
+        warningContainer = lerp(surface, warning, if (dark) 0.20f else 0.14f),
+        danger = if (dark) Color(0xFFFF6459) else Color(0xFFD62F2F),
+        onDanger = if (dark) Color(0xFF2B0704) else Color.White,
+        bonus = bonus,
+        onBonus = if (dark) Color(0xFF2A1405) else Color.White,
+    )
+}
 
-// Aksen tambahan (v3.6 — "UI lebih berwarna"): dipakai untuk membedakan
-// kategori kartu/tab (biru = info/sistem, hijau = sehat/OK, pink = hiburan/
-// game, oranye = aksi/bonus) supaya layar tidak monoton cyan.
-val AetherBlue = Color(0xFF5AA9FF)
-val AetherBlueContainer = Color(0xFF14243D)
-val AetherGreen = Color(0xFF5BE38A)
-val AetherGreenContainer = Color(0xFF123222)
-val AetherPink = Color(0xFFFF7AB6)
-val AetherPinkContainer = Color(0xFF3A1829)
-val AetherOrange = Color(0xFFFF9A5C)
-val AetherOrangeContainer = Color(0xFF3A2112)
+val LocalAetherPalette = staticCompositionLocalOf { aetherPalette(dark = false, preset = AccentPreset.ORCHID) }
 
-// Teks: putih KEBIRUAN dingin, bukan krem hangat (menghindari palet "warm
-// cream + terracotta" yang jadi ciri khas AI-generated design).
-val TextPrimary = Color(0xFFEAF0F7)
-val TextSecondary = Color(0xFF94A1B8)
-val TextMuted = Color(0xFF56637A)
+// --- Token LAMA -> palet aktif (hanya boleh dibaca di konteks @Composable) ---
 
-// Skema TERANG (dipakai saat DarkModePref.LIGHT) — cyan digelapkan supaya
-// kontras aman di atas putih, tetap satu keluarga warna dengan mode gelap.
-val LightBg = Color(0xFFF7F6F8)
-val LightSurfaceVariant = Color(0xFFF0EDF2)
-val LightOutline = Color(0xFFE2DDE5)
-val LightPrimary = Color(0xFF73566F)
-val LightPrimaryContainer = Color(0xFFEDE2EC)
-val OnLightPrimaryContainer = Color(0xFF39283A)
-val LightSecondary = Color(0xFF827487)
-val LightSecondaryContainer = Color(0xFFECE7EE)
-val LightTextPrimary = Color(0xFF28252B)
-val LightTextSecondary = Color(0xFF69636D)
+val VoidBg: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.bg
+val SurfaceCard: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.surface
+val SurfaceCardAlt: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.surfaceAlt
+val SurfaceRaised: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.surfaceRaised
+val StrokeSubtle: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.stroke
 
-// --- Alias KOMPATIBILITAS MUNDUR (nama lama -> nilai baru) ------------------
-// Lihat catatan panjang di atas. JANGAN dihapus tanpa mengaudit ulang 13+
-// file yang masih mengimpornya langsung.
+val AetherCyan: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accent
+val AetherCyanSoft: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentSoft
+val AetherCyanContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentContainer
+val OnAetherCyan: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.onAccent
 
-val BgVoid = VoidBg
-val BgBase = VoidBg
-val TextOnCard = TextPrimary
+val AetherViolet: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.premium
+val AetherVioletContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.premiumContainer
+val OnAetherVioletContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.textPrimary
 
-val AccentBlue = AetherCyan
-val AccentBlueSoft = AetherCyanSoft
-val AccentBlueDim = AetherCyanContainer
-val OnAccentBlue = OnAetherCyan
-val AccentGreenIconContainer = AetherCyanContainer
+val AetherRed: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.danger
+val OnAetherRed: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.onDanger
+val AetherAmber: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.warning
+val AetherAmberContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.warningContainer
+val OnAetherAmberContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.textPrimary
 
-val AccentGreen = AetherCyan
-val AccentGreenContainer = AetherCyanContainer
+val AetherBlue: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accent
+val AetherBlueContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentContainer
+val AetherGreen: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.success
+val AetherGreenContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.successContainer
+val AetherPink: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accent
+val AetherPinkContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentContainer
+val AetherOrange: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.bonus
+val AetherOrangeContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.warningContainer
 
-val AccentRed = AetherRed
+val TextPrimary: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.textPrimary
+val TextSecondary: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.textSecondary
+val TextMuted: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.textMuted
 
-val AccentAmber = AetherAmber
-val AccentAmberContainer = AetherAmberContainer
+// --- Alias kompatibilitas mundur (nama lama -> token palet) -----------------
 
-val AccentPurple = AetherViolet
+val BgVoid: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.bg
+val BgBase: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.bg
+val TextOnCard: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.textPrimary
+
+val AccentBlue: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accent
+val AccentBlueSoft: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentSoft
+val AccentBlueDim: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentContainer
+val OnAccentBlue: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.onAccent
+val AccentGreenIconContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accentContainer
+
+val AccentGreen: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.success
+val AccentGreenContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.successContainer
+val AccentRed: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.danger
+val AccentAmber: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.warning
+val AccentAmberContainer: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.warningContainer
+val AccentPurple: Color @Composable @ReadOnlyComposable get() = LocalAetherPalette.current.accent

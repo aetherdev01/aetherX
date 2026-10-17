@@ -106,11 +106,11 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_daily_bonus">Bonus Harian baru: tonton 1 iklan, dapat kredit Preset Kernel (makin besar tiap hari beruntun)</string>
-    <string name="whatsnew_item_new_ui">Tampilan lebih berwarna dengan jarak dan tipografi yang konsisten</string>
-    <string name="whatsnew_item_dashboard_detail">Dashboard lebih detail: RAM, storage, baterai, chipset, CPU, kernel, refresh rate, dan uptime</string>
-    <string name="whatsnew_item_smooth">Splash, tab bar, dan transisi layar baru yang lebih smooth dan ringan</string>
-    <string name="whatsnew_item_pro_price">Membership Pro kini hanya Rp15.000 per bulan</string>
+    <string name="whatsnew_item_appearance">Tema terang jadi default, plus pilihan warna aksen, font, gaya card, dan slider blur di Pengaturan -> Tampilan</string>
+    <string name="whatsnew_item_glass">Efek kaca &amp; blur di dialog, card, dan navbar; pill navbar kini menyembul dengan pegas saat ditahan</string>
+    <string name="whatsnew_item_dashboard">Dashboard lebih rapi: versi pindah ke header, ikon status seragam, warna tidak norak</string>
+    <string name="whatsnew_item_advanced">Advanced baru: Power Menu (reboot, recovery, bootloader), Kernel Tools (I/O scheduler, TCP, swappiness), dan Terminal Root</string>
+    <string name="whatsnew_item_adblock">Deteksi pemblokir iklan untuk pengguna gratis (member bebas iklan)</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah
@@ -388,6 +388,9 @@
 
     <!-- Root Monitor sub-drawer khusus Root, grafik CPU/GPU real-time (lihat RootMonitorSection.kt, RootSystemMonitor.kt) -->
     <string name="nav_root_monitor">Monitor CPU/GPU</string>
+    <string name="nav_kernel_tools">Kernel Tools</string>
+    <string name="nav_terminal">Terminal Root</string>
+    <string name="nav_power_menu">Power Menu</string>
     <string name="root_monitor_title">Monitor CPU/GPU</string>
     <string name="root_monitor_subtitle">Beban CPU per-core dan GPU secara real-time, dibaca langsung dari native (root diperlukan).</string>
     <string name="root_monitor_section_cpu">CPU</string>

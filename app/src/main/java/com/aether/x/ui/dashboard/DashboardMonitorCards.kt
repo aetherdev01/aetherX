@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.device.DeviceInfoSnapshot
@@ -66,70 +65,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import com.aether.x.core.device.toGbLabel
 import com.aether.x.ui.theme.AetherAmber
-import com.aether.x.ui.theme.AetherBlue
-import com.aether.x.ui.theme.AetherCyan
 import com.aether.x.ui.theme.AetherGreen
-import com.aether.x.ui.theme.AetherOrange
-import com.aether.x.ui.theme.AetherPink
 import com.aether.x.ui.theme.AetherRed
-import com.aether.x.ui.theme.AetherViolet
 import java.util.Locale
 import kotlin.math.roundToInt
-
-@Composable
-fun AetherXInfoCard(
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        // fillMaxWidth tanpa padding horizontal ekstra untuk meminimalkan ruang kosong di layar
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        ),
-        // Menggunakan radius medium (22.dp) untuk panel data statis
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                // Padding disamakan dengan card lain (Spacing.lg) — sebelumnya
-                // vertikalnya xxl (24dp) sehingga kartu ini terasa jauh lebih
-                // "lega" dan tidak sebaris dengan tinggi card lain di Dashboard.
-                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_aetherx_logo),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Text(
-                    text = stringResource(R.string.dashboard_app_version_format, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = stringResource(R.string.dashboard_hero_kicker),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun GameActivitySection(
@@ -356,26 +295,26 @@ fun DeviceStatusSection(
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.item)) {
             DeviceStatusItem(
                 icon = Icons.Outlined.PhoneAndroid,
-                tint = AetherBlue,
+                tint = MaterialTheme.colorScheme.primary,
                 label = "Android",
                 value = "${info.androidVersion} • API ${info.sdkInt}",
             )
             DeviceStatusItem(
                 icon = Icons.Outlined.DeveloperBoard,
-                tint = AetherViolet,
+                tint = MaterialTheme.colorScheme.primary,
                 label = "Chipset",
                 value = info.socModel.ifBlank { info.hardware.ifBlank { info.board } }.ifBlank { "-" },
             )
             DeviceStatusItem(
                 icon = Icons.Outlined.Speed,
-                tint = AetherCyan,
+                tint = MaterialTheme.colorScheme.primary,
                 label = "CPU",
                 value = "${info.cpuCores} core • ${info.cpuAbi.ifBlank { "-" }}",
             )
             if (info.refreshRateHz > 0f) {
                 DeviceStatusItem(
                     icon = Icons.Outlined.Monitor,
-                    tint = AetherPink,
+                    tint = MaterialTheme.colorScheme.primary,
                     label = "Layar",
                     value = "${info.refreshRateHz.roundToInt()} Hz",
                 )
@@ -383,14 +322,14 @@ fun DeviceStatusSection(
             if (info.kernelVersion.isNotBlank()) {
                 DeviceStatusItem(
                     icon = Icons.Outlined.Terminal,
-                    tint = AetherOrange,
+                    tint = MaterialTheme.colorScheme.primary,
                     label = "Kernel",
                     value = info.kernelVersion,
                 )
             }
             DeviceStatusItem(
                 icon = Icons.Outlined.Schedule,
-                tint = AetherAmber,
+                tint = MaterialTheme.colorScheme.primary,
                 label = "Uptime",
                 value = formatUptime(info.uptimeMillis),
             )

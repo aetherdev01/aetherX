@@ -53,11 +53,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.theme.LocalAetherPalette
+import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.Spacing
-import com.aether.x.ui.components.LocalAetherHazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import com.aether.x.ui.theme.LocalGlassIntensity
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -66,26 +64,24 @@ import kotlinx.coroutines.launch
 data class AetherNavItem(
     val icon: ImageVector,
     val label: String,
-    /** Warna aksen tab ini — dipakai untuk pill, glow, dan ikon aktif. */
+    /** Warna aksen tab ini — dipakai untuk pill dan ikon aktif. */
     val accent: Color,
 )
 
 /**
- * Tab bar capsule v3.6.
+ * Tab bar capsule v3.6 — kaca.
  *
- * Kenapa ditulis ulang (lebih ringan dari versi sebelumnya):
- *  - Backdrop blur menggunakan Haze dengan sampling terkontrol agar konten
- *    di bawah kapsul benar-benar ditangkap dan diburamkan, bukan diblur dekorasinya.
- *  - Pill digambar di fase DRAW (`drawBehind`) dan posisinya dibaca dari
- *    `Animatable` di dalam lambda draw, jadi saat pill meluncur TIDAK ada
- *    recomposition sama sekali (versi lama mengubah ukuran/offset Box di
- *    komposisi tiap frame -> layout ulang tiap frame).
- *  - Satu pointerInput saja (tap + drag digabung), tanpa coroutine per
- *    event drag.
- *
- * Animasi: pill meluncur dengan spring yang tenang (nyaris tanpa
- * overshoot), memanjang sedikit searah kecepatan ("liquid stretch") lalu
- * kembali ke bentuk kapsul, warnanya meleburkan aksen tab asal -> tujuan.
+ *  - Latar kaca: gradasi transparan (makin transparan sesuai slider blur) +
+ *    garis tepi berkilau. Tanpa blur backdrop real-time (penyebab jank di
+ *    perangkat mid-range pada versi sebelumnya); kesan kaca datang dari
+ *    transparansi di atas latar aurora.
+ *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
+ *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
+ *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
+ *    capsule dengan spring yang sengaja agak mantul (pegas), lalu kembali
+ *    tenang saat dilepas. Pill ada di layer yang TIDAK di-clip supaya
+ *    sembulannya terlihat.
+ *  - Satu pointerInput saja (tap + drag digabung).
  */
 @Composable
 fun AetherBottomNavBar(
@@ -99,9 +95,11 @@ fun AetherBottomNavBar(
     val count = items.size
     val lastIndex = count - 1
     val barShape = RoundedCornerShape(percent = 50)
-    val surface = MaterialTheme.colorScheme.surface
-    val outline = MaterialTheme.colorScheme.outline
-    val glassIntensity = LocalGlassIntensity.current
+    val palette = LocalAetherPalette.current
+    val blur = LocalAetherStyle.current.blur
+    val surface = palette.surface
+    val outline = palette.stroke
+    val isDark = palette.isDark
     val scope = rememberCoroutineScope()
 
     // Posisi pill dalam satuan "indeks slot" (0f..lastIndex). Dibaca HANYA di
@@ -121,11 +119,18 @@ fun AetherBottomNavBar(
         if (!isDragging) pillPosition.animateTo(target.toFloat(), settleSpec)
     }
 
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 1.085f else 1f,
-        animationSpec = spring(dampingRatio = 0.38f, stiffness = 300f),
-        label = "pillPress",
-    )
+    // 0f = diam, 1f = menyembul penuh. Spring mantul (damping rendah) saat
+    // ditekan -> efek pegas; saat dilepas kembali dengan damping lebih tinggi.
+    val pop = remember { Animatable(0f) }
+    LaunchedEffect(pressed) {
+        if (pressed) {
+            pop.animateTo(1f, spring(dampingRatio = 0.34f, stiffness = 360f))
+        } else {
+            pop.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 300f))
+        }
+    }
+
+    val barAlpha = (0.94f - 0.24f * blur).coerceIn(0.6f, 1f)
 
     Box(
         modifier = modifier
@@ -133,35 +138,6 @@ fun AetherBottomNavBar(
             .padding(horizontal = Spacing.xxl, vertical = Spacing.md)
             .fillMaxWidth()
             .height(60.dp)
-            .shadow(
-                elevation = 14.dp,
-                shape = barShape,
-                ambientColor = Color.Black.copy(alpha = 0.35f),
-                spotColor = Color.Black.copy(alpha = 0.45f),
-            )
-            .clip(barShape)
-            // zIndex 1 lets the capsule sample the tab content source at zIndex 0.
-            .hazeSource(LocalAetherHazeState.current, zIndex = 1f)
-            .hazeEffect(state = LocalAetherHazeState.current) {
-                // Slider Appearance controls this actual captured-background blur.
-                blurRadius = (glassIntensity * 30f).dp
-                backgroundColor = surface.copy(alpha = 0.24f + (1f - glassIntensity) * 0.20f)
-            }
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        lerp(surface, Color.White, 0.04f).copy(alpha = 0.12f),
-                        surface.copy(alpha = 0.08f),
-                    ),
-                ),
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.14f), outline.copy(alpha = 0.35f)),
-                ),
-                shape = barShape,
-            )
             // Tanpa ini, zona gestur back/predictive-back di tepi kiri layar
             // menelan tap pada tab paling kiri (Dashboard).
             .systemGestureExclusion()
@@ -219,7 +195,38 @@ fun AetherBottomNavBar(
                 }
             },
     ) {
-        // ── Pill (digambar di draw phase) ────────────────────────────────
+        // ── Latar kaca capsule (di-clip) ─────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .shadow(
+                    elevation = 10.dp,
+                    shape = barShape,
+                    ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
+                    spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
+                )
+                .clip(barShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            lerp(surface, Color.White, if (isDark) 0.06f else 0.0f).copy(alpha = barAlpha),
+                            surface.copy(alpha = (barAlpha - 0.06f).coerceAtLeast(0.55f)),
+                        ),
+                    ),
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
+                            outline.copy(alpha = 0.55f),
+                        ),
+                    ),
+                    shape = barShape,
+                ),
+        )
+
+        // ── Pill (digambar di draw phase, TIDAK di-clip agar bisa menyembul) ─
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -228,6 +235,7 @@ fun AetherBottomNavBar(
                     val inset = 4.dp.toPx()
                     val pos = if (isDragging) dragPosition else pillPosition.value
                     val velocity = if (isDragging) dragVelocity else pillPosition.velocity
+                    val p = pop.value // bisa >1 / <0 sesaat karena overshoot spring
 
                     // Stretch searah gerak, dibatasi supaya tetap kapsul rapi.
                     val stretch = 1f + (abs(velocity) * 0.07f).coerceAtMost(0.22f)
@@ -235,23 +243,25 @@ fun AetherBottomNavBar(
 
                     val baseW = slot - inset * 2f
                     val baseH = size.height - inset * 2f
-                    val w = baseW * stretch * pressScale
-                    val h = baseH * squash * pressScale
+                    // Menyembul: melebar ~14% dan memanjang ~14dp (melewati tepi capsule).
+                    val w = baseW * stretch * (1f + 0.14f * p)
+                    val h = baseH * squash + 14.dp.toPx() * p
                     val cx = (pos + 0.5f) * slot
                     val left = cx - w / 2f
-                    val top = (size.height - h) / 2f
+                    val top = (size.height - h) / 2f - 2.dp.toPx() * p
 
                     // Warna melebur antara aksen dua tab terdekat.
                     val lo = floor(pos).toInt().coerceIn(0, lastIndex)
                     val hi = (lo + 1).coerceAtMost(lastIndex)
                     val t = (pos - lo).coerceIn(0f, 1f)
                     val accent = lerp(items[lo].accent, items[hi].accent, t)
+                    val glowBoost = p.coerceIn(0f, 1.3f)
 
                     val corner = CornerRadius(h / 2f, h / 2f)
 
-                    // Glow lembut di belakang pill.
+                    // Glow lembut di belakang pill (menguat saat menyembul).
                     drawRoundRect(
-                        color = accent.copy(alpha = 0.08f + glassIntensity * 0.20f),
+                        color = accent.copy(alpha = 0.14f + 0.12f * glowBoost),
                         topLeft = Offset(left - 4.dp.toPx(), top - 3.dp.toPx()),
                         size = Size(w + 8.dp.toPx(), h + 6.dp.toPx()),
                         cornerRadius = CornerRadius((h + 6.dp.toPx()) / 2f),
@@ -259,7 +269,10 @@ fun AetherBottomNavBar(
                     // Badan pill: gradient aksen transparan.
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(accent.copy(alpha = 0.18f + glassIntensity * 0.28f), accent.copy(alpha = 0.08f + glassIntensity * 0.16f)),
+                            colors = listOf(
+                                accent.copy(alpha = 0.30f + 0.08f * glowBoost),
+                                accent.copy(alpha = 0.14f + 0.06f * glowBoost),
+                            ),
                             startY = top,
                             endY = top + h,
                         ),
@@ -267,9 +280,9 @@ fun AetherBottomNavBar(
                         size = Size(w, h),
                         cornerRadius = corner,
                     )
-                    // Highlight tipis di tepi atas + garis tepi aksen.
+                    // Garis tepi aksen + highlight kaca di sisi atas.
                     drawRoundRect(
-                        color = accent.copy(alpha = 0.55f),
+                        color = accent.copy(alpha = 0.50f),
                         topLeft = Offset(left, top),
                         size = Size(w, h),
                         cornerRadius = corner,
@@ -277,7 +290,7 @@ fun AetherBottomNavBar(
                     )
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                            colors = listOf(Color.White.copy(alpha = 0.30f), Color.Transparent),
                             startY = top,
                             endY = top + h * 0.55f,
                         ),

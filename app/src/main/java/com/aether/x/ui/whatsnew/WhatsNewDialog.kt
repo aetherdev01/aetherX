@@ -46,11 +46,11 @@ fun WhatsNewDialog(viewModel: WhatsNewViewModel = viewModel()) {
         scrollableContent = true,
     ) {
         val items = listOf(
-            R.string.whatsnew_item_daily_bonus,
-            R.string.whatsnew_item_new_ui,
-            R.string.whatsnew_item_dashboard_detail,
-            R.string.whatsnew_item_smooth,
-            R.string.whatsnew_item_pro_price,
+            R.string.whatsnew_item_appearance,
+            R.string.whatsnew_item_glass,
+            R.string.whatsnew_item_dashboard,
+            R.string.whatsnew_item_advanced,
+            R.string.whatsnew_item_adblock,
         )
         Column(
             modifier = Modifier.fillMaxWidth(),

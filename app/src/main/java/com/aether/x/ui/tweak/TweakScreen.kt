@@ -33,6 +33,8 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.PowerSettingsNew
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.SpaceDashboard
@@ -77,10 +79,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.glassPanel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.CpuGovernor
@@ -93,7 +97,6 @@ import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.components.dragPopEffect
-import com.aether.x.ui.dashboard.AetherXInfoCard
 import com.aether.x.ui.dashboard.DailyBonusCard
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
@@ -166,7 +169,10 @@ fun TweakScreen(
         val needsRoot = selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
             selectedSubTab == TweakSubTab.BUILD_PROP ||
             selectedSubTab == TweakSubTab.ROOT_MONITOR ||
-            selectedSubTab == TweakSubTab.APP_MANAGER
+            selectedSubTab == TweakSubTab.APP_MANAGER ||
+            selectedSubTab == TweakSubTab.POWER ||
+            selectedSubTab == TweakSubTab.KERNEL_TOOLS ||
+            selectedSubTab == TweakSubTab.TERMINAL
         val shouldReset = needsRoot && !privilegeStatus.rootGranted
         if (shouldReset) {
             selectedSubTab = TweakSubTab.DASHBOARD
@@ -179,7 +185,16 @@ fun TweakScreen(
 
         gesturesEnabled = true,
         drawerContent = {
-            ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
+            ModalDrawerSheet(
+                drawerContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                modifier = Modifier.glassPanel(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                        topEnd = 28.dp,
+                        bottomEnd = 28.dp,
+                    ),
+                    minAlpha = 0.80f,
+                ),
+            ) {
                 TweakDrawerContent(
                     selected = selectedSubTab,
                     showRootOnlyItems = privilegeStatus.rootGranted,
@@ -199,7 +214,8 @@ fun TweakScreen(
 
                         if (selectedSubTab == TweakSubTab.GAME_PROFILE ||
                             selectedSubTab == TweakSubTab.APP_MANAGER ||
-                            selectedSubTab == TweakSubTab.BUILD_PROP
+                            selectedSubTab == TweakSubTab.BUILD_PROP ||
+                            selectedSubTab == TweakSubTab.TERMINAL
                         ) {
                             Modifier
                         } else {
@@ -215,6 +231,8 @@ fun TweakScreen(
                     isMembershipActive = state.isMembershipActive,
                     onRetryUserId = viewModel::retryResolveUserIdIfMissing,
                     onMenuClick = { coroutineScope.launch { drawerState.open() } },
+                    showPowerButton = privilegeStatus.rootGranted,
+                    onPowerClick = { selectedSubTab = TweakSubTab.POWER },
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
@@ -268,7 +286,6 @@ fun TweakScreen(
                                         ),
                                 ) {
                                     when (cardId) {
-                                        "info" -> AetherXInfoCard()
                                         "bonus" -> DailyBonusCard()
                                         "status" -> DeviceStatusSection(
                                             info = dashboardState.deviceInfo,
@@ -325,6 +342,25 @@ fun TweakScreen(
                 if (selectedSubTab == TweakSubTab.BUILD_PROP) {
 
                     BuildPropScreen(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.POWER) {
+                    PowerMenuScreen()
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.KERNEL_TOOLS) {
+                    KernelToolsSection()
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.TERMINAL) {
+                    TerminalScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
@@ -479,7 +515,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR }
+private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
 
 @Composable
 private fun TweakDrawerContent(
@@ -561,6 +597,30 @@ private fun TweakDrawerContent(
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_kernel_tools)) },
+            icon = { Icon(imageVector = Icons.Outlined.Build, contentDescription = null) },
+            selected = selected == TweakSubTab.KERNEL_TOOLS,
+            onClick = { onSelect(TweakSubTab.KERNEL_TOOLS) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_terminal)) },
+            icon = { Icon(imageVector = Icons.Outlined.Terminal, contentDescription = null) },
+            selected = selected == TweakSubTab.TERMINAL,
+            onClick = { onSelect(TweakSubTab.TERMINAL) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+        NavigationDrawerItem(
+            label = { Text(stringResource(R.string.nav_power_menu)) },
+            icon = { Icon(imageVector = Icons.Outlined.PowerSettingsNew, contentDescription = null) },
+            selected = selected == TweakSubTab.POWER,
+            onClick = { onSelect(TweakSubTab.POWER) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
     }
 }
 
@@ -570,6 +630,8 @@ private fun TweakHeader(
     isMembershipActive: Boolean,
     onRetryUserId: () -> Unit,
     onMenuClick: () -> Unit,
+    showPowerButton: Boolean,
+    onPowerClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -597,11 +659,28 @@ private fun TweakHeader(
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                 )
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                Column {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (showPowerButton) {
+            IconButton(onClick = onPowerClick) {
+                Icon(
+                    imageVector = Icons.Outlined.PowerSettingsNew,
+                    contentDescription = stringResource(R.string.nav_power_menu),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -621,6 +700,7 @@ private fun TweakHeader(
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.clickable(onClick = onRetryUserId),
             )
+        }
         }
     }
 }

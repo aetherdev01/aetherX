@@ -1,72 +1,72 @@
 package com.aether.x.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.text.font.FontFamily
-import com.aether.x.data.AppFontStyle
-import com.aether.x.data.CardStylePref
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.LocalHazeStyle
+import com.aether.x.data.AccentPreset
+import com.aether.x.data.AppFont
+import com.aether.x.data.CardStyle
 
-// v3.5 — skema warna dibangun dari token "Aether" baru (lihat Color.kt untuk
-// filosofi lengkapnya). primary/secondary/tertiary dipetakan dengan makna
-// yang KONSISTEN di seluruh app: primary=cyan (performa/aktif),
-// secondary=violet (premium/membership), tertiary=amber (peringatan).
-private val AetherXDarkScheme = darkColorScheme(
-    primary = AetherCyan,
-    onPrimary = OnAetherCyan,
-    primaryContainer = AetherCyanContainer,
-    onPrimaryContainer = AetherCyanSoft,
-    secondary = AetherViolet,
-    onSecondary = OnAetherCyan,
-    secondaryContainer = AetherVioletContainer,
-    onSecondaryContainer = OnAetherVioletContainer,
-    tertiary = AetherAmber,
-    tertiaryContainer = AetherAmberContainer,
-    onTertiaryContainer = OnAetherAmberContainer,
-    background = VoidBg,
-    onBackground = TextPrimary,
-    surface = SurfaceCard,
-    onSurface = TextPrimary,
-    surfaceVariant = SurfaceRaised,
-    onSurfaceVariant = TextSecondary,
-    outline = StrokeSubtle,
-    outlineVariant = StrokeSubtle,
-    error = AetherRed,
-    onError = OnAetherRed,
+/**
+ * v3.6 — gaya visual yang bisa diatur user (Pengaturan -> Tampilan).
+ * [blur] dinormalisasi 0f..1f dari slider 0..100.
+ */
+@Immutable
+data class AetherStyle(
+    val cardStyle: CardStyle = CardStyle.GLASS,
+    val blur: Float = 0.6f,
 )
 
-private val AetherXLightScheme = lightColorScheme(
-    primary = LightPrimary,
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = LightPrimaryContainer,
-    onPrimaryContainer = OnLightPrimaryContainer,
-    secondary = LightSecondary,
-    secondaryContainer = LightSecondaryContainer,
-    background = LightBg,
-    surface = Color(0xFFFFFFFF),
-    surfaceVariant = LightSurfaceVariant,
-    onBackground = LightTextPrimary,
-    onSurface = LightTextPrimary,
-    onSurfaceVariant = LightTextSecondary,
-    outline = LightOutline,
-)
+val LocalAetherStyle = staticCompositionLocalOf { AetherStyle() }
 
-// v3.5 — hierarki shape FUNGSIONAL (sebelumnya: satu radius besar (24dp)
-// dipakai rata di semua kartu/dialog/tombol tanpa pembeda — ciri khas
-// "SaaS-card kit" generik). Sekarang radius berbeda MENURUT PERAN elemen:
-// panel data (SectionCard) sengaja LEBIH KOTAK — kesan "panel instrumen",
-// sementara elemen interaktif (tombol) sengaja LEBIH BULAT — kesan
-// "tactile, jelas bisa disentuh". Hierarki ini yang menciptakan makna,
-// bukan sekadar variasi angka.
+/** Skema Material dibangun dari [AetherPalette] supaya komponen M3 bawaan ikut tema. */
+private fun AetherPalette.toColorScheme(): ColorScheme {
+    val base: ColorScheme = if (isDark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = accent,
+        onPrimary = onAccent,
+        primaryContainer = accentContainer,
+        onPrimaryContainer = accent,
+        secondary = accent,
+        onSecondary = onAccent,
+        secondaryContainer = accentContainer,
+        onSecondaryContainer = accent,
+        tertiary = premium,
+        onTertiary = onAccent,
+        tertiaryContainer = premiumContainer,
+        onTertiaryContainer = textPrimary,
+        background = bg,
+        onBackground = textPrimary,
+        surface = surface,
+        onSurface = textPrimary,
+        surfaceVariant = surfaceRaised,
+        onSurfaceVariant = textSecondary,
+        surfaceTint = accent,
+        outline = stroke,
+        outlineVariant = stroke,
+        error = danger,
+        onError = onDanger,
+        surfaceBright = surface,
+        surfaceDim = bg,
+        surfaceContainerLowest = bg,
+        surfaceContainerLow = surface,
+        surfaceContainer = surface,
+        surfaceContainerHigh = surfaceAlt,
+        surfaceContainerHighest = surfaceRaised,
+    )
+}
+
+// v3.5 — hierarki shape FUNGSIONAL: panel data lebih kotak, elemen interaktif
+// (tombol) lebih bulat.
 private val AetherXShapes = Shapes(
     extraSmall = RoundedCornerShape(12.dp),  // badge/chip kecil
     small = RoundedCornerShape(16.dp),       // dropdown/menu item
@@ -75,59 +75,29 @@ private val AetherXShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),  // dialog/bottom sheet
 )
 
-val LocalCardStyle = staticCompositionLocalOf { CardStylePref.GLASS }
-val LocalGlassIntensity = staticCompositionLocalOf { 0.45f }
-
 @Composable
 fun AetherXTheme(
     darkTheme: Boolean = false,
-    fontStyle: AppFontStyle = AppFontStyle.DEFAULT,
-    cardStyle: CardStylePref = CardStylePref.GLASS,
-    glassIntensity: Float = 0.45f,
+    accent: AccentPreset = AccentPreset.ORCHID,
+    font: AppFont = AppFont.POPPINS,
+    cardStyle: CardStyle = CardStyle.GLASS,
+    blurStrength: Int = 60,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (darkTheme) AetherXDarkScheme else AetherXLightScheme
-
-    val selectedFamily = when (fontStyle) {
-        AppFontStyle.DEFAULT -> PoppinsFamily
-        AppFontStyle.SERIF -> FontFamily.Serif
-        AppFontStyle.MONO -> FontFamily.Monospace
+    val palette = remember(darkTheme, accent) { aetherPalette(darkTheme, accent) }
+    val colorScheme = remember(palette) { palette.toColorScheme() }
+    val typography = remember(font) { aetherTypography(font.toFontFamily()) }
+    val style = remember(cardStyle, blurStrength) {
+        AetherStyle(cardStyle = cardStyle, blur = (blurStrength / 100f).coerceIn(0f, 1f))
     }
-    val baseTypography = AetherXTypography
-    val selectedTypography = baseTypography.copy(
-        displayLarge = baseTypography.displayLarge.copy(fontFamily = selectedFamily),
-        displayMedium = baseTypography.displayMedium.copy(fontFamily = selectedFamily),
-        displaySmall = baseTypography.displaySmall.copy(fontFamily = selectedFamily),
-        headlineLarge = baseTypography.headlineLarge.copy(fontFamily = selectedFamily),
-        headlineMedium = baseTypography.headlineMedium.copy(fontFamily = selectedFamily),
-        headlineSmall = baseTypography.headlineSmall.copy(fontFamily = selectedFamily),
-        titleLarge = baseTypography.titleLarge.copy(fontFamily = selectedFamily),
-        titleMedium = baseTypography.titleMedium.copy(fontFamily = selectedFamily),
-        titleSmall = baseTypography.titleSmall.copy(fontFamily = selectedFamily),
-        bodyLarge = baseTypography.bodyLarge.copy(fontFamily = selectedFamily),
-        bodyMedium = baseTypography.bodyMedium.copy(fontFamily = selectedFamily),
-        bodySmall = baseTypography.bodySmall.copy(fontFamily = selectedFamily),
-        labelLarge = baseTypography.labelLarge.copy(fontFamily = selectedFamily),
-        labelMedium = baseTypography.labelMedium.copy(fontFamily = selectedFamily),
-        labelSmall = baseTypography.labelSmall.copy(fontFamily = selectedFamily),
-    )
-    val normalizedGlassIntensity = glassIntensity.coerceIn(0f, 1f)
+
     CompositionLocalProvider(
-        LocalCardStyle provides cardStyle,
-        LocalGlassIntensity provides normalizedGlassIntensity,
-        LocalHazeStyle provides HazeStyle(
-            // Explicitly select the `tints: List<HazeTint>` constructor.
-            // Without this named argument, Haze 1.6.x exposes two overloads
-            // with defaulted tint/tints parameters and Kotlin reports ambiguity.
-            tints = emptyList(),
-            backgroundColor = colorScheme.surface.copy(alpha = 0.62f - normalizedGlassIntensity * 0.24f),
-            blurRadius = (normalizedGlassIntensity * 30f).dp,
-            noiseFactor = 0.04f,
-        ),
+        LocalAetherPalette provides palette,
+        LocalAetherStyle provides style,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = selectedTypography,
+            typography = typography,
             shapes = AetherXShapes,
             content = content,
         )

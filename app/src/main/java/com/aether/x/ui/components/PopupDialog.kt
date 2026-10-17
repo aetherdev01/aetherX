@@ -30,11 +30,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeDialog
-import com.aether.x.ui.theme.LocalGlassIntensity
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.aether.x.ui.theme.AccentRed
-import com.aether.x.ui.components.LocalAetherHazeState
 
 /**
  * PopupDialog — pengganti `androidx.compose.material3.AlertDialog` bawaan
@@ -86,8 +84,7 @@ fun PopupDialog(
     scrollableContent: Boolean = false,
     content: (@Composable () -> Unit)? = null,
 ) {
-    HazeDialog(
-        hazeState = LocalAetherHazeState.current,
+    Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = dismissOnBackPress,
@@ -95,13 +92,12 @@ fun PopupDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
+        DialogWindowBlur()
         Column(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 28.dp)
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f - LocalGlassIntensity.current * 0.12f))
-                .then(Modifier)
+                .glassPanel(MaterialTheme.shapes.extraLarge)
                 .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -166,7 +162,7 @@ fun PopupDialog(
                     shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (confirmIsDestructive) AccentRed else MaterialTheme.colorScheme.primary,
-                        contentColor = if (confirmIsDestructive) Color.White else MaterialTheme.colorScheme.onPrimary,
+                        contentColor = if (confirmIsDestructive) com.aether.x.ui.theme.OnAetherRed else MaterialTheme.colorScheme.onPrimary,
                     ),
                 ) {
                     Text(text = confirmLabel, fontWeight = FontWeight.SemiBold)
@@ -210,8 +206,7 @@ fun PopupDialogPanel(
     contentPadding: PaddingValues = PaddingValues(top = 4.dp),
     content: @Composable () -> Unit,
 ) {
-    HazeDialog(
-        hazeState = LocalAetherHazeState.current,
+    Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = dismissOnBackPress,
@@ -219,12 +214,12 @@ fun PopupDialogPanel(
             usePlatformDefaultWidth = false,
         ),
     ) {
+        DialogWindowBlur()
         Column(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 28.dp)
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f - LocalGlassIntensity.current * 0.12f))
+                .glassPanel(MaterialTheme.shapes.extraLarge)
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {

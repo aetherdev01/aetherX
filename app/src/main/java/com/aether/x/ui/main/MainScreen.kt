@@ -19,7 +19,6 @@ import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -29,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -40,19 +40,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.AetherXApp
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
-import com.aether.x.ui.components.LocalAetherHazeState
 import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
+import com.aether.x.ui.components.AdBlockGate
+import com.aether.x.ui.components.AetherBackground
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
-import com.aether.x.ui.theme.AetherAmber
-import com.aether.x.ui.theme.AetherBlue
-import com.aether.x.ui.theme.AetherCyan
-import com.aether.x.ui.theme.AetherViolet
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
@@ -65,7 +61,6 @@ private enum class MainTab { TWEAK, MEMBERSHIP, ABOUT, SETTINGS }
 fun MainScreen(
     onManageAccess: () -> Unit,
 ) {
-    val hazeState = rememberHazeState()
     var selectedTab by remember { mutableStateOf(MainTab.TWEAK) }
 
     // Counter event, bukan Boolean, supaya setiap tap Dashboard dianggap
@@ -74,8 +69,11 @@ fun MainScreen(
     var dashboardRequest by remember { mutableIntStateOf(0) }
 
     val tweakViewModel: TweakViewModel = viewModel()
+    val tweakState by tweakViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    WhatsNewDialog()
 
     // ── Iklan interstitial: trigger "kembali ke aplikasi" ──────────────────
     // Dipicu saat user kembali ke app setelah ditinggal >= 20 detik (bukan
@@ -118,14 +116,16 @@ fun MainScreen(
     val aboutLabel = stringResource(R.string.nav_about)
     val settingsLabel = stringResource(R.string.nav_settings)
 
-    // Tiap tab punya warna aksen sendiri (cyan / violet / biru / amber) —
-    // dipakai pill capsule dan ikon aktif supaya tab bar berwarna.
-    val navBarItems = remember(dashboardLabel, membershipLabel, aboutLabel, settingsLabel) {
+    // v3.6 — semua tab memakai satu warna aksen tema (sebelumnya empat warna
+    // berbeda yang terasa terlalu ramai). Dibaca di scope @Composable lalu
+    // dipakai sebagai key remember — remember { } tidak boleh membaca token tema.
+    val tabAccent = MaterialTheme.colorScheme.primary
+    val navBarItems = remember(dashboardLabel, membershipLabel, aboutLabel, settingsLabel, tabAccent) {
         listOf(
-            AetherNavItem(Icons.Outlined.SpaceDashboard, dashboardLabel, AetherCyan),
-            AetherNavItem(Icons.Outlined.WorkspacePremium, membershipLabel, AetherViolet),
-            AetherNavItem(Icons.Outlined.Info, aboutLabel, AetherBlue),
-            AetherNavItem(Icons.Outlined.Settings, settingsLabel, AetherAmber),
+            AetherNavItem(Icons.Outlined.SpaceDashboard, dashboardLabel, tabAccent),
+            AetherNavItem(Icons.Outlined.WorkspacePremium, membershipLabel, tabAccent),
+            AetherNavItem(Icons.Outlined.Info, aboutLabel, tabAccent),
+            AetherNavItem(Icons.Outlined.Settings, settingsLabel, tabAccent),
         )
     }
 
@@ -144,11 +144,16 @@ fun MainScreen(
         }
     }
 
-    CompositionLocalProvider(LocalAetherHazeState provides hazeState) {
-        WhatsNewDialog()
-        Scaffold(
+    AdBlockGate(
+        isMember = tweakState.isMembershipActive,
+        suppress = selectedTab == MainTab.MEMBERSHIP,
+        onOpenMembership = { selectedTab = MainTab.MEMBERSHIP },
+    )
+
+    AetherBackground {
+    Scaffold(
         modifier = Modifier.nestedScroll(navBarScrollConnection),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         bottomBar = {
             AetherBottomNavBar(
                 items = navBarItems,
@@ -182,7 +187,7 @@ fun MainScreen(
         // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
         // terasa berat di perangkat mid-range.
         AnimatedContent(
-            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+            modifier = Modifier.fillMaxSize(),
             targetState = selectedTab,
             transitionSpec = {
                 val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
@@ -219,6 +224,6 @@ fun MainScreen(
                 )
             }
         }
-        }
+    }
     }
 }

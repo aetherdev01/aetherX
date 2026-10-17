@@ -60,16 +60,22 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.BuildConfig
 import com.aether.x.R
-import com.aether.x.ui.theme.AetherAmber
-import com.aether.x.ui.theme.AetherBlue
-import com.aether.x.ui.theme.AetherCyan
-import com.aether.x.ui.theme.AetherGreen
 import com.aether.x.ui.theme.AetherMonoFamily
-import com.aether.x.ui.theme.AetherRed
-import com.aether.x.ui.theme.AetherViolet
 import com.aether.x.ui.theme.Spacing
-import com.aether.x.ui.theme.TextMuted
 import kotlinx.coroutines.delay
+
+// v3.6 — splash bergaya terminal SELALU gelap, apa pun tema aplikasinya. Warna
+// dibuat konstan (bukan token tema) karena banyak dipakai di lambda draw yang
+// bukan @Composable.
+private val SplashBg = Color(0xFF0D0D11)
+private val SplashAccent = Color(0xFFA78BFA)
+private val SplashAccent2 = Color(0xFFF2B84E)
+private val SplashAccentSoft = Color(0xFFC4B5FD)
+private val SplashOk = Color(0xFF5BE38A)
+private val SplashErr = Color(0xFFFF6459)
+private val SplashWarn = Color(0xFFF2B84E)
+private val SplashMuted = Color(0xFF8A8A9A)
+
 
 /** Lama minimum splash tampil supaya animasi boot sempat terbaca (ms). */
 private const val MIN_SPLASH_MILLIS = 1300L
@@ -139,7 +145,7 @@ fun SplashScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(SplashBg)
             .drawBehind {
                 // Grid titik halus + garis scan yang turun pelan.
                 val step = 28.dp.toPx()
@@ -156,7 +162,7 @@ fun SplashScreen(
                 val sy = size.height * scan
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, AetherCyan.copy(alpha = 0.07f), Color.Transparent),
+                        colors = listOf(Color.Transparent, SplashAccent.copy(alpha = 0.07f), Color.Transparent),
                         startY = sy - 80.dp.toPx(),
                         endY = sy + 80.dp.toPx(),
                     ),
@@ -190,7 +196,7 @@ fun SplashScreen(
                     rotate(ringAngle) {
                         drawArc(
                             brush = Brush.sweepGradient(
-                                listOf(Color.Transparent, AetherCyan, AetherViolet),
+                                listOf(Color.Transparent, SplashAccent, SplashAccent2),
                             ),
                             startAngle = 0f,
                             sweepAngle = 110f,
@@ -202,7 +208,7 @@ fun SplashScreen(
                     }
                     rotate(-ringAngle * 0.6f) {
                         drawArc(
-                            color = AetherBlue.copy(alpha = 0.55f),
+                            color = SplashAccentSoft.copy(alpha = 0.55f),
                             startAngle = 200f,
                             sweepAngle = 40f,
                             useCenter = false,
@@ -224,7 +230,7 @@ fun SplashScreen(
             Text(
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(color = MaterialTheme.colorScheme.onBackground)) { append("AETHER") }
-                    withStyle(SpanStyle(color = AetherCyan)) { append("X") }
+                    withStyle(SpanStyle(color = SplashAccent)) { append("X") }
                 },
                 fontFamily = AetherMonoFamily,
                 fontWeight = FontWeight.Bold,
@@ -237,7 +243,7 @@ fun SplashScreen(
                 fontFamily = AetherMonoFamily,
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
-                color = TextMuted,
+                color = SplashMuted,
             )
 
             Spacer(modifier = Modifier.height(Spacing.xxl))
@@ -257,7 +263,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(Spacing.lg))
                 OutlinedButton(
                     onClick = viewModel::retry,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AetherCyan),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SplashAccent),
                 ) {
                     Text("retry --connect", fontFamily = AetherMonoFamily)
                 }
@@ -268,7 +274,7 @@ fun SplashScreen(
             text = "v${BuildConfig.VERSION_NAME}",
             fontFamily = AetherMonoFamily,
             fontSize = 11.sp,
-            color = TextMuted,
+            color = SplashMuted,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = Spacing.xxl),
@@ -294,19 +300,19 @@ private fun BootLog(
     val shape = RoundedCornerShape(16.dp)
 
     val lines = buildList {
-        add(LogLine("sys", AetherBlue, "${Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"} · api ${Build.VERSION.SDK_INT}"))
+        add(LogLine("sys", SplashAccentSoft, "${Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"} · api ${Build.VERSION.SDK_INT}"))
         StageOrder.forEach { (stage, label) ->
             val current = state.stage
             when {
                 current == SplashStage.DONE || stage.ordinal < current.ordinal ->
-                    add(LogLine(" ok", AetherGreen, label))
+                    add(LogLine(" ok", SplashOk, label))
                 stage == current && state.failed ->
-                    add(LogLine("err", AetherRed, label))
+                    add(LogLine("err", SplashErr, label))
                 stage == current ->
-                    add(LogLine(" ..", AetherAmber, label))
+                    add(LogLine(" ..", SplashWarn, label))
             }
         }
-        if (state.stage == SplashStage.DONE) add(LogLine(" ok", AetherGreen, "ready"))
+        if (state.stage == SplashStage.DONE) add(LogLine(" ok", SplashOk, "ready"))
     }
 
     Column(
@@ -322,7 +328,7 @@ private fun BootLog(
                 text = "$ ",
                 fontFamily = AetherMonoFamily,
                 fontSize = 12.sp,
-                color = AetherCyan,
+                color = SplashAccent,
             )
             Text(
                 text = "aetherx --boot",
@@ -357,7 +363,7 @@ private fun BootLog(
                         modifier = Modifier
                             .size(width = 7.dp, height = 13.dp)
                             .graphicsLayer { alpha = cursorAlpha() }
-                            .background(AetherCyan),
+                            .background(SplashAccent),
                     )
                 }
             }
@@ -368,7 +374,7 @@ private fun BootLog(
                 text = state.statusText,
                 fontFamily = AetherMonoFamily,
                 fontSize = 11.sp,
-                color = AetherRed,
+                color = SplashErr,
                 modifier = Modifier.padding(top = Spacing.xs),
             )
         }
@@ -427,7 +433,7 @@ private fun BlockProgressBar(progress: Float, modifier: Modifier = Modifier) {
                 if (fill > 0f) {
                     val t = i / (blocks - 1f)
                     drawRoundRect(
-                        color = androidx.compose.ui.graphics.lerp(AetherCyan, AetherViolet, t).copy(alpha = 0.4f + 0.6f * fill),
+                        color = androidx.compose.ui.graphics.lerp(SplashAccent, SplashAccent2, t).copy(alpha = 0.4f + 0.6f * fill),
                         topLeft = Offset(x, 0f),
                         size = Size(w, size.height),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
@@ -439,7 +445,7 @@ private fun BlockProgressBar(progress: Float, modifier: Modifier = Modifier) {
             text = "${(progress * 100).toInt()}%",
             fontFamily = AetherMonoFamily,
             fontSize = 12.sp,
-            color = AetherCyan,
+            color = SplashAccent,
             modifier = Modifier.width(40.dp),
         )
     }
