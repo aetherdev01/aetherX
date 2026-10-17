@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -24,21 +25,26 @@ import androidx.compose.ui.window.DialogWindowProvider
 import com.aether.x.data.CardStyle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
 
 /**
- * v3.6 — permukaan card sesuai gaya pilihan user (Pengaturan -> Tampilan):
- *  - GLASS   : kaca transparan bergradasi + garis tepi berkilau. Makin besar
- *              slider blur, makin transparan (aurora latar makin tembus).
- *  - SOLID   : putih/gelap pekat + garis tepi tipis.
- *  - OUTLINE : tanpa isi, hanya garis tepi berwarna aksen.
- *  - SOFT    : isi tonal berwarna aksen tipis, tanpa garis tepi.
- *
- * Sengaja TIDAK memakai blur backdrop per-card: blur real-time di belakang
- * banyak card yang di-scroll terbukti membuat jank di perangkat mid-range.
- * Tampilan kaca di card dicapai lewat transparansi + highlight di atas
- * latar aurora ([AetherBackground]); blur sungguhan dipakai di dialog.
+ * HazeState latar ([AetherBackground]) untuk card. Sumbernya adalah lapisan
+ * latar (aurora + orb) yang menjadi SIBLING konten, jadi card boleh mem-blur-nya.
+ */
+val LocalCardHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/**
+ * v3.8 — permukaan card sesuai gaya pilihan user (Pengaturan -> Tampilan).
+ * SEMUA gaya sekarang memblur latar di belakang card (Haze); gaya hanya
+ * menentukan seberapa pekat tint dan bagaimana tepinya:
+ *  - GLASS   : tint tipis + garis tepi berkilau  (blur paling terlihat).
+ *  - SOLID   : tint pekat + garis tepi tipis.
+ *  - OUTLINE : tint sangat tipis + garis tepi aksen.
+ *  - SOFT    : tint tonal berwarna aksen, tanpa garis tepi.
+ * Slider blur = kekuatan blur; di 0 blur mati dan card kembali ke isi biasa.
  */
 @Composable
 fun Modifier.aetherCardSurface(
@@ -48,40 +54,58 @@ fun Modifier.aetherCardSurface(
     val p = LocalAetherPalette.current
     val s = LocalAetherStyle.current
     val b = s.blur
+    val haze = LocalCardHaze.current
+    val blurOn = haze != null && b > 0.01f
+    val radius = cardBlurRadiusFor(b).dp
+
+    val frost = if (blurOn) {
+        Modifier.hazeEffect(state = haze) {
+            blurRadius = radius
+            noiseFactor = 0.04f
+        }
+    } else {
+        Modifier
+    }
+    val rim = Brush.verticalGradient(
+        listOf(
+            Color.White.copy(alpha = if (p.isDark) 0.16f else 0.90f),
+            p.stroke.copy(alpha = if (p.isDark) 0.55f else 0.70f),
+        ),
+    )
+
     return when (s.cardStyle) {
         CardStyle.GLASS -> this
             .clip(shape)
+            .then(frost)
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        p.surface.copy(alpha = 0.94f - 0.16f * b),
-                        p.surface.copy(alpha = 0.88f - 0.16f * b),
+                        p.surface.copy(alpha = if (blurOn) 0.62f - 0.14f * b else 0.94f),
+                        p.surface.copy(alpha = if (blurOn) 0.54f - 0.12f * b else 0.88f),
                     ),
                 ),
             )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = if (p.isDark) 0.16f else 0.90f),
-                        p.stroke.copy(alpha = if (p.isDark) 0.55f else 0.70f),
-                    ),
-                ),
-                shape = shape,
-            )
+            .border(1.dp, rim, shape)
 
         CardStyle.SOLID -> this
             .clip(shape)
-            .background(p.surface)
+            .then(frost)
+            .background(p.surface.copy(alpha = if (blurOn) 0.86f else 1f))
             .border(1.dp, p.stroke.copy(alpha = 0.8f), shape)
 
         CardStyle.OUTLINE -> this
             .clip(shape)
-            .border(1.2.dp, accent.copy(alpha = 0.50f), shape)
+            .then(frost)
+            .background(p.surface.copy(alpha = if (blurOn) 0.36f else 0f))
+            .border(1.2.dp, accent.copy(alpha = 0.55f), shape)
 
         CardStyle.SOFT -> this
             .clip(shape)
-            .background(lerp(p.surface, accent, if (p.isDark) 0.12f else 0.07f))
+            .then(frost)
+            .background(
+                lerp(p.surface, accent, if (p.isDark) 0.14f else 0.09f)
+                    .copy(alpha = if (blurOn) 0.72f else 1f),
+            )
     }
 }
 
@@ -92,8 +116,11 @@ fun Modifier.aetherCardSurface(
  */
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
-/** Radius blur (dp) dari slider 0f..1f. 0 berarti blur dimatikan. */
-fun blurRadiusFor(blur: Float): Float = 6f + 34f * blur
+/** Radius blur (dp) dialog/navbar dari slider 0f..1f. 0 berarti blur dimatikan. */
+fun blurRadiusFor(blur: Float): Float = 10f + 50f * blur
+
+/** Radius blur card: sedikit lebih kecil supaya bentuk orb latar masih terbaca di balik card. */
+fun cardBlurRadiusFor(blur: Float): Float = 8f + 34f * blur
 
 /**
  * Panel blur serbaguna (dialog, drawer). Isi di belakang panel di-BLUR
@@ -109,13 +136,17 @@ fun Modifier.glassPanel(
     shape: Shape,
     minAlpha: Float = 0.60f,
     hazeState: HazeState? = LocalHazeState.current,
+    /** Pengali radius blur (drawer memakai > 1 supaya isi di belakangnya benar-benar kabur). */
+    blurBoost: Float = 1f,
+    /** Pengali kepekatan tint (< 1 = lebih bening, blur lebih terlihat). */
+    tintScale: Float = 1f,
 ): Modifier {
     val p = LocalAetherPalette.current
     val b = LocalAetherStyle.current.blur
     val blurOn = hazeState != null && b > 0.01f
-    val radius = blurRadiusFor(b).dp
-    val top = if (blurOn) (0.84f - 0.20f * b).coerceAtLeast(minAlpha) else 0.97f
-    val bottom = if (blurOn) (0.80f - 0.18f * b).coerceAtLeast(minAlpha - 0.04f) else 0.95f
+    val radius = (blurRadiusFor(b) * blurBoost).dp
+    val top = if (blurOn) ((0.84f - 0.20f * b) * tintScale).coerceAtLeast(minAlpha) else 0.97f
+    val bottom = if (blurOn) ((0.80f - 0.18f * b) * tintScale).coerceAtLeast(minAlpha - 0.04f) else 0.95f
     return this
         .clip(shape)
         .then(
@@ -146,9 +177,11 @@ fun Modifier.glassPanel(
 }
 
 /**
- * Latar "aurora": dua-tiga gumpalan cahaya lembut berwarna aksen di atas
- * warna dasar tema. Memberi sesuatu yang "tembus" di belakang card kaca dan
- * navbar; digambar di fase draw sekali (tanpa animasi) jadi sangat ringan.
+ * Latar app: warna dasar + aurora + "orb" berwarna dengan tepi tegas. Orb
+ * itulah yang di-blur card di atasnya (sehingga blur card KELIHATAN: di luar
+ * card orb tegas, di dalam card kabur). Lapisan ini adalah SUMBER blur
+ * ([LocalCardHaze]) dan SIBLING konten, bukan induknya, sesuai aturan Haze.
+ * Digambar sekali di fase draw (tanpa animasi) jadi ringan.
  */
 @Composable
 fun AetherBackground(
@@ -160,34 +193,66 @@ fun AetherBackground(
     val accent = p.accent
     val soft = p.accentSoft
     val premium = p.premium
+    val success = p.success
     val dark = p.isDark
     val bg = p.bg
+    val cardHaze = rememberHazeState(blurEnabled = true)
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(bg)
-            .drawBehind {
-                val w = size.width
-                val h = size.height
-                fun blob(color: Color, alpha: Float, cx: Float, cy: Float, r: Float) {
-                    val center = Offset(cx, cy)
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(color.copy(alpha = alpha), Color.Transparent),
-                            center = center,
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(cardHaze)
+                .background(bg)
+                .drawBehind {
+                    val w = size.width
+                    val h = size.height
+                    val dp = density
+                    fun blob(color: Color, alpha: Float, cx: Float, cy: Float, r: Float) {
+                        val center = Offset(cx, cy)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(color.copy(alpha = alpha), Color.Transparent),
+                                center = center,
+                                radius = r,
+                            ),
                             radius = r,
-                        ),
-                        radius = r,
-                        center = center,
-                    )
-                }
-                blob(accent, (if (dark) 0.26f else 0.20f) * k, w * 0.08f, h * 0.04f, w * 0.95f)
-                blob(soft, (if (dark) 0.16f else 0.18f) * k, w * 0.98f, h * 0.46f, w * 0.80f)
-                blob(premium, (if (dark) 0.08f else 0.07f) * k, w * 0.10f, h * 0.92f, w * 0.85f)
-            },
-        content = content,
-    )
+                            center = center,
+                        )
+                    }
+                    // Orb: tepi tegas (alpha tepi ~60% dari tengah) supaya blur terlihat.
+                    fun orb(color: Color, alpha: Float, cx: Float, cy: Float, rDp: Float) {
+                        val r = rDp * dp
+                        val center = Offset(cx, cy)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(color.copy(alpha = alpha), color.copy(alpha = alpha * 0.55f)),
+                                center = center,
+                                radius = r,
+                            ),
+                            radius = r,
+                            center = center,
+                        )
+                    }
+                    blob(accent, (if (dark) 0.22f else 0.16f) * k, w * 0.08f, h * 0.04f, w * 0.95f)
+                    blob(soft, (if (dark) 0.14f else 0.14f) * k, w * 0.98f, h * 0.46f, w * 0.80f)
+                    blob(premium, (if (dark) 0.07f else 0.06f) * k, w * 0.10f, h * 0.92f, w * 0.85f)
+
+                    val a = if (dark) 0.40f else 0.30f
+                    orb(accent, a, w * 0.14f, h * 0.20f, 74f)
+                    orb(premium, a * 0.85f, w * 0.90f, h * 0.30f, 58f)
+                    orb(soft, a, w * 0.34f, h * 0.52f, 88f)
+                    orb(success, a * 0.7f, w * 0.88f, h * 0.68f, 66f)
+                    orb(accent, a * 0.9f, w * 0.18f, h * 0.84f, 62f)
+                    orb(premium, a * 0.7f, w * 0.72f, h * 0.94f, 50f)
+                },
+        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            CompositionLocalProvider(LocalCardHaze provides cardHaze) {
+                content()
+            }
+        }
+    }
 }
 
 /**

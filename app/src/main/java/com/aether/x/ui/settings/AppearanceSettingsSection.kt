@@ -112,7 +112,7 @@ fun AppearanceSettingsSection(
         var sliderValue by remember(blurStrength) { mutableFloatStateOf(blurStrength.toFloat()) }
         TweakSlider(
             label = "Blur",
-            description = "Kekuatan blur sungguhan di dialog, drawer, dan navbar. 0 = blur mati.",
+            description = "Kekuatan blur di card, dialog, drawer, dan navbar. 0 = blur mati.",
             valueText = "${sliderValue.roundToInt()}%",
             value = sliderValue,
             range = 0f..100f,

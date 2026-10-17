@@ -197,8 +197,10 @@ fun TweakScreen(
                         topEnd = 28.dp,
                         bottomEnd = 28.dp,
                     ),
-                    minAlpha = 0.66f,
+                    minAlpha = 0.46f,
                     hazeState = drawerHaze,
+                    blurBoost = 1.6f,
+                    tintScale = 0.82f,
                 ),
             ) {
                 TweakDrawerContent(
