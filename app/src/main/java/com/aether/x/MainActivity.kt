@@ -94,8 +94,6 @@ class MainActivity : ComponentActivity() {
                 AetherXTheme(
                     darkTheme = darkTheme,
                     accent = prefsValue.accentPreset,
-                    font = prefsValue.appFont,
-                    cardStyle = prefsValue.cardStyle,
                     blurStrength = prefsValue.blurStrength,
                 ) {
                     AetherXRoot(
@@ -162,8 +160,6 @@ private fun AetherXRoot(
             AetherXTheme(
                 darkTheme = true,
                 accent = appPrefs.accentPreset,
-                font = appPrefs.appFont,
-                cardStyle = appPrefs.cardStyle,
                 blurStrength = appPrefs.blurStrength,
             ) {
                 SplashScreen(

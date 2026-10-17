@@ -62,6 +62,7 @@ import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class AetherNavItem(
@@ -84,6 +85,9 @@ data class AetherNavItem(
  *    sembulannya terlihat.
  *  - Satu pointerInput saja (tap + drag digabung).
  */
+/** Jeda sebelum pill menyusul setelah tab di-tap (rasa iOS). */
+private const val TAP_FOLLOW_DELAY_MS = 110L
+
 @Composable
 fun AetherBottomNavBar(
     items: List<AetherNavItem>,
@@ -114,12 +118,27 @@ fun AetherBottomNavBar(
     var previewIndex by remember { mutableIntStateOf(selectedIndex.coerceIn(0, lastIndex)) }
     var pressed by remember { mutableStateOf(false) }
 
+    // Setelah DRAG dilepas: pill langsung meluncur ke tab terdekat (cepat, tegas).
     val settleSpec = remember { spring<Float>(dampingRatio = 0.82f, stiffness = 420f) }
+    // Setelah TAP: pill MENYUSUL dengan jeda singkat lalu meluncur lembut ala iOS
+    // (damping tinggi = tanpa memantul, stiffness rendah = mengalir pelan).
+    val followSpec = remember { spring<Float>(dampingRatio = 0.9f, stiffness = 170f) }
+    // true hanya sesaat setelah drag dilepas supaya LaunchedEffect di bawah tidak
+    // menimpa animasi settle (dua animateTo bersamaan = tersendat).
+    var settledByDrag by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedIndex, count) {
         val target = selectedIndex.coerceIn(0, lastIndex)
         previewIndex = target
-        if (!isDragging) pillPosition.animateTo(target.toFloat(), settleSpec)
+        if (settledByDrag) {
+            settledByDrag = false
+            return@LaunchedEffect
+        }
+        if (!isDragging && abs(pillPosition.value - target) > 0.01f) {
+            // Konten & label tab langsung berganti; pill menyusul sesudahnya.
+            delay(TAP_FOLLOW_DELAY_MS)
+            if (!isDragging) pillPosition.animateTo(target.toFloat(), followSpec)
+        }
     }
 
     // 0f = diam, 1f = menyembul penuh. Spring mantul (damping rendah) saat
@@ -156,6 +175,7 @@ fun AetherBottomNavBar(
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
+                    settledByDrag = false
                     pressed = true
 
                     var moved = false
@@ -191,12 +211,18 @@ fun AetherBottomNavBar(
                     previewIndex = target
                     val startFrom = dragPosition
                     val wasDragging = moved
-                    scope.launch {
-                        if (wasDragging) pillPosition.snapTo(startFrom)
-                        isDragging = false
-                        dragVelocity = 0f
-                        pillPosition.animateTo(target.toFloat(), settleSpec)
+                    if (wasDragging) {
+                        // Drag: pill sudah di posisi jari -> settle langsung tanpa jeda.
+                        settledByDrag = true
+                        scope.launch {
+                            pillPosition.snapTo(startFrom)
+                            isDragging = false
+                            dragVelocity = 0f
+                            pillPosition.animateTo(target.toFloat(), settleSpec)
+                        }
                     }
+                    // Tap: pill digerakkan oleh LaunchedEffect(selectedIndex) di atas
+                    // (dengan jeda), supaya tab berganti dulu baru pill menyusul.
                     onSelect(target)
                 }
             },

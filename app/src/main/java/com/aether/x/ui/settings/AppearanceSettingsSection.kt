@@ -31,32 +31,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aether.x.data.AccentPreset
-import com.aether.x.data.AppFont
-import com.aether.x.data.CardStyle
 import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
-import com.aether.x.ui.theme.toFontFamily
 import kotlin.math.roundToInt
 
 /**
- * v3.6 — Pengaturan "Tampilan": mode terang/gelap, warna aksen, font,
- * gaya card, dan slider blur/kaca. Semua perubahan tersimpan di DataStore
+ * Pengaturan "Tampilan": mode terang/gelap, warna aksen, dan slider blur.
+ * (v3.9: opsi font dan gaya card dihapus — tetap Poppins + kaca.) Semua perubahan tersimpan di DataStore
  * dan langsung diterapkan lewat AetherXTheme di MainActivity.
  */
 @Composable
 fun AppearanceSettingsSection(
     darkModePref: DarkModePref,
     accentPreset: AccentPreset,
-    appFont: AppFont,
-    cardStyle: CardStyle,
     blurStrength: Int,
     onDarkModeChange: (DarkModePref) -> Unit,
     onAccentChange: (AccentPreset) -> Unit,
-    onFontChange: (AppFont) -> Unit,
-    onCardStyleChange: (CardStyle) -> Unit,
     onBlurChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -85,26 +78,6 @@ fun AppearanceSettingsSection(
                         selected = preset == accentPreset,
                         onClick = { onAccentChange(preset) },
                     )
-                }
-            }
-        }
-
-        SettingGroup(label = "Font") {
-            ChoiceRow {
-                AppFont.entries.forEach { font ->
-                    ChoicePill(
-                        label = font.label,
-                        selected = font == appFont,
-                        fontFamily = font.toFontFamily(),
-                    ) { onFontChange(font) }
-                }
-            }
-        }
-
-        SettingGroup(label = "Gaya card") {
-            ChoiceRow {
-                CardStyle.entries.forEach { style ->
-                    ChoicePill(style.label, style == cardStyle) { onCardStyleChange(style) }
                 }
             }
         }

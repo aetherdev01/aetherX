@@ -14,8 +14,6 @@ import com.aether.x.core.overlay.CrosshairOverlayService
 import com.aether.x.core.overlay.FpsMonitorOverlayService
 import com.aether.x.data.AccentPreset
 import com.aether.x.data.AetherXPreferences
-import com.aether.x.data.AppFont
-import com.aether.x.data.CardStyle
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.data.DarkModePref
@@ -112,14 +110,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setAccentPreset(value: AccentPreset) {
         viewModelScope.launch { preferences.setAccentPreset(value) }
-    }
-
-    fun setAppFont(value: AppFont) {
-        viewModelScope.launch { preferences.setAppFont(value) }
-    }
-
-    fun setCardStyle(value: CardStyle) {
-        viewModelScope.launch { preferences.setCardStyle(value) }
     }
 
     fun setBlurStrength(value: Int) {

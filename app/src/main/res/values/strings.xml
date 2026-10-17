@@ -106,9 +106,9 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_appearance">Tema terang jadi default, plus pilihan warna aksen, font, gaya card, dan slider blur di Pengaturan -> Tampilan</string>
+    <string name="whatsnew_item_appearance">Tema terang jadi default, plus pilihan warna aksen dan slider blur di Pengaturan -&gt; Tampilan</string>
     <string name="whatsnew_item_blur">Blur sungguhan (bukan sekadar transparan) di dialog, drawer, dan navbar; atur kekuatannya di Pengaturan -&gt; Tampilan</string>
-    <string name="whatsnew_item_colors">Perbaikan warna teks yang kurang terbaca di beberapa tema aksen, terang maupun gelap; pill navbar menyembul dengan pegas saat ditahan</string>
+    <string name="whatsnew_item_colors">Perbaikan warna teks yang kurang terbaca di beberapa tema aksen, terang maupun gelap; animasi pill navbar lebih halus: menyusul sesaat setelah tab dipilih, menyembul dengan pegas saat ditahan</string>
     <string name="whatsnew_item_dashboard">Dashboard lebih rapi: versi pindah ke header, ikon status seragam, warna tidak norak</string>
     <string name="whatsnew_item_advanced">Advanced baru: Power Menu (reboot, recovery, bootloader), Kernel Tools (I/O scheduler, TCP, swappiness), dan Terminal Root</string>
     <string name="whatsnew_item_adblock">Deteksi pemblokir iklan untuk pengguna gratis (member bebas iklan)</string>
