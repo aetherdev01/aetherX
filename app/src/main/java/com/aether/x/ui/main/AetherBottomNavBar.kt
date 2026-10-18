@@ -63,6 +63,8 @@ import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 
 data class AetherNavItem(
@@ -178,42 +180,76 @@ fun AetherBottomNavBar(
                     down.consume()
                     settledByTouch = false
                     pressed = true
-                    isDragging = true
+                    isDragging = false
                     dragVelocity = 0f
-                    var lastX = down.position.x
-                    dragPosition = slotAt(down.position.x)
-                    previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
+
+                    val downX = down.position.x
+                    val touchTarget = slotAt(downX).roundToInt().coerceIn(0, lastIndex)
+                    var lastX = downX
+                    var dragging = false
+                    var dragOriginX = downX
+                    var dragOriginPosition = pillPosition.value
+                    previewIndex = touchTarget
+
+                    // Saat tap, capsule mulai meluncur menuju tab yang disentuh.
+                    // Jika jari mulai digeser, animasi ini dibatalkan dan posisi
+                    // capsule dilanjutkan langsung dari posisi visual terakhir.
+                    var moveJob: Job? = scope.launch {
+                        pillPosition.animateTo(touchTarget.toFloat(), followSpec)
+                    }
 
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         val x = change.position.x
+                        val travel = x - downX
                         val dx = x - lastX
 
-                        // Perbarui posisi bahkan sebelum jari diangkat; tidak menunggu touch-slop.
-                        dragPosition = slotAt(x)
-                        previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
-                        dragVelocity = (dx / slot) * 60f
+                        if (!dragging && abs(travel) > viewConfiguration.touchSlop) {
+                            dragging = true
+                            moveJob?.cancelAndJoin()
+                            moveJob = null
+                            isDragging = true
+                            // Sambung dari posisi capsule saat animasi berhenti,
+                            // bukan lompat ke slot di bawah jari.
+                            dragOriginX = x
+                            dragOriginPosition = pillPosition.value
+                            dragPosition = dragOriginPosition
+                        }
+
+                        if (dragging) {
+                            dragPosition = (
+                                dragOriginPosition + (x - dragOriginX) / slot
+                            ).coerceIn(0f, lastIndex.toFloat())
+                            previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
+                            dragVelocity = (dx / slot) * 60f
+                        }
                         lastX = x
 
                         if (change.changedToUp()) {
                             change.consume()
                             break
                         }
-                        if (abs(dx) > 0.5f) change.consume()
+                        if (abs(travel) > viewConfiguration.touchSlop) change.consume()
                     }
 
-                    val target = dragPosition.roundToInt().coerceIn(0, lastIndex)
-                    previewIndex = target
-                    val startFrom = dragPosition
-                    pressed = false
-                    // Tandai sebelum onSelect agar efek perubahan selectedIndex tidak
-                    // memulai animasi kedua yang membuat capsule terasa terlambat.
+                    val target = if (dragging) {
+                        dragPosition.roundToInt().coerceIn(0, lastIndex)
+                    } else {
+                        touchTarget
+                    }
+                    moveJob?.cancelAndJoin()
                     settledByTouch = target != selectedIndex
+                    previewIndex = target
+
+                    // Sinkronkan nilai Animatable dengan posisi terakhir hasil drag
+                    // sebelum mode drag dimatikan, agar pelepasan tidak menyebabkan snap.
+                    if (dragging) pillPosition.snapTo(dragPosition)
+                    isDragging = false
+                    pressed = false
+                    dragVelocity = 0f
+
                     scope.launch {
-                        pillPosition.snapTo(startFrom)
-                        isDragging = false
-                        dragVelocity = 0f
                         pillPosition.animateTo(target.toFloat(), settleSpec)
                     }
                     onSelect(target)
