@@ -2,6 +2,8 @@ package com.aether.x.data
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
+import com.google.firebase.firestore.Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -51,17 +53,30 @@ class MaintenanceRepository {
      * SplashViewModel sebagai bagian dari urutan startup, supaya splash
      * benar-benar menunggu jawaban server, bukan cuma delay lokal.
      */
-    suspend fun fetchOnce(): MaintenanceStatus = runCatching {
-        val snapshot = docRef.get().await()
-        if (!snapshot.exists()) return@runCatching MAINTENANCE_OFF
+    suspend fun fetchOnce(): MaintenanceStatus = fetchOnceChecked() ?: MAINTENANCE_OFF
 
-        val enabled = snapshot.getBoolean("enabled") ?: false
-        if (!enabled) return@runCatching MAINTENANCE_OFF
-
-        MaintenanceStatus(
-            enabled = true,
-            title = snapshot.getString("title").orEmpty(),
-            message = snapshot.getString("message").orEmpty(),
-        )
-    }.getOrElse { MAINTENANCE_OFF }
+    /** Null means the server request failed; a disabled/missing maintenance document is a valid response. */
+    suspend fun fetchOnceChecked(): MaintenanceStatus? {
+        return try {
+            val snapshot = docRef.get(Source.SERVER).await()
+            if (!snapshot.exists()) {
+                MAINTENANCE_OFF
+            } else {
+                val enabled = snapshot.getBoolean("enabled") ?: false
+                if (!enabled) {
+                    MAINTENANCE_OFF
+                } else {
+                    MaintenanceStatus(
+                        enabled = true,
+                        title = snapshot.getString("title").orEmpty(),
+                        message = snapshot.getString("message").orEmpty(),
+                    )
+                }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+    }
 }

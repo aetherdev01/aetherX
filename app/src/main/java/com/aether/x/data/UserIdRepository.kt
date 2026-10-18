@@ -4,6 +4,8 @@ import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -43,17 +45,26 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
      * splash dapat menampilkan tahap pendaftaran yang sesuai pekerjaan nyata.
      */
     suspend fun resolveUserIdentity(
+        onCheckingDevice: (() -> Unit)? = null,
         onRegisteringDevice: (() -> Unit)? = null,
+        forceRemoteCheck: Boolean = false,
     ): UserIdResolution? {
-        preferences.getSyncedUserId()?.let {
-            return UserIdResolution(userId = it, alreadyRegistered = true)
+        if (!forceRemoteCheck) {
+            preferences.getSyncedUserId()?.let {
+                return UserIdResolution(userId = it, alreadyRegistered = true)
+            }
         }
 
         var backoff = INITIAL_BACKOFF_MILLIS
         repeat(MAX_ATTEMPTS) { attempt ->
-            val resolved = runCatching { resolveExistingOrAllocate(onRegisteringDevice) }
-                .onFailure { e -> logFailure(attempt, e) }
-                .getOrNull()
+            val resolved = try {
+                resolveExistingOrAllocate(onCheckingDevice, onRegisteringDevice)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                logFailure(attempt, error)
+                null
+            }
 
             if (resolved != null) {
                 preferences.setSyncedUserId(resolved.userId)
@@ -91,8 +102,10 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
     }
 
     private suspend fun resolveExistingOrAllocate(
+        onCheckingDevice: (() -> Unit)? = null,
         onRegisteringDevice: (() -> Unit)? = null,
     ): UserIdResolution {
+        onCheckingDevice?.invoke()
         val existing = fetchExistingUserId()
         if (existing != null) {
             return UserIdResolution(userId = existing, alreadyRegistered = true)
@@ -106,7 +119,7 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
     }
 
     private suspend fun fetchExistingUserId(): String? = suspendCancellableCoroutine { cont ->
-        deviceRef.get()
+        deviceRef.get(Source.SERVER)
             .addOnSuccessListener { snapshot ->
                 val existing = snapshot.getString("userId")
                 if (cont.isActive) cont.resume(existing)
@@ -136,7 +149,7 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
     }
 
     private suspend fun userIdExists(candidate: String): Boolean = suspendCancellableCoroutine { cont ->
-        devicesRef.whereEqualTo("userId", candidate).limit(1).get()
+        devicesRef.whereEqualTo("userId", candidate).limit(1).get(Source.SERVER)
             .addOnSuccessListener { snapshot -> if (cont.isActive) cont.resume(!snapshot.isEmpty) }
             .addOnFailureListener { if (cont.isActive) cont.resume(false) }
     }

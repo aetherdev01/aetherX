@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,12 +49,9 @@ import com.aether.x.R
 import com.aether.x.ui.components.AetherBackground
 import kotlinx.coroutines.delay
 
-private const val MIN_SPLASH_MILLIS = 700L
+private const val MIN_SPLASH_MILLIS = 950L
 
-/**
- * Splash clean: logo tanpa frame/panel. Status tahap startup ditampilkan kecil
- * tanpa card; pengguna terdaftar melewati sinkronisasi jaringan tanpa menunggu.
- */
+/** Splash status is rendered from actual server/device/token operations reported by SplashViewModel. */
 @Composable
 fun SplashScreen(
     onSplashFinished: () -> Unit,
@@ -97,13 +97,14 @@ fun SplashScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 28.dp),
+                .padding(horizontal = 28.dp, vertical = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
+                    .fillMaxWidth()
                     .alpha(entrance.coerceIn(0f, 1f))
                     .graphicsLayer {
                         val entryScale = 0.94f + entrance.coerceIn(0f, 1f) * 0.06f
@@ -115,7 +116,7 @@ fun SplashScreen(
                     painter = painterResource(R.drawable.logo),
                     contentDescription = "AetherX",
                     modifier = Modifier
-                        .size(112.dp)
+                        .size(96.dp)
                         .graphicsLayer {
                             val pulse = jelly.coerceIn(0f, 1f)
                             val breathe = 0.975f + pulse * 0.05f
@@ -125,7 +126,7 @@ fun SplashScreen(
                         },
                 )
 
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Text(
                     text = buildAnnotatedString {
@@ -137,36 +138,115 @@ fun SplashScreen(
                     letterSpacing = 3.4.sp,
                 )
 
-                if (!uiState.failed && !uiState.finished) {
-                    Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
+
+                if (uiState.steps.isNotEmpty()) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(15.dp),
+                            modifier = Modifier.size(14.dp),
                             color = colors.primary,
                             strokeWidth = 2.dp,
                         )
-                        Spacer(Modifier.size(10.dp))
+                        Spacer(Modifier.width(9.dp))
                         Text(
                             text = uiState.statusText,
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.onSurfaceVariant,
                         )
                     }
+
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = uiState.progress,
+                        modifier = Modifier.width(260.dp),
+                        color = colors.primary,
+                        trackColor = colors.surfaceVariant,
+                    )
+                    Spacer(Modifier.height(18.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        uiState.steps.forEach { step ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(width = 22.dp, height = 18.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    when (step.status) {
+                                        SplashStepStatus.ACTIVE -> CircularProgressIndicator(
+                                            modifier = Modifier.size(13.dp),
+                                            color = colors.primary,
+                                            strokeWidth = 2.dp,
+                                        )
+                                        SplashStepStatus.COMPLETE -> Text(
+                                            text = "✓",
+                                            color = colors.primary,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        SplashStepStatus.SKIPPED -> Text(
+                                            text = "—",
+                                            color = colors.onSurfaceVariant,
+                                            fontSize = 12.sp,
+                                        )
+                                        SplashStepStatus.FAILED -> Text(
+                                            text = "!",
+                                            color = colors.error,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        SplashStepStatus.PENDING -> Text(
+                                            text = "•",
+                                            color = colors.outline,
+                                            fontSize = 16.sp,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = step.title,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = when (step.status) {
+                                            SplashStepStatus.ACTIVE -> colors.onBackground
+                                            SplashStepStatus.FAILED -> colors.error
+                                            SplashStepStatus.PENDING -> colors.onSurfaceVariant
+                                            else -> colors.onSurfaceVariant
+                                        },
+                                        fontWeight = if (step.status == SplashStepStatus.ACTIVE) FontWeight.SemiBold else FontWeight.Normal,
+                                    )
+                                    if (step.status == SplashStepStatus.ACTIVE || step.status == SplashStepStatus.FAILED) {
+                                        Text(
+                                            text = step.detail,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (step.status == SplashStepStatus.FAILED) colors.error else colors.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (uiState.failed) {
-                    Spacer(Modifier.height(28.dp))
+                    Spacer(Modifier.height(18.dp))
                     Text(
-                        text = "Koneksi belum tersedia",
+                        text = "Verifikasi perangkat belum berhasil",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.error,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Periksa internet, lalu coba lagi.",
+                        text = "Periksa koneksi internet lalu coba lagi.",
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                     )

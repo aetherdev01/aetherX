@@ -4,11 +4,11 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.aether.x.AetherXApp
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.DeviceId
 import com.aether.x.data.DeviceRegistry
 import com.aether.x.data.FcmTokenRepository
+import com.aether.x.data.FcmTokenSyncStage
 import com.aether.x.data.MaintenanceRepository
 import com.aether.x.data.UserIdRepository
 import kotlinx.coroutines.launch
@@ -17,28 +17,42 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Stages are tied to real startup work; no artificial progress delays. */
-enum class SplashStage {
-    RESOLVING_IDENTITY,
-    REGISTERING_DEVICE,
-    SYNCING_NOTIFICATIONS,
-    CHECKING_MAINTENANCE,
-    DONE,
-}
+private const val TAG = "SplashViewModel"
+private const val IDENTITY_TIMEOUT_MILLIS = 20_000L
+private const val STEP_TIMEOUT_MILLIS = 7_000L
+
+private const val VERIFY_DEVICE = "verify_device"
+private const val REGISTER_DEVICE = "register_device"
+private const val RECORD_DEVICE = "record_device"
+private const val FETCH_TOKEN = "fetch_token"
+private const val SYNC_TOKEN = "sync_token"
+private const val CHECK_SERVER = "check_server"
+
+enum class SplashStepStatus { PENDING, ACTIVE, COMPLETE, SKIPPED, FAILED }
+
+data class SplashProgressStep(
+    val id: String,
+    val title: String,
+    val status: SplashStepStatus = SplashStepStatus.PENDING,
+    val detail: String = "Menunggu",
+)
+
+private fun initialSteps() = listOf(
+    SplashProgressStep(CHECK_SERVER, "Menghubungkan ke server"),
+    SplashProgressStep(VERIFY_DEVICE, "Memverifikasi Device ID"),
+    SplashProgressStep(REGISTER_DEVICE, "Mendaftarkan Device ID"),
+    SplashProgressStep(RECORD_DEVICE, "Memperbarui status perangkat"),
+    SplashProgressStep(FETCH_TOKEN, "Mengambil token notifikasi"),
+    SplashProgressStep(SYNC_TOKEN, "Menyinkronkan token ke server"),
+)
 
 data class SplashUiState(
-    val stage: SplashStage = SplashStage.RESOLVING_IDENTITY,
+    val steps: List<SplashProgressStep> = initialSteps(),
     val progress: Float = 0f,
-    val statusText: String = "Menyiapkan AetherX...",
-    /** Only a failure to resolve/register identity blocks a first-time launch. */
+    val statusText: String = "Menghubungkan ke server...",
     val failed: Boolean = false,
     val finished: Boolean = false,
 )
-
-private const val TAG = "SplashViewModel"
-private const val IDENTITY_TIMEOUT_MILLIS = 15_000L
-private const val STARTUP_STEP_TIMEOUT_MILLIS = 7_000L
-private const val BACKGROUND_STEP_TIMEOUT_MILLIS = 10_000L
 
 class SplashViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -62,97 +76,158 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun runStartupSequence() {
         viewModelScope.launch {
-            // Returning users do not wait on network round-trips. Cache is the
-            // fast path; all writes/syncs continue in the application scope.
             val cachedUserId = preferences.getSyncedUserId()
-            if (cachedUserId != null) {
-                finishFastPath(cachedUserId)
-                return@launch
+
+            // This server-only read makes the first splash stage a real network request,
+            // not just a label shown while the UI waits locally.
+            updateStep(CHECK_SERVER, SplashStepStatus.ACTIVE, "Meminta konfigurasi awal dari Firestore...")
+            setStatus("Menghubungkan ke server...")
+            val initialServerResponse = withTimeoutOrNull(5_000L) {
+                maintenanceRepository.fetchOnceChecked()
+            }
+            if (initialServerResponse != null) {
+                updateStep(CHECK_SERVER, SplashStepStatus.COMPLETE, "Koneksi server terkonfirmasi")
+            } else {
+                failStep(CHECK_SERVER, "Server belum merespons; proses lain tetap dicoba")
             }
 
-            emit(SplashStage.RESOLVING_IDENTITY, 0.12f, "Menghubungkan ke server...")
-            val resolution = withTimeoutOrNull(IDENTITY_TIMEOUT_MILLIS) {
-                userIdRepository.resolveUserIdentity {
-                    emit(
-                        SplashStage.REGISTERING_DEVICE,
-                        0.42f,
-                        "Mendaftarkan Device ID...",
-                    )
-                }
+            updateStep(VERIFY_DEVICE, SplashStepStatus.ACTIVE, "Memeriksa identitas perangkat di server...")
+            setStatus("Memverifikasi Device ID di server...")
+
+            // Even when a local ID is cached, ask Firestore for the current device record.
+            // This makes the visible loading stages reflect real startup network operations.
+            val identityTimeout = if (cachedUserId != null) 6_000L else IDENTITY_TIMEOUT_MILLIS
+            val resolution = withTimeoutOrNull(identityTimeout) {
+                userIdRepository.resolveUserIdentity(
+                    forceRemoteCheck = true,
+                    onCheckingDevice = {
+                        updateStep(VERIFY_DEVICE, SplashStepStatus.ACTIVE, "Mencari Device ID di database...")
+                        setStatus("Memverifikasi Device ID di server...")
+                    },
+                    onRegisteringDevice = {
+                        updateStep(VERIFY_DEVICE, SplashStepStatus.COMPLETE, "Device ID belum ditemukan")
+                        updateStep(REGISTER_DEVICE, SplashStepStatus.ACTIVE, "Membuat identitas dan mendaftarkan perangkat...")
+                        setStatus("Mendaftarkan Device ID...")
+                    },
+                )
             }
 
+            val userId: String
             if (resolution == null) {
-                Log.w(TAG, "Resolusi identitas gagal/timeout; kemungkinan server tidak tersedia")
+                Log.w(TAG, "Verifikasi/registrasi identitas gagal atau timeout")
+                failActiveStep("Server tidak merespons atau registrasi ditolak")
+
+                if (cachedUserId == null) {
+                    _state.value = _state.value.copy(
+                        failed = true,
+                        statusText = "Verifikasi perangkat gagal. Periksa koneksi lalu coba lagi.",
+                    )
+                    return@launch
+                }
+
+                // Preserve app access for returning users when the server is temporarily
+                // unavailable. Pending network tasks are clearly marked rather than shown
+                // as successful; the application also attempts FCM sync in its app scope.
+                val registrationStep = _state.value.steps.first { it.id == REGISTER_DEVICE }
+                if (registrationStep.status == SplashStepStatus.PENDING) {
+                    updateStep(REGISTER_DEVICE, SplashStepStatus.SKIPPED, "Dilewati sementara; memakai ID lokal tersimpan")
+                }
+                listOf(RECORD_DEVICE, FETCH_TOKEN, SYNC_TOKEN).forEach { id ->
+                    val step = _state.value.steps.first { it.id == id }
+                    if (step.status == SplashStepStatus.PENDING) {
+                        updateStep(id, SplashStepStatus.SKIPPED, "Ditunda karena server tidak tersedia")
+                    }
+                }
                 _state.value = _state.value.copy(
-                    failed = true,
-                    statusText = "Koneksi gagal — periksa internet",
+                    statusText = "Server tidak tersedia — memakai ID tersimpan",
+                    finished = true,
+                    failed = false,
                 )
                 return@launch
+            } else {
+                userId = resolution.userId
+                if (resolution.alreadyRegistered) {
+                    updateStep(VERIFY_DEVICE, SplashStepStatus.COMPLETE, "Device ID ditemukan di server")
+                    updateStep(REGISTER_DEVICE, SplashStepStatus.SKIPPED, "Sudah terdaftar; tidak membuat ID baru")
+                } else {
+                    updateStep(VERIFY_DEVICE, SplashStepStatus.COMPLETE, "Pemeriksaan server berhasil")
+                    updateStep(REGISTER_DEVICE, SplashStepStatus.COMPLETE, "Device ID berhasil didaftarkan")
+                }
             }
 
-            // A reinstall/cleared app data can have no local cache while the
-            // Device ID is still registered on the server. Treat it as returning.
-            if (resolution.alreadyRegistered) {
-                finishFastPath(resolution.userId)
-                return@launch
+            updateStep(RECORD_DEVICE, SplashStepStatus.ACTIVE, "Mengirim status login perangkat...")
+            setStatus("Memperbarui status perangkat...")
+            val loginRecorded = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+                deviceRegistry.recordDeviceLogin(userId)
+            }
+            if (loginRecorded == true) {
+                updateStep(RECORD_DEVICE, SplashStepStatus.COMPLETE, "Status perangkat tersimpan di server")
+            } else {
+                failStep(RECORD_DEVICE, "Gagal memperbarui status perangkat")
             }
 
-            // New device: UserIdRepository has just created devices/{deviceId}
-            // and cached the new ID, so we can immediately sync its FCM token.
-            emit(
-                SplashStage.SYNCING_NOTIFICATIONS,
-                0.72f,
-                "Menyinkronkan token notifikasi...",
+            setStatus("Menyinkronkan notifikasi...")
+            val tokenSynced = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+                FcmTokenRepository.syncTokenToFirestore(
+                    getApplication(),
+                    onStage = { stage ->
+                        when (stage) {
+                            FcmTokenSyncStage.FETCHING_TOKEN -> {
+                                updateStep(FETCH_TOKEN, SplashStepStatus.ACTIVE, "Meminta token dari Firebase Messaging...")
+                                setStatus("Mengambil token notifikasi...")
+                            }
+                            FcmTokenSyncStage.WRITING_TOKEN -> {
+                                updateStep(FETCH_TOKEN, SplashStepStatus.COMPLETE, "Token FCM berhasil didapatkan")
+                                updateStep(SYNC_TOKEN, SplashStepStatus.ACTIVE, "Mengirim token ke dokumen perangkat...")
+                                setStatus("Menyinkronkan token ke server...")
+                            }
+                        }
+                    },
+                )
+            }
+            if (tokenSynced == true) {
+                updateStep(SYNC_TOKEN, SplashStepStatus.COMPLETE, "Token tersimpan di Firestore")
+            } else {
+                failActiveStep("Token belum berhasil disinkronkan")
+            }
+
+            val hasFailures = _state.value.steps.any { it.status == SplashStepStatus.FAILED }
+            _state.value = _state.value.copy(
+                statusText = if (hasFailures) "Sinkronisasi selesai dengan sebagian proses tertunda" else "Sinkronisasi selesai",
+                finished = true,
+                failed = false,
             )
-            withTimeoutOrNull(STARTUP_STEP_TIMEOUT_MILLIS) {
-                FcmTokenRepository.syncTokenToFirestore(getApplication())
-            }
-
-            emit(SplashStage.CHECKING_MAINTENANCE, 0.90f, "Memeriksa status server...")
-            withTimeoutOrNull(STARTUP_STEP_TIMEOUT_MILLIS) {
-                maintenanceRepository.fetchOnce()
-            }
-
-            emit(SplashStage.DONE, 1f, "Siap")
-            _state.value = _state.value.copy(finished = true)
         }
     }
 
-    /**
-     * For registered devices, show the brand splash only for its minimum
-     * animation time. Server writes run independently and survive navigation.
-     */
-    private fun finishFastPath(userId: String) {
-        val app = getApplication<Application>()
-        AetherXApp.launchInAppScope {
-            launch {
-                withTimeoutOrNull(BACKGROUND_STEP_TIMEOUT_MILLIS) {
-                    deviceRegistry.recordDeviceLogin(userId)
-                }
-                withTimeoutOrNull(BACKGROUND_STEP_TIMEOUT_MILLIS) {
-                    FcmTokenRepository.syncTokenToFirestore(app)
-                }
-            }
-            launch {
-                withTimeoutOrNull(BACKGROUND_STEP_TIMEOUT_MILLIS) {
-                    maintenanceRepository.fetchOnce()
-                }
-            }
-        }
-
-        _state.value = SplashUiState(
-            stage = SplashStage.DONE,
-            progress = 1f,
-            statusText = "Siap",
-            finished = true,
-        )
+    private fun setStatus(message: String) {
+        _state.value = _state.value.copy(statusText = message)
     }
 
-    private fun emit(stage: SplashStage, progress: Float, text: String) {
-        _state.value = _state.value.copy(
-            stage = stage,
-            progress = progress,
-            statusText = text,
-        )
+    private fun updateStep(id: String, status: SplashStepStatus, detail: String) {
+        val current = _state.value
+        val next = current.steps.map { step ->
+            if (step.id == id) step.copy(status = status, detail = detail)
+            else if (status == SplashStepStatus.ACTIVE && step.status == SplashStepStatus.ACTIVE) {
+                step.copy(status = SplashStepStatus.PENDING, detail = "Menunggu")
+            } else step
+        }
+        val completed = next.count {
+            it.status == SplashStepStatus.COMPLETE ||
+                it.status == SplashStepStatus.SKIPPED ||
+                it.status == SplashStepStatus.FAILED
+        }
+        val active = next.any { it.status == SplashStepStatus.ACTIVE }
+        val progress = ((completed.toFloat() + if (active) 0.35f else 0f) / next.size.toFloat()).coerceIn(0f, 1f)
+        _state.value = current.copy(steps = next, progress = progress)
+    }
+
+    private fun failStep(id: String, detail: String) {
+        updateStep(id, SplashStepStatus.FAILED, detail)
+    }
+
+    private fun failActiveStep(detail: String) {
+        val active = _state.value.steps.firstOrNull { it.status == SplashStepStatus.ACTIVE }
+        if (active != null) failStep(active.id, detail)
     }
 }
