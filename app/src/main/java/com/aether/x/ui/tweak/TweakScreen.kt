@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -218,7 +219,10 @@ fun TweakScreen(
             modifier = modifier
                 .fillMaxSize()
                 .hazeSource(drawerHaze)
-                .padding(contentPadding),
+                .padding(contentPadding)
+                // Terminal Root must resize above the software keyboard so the
+                // command field and run button remain visible while typing.
+                .then(if (selectedSubTab == TweakSubTab.TERMINAL) Modifier.imePadding() else Modifier),
         ) {
             Column(
                 modifier = Modifier
@@ -623,14 +627,6 @@ private fun TweakDrawerContent(
             icon = { Icon(imageVector = Icons.Outlined.Terminal, contentDescription = null) },
             selected = selected == TweakSubTab.TERMINAL,
             onClick = { onSelect(TweakSubTab.TERMINAL) },
-            colors = NavigationDrawerItemDefaults.colors(),
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-        )
-        NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_power_menu)) },
-            icon = { Icon(imageVector = Icons.Outlined.PowerSettingsNew, contentDescription = null) },
-            selected = selected == TweakSubTab.POWER,
-            onClick = { onSelect(TweakSubTab.POWER) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
