@@ -76,8 +76,9 @@ data class AetherNavItem(
 /**
  * Tab bar capsule v3.6 — kaca.
  *
- *  - v3.8: latar capsule mem-BLUR konten tab yang lewat di belakangnya
- *    (Haze, radius dari slider blur) + tint tipis + garis tepi berkilau.
+ *  - v3.9: latar capsule mem-BLUR konten tab yang lewat di belakangnya
+ *    (Haze, radius dari slider blur) + tint sangat tipis + garis tepi berkilau.
+ *    Blur HANYA di latar capsule; floating pill tidak di-blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
  *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
@@ -277,27 +278,31 @@ fun AetherBottomNavBar(
                     ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
                     spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
                 )
-                // Haze must be applied BEFORE clipping/tinting the surface. This lets
-                // Haze sample and blur the content behind the floating capsule; the
-                // clip then constrains the resulting blur to the capsule silhouette.
+                // clip HARUS sebelum hazeEffect: efek Haze hanya terpotong mengikuti
+                // bentuk capsule bila clip berada di atasnya dalam rantai modifier.
+                // Kalau urutannya terbalik, blur tergambar persegi (sudutnya keluar capsule).
+                .clip(barShape)
                 .then(
                     if (blurOn) {
                         Modifier.hazeEffect(state = hazeState) {
-                            // Naikkan radius agar blur background benar-benar terlihat.
+                            // Radius mengikuti slider blur (blurRadiusFor), dinaikkan sedikit
+                            // agar blur latar benar-benar terlihat.
                             blurRadius = (barBlurRadius.value * 1.15f).dp
                             noiseFactor = 0.01f
-                            backgroundColor = surface.copy(alpha = 0.02f)
+                            backgroundColor = surface.copy(alpha = 0.01f)
                         }
                     } else {
                         Modifier
                     },
                 )
-                .clip(barShape)
+                // Tint digambar SETELAH blur dan dibuat sangat tipis supaya latar
+                // capsule lebih transparan dan blur terlihat jelas. Tanpa blur
+                // (slider 0 / hazeState null) tint kembali hampir pekat.
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) 0.10f else 0.96f),
-                            surface.copy(alpha = if (blurOn) 0.08f else 0.90f),
+                            lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) 0.05f else 0.96f),
+                            surface.copy(alpha = if (blurOn) 0.03f else 0.90f),
                         ),
                     ),
                 )
