@@ -13,11 +13,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,9 +49,8 @@ import kotlinx.coroutines.delay
 private const val MIN_SPLASH_MILLIS = 700L
 
 /**
- * Splash clean: logo tanpa frame, panel, status server, progress bar, atau footer.
- * Startup/Firebase flow tetap dikerjakan oleh SplashViewModel; UI hanya menampilkan
- * error dan aksi retry jika proses identitas benar-benar gagal.
+ * Splash clean: logo tanpa frame/panel. Status tahap startup ditampilkan kecil
+ * tanpa card; pengguna terdaftar melewati sinkronisasi jaringan tanpa menunggu.
  */
 @Composable
 fun SplashScreen(
@@ -135,6 +136,26 @@ fun SplashScreen(
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 3.4.sp,
                 )
+
+                if (!uiState.failed && !uiState.finished) {
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(15.dp),
+                            color = colors.primary,
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.size(10.dp))
+                        Text(
+                            text = uiState.statusText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
 
                 if (uiState.failed) {
                     Spacer(Modifier.height(28.dp))

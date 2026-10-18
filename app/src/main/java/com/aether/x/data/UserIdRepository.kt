@@ -10,6 +10,12 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.random.Random
 
+data class UserIdResolution(
+    val userId: String,
+    /** True when this device already had an identity, locally or in Firestore. */
+    val alreadyRegistered: Boolean,
+)
+
 class UserIdRepository(private val preferences: AetherXPreferences, private val deviceId: String) {
 
     private val firestore by lazy { FirebaseFirestore.getInstance() }
@@ -29,17 +35,28 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
         const val LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     }
 
-    suspend fun resolveUserId(): String? {
-        preferences.getSyncedUserId()?.let { return it }
+    suspend fun resolveUserId(): String? = resolveUserIdentity()?.userId
+
+    /**
+     * Mengembalikan identitas beserta apakah perangkat ini sudah terdaftar.
+     * Callback dipanggil tepat sebelum alokasi identitas baru dimulai, supaya
+     * splash dapat menampilkan tahap pendaftaran yang sesuai pekerjaan nyata.
+     */
+    suspend fun resolveUserIdentity(
+        onRegisteringDevice: (() -> Unit)? = null,
+    ): UserIdResolution? {
+        preferences.getSyncedUserId()?.let {
+            return UserIdResolution(userId = it, alreadyRegistered = true)
+        }
 
         var backoff = INITIAL_BACKOFF_MILLIS
         repeat(MAX_ATTEMPTS) { attempt ->
-            val resolved = runCatching { resolveExistingOrAllocate() }
+            val resolved = runCatching { resolveExistingOrAllocate(onRegisteringDevice) }
                 .onFailure { e -> logFailure(attempt, e) }
                 .getOrNull()
 
             if (resolved != null) {
-                preferences.setSyncedUserId(resolved)
+                preferences.setSyncedUserId(resolved.userId)
                 return resolved
             }
 
@@ -73,10 +90,19 @@ class UserIdRepository(private val preferences: AetherXPreferences, private val 
         )
     }
 
-    private suspend fun resolveExistingOrAllocate(): String {
+    private suspend fun resolveExistingOrAllocate(
+        onRegisteringDevice: (() -> Unit)? = null,
+    ): UserIdResolution {
         val existing = fetchExistingUserId()
-        if (existing != null) return existing
-        return allocateAndRegister()
+        if (existing != null) {
+            return UserIdResolution(userId = existing, alreadyRegistered = true)
+        }
+
+        onRegisteringDevice?.invoke()
+        return UserIdResolution(
+            userId = allocateAndRegister(),
+            alreadyRegistered = false,
+        )
     }
 
     private suspend fun fetchExistingUserId(): String? = suspendCancellableCoroutine { cont ->

@@ -4,22 +4,20 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aether.x.AetherXApp
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.DeviceId
 import com.aether.x.data.DeviceRegistry
 import com.aether.x.data.FcmTokenRepository
 import com.aether.x.data.MaintenanceRepository
 import com.aether.x.data.UserIdRepository
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Tahap startup nyata yang dijalankan splash — tiap tahap merepresentasikan
- * satu panggilan jaringan/Firebase sungguhan, bukan delay simulasi.
- */
+/** Stages are tied to real startup work; no artificial progress delays. */
 enum class SplashStage {
     RESOLVING_IDENTITY,
     REGISTERING_DEVICE,
@@ -31,14 +29,16 @@ enum class SplashStage {
 data class SplashUiState(
     val stage: SplashStage = SplashStage.RESOLVING_IDENTITY,
     val progress: Float = 0f,
-    val statusText: String = "",
-    /** true kalau tahap identity gagal total (offline) — splash berhenti dan menampilkan retry. */
+    val statusText: String = "Menyiapkan AetherX...",
+    /** Only a failure to resolve/register identity blocks a first-time launch. */
     val failed: Boolean = false,
     val finished: Boolean = false,
 )
 
 private const val TAG = "SplashViewModel"
-private const val STEP_TIMEOUT_MILLIS = 15_000L
+private const val IDENTITY_TIMEOUT_MILLIS = 15_000L
+private const val STARTUP_STEP_TIMEOUT_MILLIS = 7_000L
+private const val BACKGROUND_STEP_TIMEOUT_MILLIS = 10_000L
 
 class SplashViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -62,22 +62,27 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun runStartupSequence() {
         viewModelScope.launch {
-            // User ID sudah ke-cache lokal (AetherXPreferences.getSyncedUserId)
-            // artinya device ini SUDAH PERNAH resolve+register sebelumnya —
-            // bukan pendaftaran baru. Untuk kasus ini splash tidak perlu
-            // menampilkan tahap "Mendaftarkan perangkat...": itu di sini
-            // cuma nge-update lastLoginAt, jadi dijalankan diam-diam di
-            // background tanpa memblokir/menunda progress splash.
-            val isReturningUser = preferences.getSyncedUserId() != null
+            // Returning users do not wait on network round-trips. Cache is the
+            // fast path; all writes/syncs continue in the application scope.
+            val cachedUserId = preferences.getSyncedUserId()
+            if (cachedUserId != null) {
+                finishFastPath(cachedUserId)
+                return@launch
+            }
 
-            // 1) Resolusi/registrasi user ID — panggilan Firestore nyata ke
-            // devices/{deviceId} lewat UserIdRepository (baca-atau-alokasikan
-            // dengan retry+backoff sudah ada di dalamnya).
-            emit(SplashStage.RESOLVING_IDENTITY, 0.15f, "Menghubungkan ke server...")
-            val userId = withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { userIdRepository.resolveUserId() }
+            emit(SplashStage.RESOLVING_IDENTITY, 0.12f, "Menghubungkan ke server...")
+            val resolution = withTimeoutOrNull(IDENTITY_TIMEOUT_MILLIS) {
+                userIdRepository.resolveUserIdentity {
+                    emit(
+                        SplashStage.REGISTERING_DEVICE,
+                        0.42f,
+                        "Mendaftarkan Device ID...",
+                    )
+                }
+            }
 
-            if (userId == null) {
-                Log.w(TAG, "resolveUserId gagal/timeout — kemungkinan offline")
+            if (resolution == null) {
+                Log.w(TAG, "Resolusi identitas gagal/timeout; kemungkinan server tidak tersedia")
                 _state.value = _state.value.copy(
                     failed = true,
                     statusText = "Koneksi gagal — periksa internet",
@@ -85,37 +90,69 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            // 2) Catat login device ke Firestore (firstLoginAt/lastLoginAt).
-            // User baru: ini pendaftaran sungguhan, jadi ditunggu & ditampilkan.
-            // User lama (sudah pernah login): jalan di background saja, splash
-            // langsung lanjut ke tahap berikutnya tanpa loading tambahan.
-            if (isReturningUser) {
-                viewModelScope.launch { deviceRegistry.recordDeviceLogin(userId) }
-            } else {
-                emit(SplashStage.REGISTERING_DEVICE, 0.45f, "Mendaftarkan perangkat...")
-                withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { deviceRegistry.recordDeviceLogin(userId) }
+            // A reinstall/cleared app data can have no local cache while the
+            // Device ID is still registered on the server. Treat it as returning.
+            if (resolution.alreadyRegistered) {
+                finishFastPath(resolution.userId)
+                return@launch
             }
 
-            // 3) Sinkronkan token FCM ke Firestore supaya notifikasi
-            // maintenance/update/membership bisa diterima device ini.
-            emit(SplashStage.SYNCING_NOTIFICATIONS, 0.70f, "Menyinkronkan data server...")
-            withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
+            // New device: UserIdRepository has just created devices/{deviceId}
+            // and cached the new ID, so we can immediately sync its FCM token.
+            emit(
+                SplashStage.SYNCING_NOTIFICATIONS,
+                0.72f,
+                "Menyinkronkan token notifikasi...",
+            )
+            withTimeoutOrNull(STARTUP_STEP_TIMEOUT_MILLIS) {
                 FcmTokenRepository.syncTokenToFirestore(getApplication())
             }
 
-            // 4) Cek sekali status maintenance sebelum masuk ke app — kalau
-            // dokumen config/maintenance sedang enabled, MaintenanceGate di
-            // MainActivity yang akan menampilkan dialognya; di sini splash
-            // hanya memastikan datanya sempat diambil dulu.
             emit(SplashStage.CHECKING_MAINTENANCE, 0.90f, "Memeriksa status server...")
-            withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { maintenanceRepository.fetchOnce() }
+            withTimeoutOrNull(STARTUP_STEP_TIMEOUT_MILLIS) {
+                maintenanceRepository.fetchOnce()
+            }
 
-            emit(SplashStage.DONE, 1.00f, "Terhubung ke server")
+            emit(SplashStage.DONE, 1f, "Siap")
             _state.value = _state.value.copy(finished = true)
         }
     }
 
+    /**
+     * For registered devices, show the brand splash only for its minimum
+     * animation time. Server writes run independently and survive navigation.
+     */
+    private fun finishFastPath(userId: String) {
+        val app = getApplication<Application>()
+        AetherXApp.launchInAppScope {
+            launch {
+                withTimeoutOrNull(BACKGROUND_STEP_TIMEOUT_MILLIS) {
+                    deviceRegistry.recordDeviceLogin(userId)
+                }
+                withTimeoutOrNull(BACKGROUND_STEP_TIMEOUT_MILLIS) {
+                    FcmTokenRepository.syncTokenToFirestore(app)
+                }
+            }
+            launch {
+                withTimeoutOrNull(BACKGROUND_STEP_TIMEOUT_MILLIS) {
+                    maintenanceRepository.fetchOnce()
+                }
+            }
+        }
+
+        _state.value = SplashUiState(
+            stage = SplashStage.DONE,
+            progress = 1f,
+            statusText = "Siap",
+            finished = true,
+        )
+    }
+
     private fun emit(stage: SplashStage, progress: Float, text: String) {
-        _state.value = _state.value.copy(stage = stage, progress = progress, statusText = text)
+        _state.value = _state.value.copy(
+            stage = stage,
+            progress = progress,
+            statusText = text,
+        )
     }
 }

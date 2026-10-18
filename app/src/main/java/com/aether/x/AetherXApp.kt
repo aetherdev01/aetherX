@@ -45,6 +45,11 @@ class AetherXApp : Application() {
         }
 
         private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+        /** Keep non-blocking startup sync alive after the splash destination is removed. */
+        fun launchInAppScope(block: suspend CoroutineScope.() -> Unit) {
+            appScope.launch(block = block)
+        }
     }
 
     override fun onCreate() {
