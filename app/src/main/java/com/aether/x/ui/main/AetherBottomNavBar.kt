@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.material3.Icon
@@ -62,7 +63,6 @@ import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class AetherNavItem(
@@ -85,9 +85,6 @@ data class AetherNavItem(
  *    sembulannya terlihat.
  *  - Satu pointerInput saja (tap + drag digabung).
  */
-/** Jeda sebelum pill menyusul setelah tab di-tap (rasa iOS). */
-private const val TAP_FOLLOW_DELAY_MS = 110L
-
 @Composable
 fun AetherBottomNavBar(
     items: List<AetherNavItem>,
@@ -118,26 +115,22 @@ fun AetherBottomNavBar(
     var previewIndex by remember { mutableIntStateOf(selectedIndex.coerceIn(0, lastIndex)) }
     var pressed by remember { mutableStateOf(false) }
 
-    // Setelah DRAG dilepas: pill langsung meluncur ke tab terdekat (cepat, tegas).
-    val settleSpec = remember { spring<Float>(dampingRatio = 0.82f, stiffness = 420f) }
-    // Setelah TAP: pill MENYUSUL dengan jeda singkat lalu meluncur lembut ala iOS
-    // (damping tinggi = tanpa memantul, stiffness rendah = mengalir pelan).
-    val followSpec = remember { spring<Float>(dampingRatio = 0.9f, stiffness = 170f) }
-    // true hanya sesaat setelah drag dilepas supaya LaunchedEffect di bawah tidak
-    // menimpa animasi settle (dua animateTo bersamaan = tersendat).
-    var settledByDrag by remember { mutableStateOf(false) }
+    // Saat dilepas, capsule mendarat pada tab terdekat dengan pegas singkat.
+    // Selama jari masih menyentuh layar, posisinya mengikuti pointer secara langsung.
+    val settleSpec = remember { spring<Float>(dampingRatio = 0.86f, stiffness = 520f) }
+    val followSpec = remember { spring<Float>(dampingRatio = 0.9f, stiffness = 220f) }
+    // Mencegah LaunchedEffect menjalankan animasi kedua setelah gesture sudah settle.
+    var settledByTouch by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedIndex, count) {
         val target = selectedIndex.coerceIn(0, lastIndex)
         previewIndex = target
-        if (settledByDrag) {
-            settledByDrag = false
+        if (settledByTouch) {
+            settledByTouch = false
             return@LaunchedEffect
         }
         if (!isDragging && abs(pillPosition.value - target) > 0.01f) {
-            // Konten & label tab langsung berganti; pill menyusul sesudahnya.
-            delay(TAP_FOLLOW_DELAY_MS)
-            if (!isDragging) pillPosition.animateTo(target.toFloat(), followSpec)
+            pillPosition.animateTo(target.toFloat(), followSpec)
         }
     }
 
@@ -157,14 +150,22 @@ fun AetherBottomNavBar(
     // Blur nyata: tint cukup tipis supaya blur-nya kelihatan tapi ikon tetap terbaca.
     val barAlpha = if (blurOn) (0.80f - 0.22f * blur).coerceIn(0.55f, 0.9f) else 0.96f
 
+    // Lapisan luar tetap selebar layar agar navbar terletak di tengah pada tablet.
+    // Kapsulnya sendiri dibatasi supaya tidak meregang memenuhi seluruh lebar tablet.
     Box(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(horizontal = Spacing.xxl, vertical = Spacing.md)
+            .fillMaxWidth()
+            .padding(vertical = Spacing.md),
+        contentAlignment = Alignment.Center,
+    ) {
+      Box(
+        modifier = Modifier
+            .padding(horizontal = Spacing.xxl + Spacing.sm)
+            .widthIn(max = 440.dp)
             .fillMaxWidth()
             .height(60.dp)
-            // Tanpa ini, zona gestur back/predictive-back di tepi kiri layar
-            // menelan tap pada tab paling kiri (Dashboard).
+            // Tetap izinkan tab terluar menerima sentuhan di dekat tepi layar.
             .systemGestureExclusion()
             .pointerInput(count) {
                 awaitEachGesture {
@@ -175,58 +176,50 @@ fun AetherBottomNavBar(
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
-                    settledByDrag = false
+                    settledByTouch = false
                     pressed = true
-
-                    var moved = false
+                    isDragging = true
+                    dragVelocity = 0f
                     var lastX = down.position.x
-                    var finalX = down.position.x
+                    dragPosition = slotAt(down.position.x)
+                    previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
 
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        finalX = change.position.x
+                        val x = change.position.x
+                        val dx = x - lastX
+
+                        // Perbarui posisi bahkan sebelum jari diangkat; tidak menunggu touch-slop.
+                        dragPosition = slotAt(x)
+                        previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
+                        dragVelocity = (dx / slot) * 60f
+                        lastX = x
+
                         if (change.changedToUp()) {
                             change.consume()
                             break
                         }
-                        val dx = change.position.x - lastX
-                        if (!moved && abs(change.position.x - down.position.x) > viewConfiguration.touchSlop) {
-                            moved = true
-                            isDragging = true
-                            dragPosition = pillPosition.value
-                        }
-                        if (moved) {
-                            change.consume()
-                            dragVelocity = (dx / slot) * 60f
-                            dragPosition = slotAt(change.position.x)
-                            previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
-                        }
-                        lastX = change.position.x
+                        if (abs(dx) > 0.5f) change.consume()
                     }
 
-                    pressed = false
-                    val target = (if (moved) dragPosition else slotAt(finalX))
-                        .roundToInt().coerceIn(0, lastIndex)
+                    val target = dragPosition.roundToInt().coerceIn(0, lastIndex)
                     previewIndex = target
                     val startFrom = dragPosition
-                    val wasDragging = moved
-                    if (wasDragging) {
-                        // Drag: pill sudah di posisi jari -> settle langsung tanpa jeda.
-                        settledByDrag = true
-                        scope.launch {
-                            pillPosition.snapTo(startFrom)
-                            isDragging = false
-                            dragVelocity = 0f
-                            pillPosition.animateTo(target.toFloat(), settleSpec)
-                        }
+                    pressed = false
+                    // Tandai sebelum onSelect agar efek perubahan selectedIndex tidak
+                    // memulai animasi kedua yang membuat capsule terasa terlambat.
+                    settledByTouch = target != selectedIndex
+                    scope.launch {
+                        pillPosition.snapTo(startFrom)
+                        isDragging = false
+                        dragVelocity = 0f
+                        pillPosition.animateTo(target.toFloat(), settleSpec)
                     }
-                    // Tap: pill digerakkan oleh LaunchedEffect(selectedIndex) di atas
-                    // (dengan jeda), supaya tab berganti dulu baru pill menyusul.
                     onSelect(target)
                 }
             },
-    ) {
+      ) {
         // ── Latar kaca capsule (di-clip) ─────────────────────────────────
         Box(
             modifier = Modifier
@@ -365,6 +358,7 @@ fun AetherBottomNavBar(
                 )
             }
         }
+      }
     }
 }
 
