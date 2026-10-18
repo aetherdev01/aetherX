@@ -72,7 +72,7 @@ data class AppPreferences(
     val appFont: AppFont = AppFont.POPPINS,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
-    val blurStrength: Int = 65,
+    val blurStrength: Int = 75,
 
 
     val dpiValue: Int = -1,
@@ -213,7 +213,7 @@ class AetherXPreferences(private val context: Context) {
                 .getOrDefault(AppFont.POPPINS),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
-            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 65).coerceIn(0, 100),
+            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 75).coerceIn(0, 100),
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
