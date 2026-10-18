@@ -43,6 +43,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.AetherXApp
+import com.aether.x.data.OnlinePresenceRepository
 import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.components.AdBlockGate
@@ -82,6 +83,29 @@ fun MainScreen(
     // saat cold start, dan tidak pernah memblokir UI). Cooldown + pengecualian
     // member ditegakkan di InterstitialAdGate.
     val lifecycleOwner = LocalLifecycleOwner.current
+    val onlinePresence = remember(context.applicationContext) {
+        OnlinePresenceRepository()
+    }
+    val onlineUserCount by onlinePresence.onlineCount.collectAsStateWithLifecycle()
+
+    DisposableEffect(lifecycleOwner, onlinePresence) {
+        val presenceObserver = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> onlinePresence.setForeground(true)
+                Lifecycle.Event.ON_STOP -> onlinePresence.setForeground(false)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(presenceObserver)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            onlinePresence.setForeground(true)
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(presenceObserver)
+            onlinePresence.close()
+        }
+    }
+
     DisposableEffect(lifecycleOwner) {
         var stoppedAt = 0L
         val observer = LifecycleEventObserver { _, event ->
@@ -216,6 +240,7 @@ fun MainScreen(
                     contentPadding = padding,
                     viewModel = tweakViewModel,
                     dashboardRequest = dashboardRequest,
+                    onlineUserCount = onlineUserCount,
                 )
                 MainTab.MEMBERSHIP -> MembershipScreen(
                     modifier = Modifier,

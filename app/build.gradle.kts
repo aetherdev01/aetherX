@@ -156,12 +156,13 @@ dependencies {
     // ── Privilege backend: libsu (mode root — Magisk / KernelSU / APatch) ────
     implementation(libs.libsu.core)
 
-    // ── Firebase: hanya Firestore (ID pengguna, lisensi, maintenance, update)
-    //    dan Cloud Messaging (push). Analytics / Auth / Functions DIHAPUS —
-    //    tidak ada satu pun import-nya di kode. ──────────────────────────────
+    // ── Firebase: Firestore (ID pengguna, lisensi, maintenance, update),
+    //    Cloud Messaging (push), Auth anonim + Realtime Database (presence). ─
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.database)
 
     // ── Ads: Unity Ads (rewarded + fallback interstitial) & AdMob (interstitial) ──
     implementation(libs.unity.ads)

@@ -61,6 +61,8 @@ libsu-core                              = { group = "com.github.topjohnwu.libsu"
 firebase-bom                            = { group = "com.google.firebase",        name = "firebase-bom",               version.ref = "firebaseBom"         }
 firebase-firestore                      = { group = "com.google.firebase",        name = "firebase-firestore"                                               }
 firebase-messaging                      = { group = "com.google.firebase",        name = "firebase-messaging"                                               }
+firebase-auth                           = { group = "com.google.firebase",        name = "firebase-auth"                                                    }
+firebase-database                       = { group = "com.google.firebase",        name = "firebase-database"                                                 }
 
 unity-ads                               = { group = "com.unity3d.ads",            name = "unity-ads",                   version.ref = "unityAds"            }
 

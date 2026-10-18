@@ -238,16 +238,8 @@ fun AetherBottomNavBar(
                     spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
                 )
                 .clip(barShape)
-                .then(
-                    if (blurOn) {
-                        Modifier.hazeEffect(state = hazeState) {
-                            blurRadius = barBlurRadius
-                            noiseFactor = 0.03f
-                        }
-                    } else {
-                        Modifier
-                    },
-                )
+                // Tint is behind the blur effect; a later background modifier
+                // would hide the captured image and look merely transparent.
                 .background(
                     Brush.verticalGradient(
                         listOf(
@@ -255,6 +247,17 @@ fun AetherBottomNavBar(
                             surface.copy(alpha = (barAlpha - 0.06f).coerceAtLeast(0.55f)),
                         ),
                     ),
+                )
+                .then(
+                    if (blurOn) {
+                        Modifier.hazeEffect(state = hazeState) {
+                            blurRadius = barBlurRadius
+                            noiseFactor = 0.03f
+                            backgroundColor = surface.copy(alpha = 0.18f)
+                        }
+                    } else {
+                        Modifier
+                    },
                 )
                 .border(
                     width = 1.dp,

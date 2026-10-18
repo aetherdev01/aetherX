@@ -62,6 +62,9 @@ fun Modifier.aetherCardSurface(
         Modifier.hazeEffect(state = haze) {
             blurRadius = radius
             noiseFactor = 0.04f
+            // Haze 1.x needs an explicit backdrop color. Keeping it lightly
+            // tinted avoids ROM/device-dependent transparent-only panels.
+            backgroundColor = p.surface.copy(alpha = 0.18f)
         }
     } else {
         Modifier
@@ -76,7 +79,6 @@ fun Modifier.aetherCardSurface(
     return when (s.cardStyle) {
         CardStyle.GLASS -> this
             .clip(shape)
-            .then(frost)
             .background(
                 Brush.verticalGradient(
                     listOf(
@@ -85,27 +87,28 @@ fun Modifier.aetherCardSurface(
                     ),
                 ),
             )
+            .then(frost)
             .border(1.dp, rim, shape)
 
         CardStyle.SOLID -> this
             .clip(shape)
-            .then(frost)
             .background(p.surface.copy(alpha = if (blurOn) 0.86f else 1f))
+            .then(frost)
             .border(1.dp, p.stroke.copy(alpha = 0.8f), shape)
 
         CardStyle.OUTLINE -> this
             .clip(shape)
-            .then(frost)
             .background(p.surface.copy(alpha = if (blurOn) 0.36f else 0f))
+            .then(frost)
             .border(1.2.dp, accent.copy(alpha = 0.55f), shape)
 
         CardStyle.SOFT -> this
             .clip(shape)
-            .then(frost)
             .background(
                 lerp(p.surface, accent, if (p.isDark) 0.14f else 0.09f)
                     .copy(alpha = if (blurOn) 0.72f else 1f),
             )
+            .then(frost)
     }
 }
 
@@ -134,7 +137,7 @@ fun cardBlurRadiusFor(blur: Float): Float = 8f + 34f * blur
 @Composable
 fun Modifier.glassPanel(
     shape: Shape,
-    minAlpha: Float = 0.60f,
+    minAlpha: Float = 0.30f,
     hazeState: HazeState? = LocalHazeState.current,
     /** Pengali radius blur (drawer memakai > 1 supaya isi di belakangnya benar-benar kabur). */
     blurBoost: Float = 1f,
@@ -145,24 +148,29 @@ fun Modifier.glassPanel(
     val b = LocalAetherStyle.current.blur
     val blurOn = hazeState != null && b > 0.01f
     val radius = (blurRadiusFor(b) * blurBoost).dp
-    val top = if (blurOn) ((0.84f - 0.20f * b) * tintScale).coerceAtLeast(minAlpha) else 0.97f
-    val bottom = if (blurOn) ((0.80f - 0.18f * b) * tintScale).coerceAtLeast(minAlpha - 0.04f) else 0.95f
+    // Keep the tint deliberately light so the captured content remains
+    // visibly blurred instead of looking like a merely translucent surface.
+    val top = if (blurOn) ((0.54f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha) else 0.97f
+    val bottom = if (blurOn) ((0.49f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha - 0.04f) else 0.95f
     return this
         .clip(shape)
+        // Draw tint before the Haze effect; putting this after hazeEffect would
+        // paint over the captured blur and make the drawer look only translucent.
+        .background(
+            Brush.verticalGradient(
+                listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
+            ),
+        )
         .then(
             if (blurOn) {
                 Modifier.hazeEffect(state = hazeState) {
                     blurRadius = radius
                     noiseFactor = 0.03f
+                    backgroundColor = p.surface.copy(alpha = 0.16f)
                 }
             } else {
                 Modifier
             },
-        )
-        .background(
-            Brush.verticalGradient(
-                listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
-            ),
         )
         .border(
             width = 1.dp,

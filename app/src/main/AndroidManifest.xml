@@ -43,7 +43,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- Dipakai Firestore untuk mengambil ID pengguna global berurutan. -->
+    <!-- Dipakai Firestore, Cloud Messaging, autentikasi anonim, dan presence online. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 

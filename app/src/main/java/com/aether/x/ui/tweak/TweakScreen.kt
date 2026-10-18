@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PowerSettingsNew
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SdStorage
@@ -71,8 +74,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import android.app.Activity
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -117,6 +123,7 @@ fun TweakScreen(
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: TweakViewModel = viewModel(),
     dashboardRequest: Int = 0,
+    onlineUserCount: Int = -1,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
@@ -198,15 +205,16 @@ fun TweakScreen(
                         topEnd = 28.dp,
                         bottomEnd = 28.dp,
                     ),
-                    minAlpha = 0.46f,
+                    minAlpha = 0.24f,
                     hazeState = drawerHaze,
-                    blurBoost = 1.6f,
-                    tintScale = 0.82f,
+                    blurBoost = 1.9f,
+                    tintScale = 0.74f,
                 ),
             ) {
                 TweakDrawerContent(
                     selected = selectedSubTab,
                     showRootOnlyItems = privilegeStatus.rootGranted,
+                    onlineUserCount = onlineUserCount,
                     onSelect = { tab ->
                         selectedSubTab = tab
                         coroutineScope.launch { drawerState.close() }
@@ -538,6 +546,7 @@ private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER,
 private fun TweakDrawerContent(
     selected: TweakSubTab,
     showRootOnlyItems: Boolean,
+    onlineUserCount: Int,
     onSelect: (TweakSubTab) -> Unit,
 ) {
     Text(
@@ -546,6 +555,51 @@ private fun TweakDrawerContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.lg),
     )
+    // Small live presence indicator in the drawer header; it is informational,
+    // not another navigation option.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.30f))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.People,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Pengguna online",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = if (onlineUserCount >= 0) "$onlineUserCount sedang online" else "Menghubungkan…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(
+                    if (onlineUserCount >= 0) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.outline,
+                ),
+        )
+    }
     NavigationDrawerItem(
         label = { Text(stringResource(R.string.nav_dashboard)) },
         icon = { Icon(imageVector = Icons.Outlined.SpaceDashboard, contentDescription = null) },
