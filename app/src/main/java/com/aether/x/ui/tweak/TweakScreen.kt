@@ -87,6 +87,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.glassPanel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -130,9 +131,12 @@ fun TweakScreen(
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    // v3.8 — sumber blur drawer: isi layar Tweak (SIBLING sheet di dalam
-    // ModalNavigationDrawer). Sheet mem-blur isi ini saat terbuka.
-    val drawerHaze = rememberHazeState(blurEnabled = true)
+    // Sumber blur drawer = latar aurora (zIndex 0, dari LocalBackdropHaze) + isi
+    // layar Tweak (zIndex 1, SIBLING sheet). Latar ikut jadi sumber supaya area
+    // kosong juga terblur; tanpa itu blur hanya muncul di belakang konten.
+    val backdropHaze = LocalBackdropHaze.current
+    val ownHaze = rememberHazeState(blurEnabled = true)
+    val drawerHaze = backdropHaze ?: ownHaze
     val coroutineScope = rememberCoroutineScope()
 
     val dashboardViewModel: DashboardViewModel = viewModel()
@@ -211,12 +215,13 @@ fun TweakScreen(
                             topEnd = 28.dp,
                             bottomEnd = 28.dp,
                         ),
-                        // A slightly stronger fallback tint prevents the sheet
-                        // looking fully transparent if a screen cannot be captured.
-                        minAlpha = 0.34f,
+                        // Tint digambar setelah blur -> merata di seluruh sheet,
+                        // tidak ada bagian yang terlihat transparan.
+                        minAlpha = 0.20f,
                         hazeState = drawerHaze,
                         blurBoost = 2.15f,
-                        tintScale = 0.90f,
+                        tintScale = 0.62f,
+                        tintAfterBlur = true,
                     ),
             ) {
                 TweakDrawerContent(
@@ -234,7 +239,7 @@ fun TweakScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .hazeSource(drawerHaze)
+                .hazeSource(drawerHaze, zIndex = 1f)
                 .padding(contentPadding)
                 // Terminal Root must resize above the software keyboard so the
                 // command field and run button remain visible while typing.

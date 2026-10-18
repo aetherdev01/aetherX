@@ -47,6 +47,17 @@ import com.aether.x.ui.theme.LocalAetherStyle
 val LocalCardHaze = staticCompositionLocalOf<HazeState?> { null }
 
 /**
+ * HazeState tambahan yang juga bersumber dari lapisan latar aurora. Layar yang
+ * punya panel blur sendiri (mis. drawer Tweak) menambahkan kontennya sebagai
+ * sumber kedua (zIndex lebih tinggi) pada state ini, sehingga area kosong pun
+ * ikut terblur — bukan hanya area yang ada kontennya.
+ */
+val LocalBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/** Sama seperti [LocalBackdropHaze], tapi khusus navbar (konten tab jadi sumber kedua di MainScreen). */
+val LocalNavBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/**
  * v3.8 — permukaan card sesuai gaya pilihan user (Pengaturan -> Tampilan).
  * SEMUA gaya sekarang memblur latar di belakang card (Haze); gaya hanya
  * menentukan seberapa pekat tint dan bagaimana tepinya:
@@ -153,6 +164,11 @@ fun Modifier.glassPanel(
     blurBoost: Float = 1f,
     /** Pengali kepekatan tint (< 1 = lebih bening, blur lebih terlihat). */
     tintScale: Float = 1f,
+    /**
+     * true = tint digambar SETELAH blur sehingga selalu merata di seluruh panel
+     * (dipakai drawer). false = tint di bawah blur (perilaku lama dialog).
+     */
+    tintAfterBlur: Boolean = false,
 ): Modifier {
     val p = LocalAetherPalette.current
     val b = LocalAetherStyle.current.blur
@@ -162,15 +178,15 @@ fun Modifier.glassPanel(
     // visibly blurred instead of looking like a merely translucent surface.
     val top = if (blurOn) ((0.54f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha) else 0.97f
     val bottom = if (blurOn) ((0.49f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha - 0.04f) else 0.95f
+    val tint = Brush.verticalGradient(
+        listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
+    )
     return this
         .clip(shape)
-        // Draw tint before the Haze effect; putting this after hazeEffect would
-        // paint over the captured blur and make the drawer look only translucent.
-        .background(
-            Brush.verticalGradient(
-                listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
-            ),
-        )
+        // Default: tint sebelum Haze (dialog). Untuk drawer, tint di bawah blur
+        // tertutup hasil blur yang opaque sehingga area tertentu terlihat
+        // transparan/tidak merata -> pakai tintAfterBlur.
+        .then(if (tintAfterBlur) Modifier else Modifier.background(tint))
         .then(
             if (blurOn) {
                 Modifier.hazeEffect(state = hazeState) {
@@ -182,6 +198,7 @@ fun Modifier.glassPanel(
                 Modifier
             },
         )
+        .then(if (tintAfterBlur) Modifier.background(tint) else Modifier)
         .border(
             width = 1.dp,
             brush = Brush.verticalGradient(
@@ -215,6 +232,8 @@ fun AetherBackground(
     val dark = p.isDark
     val bg = p.bg
     val cardHaze = rememberHazeState(blurEnabled = true)
+    val backdropHaze = rememberHazeState(blurEnabled = true)
+    val navBackdropHaze = rememberHazeState(blurEnabled = true)
     val motionTransition = rememberInfiniteTransition(label = "aether-background-motion")
     val motion by motionTransition.animateFloat(
         initialValue = 0f,
@@ -231,6 +250,8 @@ fun AetherBackground(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(cardHaze)
+                .hazeSource(backdropHaze, zIndex = 0f)
+                .hazeSource(navBackdropHaze, zIndex = 0f)
                 .background(bg)
                 .drawBehind {
                     val w = size.width
@@ -356,7 +377,11 @@ fun AetherBackground(
                 },
         )
         Box(modifier = Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalCardHaze provides cardHaze) {
+            CompositionLocalProvider(
+                LocalCardHaze provides cardHaze,
+                LocalBackdropHaze provides backdropHaze,
+                LocalNavBackdropHaze provides navBackdropHaze,
+            ) {
                 content()
             }
         }
