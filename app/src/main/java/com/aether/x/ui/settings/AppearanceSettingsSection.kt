@@ -20,8 +20,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,7 +84,13 @@ fun AppearanceSettingsSection(
             }
         }
 
-        var sliderValue by remember(blurStrength) { mutableFloatStateOf(blurStrength.toFloat()) }
+        // Nilai lokal dipertahankan selama digeser (tanpa key) supaya slider tidak
+        // loncat saat nilai tersimpan kembali dari DataStore dengan sedikit jeda.
+        var sliderValue by remember { mutableFloatStateOf(blurStrength.toFloat()) }
+        var dragging by remember { mutableStateOf(false) }
+        LaunchedEffect(blurStrength) {
+            if (!dragging) sliderValue = blurStrength.toFloat()
+        }
         TweakSlider(
             label = "Blur",
             description = "Kekuatan blur di card, dialog, drawer, dan navbar. 0 = blur mati.",
@@ -90,8 +98,18 @@ fun AppearanceSettingsSection(
             value = sliderValue,
             range = 0f..100f,
             steps = 0,
-            onValueChange = { sliderValue = it },
-            onValueChangeFinished = { onBlurChange(sliderValue.roundToInt()) },
+            onValueChange = {
+                dragging = true
+                val before = sliderValue.roundToInt()
+                sliderValue = it
+                // Terapkan langsung saat digeser; hanya tulis bila persennya berubah.
+                val now = it.roundToInt()
+                if (now != before) onBlurChange(now)
+            },
+            onValueChangeFinished = {
+                dragging = false
+                onBlurChange(sliderValue.roundToInt())
+            },
         )
     }
 }

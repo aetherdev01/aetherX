@@ -58,13 +58,13 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.AuroraBlurLayer
+import com.aether.x.ui.components.LocalAuroraBackdrop
 import com.aether.x.ui.components.NativeBlurWindow
 import com.aether.x.ui.components.NativeBlurWindowState
 import com.aether.x.ui.components.blurRadiusFor
 import com.aether.x.ui.components.rememberCrossWindowBlurEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
@@ -81,17 +81,17 @@ data class AetherNavItem(
     val accent: Color,
 )
 
-/** true = pakai window blur native sistem; false = selalu pakai Haze (jalur lama). */
-private const val USE_NATIVE_NAV_BLUR = true
+/** true = coba window blur native OS (dialog); false = blur sendiri (AuroraBlurLayer), jalur default. */
+private const val USE_NATIVE_NAV_BLUR = false
 
 /**
  * Tab bar capsule v3.6 — kaca.
  *
- *  - v3.9: latar capsule di-BLUR NATIVE oleh sistem (window blur Android 12+):
- *    seluruh navbar hidup di window dialog mengambang dengan latar kapsul, jadi OS
- *    mem-blur semua yang ada di belakangnya. Bila OS mematikan blur (hemat baterai
- *    dll.) atau slider = 0, dipakai fallback Haze. Blur HANYA di latar capsule;
- *    floating pill tidak di-blur. Radius blur dari slider blur.
+ *  - v3.9: latar capsule = salinan aurora yang di-BLUR (AuroraBlurLayer, RenderEffect
+ *    bawaan Compose) + tint kaca putih tipis + garis tepi. Tidak bergantung pada Haze
+ *    maupun flag blur OS. Opsional: USE_NATIVE_NAV_BLUR memindahkan navbar ke window
+ *    dialog dengan blur native OS. Blur HANYA di latar capsule; floating pill tidak
+ *    di-blur. Radius blur dari slider blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
  *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
@@ -106,8 +106,6 @@ fun AetherBottomNavBar(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    /** Sumber blur Haze (fallback bila blur native tidak tersedia). */
-    hazeState: HazeState? = null,
 ) {
     if (items.isEmpty()) return
 
@@ -160,10 +158,10 @@ fun AetherBottomNavBar(
         }
     }
 
-    val blurOn = hazeState != null && blur > 0.01f
+    val blurOn = blur > 0.01f && LocalAuroraBackdrop.current != null
     val barBlurRadius = blurRadiusFor(blur).dp
     // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
-    // baterai dll.) atau slider = 0, jatuh ke jalur Haze lama di bawah.
+    // baterai dll.) atau slider = 0, jatuh ke blur sendiri (AuroraBlurLayer) di bawah.
     val crossWindowBlur = rememberCrossWindowBlurEnabled()
     val useNative = USE_NATIVE_NAV_BLUR && crossWindowBlur && blur > 0.01f
     val density = LocalDensity.current
@@ -299,6 +297,8 @@ fun AetherBottomNavBar(
                     ),
             )
         } else {
+            // Latar kaca: salinan aurora yang di-BLUR (AuroraBlurLayer) + tint kaca + garis tepi.
+            // Tidak bergantung pada Haze maupun blur window OS.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -308,38 +308,48 @@ fun AetherBottomNavBar(
                         ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
                         spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
                     )
-                    // clip HARUS sebelum hazeEffect agar blur terpotong mengikuti capsule.
-                    .clip(barShape)
-                    .then(
-                        if (blurOn) {
-                            Modifier.hazeEffect(state = hazeState) {
-                                blurRadius = (barBlurRadius.value * 1.15f).dp
-                                noiseFactor = 0.01f
-                                backgroundColor = surface.copy(alpha = 0.01f)
-                            }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) 0.05f else 0.96f),
-                                surface.copy(alpha = if (blurOn) 0.03f else 0.90f),
-                            ),
-                        ),
-                    )
-                    .border(
-                        width = 1.dp,
-                        brush = Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
-                                outline.copy(alpha = 0.55f),
-                            ),
-                        ),
+                    .clip(barShape),
+            ) {
+                if (blurOn) {
+                    AuroraBlurLayer(
+                        blurRadius = (barBlurRadius.value * 1.15f).dp,
                         shape = barShape,
-                    ),
-            )
+                        modifier = Modifier.fillMaxSize(),
+                        alpha = 0.94f,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                // Tint PUTIH (bukan warna surface): di tema gelap surface nyaris
+                                // sama dengan latar sehingga capsule terlihat bening.
+                                if (blurOn) {
+                                    listOf(
+                                        Color.White.copy(alpha = if (isDark) 0.11f else 0.38f),
+                                        Color.White.copy(alpha = if (isDark) 0.04f else 0.22f),
+                                    )
+                                } else {
+                                    listOf(
+                                        lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = 0.96f),
+                                        surface.copy(alpha = 0.90f),
+                                    )
+                                },
+                            ),
+                        )
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
+                                    outline.copy(alpha = 0.55f),
+                                ),
+                            ),
+                            shape = barShape,
+                        ),
+                )
+            }
         }
 
         // ── Pill (draw phase, TIDAK di-blur) ─────────────────────────────

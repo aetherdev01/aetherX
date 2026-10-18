@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -22,6 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -53,9 +68,6 @@ val LocalCardHaze = staticCompositionLocalOf<HazeState?> { null }
  * ikut terblur — bukan hanya area yang ada kontennya.
  */
 val LocalBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
-
-/** Sama seperti [LocalBackdropHaze], tapi khusus navbar (konten tab jadi sumber kedua di MainScreen). */
-val LocalNavBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
 
 /**
  * v3.8 — permukaan card sesuai gaya pilihan user (Pengaturan -> Tampilan).
@@ -212,51 +224,19 @@ fun Modifier.glassPanel(
 }
 
 /**
- * Latar app: pita jelly/aurora yang mengalir dan berubah bentuk perlahan.
- * Intensitas mode terang sengaja dinaikkan agar warna aksen tetap terlihat di atas
- * permukaan putih; seluruh pita memakai palet aksen aktif dan otomatis berubah saat
- * preset aksen atau mode tema diganti. Tidak memakai orb/lingkaran dekoratif.
- * Lapisan ini juga menjadi sumber blur card (LocalCardHaze).
+ * Gambar pita aurora (tanpa warna dasar). Dipakai oleh [AetherBackground] dan
+ * oleh [AuroraBlurLayer] (salinan yang di-blur untuk latar navbar), sehingga
+ * keduanya selalu identik.
  */
-@Composable
-fun AetherBackground(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
+fun DrawScope.drawAuroraLayers(
+    w: Float,
+    h: Float,
+    phase: Float,
+    accent: Color,
+    soft: Color,
+    accentMid: Color,
+    dark: Boolean,
 ) {
-    val p = LocalAetherPalette.current
-    val accent = p.accent
-    val soft = p.accentSoft
-    // Semua warna latar berasal dari aksen aktif supaya tidak muncul warna asing
-    // ketika user mengganti preset aksen.
-    val accentMid = lerp(accent, soft, 0.52f)
-    val dark = p.isDark
-    val bg = p.bg
-    val cardHaze = rememberHazeState(blurEnabled = true)
-    val backdropHaze = rememberHazeState(blurEnabled = true)
-    val navBackdropHaze = rememberHazeState(blurEnabled = true)
-    val motionTransition = rememberInfiniteTransition(label = "aether-background-motion")
-    val motion by motionTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 14500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "aether-background-phase",
-    )
-
-    Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(cardHaze)
-                .hazeSource(backdropHaze, zIndex = 0f)
-                .hazeSource(navBackdropHaze, zIndex = 0f)
-                .background(bg)
-                .drawBehind {
-                    val w = size.width
-                    val h = size.height
-                    val phase = motion
                     // Gerak campuran menggeser pita sekaligus mengubah kurva dan
                     // ketebalannya; efeknya lebih mirip jelly yang meregang/memantul.
                     val flex = kotlin.math.sin(phase.toDouble() * Math.PI).toFloat()
@@ -374,13 +354,113 @@ fun AetherBackground(
                             ),
                         )
                     }
-                },
+}
+
+/** Fase animasi aurora (0f..1f, bolak-balik). Dibaca di fase draw saja -> tanpa recomposition. */
+class AuroraBackdrop(val motion: State<Float>)
+
+val LocalAuroraBackdrop = staticCompositionLocalOf<AuroraBackdrop?> { null }
+
+/**
+ * Salinan latar aurora yang di-BLUR sungguhan (RenderEffect bawaan Compose, API 31+),
+ * tanpa Haze dan tanpa bergantung pada flag blur OS. Aurora digambar ulang persis
+ * pada posisi layar yang sama dengan latar asli, lalu di-blur dan dipotong ke [shape].
+ * Pakai sebagai latar kaca (mis. navbar); beri tint tipis di atasnya.
+ */
+@Composable
+fun AuroraBlurLayer(
+    blurRadius: Dp,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+) {
+    val backdrop = LocalAuroraBackdrop.current
+    val p = LocalAetherPalette.current
+    val accent = p.accent
+    val soft = p.accentSoft
+    val accentMid = lerp(accent, soft, 0.52f)
+    val bg = p.bg
+    val dark = p.isDark
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    var rootSize by remember { mutableStateOf(Size.Zero) }
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { c ->
+                origin = c.positionInRoot()
+                rootSize = c.findRootCoordinates().size.toSize()
+            }
+            .clip(shape)
+            .graphicsLayer {
+                this.alpha = alpha
+                val r = blurRadius.toPx()
+                renderEffect = BlurEffect(r, r, TileMode.Clamp)
+            }
+            .drawBehind {
+                drawRect(bg)
+                val rs = rootSize
+                if (rs.width > 0f && rs.height > 0f) {
+                    val o = origin
+                    withTransform({ translate(-o.x, -o.y) }) {
+                        drawAuroraLayers(
+                            rs.width, rs.height,
+                            backdrop?.motion?.value ?: 0.5f,
+                            accent, soft, accentMid, dark,
+                        )
+                    }
+                }
+            },
+    )
+}
+
+/**
+ * Latar app: pita jelly/aurora yang mengalir dan berubah bentuk perlahan.
+ * Intensitas mode terang sengaja dinaikkan agar warna aksen tetap terlihat di atas
+ * permukaan putih; seluruh pita memakai palet aksen aktif dan otomatis berubah saat
+ * preset aksen atau mode tema diganti. Tidak memakai orb/lingkaran dekoratif.
+ * Lapisan ini juga menjadi sumber blur card (LocalCardHaze).
+ */
+@Composable
+fun AetherBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val p = LocalAetherPalette.current
+    val accent = p.accent
+    val soft = p.accentSoft
+    // Semua warna latar berasal dari aksen aktif supaya tidak muncul warna asing
+    // ketika user mengganti preset aksen.
+    val accentMid = lerp(accent, soft, 0.52f)
+    val dark = p.isDark
+    val bg = p.bg
+    val cardHaze = rememberHazeState(blurEnabled = true)
+    val backdropHaze = rememberHazeState(blurEnabled = true)
+    val motionTransition = rememberInfiniteTransition(label = "aether-background-motion")
+    val motionState = motionTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 14500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "aether-background-phase",
+    )
+    val motion by motionState
+    val auroraBackdrop = remember(motionState) { AuroraBackdrop(motionState) }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(cardHaze)
+                .hazeSource(backdropHaze, zIndex = 0f)
+                .background(bg)
+                .drawBehind { drawAuroraLayers(size.width, size.height, motion, accent, soft, accentMid, dark) },
         )
         Box(modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
                 LocalCardHaze provides cardHaze,
                 LocalBackdropHaze provides backdropHaze,
-                LocalNavBackdropHaze provides navBackdropHaze,
+                LocalAuroraBackdrop provides auroraBackdrop,
             ) {
                 content()
             }

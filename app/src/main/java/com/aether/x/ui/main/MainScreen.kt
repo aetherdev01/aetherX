@@ -48,9 +48,6 @@ import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.components.AdBlockGate
 import com.aether.x.ui.components.AetherBackground
-import com.aether.x.ui.components.LocalNavBackdropHaze
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
@@ -172,10 +169,6 @@ fun MainScreen(
     }
 
     // v3.8 — sumber blur navbar: konten tab (SIBLING navbar di dalam Scaffold).
-    // Latar aurora (zIndex 0) juga jadi sumber, supaya capsule tetap terlihat
-    // ter-blur walau di belakangnya tidak ada konten.
-    val ownNavHaze = rememberHazeState(blurEnabled = true)
-    val navHaze = LocalNavBackdropHaze.current ?: ownNavHaze
 
     AdBlockGate(
         isMember = tweakState.isMembershipActive,
@@ -213,7 +206,6 @@ fun MainScreen(
                 modifier = Modifier
                     .onSizeChanged { navBarHeightPx = it.height.toFloat() }
                     .offset { IntOffset(x = 0, y = -navBarOffsetPx.roundToInt()) },
-                hazeState = navHaze,
             )
         },
     ) { padding ->
@@ -221,9 +213,7 @@ fun MainScreen(
         // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
         // terasa berat di perangkat mid-range.
         AnimatedContent(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(navHaze, zIndex = 1f),
+            modifier = Modifier.fillMaxSize(),
             targetState = selectedTab,
             transitionSpec = {
                 val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
