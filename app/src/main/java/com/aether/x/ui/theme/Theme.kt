@@ -78,10 +78,10 @@ private val AetherXShapes = Shapes(
 @Composable
 fun AetherXTheme(
     darkTheme: Boolean = false,
-    accent: AccentPreset = AccentPreset.ORCHID,
+    accent: AccentPreset = AccentPreset.GRAPHITE,
     font: AppFont = AppFont.POPPINS,
     cardStyle: CardStyle = CardStyle.GLASS,
-    blurStrength: Int = 60,
+    blurStrength: Int = 75,
     content: @Composable () -> Unit,
 ) {
     val palette = remember(darkTheme, accent) { aetherPalette(darkTheme, accent) }

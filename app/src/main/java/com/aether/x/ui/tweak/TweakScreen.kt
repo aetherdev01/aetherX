@@ -200,16 +200,23 @@ fun TweakScreen(
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                modifier = Modifier.glassPanel(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                        topEnd = 28.dp,
-                        bottomEnd = 28.dp,
+                // Keep the blur panel stretched over the complete drawer height.
+                // Without an explicit height, some nested screens (Game Profile,
+                // App Manager and Build.prop) can leave the lower part unblurred.
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .glassPanel(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                            topEnd = 28.dp,
+                            bottomEnd = 28.dp,
+                        ),
+                        // A slightly stronger fallback tint prevents the sheet
+                        // looking fully transparent if a screen cannot be captured.
+                        minAlpha = 0.34f,
+                        hazeState = drawerHaze,
+                        blurBoost = 2.15f,
+                        tintScale = 0.90f,
                     ),
-                    minAlpha = 0.24f,
-                    hazeState = drawerHaze,
-                    blurBoost = 1.9f,
-                    tintScale = 0.74f,
-                ),
             ) {
                 TweakDrawerContent(
                     selected = selectedSubTab,

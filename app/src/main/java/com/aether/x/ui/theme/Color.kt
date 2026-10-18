@@ -148,7 +148,7 @@ fun aetherPalette(dark: Boolean, preset: AccentPreset): AetherPalette {
     )
 }
 
-val LocalAetherPalette = staticCompositionLocalOf { aetherPalette(dark = false, preset = AccentPreset.ORCHID) }
+val LocalAetherPalette = staticCompositionLocalOf { aetherPalette(dark = false, preset = AccentPreset.GRAPHITE) }
 
 // --- Token LAMA -> palet aktif (hanya boleh dibaca di konteks @Composable) ---
 

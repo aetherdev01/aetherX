@@ -166,7 +166,7 @@ fun Modifier.glassPanel(
                 Modifier.hazeEffect(state = hazeState) {
                     blurRadius = radius
                     noiseFactor = 0.03f
-                    backgroundColor = p.surface.copy(alpha = 0.16f)
+                    backgroundColor = p.surface.copy(alpha = 0.22f)
                 }
             } else {
                 Modifier

@@ -30,8 +30,7 @@ enum class DarkModePref { SYSTEM, LIGHT, DARK }
  * v3.6 — preset warna aksen tema. Nilai disimpan sebagai ARGB Long (bukan
  * Compose Color) supaya layer data tidak bergantung pada Compose. Tiap
  * preset punya varian terang (kontras aman di atas putih) dan gelap.
- * Default ORCHID: ungu keunguan yang netral di atas putih dan sengaja
- * BUKAN biru/hijau.
+ * Default GRAPHITE: aksen abu-abu netral dengan kontras yang sesuai untuk tema terang dan gelap.
  */
 enum class AccentPreset(val label: String, val lightArgb: Long, val darkArgb: Long) {
     ORCHID("Orchid", 0xFF7048E8, 0xFFA78BFA),
@@ -69,11 +68,11 @@ data class AppPreferences(
 
     val darkModePref: DarkModePref = DarkModePref.LIGHT,
 
-    val accentPreset: AccentPreset = AccentPreset.ORCHID,
+    val accentPreset: AccentPreset = AccentPreset.GRAPHITE,
     val appFont: AppFont = AppFont.POPPINS,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
-    val blurStrength: Int = 60,
+    val blurStrength: Int = 65,
 
 
     val dpiValue: Int = -1,
@@ -209,12 +208,12 @@ class AetherXPreferences(private val context: Context) {
             darkModePref = runCatching { DarkModePref.valueOf(prefs[Keys.DARK_MODE] ?: "") }
                 .getOrDefault(DarkModePref.LIGHT),
             accentPreset = runCatching { AccentPreset.valueOf(prefs[Keys.ACCENT_PRESET] ?: "") }
-                .getOrDefault(AccentPreset.ORCHID),
+                .getOrDefault(AccentPreset.GRAPHITE),
             appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
                 .getOrDefault(AppFont.POPPINS),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
-            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 60).coerceIn(0, 100),
+            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 65).coerceIn(0, 100),
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
