@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +44,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.ui.components.AetherBackground
 import kotlinx.coroutines.delay
@@ -140,101 +140,24 @@ fun SplashScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                if (uiState.steps.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = colors.primary,
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(9.dp))
-                        Text(
-                            text = uiState.statusText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(
-                        progress = uiState.progress,
-                        modifier = Modifier.width(260.dp),
+                // Keep the splash uncluttered: show only the live operation status.
+                // Detailed registration/token stages remain tracked by SplashViewModel.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
                         color = colors.primary,
-                        trackColor = colors.surfaceVariant,
+                        strokeWidth = 2.dp,
                     )
-                    Spacer(Modifier.height(18.dp))
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(9.dp),
-                    ) {
-                        uiState.steps.forEach { step ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Box(
-                                    modifier = Modifier.size(width = 22.dp, height = 18.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    when (step.status) {
-                                        SplashStepStatus.ACTIVE -> CircularProgressIndicator(
-                                            modifier = Modifier.size(13.dp),
-                                            color = colors.primary,
-                                            strokeWidth = 2.dp,
-                                        )
-                                        SplashStepStatus.COMPLETE -> Text(
-                                            text = "✓",
-                                            color = colors.primary,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        SplashStepStatus.SKIPPED -> Text(
-                                            text = "—",
-                                            color = colors.onSurfaceVariant,
-                                            fontSize = 12.sp,
-                                        )
-                                        SplashStepStatus.FAILED -> Text(
-                                            text = "!",
-                                            color = colors.error,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                        SplashStepStatus.PENDING -> Text(
-                                            text = "•",
-                                            color = colors.outline,
-                                            fontSize = 16.sp,
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = step.title,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = when (step.status) {
-                                            SplashStepStatus.ACTIVE -> colors.onBackground
-                                            SplashStepStatus.FAILED -> colors.error
-                                            SplashStepStatus.PENDING -> colors.onSurfaceVariant
-                                            else -> colors.onSurfaceVariant
-                                        },
-                                        fontWeight = if (step.status == SplashStepStatus.ACTIVE) FontWeight.SemiBold else FontWeight.Normal,
-                                    )
-                                    if (step.status == SplashStepStatus.ACTIVE || step.status == SplashStepStatus.FAILED) {
-                                        Text(
-                                            text = step.detail,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (step.status == SplashStepStatus.FAILED) colors.error else colors.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Spacer(Modifier.width(9.dp))
+                    Text(
+                        text = uiState.statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
 
                 if (uiState.failed) {
@@ -260,6 +183,16 @@ fun SplashScreen(
                     }
                 }
             }
+
+            Text(
+                text = "v${BuildConfig.VERSION_NAME}",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant.copy(alpha = 0.72f),
+                letterSpacing = 1.sp,
+            )
         }
     }
 }
