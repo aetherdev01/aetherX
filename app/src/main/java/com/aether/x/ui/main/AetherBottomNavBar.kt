@@ -64,7 +64,6 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 
 data class AetherNavItem(
@@ -207,7 +206,9 @@ fun AetherBottomNavBar(
 
                         if (!dragging && abs(travel) > viewConfiguration.touchSlop) {
                             dragging = true
-                            moveJob?.cancelAndJoin()
+                            // cancel() is non-suspending and is safe inside AwaitPointerEventScope.
+                            // The current Animatable value is retained as the drag starting point.
+                            moveJob?.cancel()
                             moveJob = null
                             isDragging = true
                             // Sambung dari posisi capsule saat animasi berhenti,
@@ -238,19 +239,29 @@ fun AetherBottomNavBar(
                     } else {
                         touchTarget
                     }
-                    moveJob?.cancelAndJoin()
+                    // Jangan memanggil suspend API langsung dari AwaitPointerEventScope.
+                    // Mutasi Animatable dijalankan pada coroutine scope biasa di bawah.
+                    moveJob?.cancel()
                     settledByTouch = target != selectedIndex
                     previewIndex = target
-
-                    // Sinkronkan nilai Animatable dengan posisi terakhir hasil drag
-                    // sebelum mode drag dimatikan, agar pelepasan tidak menyebabkan snap.
-                    if (dragging) pillPosition.snapTo(dragPosition)
-                    isDragging = false
                     pressed = false
-                    dragVelocity = 0f
 
-                    scope.launch {
-                        pillPosition.animateTo(target.toFloat(), settleSpec)
+                    if (dragging) {
+                        val releasePosition = dragPosition
+                        scope.launch {
+                            // Sinkronkan posisi terakhir saat drag sebelum mulai settle,
+                            // sehingga capsule tidak snap saat jari dilepas.
+                            pillPosition.snapTo(releasePosition)
+                            isDragging = false
+                            dragVelocity = 0f
+                            pillPosition.animateTo(target.toFloat(), settleSpec)
+                        }
+                    } else {
+                        isDragging = false
+                        dragVelocity = 0f
+                        scope.launch {
+                            pillPosition.animateTo(target.toFloat(), settleSpec)
+                        }
                     }
                     onSelect(target)
                 }
