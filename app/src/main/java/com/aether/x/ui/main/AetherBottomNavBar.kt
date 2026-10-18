@@ -51,10 +51,17 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.NativeBlurWindow
+import com.aether.x.ui.components.NativeBlurWindowState
 import com.aether.x.ui.components.blurRadiusFor
+import com.aether.x.ui.components.rememberCrossWindowBlurEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -63,6 +70,7 @@ import com.aether.x.ui.theme.Spacing
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import android.graphics.Rect as AndroidRect
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -73,12 +81,17 @@ data class AetherNavItem(
     val accent: Color,
 )
 
+/** true = pakai window blur native sistem; false = selalu pakai Haze (jalur lama). */
+private const val USE_NATIVE_NAV_BLUR = true
+
 /**
  * Tab bar capsule v3.6 — kaca.
  *
- *  - v3.9: latar capsule mem-BLUR konten tab yang lewat di belakangnya
- *    (Haze, radius dari slider blur) + tint sangat tipis + garis tepi berkilau.
- *    Blur HANYA di latar capsule; floating pill tidak di-blur.
+ *  - v3.9: latar capsule di-BLUR NATIVE oleh sistem (window blur Android 12+):
+ *    seluruh navbar hidup di window dialog mengambang dengan latar kapsul, jadi OS
+ *    mem-blur semua yang ada di belakangnya. Bila OS mematikan blur (hemat baterai
+ *    dll.) atau slider = 0, dipakai fallback Haze. Blur HANYA di latar capsule;
+ *    floating pill tidak di-blur. Radius blur dari slider blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
  *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
@@ -93,7 +106,7 @@ fun AetherBottomNavBar(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    /** Sumber blur = konten tab di belakang navbar (SIBLING navbar, bukan induknya). */
+    /** Sumber blur Haze (fallback bila blur native tidak tersedia). */
     hazeState: HazeState? = null,
 ) {
     if (items.isEmpty()) return
@@ -149,26 +162,18 @@ fun AetherBottomNavBar(
 
     val blurOn = hazeState != null && blur > 0.01f
     val barBlurRadius = blurRadiusFor(blur).dp
-    // Blur hanya untuk latar capsule/navbar yang statis. Floating pill aktif
-    // digambar terpisah di bawah ini dan sengaja TIDAK diberi hazeEffect.
+    // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
+    // baterai dll.) atau slider = 0, jatuh ke jalur Haze lama di bawah.
+    val crossWindowBlur = rememberCrossWindowBlurEnabled()
+    val useNative = USE_NATIVE_NAV_BLUR && crossWindowBlur && blur > 0.01f
+    val density = LocalDensity.current
+    val hostView = LocalView.current
+    val nativeState = remember { NativeBlurWindowState() }
+    var nativeReady by remember { mutableStateOf(false) }
 
-    // Lapisan luar tetap selebar layar agar navbar terletak di tengah pada tablet.
-    // Kapsulnya sendiri dibatasi supaya tidak meregang memenuhi seluruh lebar tablet.
-    Box(
-        modifier = modifier
-            .navigationBarsPadding()
-            .fillMaxWidth()
-            .padding(vertical = Spacing.md),
-        contentAlignment = Alignment.Center,
-    ) {
-      Box(
-        modifier = Modifier
-            .padding(horizontal = Spacing.xxl + Spacing.sm)
-            .widthIn(max = 440.dp)
-            .fillMaxWidth()
-            .height(60.dp)
-            // Tetap izinkan tab terluar menerima sentuhan di dekat tepi layar.
-            .systemGestureExclusion()
+    // Gestur tap + drag. Dipakai di kedua mode (window native maupun inline).
+    val gestureModifier = Modifier
+        .systemGestureExclusion()
             .pointerInput(count) {
                 awaitEachGesture {
                     val slot = size.width.toFloat() / count
@@ -266,59 +271,78 @@ fun AetherBottomNavBar(
                     }
                     onSelect(target)
                 }
-            },
-      ) {
-        // ── Latar kaca capsule (di-clip) ─────────────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .shadow(
-                    elevation = 10.dp,
-                    shape = barShape,
-                    ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
-                    spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
-                )
-                // clip HARUS sebelum hazeEffect: efek Haze hanya terpotong mengikuti
-                // bentuk capsule bila clip berada di atasnya dalam rantai modifier.
-                // Kalau urutannya terbalik, blur tergambar persegi (sudutnya keluar capsule).
-                .clip(barShape)
-                .then(
-                    if (blurOn) {
-                        Modifier.hazeEffect(state = hazeState) {
-                            // Radius mengikuti slider blur (blurRadiusFor), dinaikkan sedikit
-                            // agar blur latar benar-benar terlihat.
-                            blurRadius = (barBlurRadius.value * 1.15f).dp
-                            noiseFactor = 0.01f
-                            backgroundColor = surface.copy(alpha = 0.01f)
-                        }
-                    } else {
-                        Modifier
-                    },
-                )
-                // Tint digambar SETELAH blur dan dibuat sangat tipis supaya latar
-                // capsule lebih transparan dan blur terlihat jelas. Tanpa blur
-                // (slider 0 / hazeState null) tint kembali hampir pekat.
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) 0.05f else 0.96f),
-                            surface.copy(alpha = if (blurOn) 0.03f else 0.90f),
-                        ),
-                    ),
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
-                            outline.copy(alpha = 0.55f),
-                        ),
-                    ),
-                    shape = barShape,
-                ),
-        )
+            }
 
-        // ── Pill (digambar di draw phase, TIDAK di-clip agar bisa menyembul) ─
+    // Lapisan kapsul: latar kaca, pill, dan item. [nat] = dirender di window native.
+    val layers: @Composable (Boolean) -> Unit = { nat ->
+        // Di window native, window selebar kapsul meng-clip pill -> sembulan dikecilkan
+        // supaya tidak terpotong.
+        val growH = if (nat) 5.dp else 14.dp
+        val growW = if (nat) 0.06f else 0.14f
+        val lift = if (nat) 0.dp else 2.dp
+
+        // ── Latar kaca capsule ───────────────────────────────────────────
+        if (nat) {
+            // Blur + tint dikerjakan window (lihat NativeBlurWindow); di sini cukup garis tepi.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
+                                outline.copy(alpha = 0.55f),
+                            ),
+                        ),
+                        shape = barShape,
+                    ),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .shadow(
+                        elevation = 10.dp,
+                        shape = barShape,
+                        ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
+                        spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
+                    )
+                    // clip HARUS sebelum hazeEffect agar blur terpotong mengikuti capsule.
+                    .clip(barShape)
+                    .then(
+                        if (blurOn) {
+                            Modifier.hazeEffect(state = hazeState) {
+                                blurRadius = (barBlurRadius.value * 1.15f).dp
+                                noiseFactor = 0.01f
+                                backgroundColor = surface.copy(alpha = 0.01f)
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) 0.05f else 0.96f),
+                                surface.copy(alpha = if (blurOn) 0.03f else 0.90f),
+                            ),
+                        ),
+                    )
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
+                                outline.copy(alpha = 0.55f),
+                            ),
+                        ),
+                        shape = barShape,
+                    ),
+            )
+        }
+
+        // ── Pill (draw phase, TIDAK di-blur) ─────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -336,11 +360,11 @@ fun AetherBottomNavBar(
                     val baseW = slot - inset * 2f
                     val baseH = size.height - inset * 2f
                     // Menyembul: melebar ~14% dan memanjang ~14dp (melewati tepi capsule).
-                    val w = baseW * stretch * (1f + 0.14f * p)
-                    val h = baseH * squash + 14.dp.toPx() * p
+                    val w = baseW * stretch * (1f + growW * p)
+                    val h = baseH * squash + growH.toPx() * p
                     val cx = (pos + 0.5f) * slot
                     val left = cx - w / 2f
-                    val top = (size.height - h) / 2f - 2.dp.toPx() * p
+                    val top = (size.height - h) / 2f - lift.toPx() * p
 
                     // Warna melebur antara aksen dua tab terdekat.
                     val lo = floor(pos).toInt().coerceIn(0, lastIndex)
@@ -393,7 +417,7 @@ fun AetherBottomNavBar(
                 },
         )
 
-        // ── Item (recompose hanya saat indeks aktif berubah) ─────────────
+        // ── Item ─────────────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -412,9 +436,65 @@ fun AetherBottomNavBar(
                 )
             }
         }
-      }
+    }
+
+    // Lapisan luar tetap selebar layar agar navbar terletak di tengah pada tablet.
+    Box(
+        modifier = modifier
+            .navigationBarsPadding()
+            .fillMaxWidth()
+            .padding(vertical = Spacing.md),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (useNative) {
+            // Penampung: hanya menyediakan ruang + posisi. Kapsul aslinya hidup di
+            // window dialog yang ditempelkan tepat di atas penampung ini.
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = Spacing.xxl + Spacing.sm)
+                    .widthIn(max = 440.dp)
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .onGloballyPositioned { coords ->
+                        val b = coords.boundsInWindow()
+                        nativeState.updateBounds(
+                            hostView,
+                            AndroidRect(
+                                b.left.roundToInt(),
+                                b.top.roundToInt(),
+                                b.right.roundToInt(),
+                                b.bottom.roundToInt(),
+                            ),
+                        )
+                        if (!nativeReady) nativeReady = true
+                    },
+            )
+            if (nativeReady) {
+                NativeBlurWindow(
+                    state = nativeState,
+                    blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).dp.roundToPx() },
+                    tint = surface.copy(alpha = 0.12f),
+                ) {
+                    Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {
+                        layers(true)
+                    }
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = Spacing.xxl + Spacing.sm)
+                    .widthIn(max = 440.dp)
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .then(gestureModifier),
+            ) {
+                layers(false)
+            }
+        }
     }
 }
+
 
 @Composable
 private fun NavBarItem(
