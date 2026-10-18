@@ -80,7 +80,7 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
                 Log.w(TAG, "resolveUserId gagal/timeout — kemungkinan offline")
                 _state.value = _state.value.copy(
                     failed = true,
-                    statusText = "Tidak bisa terhubung ke server. Periksa koneksi internet.",
+                    statusText = "Koneksi gagal — periksa internet",
                 )
                 return@launch
             }
@@ -98,7 +98,7 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
 
             // 3) Sinkronkan token FCM ke Firestore supaya notifikasi
             // maintenance/update/membership bisa diterima device ini.
-            emit(SplashStage.SYNCING_NOTIFICATIONS, 0.70f, "Menyinkronkan notifikasi...")
+            emit(SplashStage.SYNCING_NOTIFICATIONS, 0.70f, "Menyinkronkan data server...")
             withTimeoutOrNull(STEP_TIMEOUT_MILLIS) {
                 FcmTokenRepository.syncTokenToFirestore(getApplication())
             }
@@ -107,10 +107,10 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
             // dokumen config/maintenance sedang enabled, MaintenanceGate di
             // MainActivity yang akan menampilkan dialognya; di sini splash
             // hanya memastikan datanya sempat diambil dulu.
-            emit(SplashStage.CHECKING_MAINTENANCE, 0.90f, "Memeriksa status layanan...")
+            emit(SplashStage.CHECKING_MAINTENANCE, 0.90f, "Memeriksa status server...")
             withTimeoutOrNull(STEP_TIMEOUT_MILLIS) { maintenanceRepository.fetchOnce() }
 
-            emit(SplashStage.DONE, 1.00f, "Selesai.")
+            emit(SplashStage.DONE, 1.00f, "Terhubung ke server")
             _state.value = _state.value.copy(finished = true)
         }
     }

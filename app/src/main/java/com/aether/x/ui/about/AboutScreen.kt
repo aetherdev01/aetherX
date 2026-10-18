@@ -125,6 +125,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
                     text = stringResource(R.string.about_maintainer_name),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = stringResource(R.string.about_maintainer_handle),
@@ -147,6 +148,8 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
                 Text(
                     text = stringResource(R.string.about_app_title),
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = stringResource(R.string.about_app_tagline),

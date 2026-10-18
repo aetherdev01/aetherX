@@ -230,6 +230,7 @@ fun DeviceStatusSection(
                     text = "Perangkat terdeteksi",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "${info.manufacturer} ${info.model}".trim(),
