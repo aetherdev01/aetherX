@@ -1,6 +1,12 @@
 package com.aether.x.ui.components
 
 import android.view.WindowManager
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -8,6 +14,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -17,6 +24,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalView
@@ -185,11 +195,10 @@ fun Modifier.glassPanel(
 }
 
 /**
- * Latar app: warna dasar + aurora + "orb" berwarna dengan tepi tegas. Orb
- * itulah yang di-blur card di atasnya (sehingga blur card KELIHATAN: di luar
- * card orb tegas, di dalam card kabur). Lapisan ini adalah SUMBER blur
- * ([LocalCardHaze]) dan SIBLING konten, bukan induknya, sesuai aturan Haze.
- * Digambar sekali di fase draw (tanpa animasi) jadi ringan.
+ * Latar app: graphite base dengan pita aurora abstrak yang bergerak perlahan.
+ * Tidak memakai orb/lingkaran dekoratif. Gerakan hanya menggeser pita lebar,
+ * sehingga terasa hidup tetapi tidak mengganggu konten dan tetap ringan.
+ * Lapisan ini menjadi sumber blur card (LocalCardHaze).
  */
 @Composable
 fun AetherBackground(
@@ -197,14 +206,22 @@ fun AetherBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val p = LocalAetherPalette.current
-    val k = 0.55f + 0.45f * LocalAetherStyle.current.blur
     val accent = p.accent
     val soft = p.accentSoft
     val premium = p.premium
-    val success = p.success
     val dark = p.isDark
     val bg = p.bg
     val cardHaze = rememberHazeState(blurEnabled = true)
+    val motionTransition = rememberInfiniteTransition(label = "aether-background-motion")
+    val motion by motionTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 18000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "aether-background-phase",
+    )
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -215,44 +232,117 @@ fun AetherBackground(
                 .drawBehind {
                     val w = size.width
                     val h = size.height
-                    val dp = density
-                    fun blob(color: Color, alpha: Float, cx: Float, cy: Float, r: Float) {
-                        val center = Offset(cx, cy)
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(color.copy(alpha = alpha), Color.Transparent),
-                                center = center,
-                                radius = r,
-                            ),
-                            radius = r,
-                            center = center,
-                        )
-                    }
-                    // Orb: tepi tegas (alpha tepi ~60% dari tengah) supaya blur terlihat.
-                    fun orb(color: Color, alpha: Float, cx: Float, cy: Float, rDp: Float) {
-                        val r = rDp * dp
-                        val center = Offset(cx, cy)
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(color.copy(alpha = alpha), color.copy(alpha = alpha * 0.55f)),
-                                center = center,
-                                radius = r,
-                            ),
-                            radius = r,
-                            center = center,
-                        )
-                    }
-                    blob(accent, (if (dark) 0.22f else 0.16f) * k, w * 0.08f, h * 0.04f, w * 0.95f)
-                    blob(soft, (if (dark) 0.14f else 0.14f) * k, w * 0.98f, h * 0.46f, w * 0.80f)
-                    blob(premium, (if (dark) 0.07f else 0.06f) * k, w * 0.10f, h * 0.92f, w * 0.85f)
+                    val phase = motion
+                    val shift = (phase - 0.5f) * w * 0.42f
+                    val glowAlpha = if (dark) 0.19f else 0.12f
 
-                    val a = if (dark) 0.40f else 0.30f
-                    orb(accent, a, w * 0.14f, h * 0.20f, 74f)
-                    orb(premium, a * 0.85f, w * 0.90f, h * 0.30f, 58f)
-                    orb(soft, a, w * 0.34f, h * 0.52f, 88f)
-                    orb(success, a * 0.7f, w * 0.88f, h * 0.68f, 66f)
-                    orb(accent, a * 0.9f, w * 0.18f, h * 0.84f, 62f)
-                    orb(premium, a * 0.7f, w * 0.72f, h * 0.94f, 50f)
+                    // Diffuse color fields are linear/diagonal, not circular blobs.
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                accent.copy(alpha = glowAlpha),
+                                Color.Transparent,
+                                soft.copy(alpha = glowAlpha * 0.65f),
+                                Color.Transparent,
+                            ),
+                            start = Offset(-w * 0.25f + shift, 0f),
+                            end = Offset(w * 0.9f + shift, h),
+                        ),
+                    )
+
+                    fun flowingBand(
+                        y: Float,
+                        amplitude: Float,
+                        colorA: Color,
+                        colorB: Color,
+                        alpha: Float,
+                        phaseShift: Float,
+                    ) {
+                        val dx = shift * phaseShift
+                        val path = Path().apply {
+                            moveTo(-w * 0.18f + dx, y - amplitude * 0.15f)
+                            cubicTo(
+                                w * 0.16f + dx, y - amplitude * 1.35f,
+                                w * 0.40f + dx, y + amplitude * 1.20f,
+                                w * 0.70f + dx, y + amplitude * 0.12f,
+                            )
+                            cubicTo(
+                                w * 0.91f + dx, y - amplitude * 0.58f,
+                                w * 1.04f + dx, y + amplitude * 0.30f,
+                                w * 1.18f + dx, y + amplitude * 0.04f,
+                            )
+                            lineTo(w * 1.18f + dx, y + amplitude * 1.8f)
+                            cubicTo(
+                                w * 0.82f + dx, y + amplitude * 1.25f,
+                                w * 0.48f + dx, y + amplitude * 2.05f,
+                                w * 0.15f + dx, y + amplitude * 1.22f,
+                            )
+                            cubicTo(
+                                -w * 0.02f + dx, y + amplitude * 0.78f,
+                                -w * 0.08f + dx, y + amplitude * 1.0f,
+                                -w * 0.18f + dx, y + amplitude * 1.1f,
+                            )
+                            close()
+                        }
+                        drawPath(
+                            path = path,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    colorA.copy(alpha = alpha),
+                                    colorB.copy(alpha = alpha * 0.72f),
+                                    Color.Transparent,
+                                ),
+                                start = Offset(0f + dx, y - amplitude),
+                                end = Offset(w + dx, y + amplitude * 1.8f),
+                            ),
+                        )
+                    }
+
+                    flowingBand(
+                        y = h * 0.19f,
+                        amplitude = h * 0.075f,
+                        colorA = accent,
+                        colorB = soft,
+                        alpha = if (dark) 0.18f else 0.11f,
+                        phaseShift = 1f,
+                    )
+                    flowingBand(
+                        y = h * 0.54f,
+                        amplitude = h * 0.060f,
+                        colorA = premium,
+                        colorB = accent,
+                        alpha = if (dark) 0.12f else 0.075f,
+                        phaseShift = -0.72f,
+                    )
+                    flowingBand(
+                        y = h * 0.84f,
+                        amplitude = h * 0.050f,
+                        colorA = soft,
+                        colorB = premium,
+                        alpha = if (dark) 0.10f else 0.06f,
+                        phaseShift = 0.48f,
+                    )
+
+                    // A few subtle flowing contour lines make motion perceptible
+                    // without using circles, particles, or high-contrast decoration.
+                    repeat(3) { index ->
+                        val y = h * (0.28f + index * 0.22f) + shift * (0.025f + index * 0.008f)
+                        val line = Path().apply {
+                            moveTo(-w * 0.1f, y)
+                            cubicTo(w * 0.22f, y - h * 0.035f, w * 0.48f, y + h * 0.045f, w * 0.72f, y - h * 0.005f)
+                            cubicTo(w * 0.88f, y - h * 0.025f, w * 1.02f, y + h * 0.018f, w * 1.1f, y)
+                        }
+                        drawPath(
+                            path = line,
+                            color = (if (index % 2 == 0) accent else premium).copy(alpha = if (dark) 0.075f else 0.045f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 1.dp.toPx(),
+                                cap = StrokeCap.Round,
+                                pathEffect = PathEffect.cornerPathEffect(18.dp.toPx()),
+                            ),
+                        )
+                    }
                 },
         )
         Box(modifier = Modifier.fillMaxSize()) {
