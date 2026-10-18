@@ -148,8 +148,8 @@ fun AetherBottomNavBar(
 
     val blurOn = hazeState != null && blur > 0.01f
     val barBlurRadius = blurRadiusFor(blur).dp
-    // Blur nyata: tint cukup tipis supaya blur-nya kelihatan tapi ikon tetap terbaca.
-    val barAlpha = if (blurOn) (0.80f - 0.22f * blur).coerceIn(0.55f, 0.9f) else 0.96f
+    // Blur hanya untuk latar capsule/navbar yang statis. Floating pill aktif
+    // digambar terpisah di bawah ini dan sengaja TIDAK diberi hazeEffect.
 
     // Lapisan luar tetap selebar layar agar navbar terletak di tengah pada tablet.
     // Kapsulnya sendiri dibatasi supaya tidak meregang memenuhi seluruh lebar tablet.
@@ -283,9 +283,10 @@ fun AetherBottomNavBar(
                 .then(
                     if (blurOn) {
                         Modifier.hazeEffect(state = hazeState) {
-                            blurRadius = barBlurRadius
-                            noiseFactor = 0.015f
-                            backgroundColor = surface.copy(alpha = 0.04f)
+                            // Naikkan radius agar blur background benar-benar terlihat.
+                            blurRadius = (barBlurRadius.value * 1.15f).dp
+                            noiseFactor = 0.01f
+                            backgroundColor = surface.copy(alpha = 0.02f)
                         }
                     } else {
                         Modifier
@@ -295,8 +296,8 @@ fun AetherBottomNavBar(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) (0.22f - 0.08f * blur).coerceIn(0.12f, 0.22f) else 0.96f),
-                            surface.copy(alpha = if (blurOn) (0.18f - 0.07f * blur).coerceIn(0.10f, 0.18f) else 0.90f),
+                            lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) 0.10f else 0.96f),
+                            surface.copy(alpha = if (blurOn) 0.08f else 0.90f),
                         ),
                     ),
                 )
