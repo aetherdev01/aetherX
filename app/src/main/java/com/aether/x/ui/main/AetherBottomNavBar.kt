@@ -277,26 +277,26 @@ fun AetherBottomNavBar(
                     ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
                     spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
                 )
-                .clip(barShape)
-                // Apply Haze to the capsule surface before its translucent tint,
-                // so the captured content behind the navbar is blurred rather than
-                // the surface looking only transparent.
+                // Haze must be applied BEFORE clipping/tinting the surface. This lets
+                // Haze sample and blur the content behind the floating capsule; the
+                // clip then constrains the resulting blur to the capsule silhouette.
                 .then(
                     if (blurOn) {
                         Modifier.hazeEffect(state = hazeState) {
                             blurRadius = barBlurRadius
-                            noiseFactor = 0.03f
-                            backgroundColor = surface.copy(alpha = 0.10f)
+                            noiseFactor = 0.015f
+                            backgroundColor = surface.copy(alpha = 0.04f)
                         }
                     } else {
                         Modifier
                     },
                 )
+                .clip(barShape)
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            lerp(surface, Color.White, if (isDark) 0.06f else 0.0f).copy(alpha = if (blurOn) 0.34f else 0.96f),
-                            surface.copy(alpha = if (blurOn) 0.27f else 0.90f),
+                            lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = if (blurOn) (0.22f - 0.08f * blur).coerceIn(0.12f, 0.22f) else 0.96f),
+                            surface.copy(alpha = if (blurOn) (0.18f - 0.07f * blur).coerceIn(0.10f, 0.18f) else 0.90f),
                         ),
                     ),
                 )
