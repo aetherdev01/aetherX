@@ -195,10 +195,11 @@ fun Modifier.glassPanel(
 }
 
 /**
- * Latar app: graphite base dengan pita aurora abstrak yang bergerak perlahan.
- * Tidak memakai orb/lingkaran dekoratif. Gerakan hanya menggeser pita lebar,
- * sehingga terasa hidup tetapi tidak mengganggu konten dan tetap ringan.
- * Lapisan ini menjadi sumber blur card (LocalCardHaze).
+ * Latar app: pita jelly/aurora yang mengalir dan berubah bentuk perlahan.
+ * Intensitas mode terang sengaja dinaikkan agar warna aksen tetap terlihat di atas
+ * permukaan putih; seluruh pita memakai palet aksen aktif dan otomatis berubah saat
+ * preset aksen atau mode tema diganti. Tidak memakai orb/lingkaran dekoratif.
+ * Lapisan ini juga menjadi sumber blur card (LocalCardHaze).
  */
 @Composable
 fun AetherBackground(
@@ -208,7 +209,9 @@ fun AetherBackground(
     val p = LocalAetherPalette.current
     val accent = p.accent
     val soft = p.accentSoft
-    val premium = p.premium
+    // Semua warna latar berasal dari aksen aktif supaya tidak muncul warna asing
+    // ketika user mengganti preset aksen.
+    val accentMid = lerp(accent, soft, 0.52f)
     val dark = p.isDark
     val bg = p.bg
     val cardHaze = rememberHazeState(blurEnabled = true)
@@ -217,7 +220,7 @@ fun AetherBackground(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 18000, easing = LinearEasing),
+            animation = tween(durationMillis = 14500, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "aether-background-phase",
@@ -233,8 +236,12 @@ fun AetherBackground(
                     val w = size.width
                     val h = size.height
                     val phase = motion
-                    val shift = (phase - 0.5f) * w * 0.42f
-                    val glowAlpha = if (dark) 0.19f else 0.12f
+                    // Gerak campuran menggeser pita sekaligus mengubah kurva dan
+                    // ketebalannya; efeknya lebih mirip jelly yang meregang/memantul.
+                    val flex = kotlin.math.sin(phase.toDouble() * Math.PI).toFloat()
+                    val sway = kotlin.math.sin(phase.toDouble() * Math.PI * 2.0).toFloat()
+                    val shift = (phase - 0.5f) * w * 0.30f + sway * w * 0.055f
+                    val glowAlpha = if (dark) 0.23f else 0.16f
 
                     // Diffuse color fields are linear/diagonal, not circular blobs.
                     drawRect(
@@ -259,28 +266,31 @@ fun AetherBackground(
                         phaseShift: Float,
                     ) {
                         val dx = shift * phaseShift
+                        val dynamicAmplitude = amplitude * (0.82f + 0.24f * flex)
+                        val cy = y + sway * amplitude * 0.34f * phaseShift
+                        val a = dynamicAmplitude
                         val path = Path().apply {
-                            moveTo(-w * 0.18f + dx, y - amplitude * 0.15f)
+                            moveTo(-w * 0.18f + dx, cy - a * 0.15f)
                             cubicTo(
-                                w * 0.16f + dx, y - amplitude * 1.35f,
-                                w * 0.40f + dx, y + amplitude * 1.20f,
-                                w * 0.70f + dx, y + amplitude * 0.12f,
+                                w * 0.16f + dx, cy - a * (1.10f + 0.25f * flex),
+                                w * 0.40f + dx, cy + a * (1.02f + 0.22f * sway),
+                                w * 0.70f + dx, cy + a * 0.12f,
                             )
                             cubicTo(
-                                w * 0.91f + dx, y - amplitude * 0.58f,
-                                w * 1.04f + dx, y + amplitude * 0.30f,
-                                w * 1.18f + dx, y + amplitude * 0.04f,
+                                w * 0.91f + dx, cy - a * (0.48f + 0.14f * sway),
+                                w * 1.04f + dx, cy + a * 0.30f,
+                                w * 1.18f + dx, cy + a * 0.04f,
                             )
-                            lineTo(w * 1.18f + dx, y + amplitude * 1.8f)
+                            lineTo(w * 1.18f + dx, cy + a * 1.8f)
                             cubicTo(
-                                w * 0.82f + dx, y + amplitude * 1.25f,
-                                w * 0.48f + dx, y + amplitude * 2.05f,
-                                w * 0.15f + dx, y + amplitude * 1.22f,
+                                w * 0.82f + dx, cy + a * (1.12f + 0.12f * flex),
+                                w * 0.48f + dx, cy + a * 2.05f,
+                                w * 0.15f + dx, cy + a * 1.22f,
                             )
                             cubicTo(
-                                -w * 0.02f + dx, y + amplitude * 0.78f,
-                                -w * 0.08f + dx, y + amplitude * 1.0f,
-                                -w * 0.18f + dx, y + amplitude * 1.1f,
+                                -w * 0.02f + dx, cy + a * 0.78f,
+                                -w * 0.08f + dx, cy + a * 1.0f,
+                                -w * 0.18f + dx, cy + a * 1.1f,
                             )
                             close()
                         }
@@ -293,8 +303,8 @@ fun AetherBackground(
                                     colorB.copy(alpha = alpha * 0.72f),
                                     Color.Transparent,
                                 ),
-                                start = Offset(0f + dx, y - amplitude),
-                                end = Offset(w + dx, y + amplitude * 1.8f),
+                                start = Offset(0f + dx, cy - a),
+                                end = Offset(w + dx, cy + a * 1.8f),
                             ),
                         )
                     }
@@ -304,23 +314,23 @@ fun AetherBackground(
                         amplitude = h * 0.075f,
                         colorA = accent,
                         colorB = soft,
-                        alpha = if (dark) 0.18f else 0.11f,
+                        alpha = if (dark) 0.28f else 0.22f,
                         phaseShift = 1f,
                     )
                     flowingBand(
                         y = h * 0.54f,
                         amplitude = h * 0.060f,
-                        colorA = premium,
+                        colorA = accentMid,
                         colorB = accent,
-                        alpha = if (dark) 0.12f else 0.075f,
+                        alpha = if (dark) 0.17f else 0.13f,
                         phaseShift = -0.72f,
                     )
                     flowingBand(
                         y = h * 0.84f,
                         amplitude = h * 0.050f,
-                        colorA = soft,
-                        colorB = premium,
-                        alpha = if (dark) 0.10f else 0.06f,
+                        colorA = accentMid,
+                        colorB = soft,
+                        alpha = if (dark) 0.13f else 0.095f,
                         phaseShift = 0.48f,
                     )
 
@@ -335,7 +345,7 @@ fun AetherBackground(
                         }
                         drawPath(
                             path = line,
-                            color = (if (index % 2 == 0) accent else premium).copy(alpha = if (dark) 0.075f else 0.045f),
+                            color = (if (index % 2 == 0) accent else soft).copy(alpha = if (dark) 0.10f else 0.075f),
                             style = androidx.compose.ui.graphics.drawscope.Stroke(
                                 width = 1.dp.toPx(),
                                 cap = StrokeCap.Round,

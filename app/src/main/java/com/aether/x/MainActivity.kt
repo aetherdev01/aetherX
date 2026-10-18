@@ -155,22 +155,15 @@ private fun AetherXRoot(
     ) {
     NavHost(navController = navController, startDestination = startDestination) {
         composable(AetherXRoutes.SPLASH_MAIN) {
-
-            // Splash bergaya terminal & selalu gelap, apa pun tema aplikasinya.
-            AetherXTheme(
-                darkTheme = true,
-                accent = appPrefs.accentPreset,
-                blurStrength = appPrefs.blurStrength,
-            ) {
-                SplashScreen(
-                    onSplashFinished = {
-                        val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
-                        navController.navigate(destination) {
-                            popUpTo(AetherXRoutes.SPLASH_MAIN) { inclusive = true }
-                        }
-                    },
-                )
-            }
+            // Splash memakai tema aplikasi yang sudah dipilih user (terang/gelap + aksen).
+            SplashScreen(
+                onSplashFinished = {
+                    val destination = if (onboardingCompleted) AetherXRoutes.MAIN else AetherXRoutes.PERMISSION_ONBOARDING
+                    navController.navigate(destination) {
+                        popUpTo(AetherXRoutes.SPLASH_MAIN) { inclusive = true }
+                    }
+                },
+            )
         }
         composable(AetherXRoutes.PERMISSION_ONBOARDING) {
             PermissionSetupScreen(
