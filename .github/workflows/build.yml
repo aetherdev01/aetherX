@@ -71,7 +71,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          # sdkmanager may finish reading licenses before `yes` exits; with
+          # pipefail enabled, `yes` can report SIGPIPE and fail the step even
+          # when sdkmanager accepted the licenses. Preserve sdkmanager's status.
+          set +o pipefail
           yes | "$SDKMANAGER" --licenses
+          LICENSE_STATUS=$?
+          set -o pipefail
+          if [ "$LICENSE_STATUS" -ne 0 ]; then
+            echo "::error::sdkmanager --licenses failed with exit code $LICENSE_STATUS"
+            exit "$LICENSE_STATUS"
+          fi
 
           for attempt in 1 2 3; do
             echo "Installing Android SDK packages (attempt ${attempt}/3)..."
