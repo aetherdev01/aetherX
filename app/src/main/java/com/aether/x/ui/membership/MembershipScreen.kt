@@ -5,9 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -53,11 +52,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.PopupDialog
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.cardEnterAnimation
@@ -78,7 +76,6 @@ import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.AccentGreen
 import com.aether.x.ui.theme.AccentGreenContainer
 import com.aether.x.ui.theme.AccentRed
-import com.aether.x.ui.theme.AetherCyan
 import com.aether.x.ui.theme.AetherViolet
 import com.aether.x.ui.theme.Spacing
 import java.text.SimpleDateFormat
@@ -271,9 +268,7 @@ fun MembershipScreen(
 @Composable
 private fun MembershipProCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val telegramUrl = stringResource(R.string.membership_pro_telegram_url)
-    val planLabel = stringResource(R.string.membership_pro_plan_monthly_label)
-    val planPrice = stringResource(R.string.membership_pro_plan_monthly_price)
+    val purchaseUrl = stringResource(R.string.membership_pro_purchase_url)
 
     SectionCard(
         title = stringResource(R.string.membership_pro_title),
@@ -290,20 +285,15 @@ private fun MembershipProCard(modifier: Modifier = Modifier) {
 
         Button(
             onClick = {
-                val prefillMessage = context.getString(
-                    R.string.membership_pro_telegram_prefill,
-                    planLabel,
-                    planPrice,
-                )
-
-                val uri = Uri.parse(telegramUrl).buildUpon()
-                    .appendQueryParameter("text", prefillMessage)
-                    .build()
-                val intent = Intent(Intent.ACTION_VIEW, uri)
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(purchaseUrl))
                 try {
                     context.startActivity(intent)
                 } catch (e: ActivityNotFoundException) {
-
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.membership_pro_open_failed),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
             },
             modifier = Modifier
@@ -319,12 +309,10 @@ private fun MembershipProCard(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_social_telegram),
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape),
+                    modifier = Modifier.size(20.dp),
                 )
                 Text(
                     text = stringResource(R.string.membership_pro_cta),
@@ -342,13 +330,7 @@ private fun MembershipPlanCard(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(AetherViolet.copy(alpha = 0.22f), AetherCyan.copy(alpha = 0.12f)),
-                ),
-            )
-            .border(1.5.dp, AetherViolet.copy(alpha = 0.7f), shape)
+            .aetherCardSurface(shape = shape, accent = AetherViolet)
             .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -411,8 +393,7 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.medium)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .aetherCardSurface(shape = MaterialTheme.shapes.medium)
                         .padding(horizontal = Spacing.md, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -485,8 +466,7 @@ private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surface)
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {

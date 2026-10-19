@@ -81,7 +81,7 @@ fun AetherXTheme(
     accent: AccentPreset = AccentPreset.GRAPHITE,
     font: AppFont = AppFont.POPPINS,
     cardStyle: CardStyle = CardStyle.GLASS,
-    blurStrength: Int = 75,
+    blurStrength: Int = 55,
     content: @Composable () -> Unit,
 ) {
     val palette = remember(darkTheme, accent) { aetherPalette(darkTheme, accent) }

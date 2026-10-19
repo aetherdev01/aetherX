@@ -180,9 +180,8 @@ fun DeviceStatusSection(
     modifier: Modifier = Modifier,
 ) {
     SectionCard(
-        title = "Status Perangkat",
+        title = null,
         modifier = modifier.fillMaxWidth(),
-        watermarkIcon = Icons.Outlined.PhoneAndroid,
     ) {
         if (info == null) {
             Row(

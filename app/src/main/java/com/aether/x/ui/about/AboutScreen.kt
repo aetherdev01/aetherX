@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aether.x.BuildConfig
 import com.aether.x.R
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.components.pressScale
 import com.aether.x.ui.components.rememberPressScaleInteractionSource
@@ -101,8 +102,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surface)
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
@@ -138,8 +138,7 @@ private fun MaintainerHeroCard(versionName: String, modifier: Modifier = Modifie
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .aetherCardSurface(shape = MaterialTheme.shapes.medium)
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -186,8 +185,7 @@ private fun CommunityLinkRow(
         modifier = modifier
             .fillMaxWidth()
             .pressScale(interactionSource)
-            .clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surface)
+            .aetherCardSurface(shape = MaterialTheme.shapes.large)
             .clickable(interactionSource = interactionSource, indication = null) {
                 openUrl(context, url)
             }

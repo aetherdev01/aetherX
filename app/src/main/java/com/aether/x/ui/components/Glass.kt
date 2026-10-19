@@ -115,8 +115,8 @@ fun Modifier.aetherCardSurface(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        p.surface.copy(alpha = if (blurOn) 0.62f - 0.14f * b else 0.94f),
-                        p.surface.copy(alpha = if (blurOn) 0.54f - 0.12f * b else 0.88f),
+                        p.surface.copy(alpha = if (blurOn) 0.54f - 0.10f * b else 0.94f),
+                        p.surface.copy(alpha = if (blurOn) 0.46f - 0.08f * b else 0.88f),
                     ),
                 ),
             )
@@ -153,10 +153,10 @@ fun Modifier.aetherCardSurface(
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 /** Radius blur (dp) dialog/navbar dari slider 0f..1f. 0 berarti blur dimatikan. */
-fun blurRadiusFor(blur: Float): Float = 10f + 50f * blur
+fun blurRadiusFor(blur: Float): Float = 12f + 58f * blur
 
 /** Radius blur card: sedikit lebih kecil supaya bentuk orb latar masih terbaca di balik card. */
-fun cardBlurRadiusFor(blur: Float): Float = 8f + 34f * blur
+fun cardBlurRadiusFor(blur: Float): Float = 12f + 46f * blur
 
 /**
  * Panel blur serbaguna (dialog, drawer). Isi di belakang panel di-BLUR

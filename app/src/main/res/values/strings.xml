@@ -106,12 +106,12 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_appearance">Tema terang jadi default, plus pilihan warna aksen dan slider blur di Pengaturan -&gt; Tampilan</string>
-    <string name="whatsnew_item_blur">Blur sungguhan (bukan sekadar transparan) di dialog, drawer, dan navbar; atur kekuatannya di Pengaturan -&gt; Tampilan</string>
-    <string name="whatsnew_item_colors">Perbaikan warna teks yang kurang terbaca di beberapa tema aksen, terang maupun gelap; animasi pill navbar lebih halus: menyusul sesaat setelah tab dipilih, menyembul dengan pegas saat ditahan</string>
+    <string name="whatsnew_item_appearance">Slider pengaturan diperbarui dengan gaya modern terinspirasi iOS.</string>
+    <string name="whatsnew_item_blur">Efek blur ditingkatkan dan kartu Membership serta About kini memakai permukaan glass.</string>
+    <string name="whatsnew_item_colors">Dashboard dirapikan, dan bagian Status Perangkat kini langsung menampilkan Perangkat Terdeteksi.</string>
     <string name="whatsnew_item_dashboard">Dashboard lebih rapi: versi pindah ke header, ikon status seragam, warna tidak norak</string>
-    <string name="whatsnew_item_advanced">Advanced baru: Power Menu (reboot, recovery, bootloader), Kernel Tools (I/O scheduler, TCP, swappiness), dan Terminal Root</string>
-    <string name="whatsnew_item_adblock">Deteksi pemblokir iklan untuk pengguna gratis (member bebas iklan)</string>
+    <string name="whatsnew_item_advanced">Tombol Beli Membership sekarang langsung membuka halaman Sociabuzz.</string>
+    <string name="whatsnew_item_adblock">Nama akun developer diperbarui dan tampilan card About dibuat glass dengan blur.</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah
@@ -174,14 +174,10 @@
     <string name="membership_pro_plan_monthly_price">Rp15.000</string>
     <string name="membership_pro_plan_price_unit">/bulan</string>
     <string name="membership_pro_plan_monthly_badge">Lebih Hemat</string>
-    <string name="membership_pro_description">Langganan Membership Pro Rp15.000 per bulan. Hubungi admin lewat Telegram untuk berlangganan dan dapatkan kode lisensi.</string>
-    <string name="membership_pro_cta">Langganan Sekarang</string>
-    <!-- %1$s diisi label paket (mis. "1 Bulan") dan %2$s harganya
-         (mis. "Rp15.000") pesan ini otomatis terisi di kolom chat
-         Telegram supaya admin langsung tahu paket yang diinginkan
-         pengguna tanpa pengguna perlu mengetik ulang manual. -->
-    <string name="membership_pro_telegram_prefill">Halo admin AetherX, saya ingin berlangganan Membership Pro paket %1$s (%2$s).</string>
-    <string name="membership_pro_telegram_url">https://t.me/AetherDev22</string>
+    <string name="membership_pro_description">Langganan Membership Pro Rp15.000 per bulan. Beli membership melalui Sociabuzz untuk mendapatkan petunjuk aktivasi.</string>
+    <string name="membership_pro_cta">Beli Membership</string>
+    <string name="membership_pro_purchase_url">https://sociabuzz.com/aetheerdev22/tribe</string>
+    <string name="membership_pro_open_failed">Tidak ada aplikasi yang bisa membuka halaman membership.</string>
     <string name="membership_device_section_title">Perangkat Ini</string>
     <string name="membership_device_id_label">Device ID</string>
     <string name="membership_device_id_copy_cd">Salin Device ID</string>
@@ -195,7 +191,7 @@
     <string name="maintenance_default_title">Sedang Pemeliharaan</string>
     <string name="maintenance_default_message">Aplikasi sedang dalam pemeliharaan sementara. Silakan hubungi admin untuk informasi lebih lanjut.</string>
     <string name="maintenance_contact_admin_button">Hubungi Admin</string>
-    <string name="maintenance_telegram_url">https://t.me/AetherDev22</string>
+    <string name="maintenance_telegram_url">https://t.me/getkecill127</string>
 
     <string name="update_available_title">Pembaruan Tersedia</string>
     <string name="update_version_label">Versi %1$s</string>
@@ -510,7 +506,7 @@
          ke tab tersendiri, lihat perintah rework). -->
     <string name="nav_about">About</string>
     <string name="about_maintainer_name">Aldi Ahmad Khoirudin</string>
-    <string name="about_maintainer_handle">@AetherDev22</string>
+    <string name="about_maintainer_handle">@getkecill127</string>
     <string name="about_maintainer_role">Developer &amp; Maintainer AetherX</string>
     <string name="about_app_title">AetherX Kernel Manager</string>
     <string name="about_app_tagline">Tweak performa &amp; overlay untuk gaming</string>
