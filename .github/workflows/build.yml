@@ -39,43 +39,63 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # Set up Android SDK tools explicitly so NDK installation is controlled
-      # instead of relying on Gradle's automatic SDK package download.
+      # Use the SDK preinstalled on ubuntu-latest. Avoid setup-android's
+      # command-line-tools replacement download, which failed with an invalid ZIP.
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      # Install required Android SDK packages. Retry after removing any partial
-      # NDK extraction, which can cause: "Error on ZipFile unknown archive".
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+          [ -n "$SDKMANAGER" ] && [ -x "$SDKMANAGER" ] || {
+            echo "::error::sdkmanager was not found in the preinstalled Android SDK."
+            exit 1
+          }
+
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          "$SDKMANAGER" --version
+
+      # Install SDK packages and retry NDK installation if the download/extraction
+      # is interrupted. This avoids replacing the runner's command-line tools.
       - name: Install Android SDK and NDK
         shell: bash
         run: |
           set -euo pipefail
 
-          yes | sdkmanager --licenses
+          yes | "$SDKMANAGER" --licenses
 
           for attempt in 1 2 3; do
             echo "Installing Android SDK packages (attempt ${attempt}/3)..."
-            rm -rf "${ANDROID_SDK_ROOT}/ndk/27.0.12077973"
-            rm -rf "${ANDROID_SDK_ROOT}/.temp/"*
+            rm -rf "$ANDROID_SDK_ROOT/ndk/27.0.12077973"
+            rm -rf "$ANDROID_SDK_ROOT/.temp/"*
 
-            if sdkmanager --install \\
-              "platforms;android-36" \\
-              "build-tools;36.0.0" \\
-              "cmake;3.22.1" \\
+            if "$SDKMANAGER" --install \
+              "platforms;android-36" \
+              "build-tools;36.0.0" \
+              "cmake;3.22.1" \
               "ndk;27.0.12077973"; then
               echo "Android SDK packages installed successfully."
               break
             fi
 
             if [ "$attempt" -eq 3 ]; then
-              echo "::error::NDK installation failed after 3 attempts."
+              echo "::error::Android SDK/NDK installation failed after 3 attempts."
               exit 1
             fi
             sleep 10
           done
 
-          test -d "${ANDROID_SDK_ROOT}/ndk/27.0.12077973"
-          echo "NDK path: ${ANDROID_SDK_ROOT}/ndk/27.0.12077973"
+          test -d "$ANDROID_SDK_ROOT/ndk/27.0.12077973"
+          echo "NDK path: $ANDROID_SDK_ROOT/ndk/27.0.12077973"
 
       # Configure Gradle and enable dependency/task caching.
       - name: Setup Gradle
