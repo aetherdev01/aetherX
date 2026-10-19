@@ -25,6 +25,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlurEffect
@@ -115,12 +116,32 @@ fun Modifier.aetherCardSurface(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        p.surface.copy(alpha = if (blurOn) 0.54f - 0.10f * b else 0.94f),
-                        p.surface.copy(alpha = if (blurOn) 0.46f - 0.08f * b else 0.88f),
+                        p.surface.copy(alpha = if (blurOn) 0.43f - 0.06f * b else 0.94f),
+                        p.surface.copy(alpha = if (blurOn) 0.36f - 0.04f * b else 0.88f),
                     ),
                 ),
             )
             .then(frost)
+            // Fine specular edge: a subtle top reflection makes the glass
+            // read as a surface rather than an ordinary translucent card.
+            .drawWithContent {
+                drawContent()
+                val inset = 18.dp.toPx()
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.02f),
+                            Color.White.copy(alpha = if (p.isDark) 0.25f else 0.72f),
+                            Color.White.copy(alpha = 0.02f),
+                        ),
+                        startX = inset,
+                        endX = size.width - inset,
+                    ),
+                    start = Offset(inset, 1.dp.toPx()),
+                    end = Offset(size.width - inset, 1.dp.toPx()),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
             .border(1.dp, rim, shape)
 
         CardStyle.SOLID -> this

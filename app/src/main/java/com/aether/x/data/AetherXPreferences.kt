@@ -73,6 +73,8 @@ data class AppPreferences(
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
     val blurStrength: Int = 75,
+    val hapticsEnabled: Boolean = true,
+    val reduceMotionEnabled: Boolean = false,
 
 
     val dpiValue: Int = -1,
@@ -137,6 +139,8 @@ class AetherXPreferences(private val context: Context) {
         val APP_FONT = stringPreferencesKey("app_font")
         val CARD_STYLE = stringPreferencesKey("card_style")
         val BLUR_STRENGTH = intPreferencesKey("blur_strength")
+        val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val REDUCE_MOTION_ENABLED = booleanPreferencesKey("reduce_motion_enabled")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
@@ -214,6 +218,8 @@ class AetherXPreferences(private val context: Context) {
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
             blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 75).coerceIn(0, 100),
+            hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
+            reduceMotionEnabled = prefs[Keys.REDUCE_MOTION_ENABLED] ?: false,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -293,6 +299,14 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setBlurStrength(value: Int) {
         context.dataStore.edit { it[Keys.BLUR_STRENGTH] = value.coerceIn(0, 100) }
+    }
+
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.HAPTICS_ENABLED] = enabled }
+    }
+
+    suspend fun setReduceMotionEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.REDUCE_MOTION_ENABLED] = enabled }
     }
 
     suspend fun saveTweakState(

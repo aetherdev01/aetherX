@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.aether.x.data.AccentPreset
 import com.aether.x.data.AppFont
 import com.aether.x.data.CardStyle
+import com.aether.x.ui.components.LocalHapticEnabled
+import com.aether.x.ui.components.LocalReduceMotionEnabled
 
 /**
  * v3.6 — gaya visual yang bisa diatur user (Pengaturan -> Tampilan).
@@ -82,6 +84,8 @@ fun AetherXTheme(
     font: AppFont = AppFont.POPPINS,
     cardStyle: CardStyle = CardStyle.GLASS,
     blurStrength: Int = 55,
+    hapticsEnabled: Boolean = true,
+    reduceMotionEnabled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val palette = remember(darkTheme, accent) { aetherPalette(darkTheme, accent) }
@@ -94,6 +98,8 @@ fun AetherXTheme(
     CompositionLocalProvider(
         LocalAetherPalette provides palette,
         LocalAetherStyle provides style,
+        LocalHapticEnabled provides hapticsEnabled,
+        LocalReduceMotionEnabled provides reduceMotionEnabled,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

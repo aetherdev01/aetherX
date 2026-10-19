@@ -26,18 +26,19 @@ fun Modifier.cardEnterAnimation(
     baseDelayMillis: Int = 42,
     durationMillis: Int = 460,
 ): Modifier {
+    val reduceMotion = LocalReduceMotionEnabled.current
     var started by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { started = true }
     val progress by animateFloatAsState(
         targetValue = if (started) 1f else 0f,
         animationSpec = tween(
-            durationMillis = durationMillis,
-            delayMillis = index * baseDelayMillis,
+            durationMillis = if (reduceMotion) 0 else durationMillis,
+            delayMillis = if (reduceMotion) 0 else index * baseDelayMillis,
             easing = EaseOutCubic,
         ),
         label = "cardEnterAnimation",
     )
-    return this.alpha(progress).scale(0.985f + progress * 0.015f)
+    return if (reduceMotion) this else this.alpha(progress).scale(0.985f + progress * 0.015f)
         .offset(y = ((1f - progress) * 14).dp)
 }
 
@@ -68,6 +69,7 @@ fun rememberPressScaleInteractionSource(): MutableInteractionSource = remember {
  */
 @Composable
 fun Modifier.dragPopEffect(isDragging: Boolean): Modifier {
+    if (LocalReduceMotionEnabled.current) return this
     val popScale by animateFloatAsState(
         targetValue = if (isDragging) 1.035f else 1f,
         animationSpec = if (isDragging) {

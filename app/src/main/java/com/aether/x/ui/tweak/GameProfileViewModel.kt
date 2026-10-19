@@ -12,6 +12,7 @@ import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.GameMode
 import com.aether.x.ui.components.showAetherToast
 import com.aether.x.data.GameProfile
+import com.aether.x.data.TweakHistoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +43,7 @@ data class GameProfileUiState(
 class GameProfileViewModel(application: Application) : AndroidViewModel(application) {
 
     private val preferences = AetherXPreferences(application)
+    private val history = TweakHistoryRepository(application)
 
     private val _state = MutableStateFlow(GameProfileUiState())
     val state: StateFlow<GameProfileUiState> = _state.asStateFlow()
@@ -92,6 +94,7 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(profiles = it.profiles + (pkg to updated)) }
         viewModelScope.launch {
             preferences.saveGameProfile(updated)
+            history.record("Profil game", "${pkg} diperbarui")
             maybeShowAd(activity)
         }
     }
@@ -131,6 +134,7 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(profiles = it.profiles - pkg) }
         viewModelScope.launch {
             preferences.deleteGameProfile(pkg)
+            history.record("Profil game", "Profil $pkg direset")
             _state.update { it.copy(message = appString(R.string.game_profile_reset_toast)) }
             maybeShowAd(activity)
         }

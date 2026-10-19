@@ -106,12 +106,12 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_appearance">Slider pengaturan diperbarui dengan gaya modern terinspirasi iOS.</string>
-    <string name="whatsnew_item_blur">Efek blur ditingkatkan dan kartu Membership serta About kini memakai permukaan glass.</string>
-    <string name="whatsnew_item_colors">Dashboard dirapikan, dan bagian Status Perangkat kini langsung menampilkan Perangkat Terdeteksi.</string>
+    <string name="whatsnew_item_appearance">Slider dikembalikan ke gaya bar biru dengan penanda tegak sesuai desain referensi.</string>
+    <string name="whatsnew_item_blur">Liquid Glass disempurnakan dengan blur lebih terlihat, tint lebih ringan, dan sorotan tepi yang halus.</string>
+    <string name="whatsnew_item_colors">Control Center baru menampilkan rekomendasi tweak dan status kompatibilitas perangkat.</string>
     <string name="whatsnew_item_dashboard">Dashboard lebih rapi: versi pindah ke header, ikon status seragam, warna tidak norak</string>
-    <string name="whatsnew_item_advanced">Tombol Beli Membership sekarang langsung membuka halaman Sociabuzz.</string>
-    <string name="whatsnew_item_adblock">Nama akun developer diperbarui dan tampilan card About dibuat glass dengan blur.</string>
+    <string name="whatsnew_item_advanced">Advanced Hardware Monitor menampilkan RAM, frekuensi CPU yang terbaca, suhu sensor, dan penyimpanan.</string>
+    <string name="whatsnew_item_adblock">Riwayat tweak, impor/ekspor profil JSON, Update Center, serta kontrol haptik dan pengurangan animasi ditambahkan.</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah

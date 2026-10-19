@@ -95,6 +95,8 @@ class MainActivity : ComponentActivity() {
                     darkTheme = darkTheme,
                     accent = prefsValue.accentPreset,
                     blurStrength = prefsValue.blurStrength,
+                    hapticsEnabled = prefsValue.hapticsEnabled,
+                    reduceMotionEnabled = prefsValue.reduceMotionEnabled,
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,

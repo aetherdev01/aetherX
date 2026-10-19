@@ -344,6 +344,18 @@ fun TweakScreen(
                     return@Column
                 }
 
+                if (selectedSubTab == TweakSubTab.V310_CENTER) {
+                    V310ControlCenterScreen(
+                        onOpenTweaks = { selectedSubTab = TweakSubTab.TWEAK },
+                        onOpenDashboard = { selectedSubTab = TweakSubTab.DASHBOARD },
+                        onOpenProfiles = { selectedSubTab = TweakSubTab.GAME_PROFILE },
+                        onOpenMonitor = { selectedSubTab = TweakSubTab.ROOT_MONITOR },
+                        onOpenKernelManager = { selectedSubTab = TweakSubTab.KERNEL_MANAGER },
+                        onOpenTerminal = { selectedSubTab = TweakSubTab.TERMINAL },
+                    )
+                    return@Column
+                }
+
                 if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
 
                     GameProfileScreen(
@@ -553,7 +565,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
+private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
 
 @Composable
 private fun TweakDrawerContent(
@@ -634,6 +646,15 @@ private fun TweakDrawerContent(
         icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
         selected = selected == TweakSubTab.GAME_PROFILE,
         onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+    )
+
+    NavigationDrawerItem(
+        label = { Text("Control Center · v3.10") },
+        icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
+        selected = selected == TweakSubTab.V310_CENTER,
+        onClick = { onSelect(TweakSubTab.V310_CENTER) },
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
     )

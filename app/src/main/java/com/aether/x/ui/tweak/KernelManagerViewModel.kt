@@ -15,6 +15,7 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.data.KernelManagerRepository
+import com.aether.x.data.TweakHistoryRepository
 import com.aether.x.ui.components.showAetherToast
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +45,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
     private val reader = KernelInfoReader()
     private val repository = KernelManagerRepository()
     private val preferences = AetherXPreferences(application)
+    private val history = TweakHistoryRepository(application)
     private val rewardGate = RewardGate(preferences, AetherXApp.rewardedAdManager)
 
     private val _state = MutableStateFlow(KernelManagerUiState())
@@ -80,6 +82,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreFrequency(executor, coreIndex, minKhz, maxKhz)
+            history.record("Kernel CPU", "Frekuensi core $coreIndex diubah", result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_frequency, coreIndex)) }
             }
@@ -92,6 +95,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreGovernor(executor, coreIndex, governorName)
+            history.record("Kernel CPU", "Governor core $coreIndex → $governorName", result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_governor, coreIndex)) }
             }
@@ -111,6 +115,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuFrequency(executor, path, minKhz, maxKhz)
+            history.record("Kernel GPU", "Frekuensi GPU diubah", result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_frequency)) }
             }
@@ -124,6 +129,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuGovernor(executor, path, governorName)
+            history.record("Kernel GPU", "Governor GPU → $governorName", result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_governor)) }
             }
@@ -212,6 +218,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return
         _state.update { it.copy(applyingPreset = preset) }
 
+        var presetSucceeded = true
         val cores = _state.value.cpuCores
         cores.forEach { core ->
             if (core.isUnavailable) return@forEach
@@ -219,8 +226,10 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
             if (freqs.isEmpty()) return@forEach
             val governor = pickGovernor(core.availableGovernors, preset)
             val (minKhz, maxKhz) = presetFrequencyRange(freqs, preset)
-            if (governor != null) repository.setCoreGovernor(executor, core.coreIndex, governor)
-            repository.setCoreFrequency(executor, core.coreIndex, minKhz = minKhz, maxKhz = maxKhz)
+            if (governor != null) {
+                presetSucceeded = repository.setCoreGovernor(executor, core.coreIndex, governor).success && presetSucceeded
+            }
+            presetSucceeded = repository.setCoreFrequency(executor, core.coreIndex, minKhz = minKhz, maxKhz = maxKhz).success && presetSucceeded
         }
 
         val gpu = _state.value.gpu
@@ -230,8 +239,10 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
             if (freqs.isNotEmpty()) {
                 val governor = pickGovernor(gpu.availableGovernors, preset)
                 val (minKhz, maxKhz) = presetFrequencyRange(freqs, preset)
-                if (governor != null) repository.setGpuGovernor(executor, gpuPath, governor)
-                repository.setGpuFrequency(executor, gpuPath, minKhz = minKhz, maxKhz = maxKhz)
+                if (governor != null) {
+                    presetSucceeded = repository.setGpuGovernor(executor, gpuPath, governor).success && presetSucceeded
+                }
+                presetSucceeded = repository.setGpuFrequency(executor, gpuPath, minKhz = minKhz, maxKhz = maxKhz).success && presetSucceeded
             }
         }
 
@@ -240,6 +251,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         val refreshedCores = reader.readCpuCores(executor)
         val refreshedGpu = reader.readGpuInfo(executor)
         val presetLabel = appString(presetLabelRes(preset))
+        history.record("Kernel preset", presetLabel, presetSucceeded)
         _state.update {
             it.copy(
                 cpuCores = refreshedCores,

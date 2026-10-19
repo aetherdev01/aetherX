@@ -48,6 +48,7 @@ import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.components.AdBlockGate
 import com.aether.x.ui.components.AetherBackground
+import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
@@ -73,6 +74,8 @@ fun MainScreen(
     val tweakState by tweakViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val reduceMotion = LocalReduceMotionEnabled.current
 
     WhatsNewDialog()
 
@@ -216,15 +219,19 @@ fun MainScreen(
             modifier = Modifier.fillMaxSize(),
             targetState = selectedTab,
             transitionSpec = {
-                val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                (slideInHorizontally(
-                    animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-                    initialOffsetX = { fullWidth -> (fullWidth * 0.05f * dir).roundToInt() },
-                ) + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(
-                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                        targetOffsetX = { fullWidth -> (-fullWidth * 0.03f * dir).roundToInt() },
-                    ) + fadeOut(tween(140)))
+                if (reduceMotion) {
+                    fadeIn(tween(80)) togetherWith fadeOut(tween(80))
+                } else {
+                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInHorizontally(
+                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                        initialOffsetX = { fullWidth -> (fullWidth * 0.05f * dir).roundToInt() },
+                    ) + fadeIn(tween(220))) togetherWith
+                        (slideOutHorizontally(
+                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                            targetOffsetX = { fullWidth -> (-fullWidth * 0.03f * dir).roundToInt() },
+                        ) + fadeOut(tween(140)))
+                }
             },
             label = "mainTabContent",
         ) { tab ->

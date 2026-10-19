@@ -62,6 +62,8 @@ fun RootMonitorSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        AdvancedHardwareMetricsCard()
+
         if (!state.nativeAvailable) {
             SectionCard(title = null, watermarkIcon = Icons.Outlined.Memory) {
                 Text(
