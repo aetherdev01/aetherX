@@ -109,6 +109,7 @@ import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.DailyBonusCard
+import com.aether.x.ui.dashboard.DashboardQuickActions
 import com.aether.x.ui.dashboard.GameActivitySection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceStatusSection
@@ -324,6 +325,13 @@ fun TweakScreen(
                                         ),
                                 ) {
                                     when (cardId) {
+                                        "quick_actions" -> DashboardQuickActions(
+                                            rootGranted = privilegeStatus.rootGranted,
+                                            onOpenTweaks = { selectedSubTab = TweakSubTab.TWEAK },
+                                            onOpenProfiles = { selectedSubTab = TweakSubTab.GAME_PROFILE },
+                                            onOpenMonitor = { selectedSubTab = TweakSubTab.ROOT_MONITOR },
+                                            onOpenKernelManager = { selectedSubTab = TweakSubTab.KERNEL_MANAGER },
+                                        )
                                         "bonus" -> DailyBonusCard()
                                         "status" -> DeviceStatusSection(
                                             info = dashboardState.deviceInfo,
@@ -346,12 +354,7 @@ fun TweakScreen(
 
                 if (selectedSubTab == TweakSubTab.V310_CENTER) {
                     V310ControlCenterScreen(
-                        onOpenTweaks = { selectedSubTab = TweakSubTab.TWEAK },
-                        onOpenDashboard = { selectedSubTab = TweakSubTab.DASHBOARD },
-                        onOpenProfiles = { selectedSubTab = TweakSubTab.GAME_PROFILE },
                         onOpenMonitor = { selectedSubTab = TweakSubTab.ROOT_MONITOR },
-                        onOpenKernelManager = { selectedSubTab = TweakSubTab.KERNEL_MANAGER },
-                        onOpenTerminal = { selectedSubTab = TweakSubTab.TERMINAL },
                     )
                     return@Column
                 }
@@ -416,6 +419,30 @@ fun TweakScreen(
                             .weight(1f),
                     )
                     return@Column
+                }
+
+                SectionCard(title = "Pengaturan performa", watermarkIcon = Icons.Outlined.Tune) {
+                    Text(
+                        text = "Kelola respons sentuhan, refresh rate, mode game, dan parameter CPU/GPU yang tersedia di perangkat ini.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StatusPill(
+                            text = if (privilegeStatus.rootGranted) "ROOT AKTIF" else "TANPA ROOT",
+                            containerColor = if (privilegeStatus.rootGranted) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (privilegeStatus.rootGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = if (privilegeStatus.rootGranted) "Opsi kernel yang didukung dapat digunakan." else "Kontrol sistem tertentu memerlukan izin root.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 SectionCard(title = stringResource(R.string.tweak_section_touch), watermarkIcon = Icons.Outlined.TouchApp) {
@@ -651,7 +678,7 @@ private fun TweakDrawerContent(
     )
 
     NavigationDrawerItem(
-        label = { Text("Control Center · v3.10") },
+        label = { Text("Pusat Kontrol · v3.10") },
         icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
         selected = selected == TweakSubTab.V310_CENTER,
         onClick = { onSelect(TweakSubTab.V310_CENTER) },

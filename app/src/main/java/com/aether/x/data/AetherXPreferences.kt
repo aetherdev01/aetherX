@@ -15,14 +15,10 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
 
 /**
- * v3.5 — daftar ID card Dashboard yang valid, dalam urutan default.
- * "ram" ditambahkan belakangan (fitur RAM Cleaner) — dipisah jadi
- * konstanta bersama supaya logic parsing di [AetherXPreferences] BISA
- * menambahkan card baru ke urutan tersimpan user yang lama (dibuat
- * sebelum "ram" ada) tanpa mereset seluruh urutan custom mereka ke
- * default. Lihat pemakaiannya di parsing `dashboardCardOrder` di bawah.
+ * Daftar ID card Dashboard yang valid. Kartu baru otomatis disisipkan pada
+ * posisi default-nya untuk tetap mempertahankan urutan custom milik pengguna.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("bonus", "status", "ram", "activity")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("quick_actions", "status", "ram", "activity", "bonus")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 

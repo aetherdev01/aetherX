@@ -159,6 +159,22 @@ private fun GameProfileListPane(
             color = TextSecondary,
             modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
         )
+        val configuredProfiles = state.profiles.values.count { countEnabledTweaks(it) > 0 }
+        SectionCard(title = "Ringkasan profil", watermarkIcon = Icons.Outlined.SportsEsports) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ProfileMetric(value = state.installedGames.size.toString(), label = "Game terdeteksi", modifier = Modifier.weight(1f))
+                ProfileMetric(value = configuredProfiles.toString(), label = "Dikonfigurasi", modifier = Modifier.weight(1f))
+                ProfileMetric(value = if (state.activeGameProfilePackage != null) "1" else "0", label = "Aktif", modifier = Modifier.weight(1f))
+            }
+            Text(
+                text = "Pilih game untuk mengatur mode dan tweak khusus. Perubahan profil hanya berlaku saat dukungan sistem terkait tersedia.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
             text = stringResource(R.string.game_profile_scope_disclaimer),
             style = MaterialTheme.typography.bodySmall,
@@ -227,8 +243,9 @@ private fun GameListRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.42f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
@@ -264,15 +281,40 @@ private fun GameListRow(
                     dotColor = AccentGreen,
                     modifier = Modifier.padding(top = 4.dp),
                 )
-            } else if (configuredTweakCount > 0) {
+            } else {
                 Text(
-                    text = stringResource(R.string.game_profile_configured_badge, configuredTweakCount),
+                    text = if (configuredTweakCount > 0) {
+                        stringResource(R.string.game_profile_configured_badge, configuredTweakCount)
+                    } else {
+                        "Profil default · belum disesuaikan"
+                    },
                     style = MaterialTheme.typography.bodySmall,
-                    color = AccentBlue,
-                    modifier = Modifier.padding(top = 2.dp),
+                    color = if (configuredTweakCount > 0) AccentBlue else TextMuted,
+                    modifier = Modifier.padding(top = 3.dp),
+                    maxLines = 1,
                 )
             }
         }
+        Icon(
+            imageVector = Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+@Composable
+private fun ProfileMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.52f))
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
     }
 }
 
@@ -285,7 +327,7 @@ private fun GameProfileDetailPane(
     val selectedEntry = state.installedGames.firstOrNull { it.packageName == state.selectedPackage }
     val profile = state.selectedProfile ?: return
     val activeTweakCount = countEnabledTweaks(profile)
-    val totalTweakCount = 6
+    val totalTweakCount = 7
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -535,6 +577,7 @@ private fun countEnabledTweaks(profile: GameProfile): Int = listOf(
     profile.ramPriorityMode,
     profile.thermalThrottleOverride,
     profile.gpuPerformanceMode,
+    profile.gpuRenderingPriority,
     profile.ioSchedulerBoost,
     profile.vmHeapBoost,
 ).count { it }
