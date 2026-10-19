@@ -61,6 +61,7 @@ import androidx.compose.ui.window.Dialog
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.components.aetherCardSurface
+import com.aether.x.ui.components.referenceSliderVisual
 import com.aether.x.ui.components.glassPanel
 import com.aether.x.ui.components.DialogWindowDim
 import com.aether.x.ui.theme.AccentBlue
@@ -281,11 +282,20 @@ fun CrosshairSettingsSection(
                         onValueChange = { onRotationChange(it.roundToInt()) },
                         valueRange = 0f..360f,
                         colors = SliderDefaults.colors(
-                            thumbColor = AccentBlue,
-                            activeTrackColor = AccentBlue,
-                            inactiveTrackColor = AccentBlueDim
+                            thumbColor = Color.Transparent,
+                            activeTrackColor = Color.Transparent,
+                            inactiveTrackColor = Color.Transparent,
+                            activeTickColor = Color.Transparent,
+                            inactiveTickColor = Color.Transparent,
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .referenceSliderVisual(
+                                value = rotationDegrees.toFloat(),
+                                valueRange = 0f..360f,
+                                activeColor = AccentBlue,
+                                inactiveColor = AccentBlue.copy(alpha = 0.14f),
+                            )
                     )
                 }
 
