@@ -111,7 +111,7 @@ fun PermissionMethodCard(
                     ) {
                         StatusPill(
                             text = statusText,
-                            containerColor = SurfaceRaised,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = TextSecondary,
                             dotColor = null,
                         )

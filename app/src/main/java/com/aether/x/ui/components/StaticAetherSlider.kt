@@ -17,7 +17,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -70,7 +69,6 @@ fun StaticAetherSlider(
             .fillMaxWidth()
             .height(height)
             .semantics {
-                role = Role.Slider
                 progressBarRangeInfo = ProgressBarRangeInfo(
                     current = value.coerceIn(minValue, maxValue),
                     range = valueRange,
