@@ -144,6 +144,7 @@ fun TweakScreen(
 
     val dashboardViewModel: DashboardViewModel = viewModel()
     val dashboardState by dashboardViewModel.state.collectAsStateWithLifecycle()
+    val gameProfileViewModel: GameProfileViewModel = viewModel()
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -255,6 +256,7 @@ fun TweakScreen(
 
                         if (selectedSubTab == TweakSubTab.GAME_PROFILE ||
                             selectedSubTab == TweakSubTab.GAME_MONITOR ||
+                            selectedSubTab == TweakSubTab.GAME_LIBRARY ||
                             selectedSubTab == TweakSubTab.APP_MANAGER ||
                             selectedSubTab == TweakSubTab.BUILD_PROP ||
                             selectedSubTab == TweakSubTab.TERMINAL
@@ -358,7 +360,6 @@ fun TweakScreen(
                                         "game_monitor" -> DashboardGameMonitorSection(
                                             onOpenMonitor = { selectedSubTab = TweakSubTab.GAME_MONITOR },
                                         )
-                                        "ram" -> RamCleanerCard()
                                     }
                                 }
                             }
@@ -370,6 +371,17 @@ fun TweakScreen(
                 if (selectedSubTab == TweakSubTab.V310_CENTER) {
                     V310ControlCenterScreen(
                         onOpenMonitor = { selectedSubTab = TweakSubTab.ROOT_MONITOR },
+                    )
+                    return@Column
+                }
+
+                if (selectedSubTab == TweakSubTab.GAME_LIBRARY) {
+                    GameLibraryScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        onConfigureGame = { packageName ->
+                            gameProfileViewModel.selectGame(packageName)
+                            selectedSubTab = TweakSubTab.GAME_PROFILE
+                        },
                     )
                     return@Column
                 }
@@ -443,6 +455,8 @@ fun TweakScreen(
                     )
                     return@Column
                 }
+
+                RamCleanerCard()
 
                 SectionCard(title = "Pengaturan performa", watermarkIcon = Icons.Outlined.Tune) {
                     Text(
@@ -618,7 +632,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, GAME_MONITOR, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
+private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_LIBRARY, GAME_PROFILE, GAME_MONITOR, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
 
 @Composable
 private fun TweakDrawerContent(
@@ -700,7 +714,12 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_tweak)) },
+            label = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.nav_tweak), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Sentuhan, refresh rate, CPU/GPU, dan pembersih RAM", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
+            },
             icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
             selected = selected == TweakSubTab.TWEAK,
             onClick = { onSelect(TweakSubTab.TWEAK) },
@@ -719,7 +738,26 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_game_profile)) },
+            label = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Game Library", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Cari, favoritkan, mainkan, dan buka profil game", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
+            },
+            icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
+            selected = selected == TweakSubTab.GAME_LIBRARY,
+            onClick = { onSelect(TweakSubTab.GAME_LIBRARY) },
+            colors = NavigationDrawerItemDefaults.colors(),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+
+        NavigationDrawerItem(
+            label = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.nav_game_profile), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Atur preset performa untuk tiap game", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
+            },
             icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
             selected = selected == TweakSubTab.GAME_PROFILE,
             onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
@@ -748,7 +786,7 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text("Pusat Kontrol · v3.10.1") },
+            label = { Text("Pusat Kontrol") },
             icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
             selected = selected == TweakSubTab.V310_CENTER,
             onClick = { onSelect(TweakSubTab.V310_CENTER) },
@@ -776,7 +814,12 @@ private fun TweakDrawerContent(
                 modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
             )
             NavigationDrawerItem(
-                label = { Text(stringResource(R.string.kernel_manager_title)) },
+                label = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(stringResource(R.string.kernel_manager_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Frekuensi dan governor sistem yang tersedia", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                    }
+                },
                 icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
                 selected = selected == TweakSubTab.KERNEL_MANAGER,
                 onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },

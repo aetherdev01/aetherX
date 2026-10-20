@@ -31,7 +31,7 @@ data class DashboardUiState(
     val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
 
-private val DEFAULT_CARD_ORDER = listOf("status", "recent_games", "game_monitor", "ram")
+private val DEFAULT_CARD_ORDER = listOf("status", "recent_games", "game_monitor")
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 

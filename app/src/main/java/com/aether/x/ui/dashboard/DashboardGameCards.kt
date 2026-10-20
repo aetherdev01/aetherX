@@ -65,44 +65,77 @@ fun RecentlyPlayedGamesSection(
     onGameClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val sessions = GameSessionRepository.sessions.collectAsStateWithLifecycle().value
+    LaunchedEffect(context.applicationContext) {
+        GameSessionRepository.initialize(context.applicationContext)
+    }
+    val latestSessionByPackage = remember(sessions) {
+        sessions.groupBy { it.packageName }.mapValues { (_, records) ->
+            records.maxByOrNull { it.startedAtMs }
+        }
+    }
+
     SectionCard(
-        title = "Baru dimainkan",
+        title = "Baru Dimainkan",
         watermarkIcon = Icons.Outlined.History,
         modifier = modifier.fillMaxWidth(),
     ) {
+        Text(
+            text = "Akses cepat ke game terakhir. Ketuk kartu untuk langsung membuka game.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         when {
-            loading -> Text(
-                text = "Memuat daftar game…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            loading -> Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "Memuat game yang tersedia…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             games.isEmpty() -> Text(
-                text = "Game yang dibuka lewat AetherX atau terekam Monitor Game akan muncul di sini.",
+                text = "Game yang dibuka lewat AetherX atau tercatat di Monitor Game akan muncul di sini.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             else -> LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 4.dp, horizontal = 1.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 items(games, key = { it.packageName }) { game ->
+                    val isLastPlayed = game.packageName == lastPlayedPackage
+                    val session = latestSessionByPackage[game.packageName]
                     Column(
                         modifier = Modifier
-                            .width(116.dp)
-                            .height(160.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
+                            .width(156.dp)
+                            .height(178.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f))
                             .clickable { onGameClick(game.packageName) }
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.spacedBy(7.dp),
                     ) {
-                        Box(contentAlignment = Alignment.TopEnd) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top,
+                        ) {
                             Surface(
-                                modifier = Modifier.size(54.dp),
-                                shape = RoundedCornerShape(15.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f),
+                                modifier = Modifier.size(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
                             ) {
                                 Image(
                                     bitmap = game.icon,
@@ -110,26 +143,39 @@ fun RecentlyPlayedGamesSection(
                                     modifier = Modifier.fillMaxSize(),
                                 )
                             }
-                            if (game.packageName == lastPlayedPackage) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
-                                )
+                            if (isLastPlayed) {
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                ) {
+                                    Text(
+                                        text = "TERBARU",
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                             }
                         }
                         Text(
                             text = game.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (game.packageName == lastPlayedPackage) FontWeight.Bold else FontWeight.Medium,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = if (isLastPlayed) FontWeight.Bold else FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             minLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        val sessionDetail = session?.let {
+                            buildString {
+                                append(formatSessionDuration(it.durationMs))
+                                append(" sesi")
+                                it.averageFps?.let { fps -> append(" · AVG $fps FPS") }
+                            }
+                        }
                         Text(
-                            text = if (game.packageName == lastPlayedPackage) "Terakhir dibuka" else "Mainkan lagi",
+                            text = sessionDetail ?: if (isLastPlayed) "Terakhir dibuka" else "Siap dimainkan",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,

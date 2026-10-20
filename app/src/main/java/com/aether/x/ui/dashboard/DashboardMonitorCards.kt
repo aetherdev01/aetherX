@@ -177,8 +177,10 @@ fun DeviceStatusSection(
     rootGranted: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val deviceTitle = info?.let { "${it.manufacturer} ${it.model}".trim().ifBlank { "Perangkat Android" } }
+        ?: "Mendeteksi perangkat…"
     SectionCard(
-        title = "Status perangkat",
+        title = deviceTitle,
         watermarkIcon = Icons.Outlined.PhoneAndroid,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -225,15 +227,15 @@ fun DeviceStatusSection(
                 verticalArrangement = Arrangement.spacedBy(Spacing.line),
             ) {
                 Text(
-                    text = "${info.manufacturer} ${info.model}".trim().ifBlank { "Perangkat Android" },
+                    text = "Android ${info.androidVersion}",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Android ${info.androidVersion} · API ${info.sdkInt}",
+                    text = "API ${info.sdkInt} · ${info.cpuCores} core",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

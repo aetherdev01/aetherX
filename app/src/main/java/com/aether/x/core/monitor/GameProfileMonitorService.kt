@@ -64,6 +64,9 @@ class GameProfileMonitorService : Service() {
     private val foregroundAppReader = ForegroundAppReader()
     private val recentTasksReader = RecentTasksReader()
     private val systemStatsProvider = SystemStatsProvider()
+    // /proc/stat can be restricted to the app UID on some ROMs. Use the same
+    // already-rooted fallback as the Root Monitor when direct sampling fails.
+    private val rootCpuFallback = RootProcCpuReader()
 
     private var activeProfilePackage: String? = null
     private var hasConfiguredProfiles = false
@@ -90,10 +93,7 @@ class GameProfileMonitorService : Service() {
             ACTION_STOP -> {
                 serviceScope.launch {
                     resetActiveProfileIfAny()
-                    val executor = PrivilegeManager.getExecutorAwaitingConnection()
-                    if (executor != null) runCatching { activeFpsReader?.stopCapture(executor) }
                     GameSessionRepository.finishActiveSession()
-                    activeFpsReader = null
                     stopSelf()
                 }
                 return START_NOT_STICKY
@@ -290,7 +290,6 @@ class GameProfileMonitorService : Service() {
             if (GameSessionRepository.activeSession != null) {
                 gameMissPolls++
                 if (gameMissPolls >= MISSED_GAME_POLLS_TO_FINISH) {
-                    runCatching { activeFpsReader?.stopCapture(executor) }
                     GameSessionRepository.finishActiveSession()
                     activeRecordedGamePackage = null
                     activeFpsReader = null
@@ -305,33 +304,25 @@ class GameProfileMonitorService : Service() {
 
         gameMissPolls = 0
         if (activeRecordedGamePackage != candidate || GameSessionRepository.activeSession == null) {
-            runCatching { activeFpsReader?.stopCapture(executor) }
             val gameName = runCatching {
                 val info: ApplicationInfo = packageManager.getApplicationInfo(candidate, 0)
                 packageManager.getApplicationLabel(info).toString()
             }.getOrDefault(candidate)
             GameSessionRepository.startSession(applicationContext, candidate, gameName)
             activeRecordedGamePackage = candidate
-            activeFpsReader = GfxInfoFpsReader(candidate).also { reader ->
-                runCatching { reader.startCapture(executor) }
-            }
+            activeFpsReader = GfxInfoFpsReader(candidate)
             lastFpsWasLow = null
             lastMetricSampleAtMs = 0L
             cachedGpuLoadPercent = null
             cachedGpuFreqMhz = null
             lastGpuSampleAtMs = 0L
+            rootCpuFallback.reset()
             updateOngoingNotification(gameName)
             postEventNotification(
                 title = "Mulai merekam game",
                 message = "AetherX mulai merekam sesi $gameName secara otomatis.",
                 notificationId = MONITOR_EVENT_NOTIFICATION_ID,
             )
-        } else if (activeFpsReader == null) {
-            // Restore the frame reader if the service was recreated while the
-            // repository still held an in-memory active session.
-            activeFpsReader = GfxInfoFpsReader(candidate).also { reader ->
-                runCatching { reader.startCapture(executor) }
-            }
         }
 
         val now = System.currentTimeMillis()
@@ -341,7 +332,12 @@ class GameProfileMonitorService : Service() {
         val fps = runCatching { activeFpsReader?.readFps(executor) }.getOrNull()
         val gameName = GameSessionRepository.activeSession?.gameName ?: candidate
         if (fps != null) reportFpsStatus(gameName, fps)
-        val cpu = systemStatsProvider.readCpuLoadPercent()
+        val directCpu = systemStatsProvider.readCpuLoadPercent()
+        val cpu = directCpu ?: runCatching {
+            rootCpuFallback.read()?.aggregatePercent
+                ?.takeIf { it >= 0f }
+                ?.roundToInt()
+        }.getOrNull()
         val temperature = systemStatsProvider.readTemperatureCelsius(this)
         val gpuReadableDirectly = systemStatsProvider.readGpuLoadPercent()
 

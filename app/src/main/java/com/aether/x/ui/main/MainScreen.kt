@@ -161,11 +161,18 @@ fun MainScreen(
     // lambda `offset { }` (fase layout), jadi scroll tidak memicu recomposition.
     var navBarHeightPx by remember { mutableFloatStateOf(0f) }
     var navBarOffsetPx by remember { mutableFloatStateOf(0f) }
+    // Only toggle composition at the two endpoints. The offset itself stays in
+    // the layout lambda so normal scrolling does not recompose the entire screen.
+    var navBarVisible by remember { mutableStateOf(true) }
     val navBarScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val newOffset = navBarOffsetPx + available.y
-                navBarOffsetPx = newOffset.coerceIn(-navBarHeightPx, 0f)
+                val nextOffset = (navBarOffsetPx + available.y).coerceIn(-navBarHeightPx, 0f)
+                navBarOffsetPx = nextOffset
+                if (navBarHeightPx > 0f) {
+                    val shouldShow = nextOffset > -navBarHeightPx + 1f
+                    if (shouldShow != navBarVisible) navBarVisible = shouldShow
+                }
                 return Offset.Zero
             }
         }
@@ -184,32 +191,36 @@ fun MainScreen(
         modifier = Modifier.nestedScroll(navBarScrollConnection),
         containerColor = Color.Transparent,
         bottomBar = {
-            AetherBottomNavBar(
-                items = navBarItems,
-                selectedIndex = navItems.indexOf(selectedTab),
-                onSelect = { index ->
-                    val tab = navItems[index]
-                    val changed = tab != selectedTab
-                    selectedTab = tab
-                    if (tab == MainTab.TWEAK) {
-                        dashboardRequest++
-                    }
-                    if (changed) {
-                        val activity = context as? Activity
-                        if (activity != null) {
-                            scope.launch {
-                                AetherXApp.interstitialAdGate.onNavigation(
-                                    activity = activity,
-                                    isMember = tweakViewModel.state.value.isMembershipActive,
-                                )
+            // At full hide, emit no bottom-bar content. Scaffold then releases
+            // the reserved height too, so there is no empty strip behind the pill.
+            if (navBarVisible || navBarHeightPx == 0f) {
+                AetherBottomNavBar(
+                    items = navBarItems,
+                    selectedIndex = navItems.indexOf(selectedTab),
+                    onSelect = { index ->
+                        val tab = navItems[index]
+                        val changed = tab != selectedTab
+                        selectedTab = tab
+                        if (tab == MainTab.TWEAK) {
+                            dashboardRequest++
+                        }
+                        if (changed) {
+                            val activity = context as? Activity
+                            if (activity != null) {
+                                scope.launch {
+                                    AetherXApp.interstitialAdGate.onNavigation(
+                                        activity = activity,
+                                        isMember = tweakViewModel.state.value.isMembershipActive,
+                                    )
+                                }
                             }
                         }
-                    }
-                },
-                modifier = Modifier
-                    .onSizeChanged { navBarHeightPx = it.height.toFloat() }
-                    .offset { IntOffset(x = 0, y = -navBarOffsetPx.roundToInt()) },
-            )
+                    },
+                    modifier = Modifier
+                        .onSizeChanged { navBarHeightPx = it.height.toFloat() }
+                        .offset { IntOffset(x = 0, y = -navBarOffsetPx.roundToInt()) },
+                )
+            }
         },
     ) { padding ->
         // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA

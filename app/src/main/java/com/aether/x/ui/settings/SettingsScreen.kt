@@ -81,25 +81,32 @@ fun SettingsScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = stringResource(R.string.nav_settings),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.nav_settings),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Atur tampilan, kontrol game, interaksi, dan pembaruan AetherX.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
+        SettingsGroupLabel("TAMPILAN")
         AppearanceSettingsSection(
             darkModePref = prefs.darkModePref,
             accentPreset = prefs.accentPreset,
-            customAccentArgb = prefs.customAccentArgb,
             blurStrength = prefs.blurStrength,
             onDarkModeChange = viewModel::setDarkModePref,
             onAccentChange = viewModel::setAccentPreset,
-            onCustomAccentChange = viewModel::setCustomAccentArgb,
             onBlurChange = viewModel::setBlurStrength,
             modifier = Modifier.cardEnterAnimation(index = 0),
         )
 
+        SettingsGroupLabel("KONTROL & OVERLAY")
         CrosshairSettingsSection(
             enabled = prefs.crosshairEnabled,
             style = prefs.crosshairStyle,
@@ -120,6 +127,7 @@ fun SettingsScreen(
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
 
+        SettingsGroupLabel("INTERAKSI")
         SectionCard(
             title = "Gerakan UI & Haptik",
             watermarkIcon = Icons.Outlined.Vibration,
@@ -149,6 +157,7 @@ fun SettingsScreen(
             Text("Kekuatan blur diatur pada bagian Tampilan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        SettingsGroupLabel("SISTEM")
         SectionCard(
             title = "Pusat Pembaruan",
             watermarkIcon = Icons.Outlined.Refresh,
@@ -190,6 +199,17 @@ fun SettingsScreen(
     }
 }
 
+
+@Composable
+private fun SettingsGroupLabel(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 2.dp, start = 2.dp),
+    )
+}
 
 @Composable
 private fun SettingsInfoRow(label: String, value: String) {

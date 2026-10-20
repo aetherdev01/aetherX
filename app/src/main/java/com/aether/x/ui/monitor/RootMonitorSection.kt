@@ -27,7 +27,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
-import com.aether.x.ui.theme.AccentAmber
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.Spacing
 
@@ -130,12 +129,12 @@ fun RootMonitorSection(
                 MonitorValueRow(
                     label = stringResource(R.string.root_monitor_gpu_load),
                     valueText = "${latestGpu.toInt()}%",
-                    valueColor = AccentAmber,
+                    valueColor = MaterialTheme.colorScheme.primary,
                 )
                 RealtimeLineChart(
                     values = state.gpuLoadHistory,
                     maxValue = 100f,
-                    lineColor = AccentAmber,
+                    lineColor = MaterialTheme.colorScheme.primary,
                 )
                 Text(
                     text = state.gpuFreqMhz?.let {

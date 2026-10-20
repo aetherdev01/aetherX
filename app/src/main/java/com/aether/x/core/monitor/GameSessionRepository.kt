@@ -216,15 +216,27 @@ object GameSessionRepository {
 
     private fun decodeSession(o: JSONObject): GameSession {
         val points = o.optJSONArray("samples") ?: JSONArray()
+        val decodedSamples = (0 until points.length()).mapNotNull { i ->
+            runCatching { decodeSample(points.getJSONObject(i)) }.getOrNull()
+        }
+        // Older versions may have stored CPU values in chart samples but not
+        // in the summary counters. Recover those summaries when loading history.
+        val cpuSamples = decodedSamples.mapNotNull { it.cpuPercent?.takeIf { value -> value in 0..100 } }
+        val storedCpuCount = o.optInt("cpuCount")
+        val storedCpuSum = o.optLong("cpuSum")
+        val storedMaxCpu = o.intOrNull("maxCpu")
         return GameSession(
             id = o.optString("id", UUID.randomUUID().toString()), packageName = o.optString("package"),
             gameName = o.optString("name", o.optString("package")), startedAtMs = o.optLong("start"),
             endedAtMs = o.longOrNull("end"),
-            samples = (0 until points.length()).mapNotNull { i -> runCatching { decodeSample(points.getJSONObject(i)) }.getOrNull() },
+            samples = decodedSamples,
             sampleCount = o.optInt("sampleCount"), currentFps = o.intOrNull("currentFps"),
             fpsCount = o.optInt("fpsCount"), fpsSum = o.optLong("fpsSum"), minFps = o.intOrNull("minFps"),
             maxFps = o.intOrNull("maxFps"), lowFpsCount = o.optInt("lowFps"),
-            currentCpuPercent = o.intOrNull("currentCpu"), cpuCount = o.optInt("cpuCount"), cpuSum = o.optLong("cpuSum"), maxCpuPercent = o.intOrNull("maxCpu"),
+            currentCpuPercent = o.intOrNull("currentCpu") ?: decodedSamples.lastOrNull { it.cpuPercent != null }?.cpuPercent,
+            cpuCount = if (storedCpuCount > 0) storedCpuCount else cpuSamples.size,
+            cpuSum = if (storedCpuCount > 0) storedCpuSum else cpuSamples.sumOf { it.toLong() },
+            maxCpuPercent = storedMaxCpu ?: cpuSamples.maxOrNull(),
             currentGpuPercent = o.intOrNull("currentGpu"), gpuCount = o.optInt("gpuCount"), gpuSum = o.optLong("gpuSum"), maxGpuPercent = o.intOrNull("maxGpu"),
             currentGpuFreqMhz = o.floatOrNull("gpuFreq"), temperatureStartC = o.floatOrNull("tempStart"),
             currentTemperatureC = o.floatOrNull("currentTemp"), maxTemperatureC = o.floatOrNull("maxTemp"),
