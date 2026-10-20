@@ -2,6 +2,7 @@ package com.aether.x.ui.appmanager
 
 import android.app.Activity
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,11 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -42,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +54,8 @@ import com.aether.x.R
 import com.aether.x.core.appmanager.AppOrigin
 import com.aether.x.core.appmanager.InstalledAppEntry
 import com.aether.x.ui.components.PopupDialog
+import com.aether.x.ui.components.StatusPill
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.theme.AccentBlue
 import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
@@ -75,12 +81,13 @@ fun AppManagerScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = stringResource(R.string.app_manager_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted,
-            modifier = Modifier.padding(bottom = 12.dp),
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        AppManagerOverviewCard(
+            state = state,
+            onRefresh = viewModel::refresh,
         )
 
         OutlinedTextField(
@@ -98,7 +105,7 @@ fun AppManagerScreen(
             ),
         )
 
-        Box(modifier = Modifier.weight(1f).padding(top = 12.dp)) {
+        Box(modifier = Modifier.weight(1f).padding(top = 2.dp)) {
             when {
                 state.loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -117,10 +124,13 @@ fun AppManagerScreen(
                 else -> {
                     val thirdParty = state.filteredApps.filter { it.origin == AppOrigin.THIRD_PARTY }
                     val bloatware = state.filteredApps.filter { it.origin == AppOrigin.KNOWN_BLOATWARE }
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (thirdParty.isNotEmpty()) {
                             item(key = "header_third_party") {
-                                AppManagerSectionHeader(stringResource(R.string.app_manager_section_third_party))
+                                AppManagerSectionHeader(
+                                    title = stringResource(R.string.app_manager_section_third_party),
+                                    count = thirdParty.size,
+                                )
                             }
                             items(thirdParty, key = { it.packageName }) { entry ->
                                 AppManagerRow(
@@ -134,7 +144,10 @@ fun AppManagerScreen(
                         }
                         if (bloatware.isNotEmpty()) {
                             item(key = "header_bloatware") {
-                                AppManagerSectionHeader(stringResource(R.string.app_manager_section_bloatware))
+                                AppManagerSectionHeader(
+                                    title = stringResource(R.string.app_manager_section_bloatware),
+                                    count = bloatware.size,
+                                )
                             }
                             items(bloatware, key = { it.packageName }) { entry ->
                                 AppManagerRow(
@@ -183,13 +196,135 @@ private fun ClearCacheConfirmDialog(
 }
 
 @Composable
-private fun AppManagerSectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = TextMuted,
-        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp, start = 4.dp),
-    )
+private fun AppManagerOverviewCard(
+    state: AppManagerUiState,
+    onRefresh: () -> Unit,
+) {
+    val frozenCount = state.apps.count { it.isFrozen }
+    val bloatwareCount = state.apps.count { it.origin == AppOrigin.KNOWN_BLOATWARE }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = MaterialTheme.shapes.extraLarge)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Apps,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "App Manager",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.app_manager_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onRefresh, enabled = !state.loading) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "Muat ulang daftar aplikasi",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AppManagerMetric(
+                value = state.apps.size.toString(),
+                label = "Dikelola",
+                modifier = Modifier.weight(1f),
+            )
+            AppManagerMetric(
+                value = frozenCount.toString(),
+                label = "Dibekukan",
+                modifier = Modifier.weight(1f),
+            )
+            AppManagerMetric(
+                value = bloatwareCount.toString(),
+                label = "Bloatware",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Text(
+            text = "Gunakan menu aplikasi untuk hentikan proses atau bersihkan cache. Sakelar membekukan aplikasi; aktifkan kembali bila aplikasi dibutuhkan.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun AppManagerMetric(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .aetherCardSurface(shape = MaterialTheme.shapes.large)
+            .padding(horizontal = 10.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun AppManagerSectionHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp, start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = TextMuted,
+        )
+        StatusPill(
+            text = count.toString(),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
@@ -205,36 +340,44 @@ private fun AppManagerRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .aetherCardSurface(shape = MaterialTheme.shapes.large)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Image(
             bitmap = entry.icon,
             contentDescription = null,
             modifier = Modifier
-                .size(44.dp)
-                .clip(MaterialTheme.shapes.small),
+                .size(46.dp)
+                .clip(MaterialTheme.shapes.medium),
         )
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 14.dp),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             Text(
                 text = entry.label,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
                 maxLines = 1,
             )
             Text(
+                text = entry.packageName,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted,
+                maxLines = 1,
+            )
+            StatusPill(
                 text = if (entry.isFrozen) {
                     stringResource(R.string.app_manager_status_frozen)
                 } else {
                     stringResource(R.string.app_manager_status_active)
                 },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (entry.isFrozen) TextMuted else TextSecondary,
+                containerColor = if (entry.isFrozen) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                contentColor = if (entry.isFrozen) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 3.dp),
             )
         }
 

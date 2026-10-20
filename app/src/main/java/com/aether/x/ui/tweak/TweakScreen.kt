@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.VideogameAsset
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -104,6 +105,7 @@ import com.aether.x.data.CpuGovernor
 import com.aether.x.ui.appmanager.AppManagerScreen
 
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
@@ -456,31 +458,11 @@ fun TweakScreen(
                     return@Column
                 }
 
-                RamCleanerCard()
+                TweakOverviewCard(rootGranted = privilegeStatus.rootGranted)
 
-                SectionCard(title = "Pengaturan performa", watermarkIcon = Icons.Outlined.Tune) {
-                    Text(
-                        text = "Kelola respons sentuhan, refresh rate, mode game, dan parameter CPU/GPU yang tersedia di perangkat ini.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        StatusPill(
-                            text = if (privilegeStatus.rootGranted) "ROOT AKTIF" else "TANPA ROOT",
-                            containerColor = if (privilegeStatus.rootGranted) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (privilegeStatus.rootGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = if (privilegeStatus.rootGranted) "Opsi kernel yang didukung dapat digunakan." else "Kontrol sistem tertentu memerlukan izin root.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+                // Alat pembersih diletakkan setelah ringkasan, sebelum kontrol
+                // agar alur layar dimulai dari status lalu tindakan yang umum.
+                RamCleanerCard()
 
                 SectionCard(title = stringResource(R.string.tweak_section_touch), watermarkIcon = Icons.Outlined.TouchApp) {
 
@@ -744,7 +726,7 @@ private fun TweakDrawerContent(
                     Text("Cari, favoritkan, mainkan, dan buka profil game", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             },
-            icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
+            icon = { Icon(imageVector = Icons.Outlined.VideogameAsset, contentDescription = null) },
             selected = selected == TweakSubTab.GAME_LIBRARY,
             onClick = { onSelect(TweakSubTab.GAME_LIBRARY) },
             colors = NavigationDrawerItemDefaults.colors(),
@@ -857,6 +839,71 @@ private fun TweakDrawerContent(
                 onClick = { onSelect(TweakSubTab.TERMINAL) },
                 colors = NavigationDrawerItemDefaults.colors(),
                 modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TweakOverviewCard(rootGranted: Boolean) {
+    val accent = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(26.dp), accent = accent)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(accent.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Tune,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Tweak & Performance",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Atur respons sentuhan, layar, CPU, memori, dan perilaku sistem dalam kelompok yang lebih mudah dipahami.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            StatusPill(
+                text = if (rootGranted) "ROOT AKTIF" else "TANPA ROOT",
+                containerColor = if (rootGranted) accent.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (rootGranted) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = if (rootGranted) {
+                    "Kontrol kernel yang didukung perangkat siap digunakan."
+                } else {
+                    "Kontrol sistem tertentu memerlukan akses root."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

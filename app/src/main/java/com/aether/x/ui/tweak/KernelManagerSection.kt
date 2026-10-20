@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
@@ -71,36 +72,7 @@ fun KernelManagerSection(
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aetherCardSurface(shape = MaterialTheme.shapes.medium)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.kernel_manager_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = state.kernelVersion?.let {
-                        stringResource(R.string.kernel_manager_version_format, it)
-                    } ?: stringResource(R.string.kernel_manager_version_unknown),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = viewModel::refresh) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = stringResource(R.string.kernel_manager_refresh_cd),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
+        KernelManagerOverviewCard(state = state, onRefresh = viewModel::refresh)
 
         if (state.loading) {
             Row(
@@ -163,6 +135,18 @@ fun KernelManagerSection(
         }
 
         SectionCard(title = stringResource(R.string.kernel_manager_section_cpu), watermarkIcon = Icons.Outlined.Memory) {
+            Text(
+                text = "Atur governor serta batas frekuensi minimum dan maksimum untuk setiap core yang terdeteksi. Pilihan dibatasi pada nilai yang dilaporkan kernel.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (state.cpuCores.isEmpty()) {
+                Text(
+                    text = "Informasi core CPU belum dapat dibaca oleh sistem.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             state.cpuCores.forEachIndexed { index, core ->
                 CpuCoreCard(
                     core = core,
@@ -180,6 +164,11 @@ fun KernelManagerSection(
 
         state.gpu?.let { gpu ->
             SectionCard(title = stringResource(R.string.kernel_manager_section_gpu), watermarkIcon = Icons.Outlined.DeveloperBoard) {
+                Text(
+                    text = "Kontrol GPU hanya ditampilkan saat frekuensi dan governor yang didukung dapat dibaca. Ketersediaan berbeda menurut chipset dan kernel.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 GpuRow(
                     gpu = gpu,
                     onFrequencyChange = { minKhz, maxKhz -> viewModel.applyGpuFrequency(minKhz, maxKhz, activity) },
@@ -200,6 +189,118 @@ fun KernelManagerSection(
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun KernelManagerOverviewCard(
+    state: KernelManagerUiState,
+    onRefresh: () -> Unit,
+) {
+    val gpuReady = state.gpu?.isUnavailable == false
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = MaterialTheme.shapes.extraLarge)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Memory,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = stringResource(R.string.kernel_manager_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = state.kernelVersion?.let {
+                        stringResource(R.string.kernel_manager_version_format, it)
+                    } ?: stringResource(R.string.kernel_manager_version_unknown),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                )
+            }
+            IconButton(onClick = onRefresh, enabled = !state.loading) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = stringResource(R.string.kernel_manager_refresh_cd),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        Text(
+            text = "Kelola preset daya, governor, dan rentang frekuensi CPU/GPU. Nilai yang tersedia mengikuti dukungan perangkat; perubahan kernel dapat memengaruhi suhu, daya, dan stabilitas.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            KernelSummaryMetric(
+                value = state.cpuCores.size.toString(),
+                label = "Core CPU",
+                modifier = Modifier.weight(1f),
+            )
+            KernelSummaryMetric(
+                value = if (gpuReady) "Siap" else "—",
+                label = "GPU",
+                modifier = Modifier.weight(1f),
+            )
+            KernelSummaryMetric(
+                value = if (state.kernelVersion.isNullOrBlank()) "—" else "Terbaca",
+                label = "Versi kernel",
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun KernelSummaryMetric(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .aetherCardSurface(shape = MaterialTheme.shapes.large)
+            .padding(horizontal = 10.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 

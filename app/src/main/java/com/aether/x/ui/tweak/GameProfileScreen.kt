@@ -111,41 +111,50 @@ private fun GameProfileRootRequiredNotice(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(contentPadding)
-            .padding(horizontal = 32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = modifier.fillMaxSize().padding(contentPadding).padding(20.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .size(64.dp)
-                .clip(MaterialTheme.shapes.large)
-                .background(SurfaceCardAlt),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .aetherCardSurface(shape = MaterialTheme.shapes.extraLarge)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Lock,
-                contentDescription = null,
-                tint = AccentBlue,
-                modifier = Modifier.size(30.dp),
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(30.dp),
+                )
+            }
+            Text(
+                text = stringResource(R.string.game_profile_root_required_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.game_profile_root_required_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            StatusPill(
+                text = "AKSES ROOT DIBUTUHKAN",
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                leadingIcon = Icons.Outlined.Lock,
             )
         }
-        Text(
-            text = stringResource(R.string.game_profile_root_required_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary,
-            modifier = Modifier.padding(top = 20.dp),
-        )
-        Text(
-            text = stringResource(R.string.game_profile_root_required_desc),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-            modifier = Modifier.padding(top = 8.dp),
-        )
     }
 }
 
@@ -155,36 +164,73 @@ private fun GameProfileListPane(
     onSearchQueryChange: (String) -> Unit,
     onSelectGame: (String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+    val configuredProfiles = state.profiles.values.count { countEnabledTweaks(it) > 0 }
 
-        Text(
-            text = stringResource(R.string.game_profile_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-        )
-        val configuredProfiles = state.profiles.values.count { countEnabledTweaks(it) > 0 }
-        SectionCard(title = "Ringkasan profil", watermarkIcon = Icons.Outlined.SportsEsports) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ProfileMetric(value = state.installedGames.size.toString(), label = "Game terdeteksi", modifier = Modifier.weight(1f))
-                ProfileMetric(value = configuredProfiles.toString(), label = "Dikonfigurasi", modifier = Modifier.weight(1f))
-                ProfileMetric(value = if (state.activeGameProfilePackage != null) "1" else "0", label = "Aktif", modifier = Modifier.weight(1f))
-            }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        GameProfileHeaderCard(isActive = state.activeGameProfilePackage != null)
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ProfileMetric(
+                value = state.installedGames.size.toString(),
+                label = "Game terdeteksi",
+                modifier = Modifier.weight(1f),
+            )
+            ProfileMetric(
+                value = configuredProfiles.toString(),
+                label = "Profil disetel",
+                modifier = Modifier.weight(1f),
+            )
+            ProfileMetric(
+                value = if (state.activeGameProfilePackage != null) "1" else "0",
+                label = "Sedang aktif",
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aetherCardSurface(shape = MaterialTheme.shapes.large)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 1.dp).size(18.dp),
+            )
             Text(
-                text = "Pilih game untuk mengatur mode dan tweak khusus. Perubahan profil hanya berlaku saat dukungan sistem terkait tersedia.",
+                text = stringResource(R.string.game_profile_scope_disclaimer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Text(
-            text = stringResource(R.string.game_profile_scope_disclaimer),
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted,
-            modifier = Modifier.padding(bottom = 16.dp),
-        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "Pilih game",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "${state.filteredGames.size} tersedia",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         OutlinedTextField(
             value = state.searchQuery,
@@ -201,7 +247,7 @@ private fun GameProfileListPane(
             ),
         )
 
-        Box(modifier = Modifier.weight(1f).padding(top = 12.dp)) {
+        Box(modifier = Modifier.weight(1f).padding(top = 2.dp)) {
             when {
                 state.loadingGames -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -209,16 +255,30 @@ private fun GameProfileListPane(
                     }
                 }
                 state.filteredGames.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = stringResource(R.string.game_profile_empty_list),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextMuted,
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.SportsEsports,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(32.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.game_profile_empty_list),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextMuted,
+                            )
+                        }
                     }
                 }
                 else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(state.filteredGames, key = { it.packageName }) { entry ->
                             GameListRow(
                                 entry = entry,
@@ -233,6 +293,57 @@ private fun GameProfileListPane(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GameProfileHeaderCard(isActive: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = MaterialTheme.shapes.extraLarge)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.SportsEsports,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "Game Profile",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Personalisasi preset dan kontrol performa untuk setiap game.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        StatusPill(
+            text = if (isActive) "PROFIL GAME AKTIF" else "MENUNGGU GAME",
+            containerColor = if (isActive) AccentGreen.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (isActive) AccentGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+            leadingIcon = if (isActive) Icons.Outlined.Bolt else Icons.Outlined.Info,
+            leadingIconTint = if (isActive) AccentGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -341,12 +452,29 @@ private fun GameProfileDetailPane(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = null,
+                    contentDescription = "Kembali ke daftar game",
                     tint = TextPrimary,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Konfigurasi Game",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = "Atur mode dan kontrol yang didukung perangkat.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
                 )
             }
         }
