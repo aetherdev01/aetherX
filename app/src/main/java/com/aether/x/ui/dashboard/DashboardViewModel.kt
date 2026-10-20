@@ -31,7 +31,7 @@ data class DashboardUiState(
     val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
 
-private val DEFAULT_CARD_ORDER = listOf("status", "recent_games", "game_monitor", "ram", "bonus")
+private val DEFAULT_CARD_ORDER = listOf("status", "recent_games", "game_monitor", "ram")
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -104,7 +104,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private fun normalizeCardOrder(saved: List<String>): List<String> {
         val defaults = DEFAULT_CARD_ORDER
         val result = saved.filter { it in defaults }.distinct().toMutableList()
-        // Kartu baru (mis. "bonus") disisipkan di posisi default-nya, bukan
+        // Kartu baru disisipkan di posisi default-nya, bukan
         // ditaruh paling bawah, untuk user yang sudah punya urutan tersimpan.
         defaults.forEachIndexed { defaultIndex, id ->
             if (id !in result) result.add(defaultIndex.coerceAtMost(result.size), id)

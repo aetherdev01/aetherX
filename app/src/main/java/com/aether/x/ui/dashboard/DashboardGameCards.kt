@@ -23,8 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.MonitorHeart
-import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,6 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -47,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.apps.InstalledGameEntry
-import com.aether.x.core.monitor.GameSession
 import com.aether.x.core.monitor.GameSessionRepository
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.Spacing
@@ -81,23 +83,25 @@ fun RecentlyPlayedGamesSection(
             )
             else -> LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(vertical = 2.dp),
+                contentPadding = PaddingValues(vertical = 3.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 items(games, key = { it.packageName }) { game ->
                     Column(
                         modifier = Modifier
-                            .width(106.dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .width(116.dp)
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
                             .clickable { onGameClick(game.packageName) }
-                            .padding(8.dp),
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(7.dp),
                     ) {
                         Box(contentAlignment = Alignment.TopEnd) {
                             Surface(
-                                modifier = Modifier.size(58.dp),
-                                shape = RoundedCornerShape(17.dp),
+                                modifier = Modifier.size(54.dp),
+                                shape = RoundedCornerShape(15.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f),
                             ) {
                                 Image(
@@ -167,7 +171,7 @@ fun DashboardGameMonitorSection(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.SportsEsports,
+                        imageVector = Icons.Outlined.Apps,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(10.dp),
@@ -192,17 +196,32 @@ fun DashboardGameMonitorSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                // Pakai packageName dari sesi monitor, bukan mencocokkan nama tampilan.
+                // Cara ini mengambil ikon aplikasi yang benar dan menghindari fallback
+                // gamepad ketika label game tidak sama persis dengan nama aplikasi.
+                val gameIcon = remember(context, latest.packageName) {
+                    runCatching {
+                        context.packageManager
+                            .getApplicationIcon(latest.packageName)
+                            .toBitmap(96, 96)
+                            .asImageBitmap()
+                    }.getOrNull()
+                }
                 Surface(
                     modifier = Modifier.size(42.dp),
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.SportsEsports,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(9.dp),
-                    )
+                    if (gameIcon != null) {
+                        Image(bitmap = gameIcon, contentDescription = latest.gameName, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Apps,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(9.dp),
+                        )
+                    }
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(

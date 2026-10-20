@@ -110,7 +110,6 @@ import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.components.dragPopEffect
-import com.aether.x.ui.dashboard.DailyBonusCard
 import com.aether.x.ui.dashboard.DashboardGameMonitorSection
 import com.aether.x.ui.dashboard.RecentlyPlayedGamesSection
 import com.aether.x.ui.dashboard.DashboardViewModel
@@ -346,7 +345,6 @@ fun TweakScreen(
                                         ),
                                 ) {
                                     when (cardId) {
-                                        "bonus" -> DailyBonusCard()
                                         "status" -> DeviceStatusSection(
                                             info = dashboardState.deviceInfo,
                                             rootGranted = privilegeStatus.rootGranted,

@@ -66,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.PopupDialog
+import com.aether.x.ui.dashboard.DailyBonusCard
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.StatusPill
@@ -123,6 +124,11 @@ fun MembershipScreen(
             expiresAtMillis = expiresAtMillis,
             modifier = Modifier.cardEnterAnimation(index = 0),
         )
+
+        // Tunggu status membership selesai diperiksa; bonus hanya untuk non-VIP.
+        if (status == MembershipUiStatus.INACTIVE || status == MembershipUiStatus.EXPIRED) {
+            DailyBonusCard(modifier = Modifier.cardEnterAnimation(index = 1))
+        }
 
         if (status != MembershipUiStatus.ACTIVE) {
             SectionCard(
@@ -350,7 +356,7 @@ private fun MembershipPlanCard(modifier: Modifier = Modifier) {
                     text = stringResource(R.string.membership_pro_plan_monthly_badge),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = Color(0xFF140C33),
                     modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
                 )
             }

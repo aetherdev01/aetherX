@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -13,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,7 +26,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,7 +41,7 @@ import com.aether.x.ui.theme.Spacing
 /**
  * Kartu "Bonus Harian": klaim kredit tambahan (Preset Kernel) dengan menonton
  * satu iklan reward per hari. Hadiah naik tiap hari beruntun (streak 7 hari).
- * Untuk member kartu hanya berisi info — kuota mereka memang tanpa batas.
+ * Kartu disembunyikan untuk member/VIP karena akses preset mereka tanpa batas.
  */
 @Composable
 fun DailyBonusCard(
@@ -50,9 +49,13 @@ fun DailyBonusCard(
     viewModel: DailyBonusViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // VIP/member tidak perlu bonus harian, jadi section tidak dirender sama sekali.
+    if (state.isMember) return
+
     val activity = LocalContext.current as? Activity
 
-    // Hari bisa berganti saat layar masih terbuka; cek ulang tiap kartu tampil.
+    // Perbarui status klaim saat kartu ditampilkan.
     LaunchedEffect(Unit) { viewModel.refresh() }
 
     SectionCard(
@@ -61,74 +64,66 @@ fun DailyBonusCard(
         watermarkIcon = Icons.Outlined.CardGiftcard,
         accent = AetherOrange,
     ) {
-        if (state.isMember) {
-            Text(
-                text = "Member aktif: preset kernel tanpa batas, tidak perlu klaim bonus.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@SectionCard
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.line)) {
-            Text(
-                text = if (state.claimedToday) {
-                    "Sudah diklaim hari ini"
-                } else {
-                    "Klaim +${state.nextRewardCredits} kredit preset kernel"
-                },
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = if (state.claimedToday) {
-                    "Kembali besok untuk bonus yang lebih besar. Streak: ${state.streak} hari."
-                } else {
-                    "Tonton 1 iklan singkat. Makin sering klaim beruntun, makin besar hadiahnya."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        StreakRow(
-            streak = state.streak,
-            claimedToday = state.claimedToday,
-        )
-
-        Button(
-            onClick = { viewModel.claim(activity) },
-            enabled = !state.claimedToday && !state.claiming && !state.loading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = MaterialTheme.shapes.large,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = AetherOrange,
-                contentColor = LocalAetherPalette.current.onBonus,
-            ),
+        // Layout horizontal ringkas supaya bonus tidak mendominasi dashboard.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            when {
-                state.claiming -> CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = LocalAetherPalette.current.onBonus,
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(AetherOrange.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (state.claimedToday) Icons.Filled.Check else Icons.Outlined.CardGiftcard,
+                    contentDescription = null,
+                    tint = if (state.claimedToday) AetherGreen else AetherOrange,
+                    modifier = Modifier.size(23.dp),
                 )
-                state.claimedToday -> Text("Sudah diklaim", fontWeight = FontWeight.SemiBold)
-                else -> Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.PlayCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = if (state.claimedToday) "Sudah diklaim hari ini" else "+${state.nextRewardCredits} kredit",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (state.claimedToday) "Streak ${state.streak} hari · kembali besok" else "Bonus harian · streak ${state.streak} hari",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Button(
+                onClick = { viewModel.claim(activity) },
+                enabled = !state.claimedToday && !state.claiming && !state.loading,
+                modifier = Modifier.height(40.dp),
+                shape = MaterialTheme.shapes.large,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AetherOrange,
+                    contentColor = LocalAetherPalette.current.onBonus,
+                ),
+            ) {
+                when {
+                    state.claiming -> CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = LocalAetherPalette.current.onBonus,
                     )
-                    Text("Tonton iklan & klaim", fontWeight = FontWeight.SemiBold)
+                    state.claimedToday -> Text("Selesai", fontWeight = FontWeight.SemiBold)
+                    else -> Text("Klaim", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
+        Spacer(modifier = Modifier.height(Spacing.sm))
+        StreakRow(streak = state.streak, claimedToday = state.claimedToday)
     }
 }
 
