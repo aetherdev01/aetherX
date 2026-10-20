@@ -15,58 +15,59 @@
          murni permintaan akses Root, tidak ada pilihan metode lain.
          Dipakai ulang juga sebagai "Kelola Akses" di halaman utama
          (requireAccessToContinue=false: navigasi bebas, tidak dikunci). -->
-    <string name="setup_title">Izin Akses</string>
-    <string name="setup_subtitle">Aktifkan akses Root agar AetherX bisa mengontrol performa dan tweak sistem di perangkatmu.</string>
-    <string name="setup_required_header">Wajib</string>
-    <string name="setup_required_banner">Aktifkan Root untuk melanjutkan</string>
-    <string name="setup_method_root">Magisk</string>
-    <string name="setup_method_root_desc">Memerlukan akses root. AetherX akan meminta izin superuser untuk fitur lanjutan.</string>
+    <string name="setup_title">Persiapan AetherX</string>
+    <string name="setup_subtitle">Atur akses yang diperlukan agar pemantauan, kontrol performa, dan fitur mengambang bekerja sesuai fungsinya.</string>
+    <string name="setup_required_header">Perlu disiapkan</string>
+    <string name="setup_required_banner">Selesaikan akses Root dan izin yang diperlukan untuk melanjutkan.</string>
+    <string name="setup_method_root">Akses superuser</string>
+    <string name="setup_method_root_desc">AetherX memerlukan persetujuan superuser untuk menjalankan kontrol sistem yang didukung. Permintaan akan muncul dari pengelola root seperti Magisk, KernelSU, atau APatch. Periksa permintaan sebelum menyetujuinya.</string>
     <string name="setup_status_granted">Aktif</string>
-    <string name="setup_status_not_granted">Belum Aktif</string>
+    <string name="setup_status_not_granted">Belum aktif</string>
     <string name="setup_status_checking">Memeriksa…</string>
-    <string name="setup_action_request">Izinkan</string>
-    <string name="setup_action_continue">Selesai</string>
+    <string name="setup_action_request">Aktifkan izin</string>
+    <string name="setup_action_continue">Mulai gunakan AetherX</string>
     <!-- FITUR BARU — tombol "Lanjut" per halaman (BEDA dari "Selesai" yang
          hanya muncul di halaman TERAKHIR, lihat setup_action_continue di
          atas — teksnya sekarang "Selesai" bukan lagi "Lanjutkan" supaya
          tidak rancu dengan tombol Lanjut di halaman 1-4). -->
-    <string name="setup_action_next">Lanjut</string>
-    <string name="setup_locked_hint">Selesaikan izin di halaman ini dulu untuk melanjutkan.</string>
-    <string name="setup_ready_hint">Akses siap. Kamu sudah bisa lanjut.</string>
-    <string name="setup_battery_optimization_title">Optimasi baterai masih membatasi AetherX</string>
-    <string name="setup_battery_optimization_desc">Di sebagian perangkat (MIUI, ColorOS, dll), ini bisa membuat proses akses root AetherX dimatikan diam-diam di background. Izinkan AetherX berjalan tanpa batasan supaya akses root tetap stabil.</string>
-    <string name="setup_battery_optimization_action">Izinkan</string>
+    <string name="setup_action_next">Lanjutkan</string>
+    <string name="setup_locked_hint">Selesaikan akses pada langkah ini terlebih dahulu untuk melanjutkan.</string>
+    <string name="setup_locked_final_hint">Periksa kembali langkah sebelumnya, selesaikan semua izin, lalu konfirmasi pemahaman risiko kernel.</string>
+    <string name="setup_ready_hint">Akses sudah siap. Kamu bisa lanjut ke langkah berikutnya.</string>
+    <string name="setup_battery_optimization_title">Izinkan aktivitas latar belakang</string>
+    <string name="setup_battery_optimization_desc">Pada beberapa perangkat, penghemat baterai dapat menghentikan proses AetherX saat aplikasi tidak terlihat. Pengecualian ini bersifat opsional, tetapi dapat membantu layanan root dan pemantauan tetap berjalan lebih konsisten. Kamu bisa mengubahnya kembali kapan saja dari pengaturan sistem.</string>
+    <string name="setup_battery_optimization_action">Atur pengecualian</string>
 
     <!-- Halaman 1 — Akses Root -->
     <string name="setup_page_access_title">Akses Root</string>
-    <string name="setup_page_access_subtitle">AetherX membutuhkan akses Root penuh lewat Magisk/KernelSU/APatch untuk berjalan.</string>
+    <string name="setup_page_access_subtitle">Ini akses utama AetherX. Root diperlukan untuk menerapkan tweak sistem dan kontrol performa yang berjalan pada level perangkat. Pastikan Magisk, KernelSU, atau APatch sudah terpasang dan root berfungsi sebelum menyetujui permintaan.</string>
 
     <!-- Halaman 2 — Ubah Pengaturan Sistem (WRITE_SETTINGS) -->
-    <string name="setup_page_write_settings_title">Ubah Pengaturan Sistem</string>
-    <string name="setup_page_write_settings_subtitle">Dibutuhkan supaya AetherX bisa membaca dan mengubah sebagian setelan sistem, seperti DPI dan kecepatan pointer.</string>
-    <string name="setup_page_write_settings_banner">Aktifkan izin Ubah Pengaturan Sistem untuk melanjutkan</string>
+    <string name="setup_page_write_settings_title">Izin mengubah pengaturan sistem</string>
+    <string name="setup_page_write_settings_subtitle">Android meminta izin khusus ini agar AetherX dapat mengubah pengaturan sistem tertentu yang didukung aplikasi. Izin ini berbeda dari Root dan tidak otomatis mengubah pengaturan apa pun; hanya fitur terkait yang menggunakannya saat kamu menjalankannya.</string>
+    <string name="setup_page_write_settings_banner">Buka halaman izin sistem AetherX lalu aktifkan “Izinkan mengubah setelan sistem”.</string>
 
     <!-- Halaman 3 — Tampil di Atas Aplikasi Lain (SYSTEM_ALERT_WINDOW) -->
-    <string name="setup_page_overlay_title">Tampil di Atas Aplikasi Lain</string>
-    <string name="setup_page_overlay_subtitle">Dibutuhkan untuk menampilkan crosshair dan monitor FPS mengambang saat kamu sedang bermain game.</string>
-    <string name="setup_page_overlay_banner">Aktifkan izin Tampil di Atas Aplikasi Lain untuk melanjutkan</string>
+    <string name="setup_page_overlay_title">Tampil di atas aplikasi lain</string>
+    <string name="setup_page_overlay_subtitle">Izin ini memungkinkan elemen mengambang, seperti crosshair atau monitor saat bermain, ditampilkan di atas game. Aktifkan hanya bila ingin menggunakan fitur overlay; kamu tetap bisa mengelola izin ini nanti dari Pengaturan Android.</string>
+    <string name="setup_page_overlay_banner">Aktifkan izin tampil di atas aplikasi lain agar fitur overlay bisa digunakan.</string>
 
     <!-- Halaman 4 — Notifikasi (POST_NOTIFICATIONS) -->
-    <string name="setup_page_notifications_title">Izin Notifikasi</string>
-    <string name="setup_page_notifications_subtitle">Dibutuhkan supaya AetherX bisa memberi tahu status koneksi, update, dan layanan overlay yang berjalan di latar belakang.</string>
-    <string name="setup_page_notifications_banner">Aktifkan izin Notifikasi untuk melanjutkan</string>
+    <string name="setup_page_notifications_title">Notifikasi layanan</string>
+    <string name="setup_page_notifications_subtitle">Notifikasi membantu Android menampilkan status layanan yang berjalan dan pemberitahuan penting dari AetherX. Pada Android versi yang meminta izin ini, kamu dapat mengaktifkannya di sini; izin notifikasi tidak memberikan akses untuk mengubah sistem.</string>
+    <string name="setup_page_notifications_banner">Izinkan notifikasi agar status layanan dapat ditampilkan dengan jelas.</string>
 
     <!-- Halaman 5 — Peringatan Kernel (DWYOR — "Do With Your Own Risk").
          FITUR BARU (lihat perintah rework: "ada peringatan, harus hati'
          dalam mengatur kernel core CPU/GPU DWYOR"). BUKAN permission
          Android — murni checkbox acknowledgment, tapi diwajibkan sebelum
          tombol "Selesai" aktif supaya benar-benar dibaca. -->
-    <string name="setup_page_kernel_warning_title">Sebelum Lanjut, Baca Ini</string>
-    <string name="setup_page_kernel_warning_subtitle">Kernel Manager memberi kontrol penuh atas CPU dan GPU perangkatmu. Gunakan dengan hati-hati.</string>
-    <string name="setup_kernel_warning_point_governor">Mengubah governor CPU/GPU dan frekuensi per-core secara sembarangan bisa membuat sistem tidak stabil atau restart sendiri.</string>
-    <string name="setup_kernel_warning_point_thermal">Menonaktifkan thermal throttling dalam waktu lama bisa memperpendek umur komponen akibat panas berlebih.</string>
-    <string name="setup_kernel_warning_point_responsibility">Segala risiko kerusakan akibat pengaturan kernel yang tidak sesuai sepenuhnya menjadi tanggung jawab pengguna (DWYOR — Do With Your Own Risk).</string>
-    <string name="setup_kernel_warning_acknowledge">Saya mengerti risikonya dan akan mengatur kernel dengan hati-hati.</string>
+    <string name="setup_page_kernel_warning_title">Pahami risiko pengaturan kernel</string>
+    <string name="setup_page_kernel_warning_subtitle">Kernel Manager dapat mengubah perilaku CPU dan GPU. Pengaturan yang salah bisa membuat perangkat tidak stabil, terlalu panas, atau memulai ulang. Baca poin berikut sebelum melanjutkan.</string>
+    <string name="setup_kernel_warning_point_governor">Governor dan frekuensi menentukan cara CPU/GPU bekerja. Nilai yang tidak cocok dengan perangkat dapat menyebabkan lag, hang, crash, atau reboot. Ubah satu pengaturan dalam satu waktu dan catat nilai awalnya.</string>
+    <string name="setup_kernel_warning_point_thermal">Jangan menonaktifkan perlindungan termal. Membiarkan komponen terlalu panas dapat menurunkan performa, merusak perangkat, atau memperpendek umur baterai dan komponen.</string>
+    <string name="setup_kernel_warning_point_responsibility">Dukungan dan efek setiap opsi berbeda pada tiap perangkat, kernel, dan ROM. Pastikan kamu memahami perubahan yang dilakukan, sediakan cara untuk memulihkan nilai awal, dan lanjutkan dengan risiko sendiri.</string>
+    <string name="setup_kernel_warning_acknowledge">Saya memahami risikonya dan akan mengubah pengaturan kernel dengan hati-hati.</string>
 
     <!-- Onboarding Izin pendukung (Write Settings, Overlay, Notifikasi) —
          string method/desc INI TETAP DIPAKAI (kartu PermissionMethodCard
@@ -78,14 +79,14 @@
          dihapus) untuk berjaga-jaga kalau ada pemakaian lain yang belum
          ditelusuri, sesuai kebiasaan menjaga string lama tetap ada
          kecuali dipastikan benar-benar tidak dipakai di mana pun. -->
-    <string name="setup_supporting_header">Izin Tambahan</string>
-    <string name="setup_supporting_subtitle">Membantu tweak dan overlay berjalan lebih stabil.</string>
-    <string name="setup_method_write_settings">Ubah Pengaturan Sistem</string>
-    <string name="setup_method_write_settings_desc">Mengizinkan AetherX membaca dan mengubah sebagian setelan sistem.</string>
-    <string name="setup_method_overlay">Tampil di Atas Aplikasi Lain</string>
-    <string name="setup_method_overlay_desc">Dibutuhkan untuk crosshair dan monitor FPS saat bermain.</string>
+    <string name="setup_supporting_header">Izin pendukung</string>
+    <string name="setup_supporting_subtitle">Beberapa fitur memerlukan izin Android tambahan agar dapat berjalan sebagaimana mestinya.</string>
+    <string name="setup_method_write_settings">Ubah pengaturan sistem</string>
+    <string name="setup_method_write_settings_desc">Memberi izin Android untuk menulis pengaturan tertentu yang didukung AetherX. Izin ini bukan pengganti Root dan tidak dengan sendirinya menjalankan tweak.</string>
+    <string name="setup_method_overlay">Tampil di atas aplikasi lain</string>
+    <string name="setup_method_overlay_desc">Mengizinkan crosshair dan monitor mengambang muncul di atas game atau aplikasi lain ketika fiturnya diaktifkan.</string>
     <string name="setup_method_notifications">Notifikasi</string>
-    <string name="setup_method_notifications_desc">Dibutuhkan supaya layanan overlay tetap berjalan di latar belakang.</string>
+    <string name="setup_method_notifications_desc">Mengizinkan Android menampilkan pemberitahuan dan status layanan AetherX. Ketersediaan izin ini mengikuti versi Android pada perangkat.</string>
 
 
 
@@ -589,5 +590,5 @@
     <string name="permission_feedback_root_denied">Akses root ditolak atau tidak tersedia. Pastikan Magisk/KernelSU/APatch terpasang, lalu coba lagi.</string>
     <string name="permission_feedback_root_in_progress">Permintaan akses root masih diproses, tunggu sebentar.</string>
     <string name="permission_feedback_root_granted">Akses root aktif.</string>
-    <string name="setup_action_requesting">Meminta…</string>
+    <string name="setup_action_requesting">Menunggu persetujuan…</string>
 </resources>

@@ -45,7 +45,6 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -76,6 +75,7 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
+import com.aether.x.ui.components.AetherBackground
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.components.PopupDialog
@@ -124,8 +124,6 @@ fun PermissionSetupScreen(
     )
     val pageCount = pageSatisfied.size
 
-    val allSatisfiedOnEntry = requireAccessToContinue &&
-        (accessSatisfied && writeSettingsSatisfied && overlaySatisfied && notificationsSatisfied)
 
     val pagerState = rememberPagerState(pageCount = { pageCount })
 
@@ -181,74 +179,107 @@ fun PermissionSetupScreen(
     // riwayat komentar di versi sebelumnya). Sekarang navigasi antar
     // halaman sepenuhnya manual: swipe atau tombol "Lanjut" di bawah.
 
-    Scaffold(
-        containerColor = BgVoid,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .statusBarsPadding(),
-        ) {
-            PermissionHeader()
-
-            PageDotsIndicator(
-                pageCount = pageCount,
-                currentPage = pagerState.currentPage,
-                pageSatisfied = pageSatisfied,
+    AetherBackground(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-            )
+                    .fillMaxSize()
+                    .padding(padding)
+                    .statusBarsPadding(),
+            ) {
+                PermissionHeader(
+                    currentPage = pagerState.currentPage,
+                    pageCount = pageCount,
+                )
 
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f),
-                userScrollEnabled = true,
-            ) { page ->
-                Column(
+                PageDotsIndicator(
+                    pageCount = pageCount,
+                    currentPage = pagerState.currentPage,
+                    pageSatisfied = pageSatisfied,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 20.dp),
-                ) {
-                    when (page) {
-                        0 -> AccessMethodPage(status = status, context = context)
-                        1 -> WriteSettingsPage(status = status, context = context)
-                        2 -> OverlayPage(status = status, context = context)
-                        3 -> NotificationsPage(
-                            status = status,
-                            onRequestNotifications = {
-                                notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                            },
-                        )
-                        4 -> KernelWarningPage(
-                            acknowledged = kernelWarningAcknowledged,
-                            onAcknowledgedChange = { kernelWarningAcknowledged = it },
-                        )
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f),
+                    userScrollEnabled = true,
+                ) { page ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 20.dp),
+                    ) {
+                        when (page) {
+                            0 -> AccessMethodPage(status = status, context = context)
+                            1 -> WriteSettingsPage(status = status, context = context)
+                            2 -> OverlayPage(status = status, context = context)
+                            3 -> NotificationsPage(
+                                status = status,
+                                onRequestNotifications = {
+                                    notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                },
+                            )
+                            4 -> KernelWarningPage(
+                                acknowledged = kernelWarningAcknowledged,
+                                onAcknowledgedChange = { kernelWarningAcknowledged = it },
+                            )
+                        }
                     }
                 }
-            }
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                    .shadow(16.dp, RoundedCornerShape(30.dp))
-                    .aetherCardSurface(shape = RoundedCornerShape(30.dp)),
-                shape = RoundedCornerShape(30.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, StrokeSubtle.copy(alpha = 0.85f)),
-            ) {
+                val isLastPage = pagerState.currentPage == pageCount - 1
+                val currentPageSatisfied = pageSatisfied.getOrNull(pagerState.currentPage) == true
+                val nextEnabled = when {
+                    !requireAccessToContinue -> true
+                    isLastPage -> canContinue
+                    else -> currentPageSatisfied
+                }
+
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .aetherCardSurface(shape = RoundedCornerShape(30.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    val isLastPage = pagerState.currentPage == pageCount - 1
-                    val currentPageSatisfied = pageSatisfied.getOrNull(pagerState.currentPage) == true
-                    val nextEnabled = !requireAccessToContinue || currentPageSatisfied
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isLastPage) "KONFIRMASI AKHIR" else "LANGKAH ${pagerState.currentPage + 1} DARI $pageCount",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                            )
+                            Text(
+                                text = if (isLastPage) {
+                                    "Pastikan semua akses siap sebelum masuk."
+                                } else {
+                                    "Selesaikan bagian ini, lalu lanjut ke langkah berikutnya."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(top = 3.dp),
+                            )
+                        }
+                        TextButton(
+                            onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
+                            enabled = pagerState.currentPage > 0,
+                        ) {
+                            Text("Kembali", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
 
                     Button(
                         onClick = {
@@ -257,7 +288,7 @@ fun PermissionSetupScreen(
                         },
                         enabled = nextEnabled,
                         modifier = Modifier.fillMaxWidth().height(54.dp),
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AccentBlue,
                             contentColor = OnAccentBlue,
@@ -274,7 +305,11 @@ fun PermissionSetupScreen(
 
                     AnimatedVisibility(visible = !nextEnabled, enter = fadeIn(), exit = fadeOut()) {
                         Text(
-                            text = stringResource(R.string.setup_locked_hint),
+                            text = if (isLastPage) {
+                                stringResource(R.string.setup_locked_final_hint)
+                            } else {
+                                stringResource(R.string.setup_locked_hint)
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = TextMuted,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -505,9 +540,9 @@ private fun KernelWarningPage(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            .aetherCardSurface(shape = RoundedCornerShape(20.dp), accent = AccentRed)
             .clickable { onAcknowledgedChange(!acknowledged) }
-            .padding(vertical = Spacing.sm),
+            .padding(horizontal = 10.dp, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
@@ -526,63 +561,109 @@ private fun KernelWarningPage(
 
 @Composable
 private fun PageIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: androidx.compose.ui.graphics.Color) {
-    Surface(
+    Box(
         modifier = Modifier
-            .padding(top = 12.dp)
-            .size(68.dp)
-            .shadow(12.dp, RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
-        color = SurfaceRaised.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.24f)),
+            .padding(top = 8.dp)
+            .size(64.dp)
+            .aetherCardSurface(shape = RoundedCornerShape(23.dp), accent = tint)
+            .padding(10.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = 0.11f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(23.dp))
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(tint.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(25.dp))
         }
     }
 }
 
 @Composable
 private fun PageTitle(title: String, subtitle: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        color = TextPrimary,
-        modifier = Modifier.padding(top = 18.dp),
-    )
-    Text(
-        text = subtitle,
-        style = MaterialTheme.typography.bodyMedium,
-        color = TextSecondary,
-        modifier = Modifier.padding(top = 6.dp),
-    )
-}
-
-@Composable
-private fun PermissionHeader() {
     Column(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .aetherCardSurface(shape = RoundedCornerShape(25.dp))
+            .padding(horizontal = 18.dp, vertical = 17.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Text(
-            text = stringResource(R.string.setup_title),
+            text = title,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
         )
         Text(
-            text = "Prepare AetherX for the first launch",
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted,
-            modifier = Modifier.padding(top = 4.dp),
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
         )
+    }
+}
+
+@Composable
+private fun PermissionHeader(currentPage: Int, pageCount: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .aetherCardSurface(shape = RoundedCornerShape(27.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(47.dp)
+                .aetherCardSurface(shape = RoundedCornerShape(17.dp), accent = AccentBlue)
+                .padding(9.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Bolt,
+                contentDescription = null,
+                tint = AccentBlue,
+                modifier = Modifier.size(27.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "A E T H E R X",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = TextPrimary,
+            )
+            Text(
+                text = stringResource(R.string.setup_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Text(
+                text = stringResource(R.string.setup_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .aetherCardSurface(shape = RoundedCornerShape(15.dp), accent = AccentBlue)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "${currentPage + 1}/$pageCount",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = AccentBlue,
+            )
+        }
     }
 }
 
@@ -593,22 +674,50 @@ private fun PageDotsIndicator(
     pageSatisfied: List<Boolean>,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = modifier
+            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        for (index in 0 until pageCount) {
-            val satisfied = pageSatisfied.getOrNull(index) == true
-            val isCurrent = index == currentPage
-            val width = when { satisfied || isCurrent -> 24.dp else -> 7.dp }
-            val tint = when { satisfied -> AccentGreen else -> AccentBlue }
-            Box(
-                modifier = Modifier
-                    .size(width = width, height = 7.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isCurrent || satisfied) tint else StrokeSubtle),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "LANGKAH ${currentPage + 1} / $pageCount",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
             )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "${pageSatisfied.count { it }} DARI $pageCount SIAP",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (pageSatisfied.all { it }) AccentGreen else TextSecondary,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            for (index in 0 until pageCount) {
+                val satisfied = pageSatisfied.getOrNull(index) == true
+                val isCurrent = index == currentPage
+                Box(
+                    modifier = Modifier
+                        .weight(if (isCurrent) 1.7f else 1f)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            when {
+                                satisfied -> AccentGreen
+                                isCurrent -> AccentBlue
+                                else -> StrokeSubtle
+                            },
+                        ),
+                )
+            }
         }
     }
 }
@@ -618,8 +727,7 @@ private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringR
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(if (canContinue) AccentGreenContainer.copy(alpha = 0.72f) else SurfaceCardAlt)
+            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

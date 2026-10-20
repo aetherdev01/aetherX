@@ -52,7 +52,7 @@ fun PermissionMethodCard(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(
             1.dp,
-            if (granted) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f) else StrokeSubtle.copy(alpha = 0.82f),
+            if (granted) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f) else StrokeSubtle.copy(alpha = 0.58f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
@@ -111,7 +111,7 @@ fun PermissionMethodCard(
                     ) {
                         StatusPill(
                             text = statusText,
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            containerColor = SurfaceRaised,
                             contentColor = TextSecondary,
                             dotColor = null,
                         )
