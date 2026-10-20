@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SdStorage
@@ -277,6 +278,23 @@ fun TweakScreen(
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "Dashboard",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            text = "Ringkasan perangkat, game, dan alat performa.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
                     // Long-press sebuah card lalu geser untuk mengubah urutan —
                     // tidak ada lagi tombol "Atur urutan" terpisah maupun panah
                     // naik/turun. reorderable menahan scroll induk selama drag
@@ -476,24 +494,27 @@ fun TweakScreen(
                     )
                 }
 
-                SectionCard(title = stringResource(R.string.tweak_section_refresh), watermarkIcon = Icons.Outlined.RestartAlt) {
+                SectionCard(title = stringResource(R.string.tweak_section_display_game), watermarkIcon = Icons.Outlined.RestartAlt) {
                     TweakSwitch(
                         label = stringResource(R.string.tweak_force_refresh),
-                        description = stringResource(
-                            R.string.tweak_force_refresh_desc,
-                        ) + " (${state.displayInfo.maxRefreshRate.toInt()}Hz)",
+                        description = stringResource(R.string.tweak_force_refresh_desc) + " (${state.displayInfo.maxRefreshRate.toInt()}Hz)",
                         checked = state.forceMaxRefreshRate,
                         onCheckedChange = { checked -> viewModel.onForceRefreshChange(checked, activity) },
                         icon = Icons.Outlined.Bolt,
                     )
-                }
-
-                SectionCard(title = stringResource(R.string.tweak_section_game_mode), watermarkIcon = Icons.Outlined.NotificationsOff) {
+                    TweakSwitch(
+                        label = stringResource(R.string.tweak_rotation_lock),
+                        description = stringResource(R.string.tweak_rotation_lock_desc),
+                        checked = state.rotationLockEnabled,
+                        onCheckedChange = { checked -> viewModel.onRotationLockChange(checked, activity) },
+                        icon = Icons.Outlined.PhoneAndroid,
+                    )
                     TweakSwitch(
                         label = stringResource(R.string.tweak_game_mode),
                         description = stringResource(R.string.tweak_game_mode_desc),
                         checked = state.gameModeEnabled,
                         onCheckedChange = { checked -> viewModel.onGameModeChange(checked, activity) },
+                        icon = Icons.Outlined.NotificationsOff,
                     )
                 }
 
@@ -801,6 +822,7 @@ private fun TweakHeader(
                     painter = painterResource(id = R.drawable.ic_aetherx_logo),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
                 )
                 Column {
                     Text(

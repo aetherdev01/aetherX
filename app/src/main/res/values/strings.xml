@@ -289,6 +289,9 @@
     <string name="tweak_force_refresh">Paksa Refresh Rate Maksimal</string>
     <string name="tweak_force_refresh_desc">Mengunci refresh rate layar ke nilai tertinggi yang didukung hardware.</string>
     <string name="tweak_section_game_mode">Mode Game</string>
+    <string name="tweak_section_display_game">Layar &amp; Game</string>
+    <string name="tweak_rotation_lock">Kunci orientasi layar</string>
+    <string name="tweak_rotation_lock_desc">Cegah layar berputar otomatis saat bermain. Nonaktifkan lagi untuk mengembalikan rotasi otomatis.</string>
     <string name="tweak_game_mode">Aktifkan Mode Game</string>
     <string name="tweak_game_mode_desc">Nyalakan Jangan Ganggu (DND) otomatis supaya notifikasi tidak muncul saat main.</string>
 

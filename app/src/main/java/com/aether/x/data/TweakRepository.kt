@@ -265,6 +265,7 @@ class TweakRepository {
         applyPointerSpeed(executor, 0),
         applyTouchBoost(executor, false),
         applyRefreshRate(executor, enabled = false, maxHz = 60f),
+        applyRotationLock(executor, locked = false),
         applyGameMode(executor, enabled = false),
         applyCpuGovernor(executor, CpuGovernor.UNIVERSAL),
         applyRamPriority(executor, enabled = false),

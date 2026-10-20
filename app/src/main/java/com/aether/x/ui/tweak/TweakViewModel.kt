@@ -31,6 +31,7 @@ data class TweakUiState(
     val pointerSpeed: Int = 0,
     val touchBoost: Boolean = false,
     val forceMaxRefreshRate: Boolean = false,
+    val rotationLockEnabled: Boolean = false,
     val gameModeEnabled: Boolean = false,
     val cpuGovernor: CpuGovernor = CpuGovernor.UNIVERSAL,
     val ramPriorityMode: Boolean = false,
@@ -72,6 +73,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     pointerSpeed = saved.pointerSpeed,
                     touchBoost = saved.touchBoostEnabled,
                     forceMaxRefreshRate = saved.forceMaxRefreshRate,
+                    rotationLockEnabled = saved.rotationLockEnabled,
                     gameModeEnabled = saved.gameModeEnabled,
                     cpuGovernor = saved.cpuGovernor,
                     ramPriorityMode = saved.ramPriorityMode,
@@ -139,6 +141,13 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(forceMaxRefreshRate = checked) }
         applyAndPersist(activity, "Refresh rate maksimal → ${if (checked) "aktif" else "nonaktif"}") { executor ->
             repository.applyRefreshRate(executor, checked, _state.value.displayInfo.maxRefreshRate)
+        }
+    }
+
+    fun onRotationLockChange(checked: Boolean, activity: Activity? = null) {
+        _state.update { it.copy(rotationLockEnabled = checked) }
+        applyAndPersist(activity, "Kunci orientasi → ${if (checked) "aktif" else "nonaktif"}") { executor ->
+            repository.applyRotationLock(executor, checked)
         }
     }
 
@@ -221,6 +230,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 resetResults += repository.applyPointerSpeed(executor, 0)
                 resetResults += repository.applyTouchBoost(executor, false)
                 resetResults += repository.applyRefreshRate(executor, enabled = false, maxHz = 60f)
+                resetResults += repository.applyRotationLock(executor, locked = false)
                 resetResults += repository.applyGameMode(executor, false)
                 resetResults += repository.applyCpuGovernor(executor, CpuGovernor.UNIVERSAL)
                 resetResults += repository.applyRamPriority(executor, false)
@@ -238,6 +248,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     pointerSpeed = 0,
                     touchBoost = false,
                     forceMaxRefreshRate = false,
+                    rotationLockEnabled = false,
                     gameModeEnabled = false,
                     cpuGovernor = CpuGovernor.UNIVERSAL,
                     ramPriorityMode = false,
@@ -277,6 +288,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 pointerSpeed = s.pointerSpeed,
                 touchBoostEnabled = s.touchBoost,
                 forceMaxRefreshRate = s.forceMaxRefreshRate,
+                rotationLockEnabled = s.rotationLockEnabled,
                 gameModeEnabled = s.gameModeEnabled,
                 cpuGovernor = s.cpuGovernor,
                 ramPriorityMode = s.ramPriorityMode,

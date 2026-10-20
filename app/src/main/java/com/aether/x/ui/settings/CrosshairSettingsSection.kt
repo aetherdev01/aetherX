@@ -1,6 +1,9 @@
 package com.aether.x.ui.settings
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +19,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -56,10 +65,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
+import com.aether.x.ui.components.CrosshairPreview
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.referenceSliderVisual
 import com.aether.x.ui.components.glassPanel
@@ -72,12 +83,16 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 private val crosshairColorPalette = listOf(
-    0xFFFFFFFFL,
-    0xFFFF3B30L,
-    0xFFE8804AL,
-    0xFFF6C560L,
-    0xFFFFD60AL,
-    0xFF2F6FEDL,
+    0xFF00FF66L, // Neon green (default)
+    0xFF00E5FFL, // Cyan
+    0xFF0A84FFL, // Blue
+    0xFFFFD60AL, // Yellow
+    0xFFFF9F0AL, // Orange
+    0xFFFF3B30L, // Red
+    0xFFFF2D55L, // Pink
+    0xFFBF5AF2L, // Purple
+    0xFFFFFFFFL, // White
+    0xFF111111L, // Black
 )
 
 private data class StyleOption(val style: CrosshairStyle, val labelRes: Int)
@@ -183,62 +198,134 @@ fun CrosshairSettingsSection(
             }
 
             if (enabled) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // Pemilih Gaya (Membuka Pop Up Dialog)
+                // Pratinjau selalu mengikuti bentuk, warna, ukuran, dan rotasi aktif.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceRaised)
-                        .clickable { showStylePicker = true }
-                        .padding(16.dp),
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f), RoundedCornerShape(20.dp))
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "Gaya Crosshair",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                    CrosshairPreview(
+                        style = style,
+                        color = Color(colorArgb.toInt()),
+                        sizeDp = sizeDp.toFloat(),
+                        rotationDegrees = rotationDegrees,
+                        backgroundColor = Color(0xFF101218),
+                        modifier = Modifier.size(104.dp),
                     )
-                    // Preview Icon Aktif
-                    Box(modifier = Modifier.size(24.dp)) {
-                        StyleIconButtonInner(style = style, color = AccentBlue)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Text(
+                            text = "PRATINJAU LANGSUNG",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = stringResource(styleOptions.firstOrNull { it.style == style }?.labelRes ?: R.string.crosshair_style_cross),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(13.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(colorArgb.toInt()))
+                                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), CircleShape),
+                            )
+                            Text(
+                                text = "#%06X".format(colorArgb.toInt() and 0xFFFFFF),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            text = "Ukuran ${sizeDp} dp · ${rotationDegrees}°",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Area D-Pad & Slider Vertikal (Posisi & Ukuran)
+                // Pemilih gaya dibuat berupa bar yang jelas, bukan hanya ikon kecil.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                        .clickable { showStylePicker = true }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(MaterialTheme.colorScheme.surface),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(Modifier.size(30.dp)) {
+                            StyleIconButtonInner(style = style, color = Color(colorArgb.toInt()))
+                        }
+                    }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Gaya Crosshair", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(styleOptions.firstOrNull { it.style == style }?.labelRes ?: R.string.crosshair_style_cross),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Text("PILIH", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text("Posisi & ukuran", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(190.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceRaised)
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f))
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         PositionDPadOnly(
                             offsetX = offsetX,
                             offsetY = offsetY,
-                            onNudgePosition = onNudgePosition
+                            onNudgePosition = onNudgePosition,
                         )
                     }
-
                     Box(
                         modifier = Modifier
-                            .width(64.dp)
+                            .width(72.dp)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceRaised)
-                            .padding(top = 12.dp, bottom = 12.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f))
+                            .padding(vertical = 10.dp),
                     ) {
                         VerticalAccentSlider(
                             label = stringResource(R.string.crosshair_size_label),
@@ -246,41 +333,43 @@ fun CrosshairSettingsSection(
                             value = sizeDp.toFloat(),
                             range = 12f..80f,
                             onValueChange = { onSizeChange(it.toInt()) },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Slider Rotasi Baru (Lebih Rapi & Bagus)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceRaised)
-                        .padding(16.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "Rotasi",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "${rotationDegrees}°",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentBlue
-                        )
+                        Text("Rotasi", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${rotationDegrees}°", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
+                    val rotationInteractionSource = remember { MutableInteractionSource() }
+                    val rotationIsPressed by rotationInteractionSource.collectIsPressedAsState()
+                    val rotationSliderScale by animateFloatAsState(
+                        targetValue = if (rotationIsPressed) 1.035f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = if (rotationIsPressed) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+                            stiffness = if (rotationIsPressed) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
+                        ),
+                        label = "crosshairRotationPop",
+                    )
                     Slider(
                         value = rotationDegrees.toFloat(),
                         onValueChange = { onRotationChange(it.roundToInt()) },
                         valueRange = 0f..360f,
+                        interactionSource = rotationInteractionSource,
                         colors = SliderDefaults.colors(
                             thumbColor = Color.Transparent,
                             activeTrackColor = Color.Transparent,
@@ -290,35 +379,35 @@ fun CrosshairSettingsSection(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .scale(rotationSliderScale)
                             .referenceSliderVisual(
                                 value = rotationDegrees.toFloat(),
                                 valueRange = 0f..360f,
                                 activeColor = AccentBlue,
                                 inactiveColor = AccentBlue.copy(alpha = 0.14f),
-                            )
+                            ),
                     )
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Pilihan Warna
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Warna Crosshair", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Pilih warna preset atau buat warna sendiri.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     crosshairColorPalette.forEach { swatch ->
                         ColorSwatchLarge(
                             color = swatch,
                             selected = swatch == colorArgb,
                             onClick = { onColorChange(swatch) },
-                            modifier = Modifier.weight(1f),
                         )
                     }
                     CustomColorSwatch(
                         currentColorArgb = colorArgb,
                         isCustomActive = crosshairColorPalette.none { it == colorArgb },
                         onClick = { showColorPicker = true },
-                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -372,16 +461,18 @@ fun CrosshairStylePickerDialog(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 64.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 8.dp)
+                    columns = GridCells.Adaptive(minSize = 78.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
                 ) {
                     items(styleOptions, key = { it.style.name }) { option ->
                         StyleIconButton(
                             style = option.style,
+                            label = stringResource(option.labelRes),
                             isSelected = option.style == currentStyle,
-                            onClick = { onStyleSelected(option.style) }
+                            onClick = { onStyleSelected(option.style) },
                         )
                     }
                 }
@@ -393,28 +484,38 @@ fun CrosshairStylePickerDialog(
 @Composable
 private fun StyleIconButton(
     style: CrosshairStyle,
+    label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
-    Box(
+    Column(
         modifier = Modifier
-            .size(64.dp)
+            .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            .background(if (isSelected) AccentBlueDim else SurfaceRaised)
+            .background(if (isSelected) AccentBlueDim else SurfaceRaised.copy(alpha = 0.68f))
             .border(
-                width = if (isSelected) 1.5.dp else 0.dp,
-                color = if (isSelected) AccentBlue else Color.Transparent,
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) AccentBlue else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
                 shape = MaterialTheme.shapes.medium,
             )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-        Box(modifier = Modifier.size(26.dp)) {
+        Box(modifier = Modifier.size(28.dp)) {
             StyleIconButtonInner(
                 style = style,
-                color = if (isSelected) AccentBlue else TextSecondary
+                color = if (isSelected) AccentBlue else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) AccentBlue else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -677,6 +778,15 @@ private fun VerticalAccentSlider(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var isDragging by remember { mutableStateOf(false) }
+    val thumbScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.16f else 1f,
+        animationSpec = spring(
+            dampingRatio = if (isDragging) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "crosshairSizeThumbPop",
+    )
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -701,7 +811,11 @@ private fun VerticalAccentSlider(
                 .weight(1f)
                 .width(40.dp)
                 .pointerInput(range) {
-                    detectDragGestures { change, _ ->
+                    detectDragGestures(
+                        onDragStart = { isDragging = true },
+                        onDragEnd = { isDragging = false },
+                        onDragCancel = { isDragging = false },
+                    ) { change, _ ->
                         change.consume()
                         val newFraction = (1f - (change.position.y / size.height)).coerceIn(0f, 1f)
                         onValueChange(range.start + newFraction * (range.endInclusive - range.start))
@@ -727,8 +841,9 @@ private fun VerticalAccentSlider(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = (fraction * 120).dp.coerceAtMost(116.dp)) 
+                        .padding(bottom = (fraction * 120).dp.coerceAtMost(116.dp))
                         .size(width = 20.dp, height = 10.dp)
+                        .scale(thumbScale)
                         .clip(RoundedCornerShape(4.dp))
                         .background(AccentBlue),
                 )
@@ -744,15 +859,16 @@ private fun ColorSwatchLarge(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val swatchColor = Color(color.toInt())
     Box(
         modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(color.toInt()))
+            .size(42.dp)
+            .clip(CircleShape)
+            .background(swatchColor)
             .border(
-                width = if (selected) 2.dp else 0.dp,
-                color = if (selected) AccentBlue else Color.Transparent,
-                shape = RoundedCornerShape(12.dp),
+                width = if (selected) 2.5.dp else 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                shape = CircleShape,
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -760,9 +876,9 @@ private fun ColorSwatchLarge(
         if (selected) {
             Icon(
                 imageVector = Icons.Outlined.Check,
-                contentDescription = null,
-                tint = contrastingCheckTint(Color(color.toInt())),
-                modifier = Modifier.size(20.dp),
+                contentDescription = "Warna dipilih",
+                tint = contrastingCheckTint(swatchColor),
+                modifier = Modifier.size(19.dp),
             )
         }
     }
@@ -779,43 +895,36 @@ private fun CustomColorSwatch(
         Brush.sweepGradient(
             listOf(
                 Color(0xFFFF3B30), Color(0xFFFFD60A), Color(0xFF34C759),
-                Color(0xFF2F6FED), Color(0xFFAF52DE), Color(0xFFFF3B30),
+                Color(0xFF00E5FF), Color(0xFF0A84FF), Color(0xFFBF5AF2), Color(0xFFFF3B30),
             ),
         )
     }
     Box(
         modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .size(42.dp)
+            .clip(CircleShape)
             .background(rainbowBrush)
             .border(
-                width = if (isCustomActive) 2.dp else 0.dp,
-                color = if (isCustomActive) AccentBlue else Color.Transparent,
-                shape = RoundedCornerShape(12.dp),
+                width = if (isCustomActive) 2.5.dp else 1.dp,
+                color = if (isCustomActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                shape = CircleShape,
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(25.dp)
                 .clip(CircleShape)
-                .background(
-                    if (isCustomActive) Color(currentColorArgb.toInt()) else Color.Black.copy(alpha = 0.45f),
-                ),
+                .background(if (isCustomActive) Color(currentColorArgb.toInt()) else Color.Black.copy(alpha = 0.62f)),
             contentAlignment = Alignment.Center,
         ) {
             if (!isCustomActive) {
-                Text(
-                    text = "+",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text("+", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             } else {
                 Icon(
                     imageVector = Icons.Outlined.Check,
-                    contentDescription = null,
+                    contentDescription = "Warna kustom dipilih",
                     tint = contrastingCheckTint(Color(currentColorArgb.toInt())),
                     modifier = Modifier.size(14.dp),
                 )

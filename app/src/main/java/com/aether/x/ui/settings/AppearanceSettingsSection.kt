@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -38,6 +40,7 @@ import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -45,6 +48,7 @@ import kotlin.math.roundToInt
  * (v3.9: opsi font dan gaya card dihapus — tetap Poppins + kaca.) Semua perubahan tersimpan di DataStore
  * dan langsung diterapkan lewat AetherXTheme di MainActivity.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppearanceSettingsSection(
     darkModePref: DarkModePref,
@@ -84,6 +88,29 @@ fun AppearanceSettingsSection(
             }
         }
 
+        SettingGroup(label = "Level Liquid Glass") {
+            val levels = listOf(
+                "Mati" to 0,
+                "Lembut" to 25,
+                "Seimbang" to 50,
+                "Kuat" to 75,
+                "Ultra" to 100,
+            )
+            val selectedLevel = levels.minByOrNull { abs(it.second - blurStrength) }?.second
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                levels.forEach { (label, strength) ->
+                    ChoicePill(
+                        label = label,
+                        selected = strength == selectedLevel,
+                        onClick = { onBlurChange(strength) },
+                    )
+                }
+            }
+        }
+
         // Nilai lokal dipertahankan selama digeser (tanpa key) supaya slider tidak
         // loncat saat nilai tersimpan kembali dari DataStore dengan sedikit jeda.
         var sliderValue by remember { mutableFloatStateOf(blurStrength.toFloat()) }
@@ -92,8 +119,8 @@ fun AppearanceSettingsSection(
             if (!dragging) sliderValue = blurStrength.toFloat()
         }
         TweakSlider(
-            label = "Blur",
-            description = "Kekuatan blur di card, dialog, drawer, dan navbar. 0 = blur mati.",
+            label = "Kekuatan Liquid Glass",
+            description = "Atur intensitas kaca dan blur pada card, dialog, drawer, serta navbar.",
             valueText = "${sliderValue.roundToInt()}%",
             value = sliderValue,
             range = 0f..100f,

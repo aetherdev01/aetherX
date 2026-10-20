@@ -78,6 +78,7 @@ data class AppPreferences(
     val pointerSpeed: Int = 0,
     val touchBoostEnabled: Boolean = false,
     val forceMaxRefreshRate: Boolean = false,
+    val rotationLockEnabled: Boolean = false,
     val gameModeEnabled: Boolean = false,
     val cpuGovernor: CpuGovernor = CpuGovernor.UNIVERSAL,
     val ramPriorityMode: Boolean = false,
@@ -142,6 +143,7 @@ class AetherXPreferences(private val context: Context) {
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
         val TOUCH_BOOST = booleanPreferencesKey("touch_boost_enabled")
         val FORCE_REFRESH = booleanPreferencesKey("force_max_refresh_rate")
+        val ROTATION_LOCK = booleanPreferencesKey("rotation_lock_enabled")
         val GAME_MODE = booleanPreferencesKey("game_mode_enabled")
 
         val CPU_GOVERNOR = stringPreferencesKey("cpu_governor")
@@ -221,6 +223,7 @@ class AetherXPreferences(private val context: Context) {
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
             touchBoostEnabled = prefs[Keys.TOUCH_BOOST] ?: false,
             forceMaxRefreshRate = prefs[Keys.FORCE_REFRESH] ?: false,
+            rotationLockEnabled = prefs[Keys.ROTATION_LOCK] ?: false,
             gameModeEnabled = prefs[Keys.GAME_MODE] ?: false,
             cpuGovernor = prefs[Keys.CPU_GOVERNOR]
                 ?.let { runCatching { CpuGovernor.valueOf(it) }.getOrNull() }
@@ -310,6 +313,7 @@ class AetherXPreferences(private val context: Context) {
         touchBoostEnabled: Boolean,
         forceMaxRefreshRate: Boolean,
         gameModeEnabled: Boolean,
+        rotationLockEnabled: Boolean,
         cpuGovernor: CpuGovernor = CpuGovernor.UNIVERSAL,
         ramPriorityMode: Boolean = false,
         thermalThrottleOverride: Boolean = false,
@@ -323,6 +327,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.POINTER_SPEED] = pointerSpeed
             prefs[Keys.TOUCH_BOOST] = touchBoostEnabled
             prefs[Keys.FORCE_REFRESH] = forceMaxRefreshRate
+            prefs[Keys.ROTATION_LOCK] = rotationLockEnabled
             prefs[Keys.GAME_MODE] = gameModeEnabled
             prefs[Keys.CPU_GOVERNOR] = cpuGovernor.name
             prefs[Keys.RAM_PRIORITY_MODE] = ramPriorityMode
@@ -342,6 +347,7 @@ class AetherXPreferences(private val context: Context) {
             prefs[Keys.POINTER_SPEED] = 0
             prefs[Keys.TOUCH_BOOST] = false
             prefs[Keys.FORCE_REFRESH] = false
+            prefs[Keys.ROTATION_LOCK] = false
             prefs[Keys.GAME_MODE] = false
             prefs[Keys.CPU_GOVERNOR] = CpuGovernor.UNIVERSAL.name
             prefs[Keys.RAM_PRIORITY_MODE] = false

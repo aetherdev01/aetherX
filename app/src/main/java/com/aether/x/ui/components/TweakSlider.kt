@@ -1,5 +1,10 @@
 package com.aether.x.ui.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,8 +15,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -36,6 +44,16 @@ fun TweakSlider(
     val hapticEnabled = LocalHapticEnabled.current
     val activeColor = MaterialTheme.colorScheme.primary
     val inactiveColor = activeColor.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.14f else 0.28f)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val sliderScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.035f else 1f,
+        animationSpec = spring(
+            dampingRatio = if (isPressed) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+            stiffness = if (isPressed) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
+        ),
+        label = "sliderPressPop",
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -70,8 +88,10 @@ fun TweakSlider(
             },
             valueRange = range,
             steps = steps,
+            interactionSource = interactionSource,
             modifier = Modifier
                 .fillMaxWidth()
+                .scale(sliderScale)
                 .referenceSliderVisual(
                     value = value,
                     valueRange = range,

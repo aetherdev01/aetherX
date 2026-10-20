@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -115,6 +116,7 @@ fun SplashScreen(
                 Image(
                     painter = painterResource(R.drawable.logo),
                     contentDescription = "AetherX",
+                    colorFilter = ColorFilter.tint(colors.onBackground),
                     modifier = Modifier
                         .size(96.dp)
                         .graphicsLayer {

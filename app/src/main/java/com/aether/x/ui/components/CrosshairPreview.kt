@@ -23,16 +23,17 @@ fun CrosshairPreview(
     sizeDp: Float,
     rotationDegrees: Int = 0,
     modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
 ) {
     Canvas(
         modifier = modifier
             .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surface),
+            .background(backgroundColor),
     ) {
         val cx = size.width / 2f
         val cy = size.height / 2f
-        val r = sizeDp.coerceAtMost(size.minDimension / 2.4f)
-        val thickness = PREVIEW_THICKNESS_DP
+        val r = (sizeDp.dp.toPx()).coerceAtMost(size.minDimension / 2.4f)
+        val thickness = PREVIEW_THICKNESS_DP.dp.toPx()
         val drawColor = color
         val stroke = Stroke(width = thickness, cap = StrokeCap.Round)
 
