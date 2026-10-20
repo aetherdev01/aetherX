@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    ic_notification_mark — siluet monokrom logo "AX" AetherX, khusus untuk
-    NotificationCompat.Builder.setSmallIcon() di GameBoosterOverlayService,
-    FpsMonitorOverlayService, dan GameProfileMonitorService.
+    ic_notification_mark — siluet monokrom logo "AX" AetherX untuk
+    NotificationCompat.Builder.setSmallIcon() (GameBoosterOverlayService,
+    FpsMonitorOverlayService, GameProfileMonitorService).
 
-    Android MEWAJIBKAN notification small icon berupa siluet putih transparan
-    (alpha mask) — PNG penuh warna seperti ic_aetherx_logo.png TIDAK BISA
-    dipakai langsung di sini karena akan dirender sistem sebagai kotak/blob
-    solid putih di status bar, bukan bentuk logo yang jelas. Drawable ini
-    mengikuti siluet umum logo "AX" bersudut tajam (dua bilah diagonal
-    membentuk huruf A dan K bertumpuk) sebagai pendekatan siluet dari
-    ic_aetherx_logo.png/logo.png.
+    Notification small icon wajib berupa siluet putih transparan (alpha mask).
+    Path di-trace dari logo AX terbaru dan celah tipisnya sedikit dilebarkan
+    supaya detail logo tetap terbaca di ukuran 24dp.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -19,28 +15,6 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="
-            M9.8,2.5
-            L12.1,2.5
-            L15.6,11.6
-            L21.5,4.4
-            L21.5,7.6
-            L15.9,14.4
-            L18.9,21.5
-            L16.5,21.5
-            L14.4,16.4
-            L12.4,21.5
-            L10,21.5
-            L13.2,13.3
-            Z
-            M6,9.8
-            L9,9.8
-            L10.9,14.6
-            L9.3,16.6
-            L8.4,14.3
-            L5.6,17.7
-            L5.6,21.5
-            L2.5,21.5
-            L2.5,16.6
-            Z" />
+        android:fillType="evenOdd"
+        android:pathData="M17.03,18.84 L16.89,18.48 L14.48,14.76 L14.34,14.78 L10.30,17.72 L10.56,17.68 L12.61,16.69 L12.77,16.69 L13.01,16.93 L14.30,18.82 L15.18,18.88 Z M17.09,12.67 L15.91,13.80 L15.87,13.96 L19.12,18.82 L19.24,18.88 L21.19,18.86 L21.09,18.56 L17.31,12.73 L17.23,12.65 Z M22.44,5.94 L22.06,5.96 L18.12,6.81 L16.05,9.14 L13.70,11.51 L13.58,11.51 L13.44,11.39 L12.17,9.28 L11.97,9.14 L10.80,10.82 L10.76,10.99 L12.05,12.95 L12.05,13.20 L5.66,19.50 L4.80,20.43 L5.42,20.11 L8.01,18.42 L11.73,15.51 L14.68,13.05 L18.60,9.58 L22.02,6.42 Z M12.17,2.95 L12.07,2.95 L10.28,5.60 L1.56,18.92 L1.86,18.82 L5.82,16.39 L10.34,13.40 L10.30,13.32 L7.45,13.78 L7.25,13.78 L7.15,13.70 L7.19,13.50 L12.03,6.22 L12.17,6.20 L12.31,6.32 L14.42,9.64 L14.74,9.40 L15.51,8.51 L15.53,8.33 Z" />
 </vector>
