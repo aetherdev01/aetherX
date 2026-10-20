@@ -109,7 +109,6 @@ fun GameMonitorScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                StatsGrid(session = active)
             }
         }
 
@@ -134,10 +133,11 @@ fun GameMonitorScreen(
                     )
                 }
                 Text(
-                    text = "AVG ${valueOrDash(active.averageFps, " FPS")} · Terendah ${valueOrDash(active.minFps, " FPS")} · Tertinggi ${valueOrDash(active.maxFps, " FPS")} · Drop di bawah 30: ${active.lowFpsCount}",
+                    text = "Rata-rata ${valueOrDash(active.averageFps, " FPS")}  ·  Min ${valueOrDash(active.minFps, " FPS")}  ·  Maks ${valueOrDash(active.maxFps, " FPS")}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                StatsGrid(session = active)
                 if (active.currentFps != null && active.currentFps < 30) {
                     Text(
                         text = "FPS terlalu rendah — peringatan telah dikirim oleh AetherX.",
@@ -255,7 +255,6 @@ fun GameMonitorScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         if (expandedSession == session.id) {
-                                            StatsGrid(session = session)
                                             val fpsPoints = session.samples.mapNotNull { it.fps?.toFloat() }
                                             Text("Grafik FPS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                                             RealtimeLineChart(
@@ -263,6 +262,12 @@ fun GameMonitorScreen(
                                                 maxValue = maxOf(60f, fpsPoints.maxOrNull() ?: 60f),
                                                 lineColor = MaterialTheme.colorScheme.primary,
                                             )
+                                            Text(
+                                                text = "AVG ${valueOrDash(session.averageFps, " FPS")}  ·  Min ${valueOrDash(session.minFps, " FPS")}  ·  Maks ${valueOrDash(session.maxFps, " FPS")}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            StatsGrid(session = session)
                                             if (fpsPoints.isEmpty()) {
                                                 Text("Tidak ada sampel FPS valid pada sesi ini.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             } else if (fpsPoints.size < 2) {
@@ -340,6 +345,12 @@ private fun GameAppIcon(packageName: String, gameName: String) {
 private fun StatsGrid(session: GameSession) {
     val currentOrLast = if (session.endedAtMs == null) "Sekarang" else "Akhir"
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Performa utama",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         MetricRow(
             Metric("FPS $currentOrLast", valueOrDash(session.currentFps, " FPS")),
             Metric("FPS rata-rata", valueOrDash(session.averageFps, " FPS")),
@@ -349,37 +360,37 @@ private fun StatsGrid(session: GameSession) {
             Metric("FPS tertinggi", valueOrDash(session.maxFps, " FPS")),
         )
         MetricRow(
-            Metric("Drop di bawah 30 FPS", "${session.lowFpsCount} sampel"),
-            Metric("Total sampel", session.sampleCount.toString()),
-        )
-        MetricRow(
-            Metric("CPU $currentOrLast", valueOrDash(session.currentCpuPercent, "%")),
             Metric("CPU rata-rata", valueOrDash(session.averageCpuPercent, "%")),
-        )
-        MetricRow(
             Metric("CPU maksimum", valueOrDash(session.maxCpuPercent, "%")),
-            Metric("GPU $currentOrLast", valueOrDash(session.currentGpuPercent, "%")),
         )
         MetricRow(
             Metric("GPU rata-rata", valueOrDash(session.averageGpuPercent, "%")),
             Metric("GPU maksimum", valueOrDash(session.maxGpuPercent, "%")),
         )
-        MetricRow(
-            Metric("GPU clock terakhir", valueOrDash(session.currentGpuFreqMhz?.roundToInt(), " MHz")),
-            Metric("RAM sekarang", formatGb(session.currentRamUsedMb)),
-        )
-        MetricRow(
-            Metric("RAM rata-rata", formatGb(session.averageRamUsedMb)),
-            Metric("RAM maksimum", formatGb(session.maxRamUsedMb)),
-        )
-        MetricRow(
-            Metric("Suhu awal", valueOrDash(session.temperatureStartC?.roundToInt(), "°C")),
-            Metric("Suhu $currentOrLast", valueOrDash(session.currentTemperatureC?.roundToInt(), "°C")),
-        )
-        MetricRow(
-            Metric("Suhu maksimum", valueOrDash(session.maxTemperatureC?.roundToInt(), "°C")),
-            Metric("Kenaikan suhu", valueOrDash(session.temperatureRiseC?.roundToInt(), "°C")),
-        )
+        val hasTemperature = session.temperatureStartC != null || session.currentTemperatureC != null || session.maxTemperatureC != null
+        if (hasTemperature) {
+            Text(
+                text = "Suhu perangkat",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            MetricRow(
+                Metric("Suhu $currentOrLast", valueOrDash(session.currentTemperatureC?.roundToInt(), "°C")),
+                Metric("Suhu maksimum", valueOrDash(session.maxTemperatureC?.roundToInt(), "°C")),
+            )
+            if (session.temperatureRiseC != null) {
+                MetricRow(
+                    Metric("Kenaikan suhu", valueOrDash(session.temperatureRiseC?.roundToInt(), "°C")),
+                    Metric("Drop di bawah 30 FPS", "${session.lowFpsCount} kali"),
+                )
+            }
+        } else {
+            MetricRow(
+                Metric("Drop di bawah 30 FPS", "${session.lowFpsCount} kali"),
+                Metric("GPU clock", valueOrDash(session.currentGpuFreqMhz?.roundToInt(), " MHz")),
+            )
+        }
     }
 }
 
