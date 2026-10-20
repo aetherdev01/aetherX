@@ -62,7 +62,6 @@ import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.StaticAetherSlider
-import com.aether.x.ui.components.CrosshairPreview
 import com.aether.x.ui.components.glassPanel
 import com.aether.x.ui.components.DialogWindowDim
 import com.aether.x.ui.theme.AccentBlue
@@ -147,7 +146,7 @@ fun CrosshairSettingsSection(
                 .size(96.dp),
         )
 
-        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
             // Header: Judul & Switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -189,7 +188,7 @@ fun CrosshairSettingsSection(
             }
 
             if (enabled) {
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 val selectedStyleLabel = stringResource(
                     styleOptions.firstOrNull { it.style == style }?.labelRes ?: R.string.crosshair_style_cross,
@@ -199,7 +198,7 @@ fun CrosshairSettingsSection(
                         .fillMaxWidth()
                         .aetherCardSurface(shape = RoundedCornerShape(16.dp))
                         .clickable { showStylePicker = true }
-                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                        .padding(horizontal = 11.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -218,38 +217,12 @@ fun CrosshairSettingsSection(
                     Text("Ubah", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aetherCardSurface(shape = RoundedCornerShape(16.dp))
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Text("Pratinjau langsung", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        Text("${rotationDegrees}°", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    }
-                    CrosshairPreview(
-                        style = style,
-                        color = Color(colorArgb.toInt()),
-                        sizeDp = sizeDp.toFloat(),
-                        rotationDegrees = rotationDegrees,
-                        modifier = Modifier.fillMaxWidth().height(112.dp),
-                    )
-                    Text(
-                        "Warna, ukuran, gaya, dan rotasi langsung terlihat di pratinjau.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aetherCardSurface(shape = RoundedCornerShape(16.dp))
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = 11.dp, vertical = 9.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -281,29 +254,34 @@ fun CrosshairSettingsSection(
                     Text("Pilih warna siap pakai atau buka pemilih warna bebas.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                CrosshairSliderCard(
-                    title = "Ukuran",
-                    valueText = "$sizeDp dp · ${"%.2f".format(sizeDp / 40f)}×",
-                    value = sizeDp.toFloat(),
-                    range = 12f..80f,
-                    onValueChange = { onSizeChange(it.roundToInt().coerceIn(12, 80)) },
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                CrosshairSliderCard(
-                    title = "Rotasi",
-                    valueText = "$rotationDegrees°",
-                    value = rotationDegrees.toFloat(),
-                    range = 0f..360f,
-                    onValueChange = { onRotationChange(it.roundToInt().coerceIn(0, 360)) },
-                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        CrosshairSliderCard(
+                            title = "Ukuran",
+                            valueText = "$sizeDp dp",
+                            value = sizeDp.toFloat(),
+                            range = 12f..80f,
+                            onValueChange = { onSizeChange(it.roundToInt().coerceIn(12, 80)) },
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        CrosshairSliderCard(
+                            title = "Rotasi",
+                            valueText = "$rotationDegrees°",
+                            value = rotationDegrees.toFloat(),
+                            range = 0f..360f,
+                            onValueChange = { onRotationChange(it.roundToInt().coerceIn(0, 360)) },
+                        )
+                    }
+                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aetherCardSurface(shape = RoundedCornerShape(16.dp))
-                        .padding(12.dp),
+                        .padding(9.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -311,12 +289,12 @@ fun CrosshairSettingsSection(
                         Text("Posisi Crosshair", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Text("X $offsetX · Y $offsetY", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     }
-                    Box(modifier = Modifier.fillMaxWidth().height(156.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth().height(122.dp), contentAlignment = Alignment.Center) {
                         PositionDPadOnly(
                             offsetX = offsetX,
                             offsetY = offsetY,
                             onNudgePosition = onNudgePosition,
-                            modifier = Modifier.size(154.dp),
+                            modifier = Modifier.size(122.dp),
                         )
                     }
                     Text("Tahan arah untuk menggeser lebih cepat.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

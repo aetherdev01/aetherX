@@ -3,6 +3,7 @@ package com.aether.x.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -37,11 +38,11 @@ private fun AetherPalette.toColorScheme(): ColorScheme {
         primary = accent,
         onPrimary = onAccent,
         primaryContainer = accentContainer,
-        onPrimaryContainer = accent,
+        onPrimaryContainer = textPrimary,
         secondary = accent,
         onSecondary = onAccent,
         secondaryContainer = accentContainer,
-        onSecondaryContainer = accent,
+        onSecondaryContainer = textPrimary,
         tertiary = premium,
         onTertiary = onAccent,
         tertiaryContainer = premiumContainer,
@@ -106,7 +107,13 @@ fun AetherXTheme(
             colorScheme = colorScheme,
             typography = typography,
             shapes = AetherXShapes,
-            content = content,
-        )
+        ) {
+            // Teks tanpa warna eksplisit wajib mengikuti tema aplikasi, bukan warna default hitam.
+            // Ini mencegah teks gelap di tema gelap dan teks terang di tema terang.
+            CompositionLocalProvider(
+                LocalContentColor provides palette.textPrimary,
+                content = content,
+            )
+        }
     }
 }
