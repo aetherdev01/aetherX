@@ -1,5 +1,7 @@
 package com.aether.x.ui.components
 
+import android.os.SystemClock
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -17,7 +19,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -70,7 +71,6 @@ fun StaticAetherSlider(
             .fillMaxWidth()
             .height(height)
             .semantics {
-                role = Role.Slider
                 progressBarRangeInfo = ProgressBarRangeInfo(
                     current = value.coerceIn(minValue, maxValue),
                     range = valueRange,
@@ -110,9 +110,9 @@ fun StaticAetherSlider(
                                 horizontalDragStarted = true
                             }
                             if (horizontalDragStarted) {
-                                if (event.uptimeMillis - lastEmitUptime >= minEmitIntervalMs) {
+                                if (SystemClock.uptimeMillis() - lastEmitUptime >= minEmitIntervalMs) {
                                     updateFromX(change.position.x, size.width.toFloat(), inset)
-                                    lastEmitUptime = event.uptimeMillis
+                                    lastEmitUptime = SystemClock.uptimeMillis()
                                 }
                                 change.consume()
                             }
