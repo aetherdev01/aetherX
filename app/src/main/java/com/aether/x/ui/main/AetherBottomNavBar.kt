@@ -3,6 +3,7 @@ package com.aether.x.ui.main
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,8 +94,10 @@ private const val USE_NATIVE_NAV_BLUR = false
  *    di-blur. Radius blur dari slider blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
- *  - Animasi pindah tab singkat dan deterministik (tween, tanpa spring/pop).
- *    Posisi pill mengikuti pointer secara langsung ketika drag berlangsung.
+ *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
+ *    capsule dengan spring yang sengaja agak mantul (pegas), lalu kembali
+ *    tenang saat dilepas. Pill ada di layer yang TIDAK di-clip supaya
+ *    sembulannya terlihat.
  *  - Satu pointerInput saja (tap + drag digabung).
  */
 @Composable
@@ -120,14 +123,15 @@ fun AetherBottomNavBar(
     // lambda draw -> tidak memicu recomposition.
     val pillPosition = remember { Animatable(selectedIndex.coerceIn(0, lastIndex).toFloat()) }
     var dragPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+    var dragVelocity by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var previewIndex by remember { mutableIntStateOf(selectedIndex.coerceIn(0, lastIndex)) }
     var pressed by remember { mutableStateOf(false) }
 
-    // Transisi dibuat singkat dan deterministik agar navbar tidak terasa tertinggal.
-    // Posisi selama drag tetap mengikuti pointer secara langsung.
-    val settleSpec = remember { tween<Float>(durationMillis = 120) }
-    val followSpec = remember { tween<Float>(durationMillis = 110) }
+    // Saat dilepas, capsule mendarat pada tab terdekat dengan pegas singkat.
+    // Selama jari masih menyentuh layar, posisinya mengikuti pointer secara langsung.
+    val settleSpec = remember { spring<Float>(dampingRatio = 0.86f, stiffness = 520f) }
+    val followSpec = remember { spring<Float>(dampingRatio = 0.9f, stiffness = 220f) }
     // Mencegah LaunchedEffect menjalankan animasi kedua setelah gesture sudah settle.
     var settledByTouch by remember { mutableStateOf(false) }
 
@@ -140,6 +144,17 @@ fun AetherBottomNavBar(
         }
         if (!isDragging && abs(pillPosition.value - target) > 0.01f) {
             pillPosition.animateTo(target.toFloat(), followSpec)
+        }
+    }
+
+    // 0f = diam, 1f = menyembul penuh. Spring mantul (damping rendah) saat
+    // ditekan -> efek pegas; saat dilepas kembali dengan damping lebih tinggi.
+    val pop = remember { Animatable(0f) }
+    LaunchedEffect(pressed) {
+        if (pressed) {
+            pop.animateTo(1f, spring(dampingRatio = 0.34f, stiffness = 360f))
+        } else {
+            pop.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 300f))
         }
     }
 
@@ -169,9 +184,11 @@ fun AetherBottomNavBar(
                     settledByTouch = false
                     pressed = true
                     isDragging = false
+                    dragVelocity = 0f
 
                     val downX = down.position.x
                     val touchTarget = slotAt(downX).roundToInt().coerceIn(0, lastIndex)
+                    var lastX = downX
                     var dragging = false
                     var dragOriginX = downX
                     var dragOriginPosition = pillPosition.value
@@ -189,6 +206,7 @@ fun AetherBottomNavBar(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         val x = change.position.x
                         val travel = x - downX
+                        val dx = x - lastX
 
                         if (!dragging && abs(travel) > viewConfiguration.touchSlop) {
                             dragging = true
@@ -209,7 +227,9 @@ fun AetherBottomNavBar(
                                 dragOriginPosition + (x - dragOriginX) / slot
                             ).coerceIn(0f, lastIndex.toFloat())
                             previewIndex = dragPosition.roundToInt().coerceIn(0, lastIndex)
+                            dragVelocity = (dx / slot) * 60f
                         }
+                        lastX = x
 
                         if (change.changedToUp()) {
                             change.consume()
@@ -237,10 +257,12 @@ fun AetherBottomNavBar(
                             // sehingga capsule tidak snap saat jari dilepas.
                             pillPosition.snapTo(releasePosition)
                             isDragging = false
+                            dragVelocity = 0f
                             pillPosition.animateTo(target.toFloat(), settleSpec)
                         }
                     } else {
                         isDragging = false
+                        dragVelocity = 0f
                         scope.launch {
                             pillPosition.animateTo(target.toFloat(), settleSpec)
                         }
@@ -251,6 +273,12 @@ fun AetherBottomNavBar(
 
     // Lapisan kapsul: latar kaca, pill, dan item. [nat] = dirender di window native.
     val layers: @Composable (Boolean) -> Unit = { nat ->
+        // Di window native, window selebar kapsul meng-clip pill -> sembulan dikecilkan
+        // supaya tidak terpotong.
+        val growH = if (nat) 5.dp else 14.dp
+        val growW = if (nat) 0.06f else 0.14f
+        val lift = if (nat) 0.dp else 2.dp
+
         // ── Latar kaca capsule ───────────────────────────────────────────
         if (nat) {
             // Blur + tint dikerjakan window (lihat NativeBlurWindow); di sini cukup garis tepi.
@@ -332,23 +360,34 @@ fun AetherBottomNavBar(
                     val slot = size.width / count
                     val inset = 4.dp.toPx()
                     val pos = if (isDragging) dragPosition else pillPosition.value
+                    val velocity = if (isDragging) dragVelocity else pillPosition.velocity
+                    val p = pop.value // bisa >1 / <0 sesaat karena overshoot spring
+
+                    // Stretch searah gerak, dibatasi supaya tetap kapsul rapi.
+                    val stretch = 1f + (abs(velocity) * 0.07f).coerceAtMost(0.22f)
+                    val squash = 1f - (abs(velocity) * 0.025f).coerceAtMost(0.07f)
+
                     val baseW = slot - inset * 2f
-                    val h = size.height - inset * 2f
-                    val w = baseW
+                    val baseH = size.height - inset * 2f
+                    // Menyembul: melebar ~14% dan memanjang ~14dp (melewati tepi capsule).
+                    val w = baseW * stretch * (1f + growW * p)
+                    val h = baseH * squash + growH.toPx() * p
                     val cx = (pos + 0.5f) * slot
                     val left = cx - w / 2f
-                    val top = (size.height - h) / 2f
+                    val top = (size.height - h) / 2f - lift.toPx() * p
 
                     // Warna melebur antara aksen dua tab terdekat.
                     val lo = floor(pos).toInt().coerceIn(0, lastIndex)
                     val hi = (lo + 1).coerceAtMost(lastIndex)
                     val t = (pos - lo).coerceIn(0f, 1f)
                     val accent = lerp(items[lo].accent, items[hi].accent, t)
+                    val glowBoost = p.coerceIn(0f, 1.3f)
+
                     val corner = CornerRadius(h / 2f, h / 2f)
 
                     // Glow lembut di belakang pill (menguat saat menyembul).
                     drawRoundRect(
-                        color = accent.copy(alpha = 0.16f),
+                        color = accent.copy(alpha = 0.14f + 0.12f * glowBoost),
                         topLeft = Offset(left - 4.dp.toPx(), top - 3.dp.toPx()),
                         size = Size(w + 8.dp.toPx(), h + 6.dp.toPx()),
                         cornerRadius = CornerRadius((h + 6.dp.toPx()) / 2f),
@@ -357,8 +396,8 @@ fun AetherBottomNavBar(
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                accent.copy(alpha = 0.30f),
-                                accent.copy(alpha = 0.14f),
+                                accent.copy(alpha = 0.30f + 0.08f * glowBoost),
+                                accent.copy(alpha = 0.14f + 0.06f * glowBoost),
                             ),
                             startY = top,
                             endY = top + h,
@@ -481,7 +520,7 @@ private fun NavBarItem(
     )
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.12f else 1f,
-        animationSpec = tween(durationMillis = 110),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
         label = "navIconScale",
     )
 
