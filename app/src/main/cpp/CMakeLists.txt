@@ -12,7 +12,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 # Automatically include every supported native source/header in this directory.
-# Supported source formats: .cpp, .c, .cc
+# Supported source formats: .cpp, .CPP, .c, .cc
 # Supported header formats: .h, .hpp, .ipp
 file(GLOB_RECURSE AETHERX_NATIVE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
@@ -25,6 +25,16 @@ file(GLOB_RECURSE AETHERX_NATIVE_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.ipp"
 )
+
+# .CPP is explicitly supported as a C++ source suffix on case-sensitive filesystems.
+file(GLOB_RECURSE AETHERX_NATIVE_UPPER_CPP CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.CPP"
+)
+if(AETHERX_NATIVE_UPPER_CPP)
+    set_source_files_properties(${AETHERX_NATIVE_UPPER_CPP} PROPERTIES LANGUAGE CXX)
+    list(APPEND AETHERX_NATIVE_SOURCES ${AETHERX_NATIVE_UPPER_CPP})
+    list(REMOVE_DUPLICATES AETHERX_NATIVE_SOURCES)
+endif()
 
 # Release hardening/size flags. Keep these centralized so new native files
 # receive the same build configuration automatically.

@@ -756,7 +756,7 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text("Pusat Kontrol · v3.10") },
+            label = { Text("Pusat Kontrol · v3.10.1") },
             icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
             selected = selected == TweakSubTab.V310_CENTER,
             onClick = { onSelect(TweakSubTab.V310_CENTER) },
