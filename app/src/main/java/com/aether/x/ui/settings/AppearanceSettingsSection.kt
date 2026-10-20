@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -40,7 +38,6 @@ import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -48,7 +45,6 @@ import kotlin.math.roundToInt
  * (v3.9: opsi font dan gaya card dihapus — tetap Poppins + kaca.) Semua perubahan tersimpan di DataStore
  * dan langsung diterapkan lewat AetherXTheme di MainActivity.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppearanceSettingsSection(
     darkModePref: DarkModePref,
@@ -89,55 +85,48 @@ fun AppearanceSettingsSection(
         }
 
         SettingGroup(label = "Level Liquid Glass") {
-            val levels = listOf(
-                "Mati" to 0,
-                "Lembut" to 25,
-                "Seimbang" to 50,
-                "Kuat" to 75,
-                "Ultra" to 100,
-            )
-            val selectedLevel = levels.minByOrNull { abs(it.second - blurStrength) }?.second
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                levels.forEach { (label, strength) ->
-                    ChoicePill(
-                        label = label,
-                        selected = strength == selectedLevel,
-                        onClick = { onBlurChange(strength) },
-                    )
-                }
+            // Pertahankan nilai lokal saat drag supaya DataStore tidak membuat slider
+            // tersendat; level deskriptif di bawahnya berubah secara langsung.
+            var sliderValue by remember { mutableFloatStateOf(blurStrength.toFloat()) }
+            var dragging by remember { mutableStateOf(false) }
+            LaunchedEffect(blurStrength) {
+                if (!dragging) sliderValue = blurStrength.toFloat()
             }
+            val liquidGlassLevel = when (sliderValue.roundToInt()) {
+                in 0..12 -> "Mati"
+                in 13..37 -> "Lembut"
+                in 38..62 -> "Seimbang"
+                in 63..87 -> "Kuat"
+                else -> "Ultra"
+            }
+            TweakSlider(
+                label = "Intensitas",
+                description = "Geser untuk mengatur efek kaca dan blur pada card, dialog, drawer, serta navbar.",
+                valueText = "${sliderValue.roundToInt()}%",
+                value = sliderValue,
+                range = 0f..100f,
+                steps = 0,
+                onValueChange = {
+                    dragging = true
+                    val before = sliderValue.roundToInt()
+                    sliderValue = it
+                    // Terapkan langsung saat digeser; hanya tulis bila persennya berubah.
+                    val now = it.roundToInt()
+                    if (now != before) onBlurChange(now)
+                },
+                onValueChangeFinished = {
+                    dragging = false
+                    onBlurChange(sliderValue.roundToInt())
+                },
+            )
+            Text(
+                text = "Level Liquid Glass → $liquidGlassLevel",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 3.dp),
+            )
         }
-
-        // Nilai lokal dipertahankan selama digeser (tanpa key) supaya slider tidak
-        // loncat saat nilai tersimpan kembali dari DataStore dengan sedikit jeda.
-        var sliderValue by remember { mutableFloatStateOf(blurStrength.toFloat()) }
-        var dragging by remember { mutableStateOf(false) }
-        LaunchedEffect(blurStrength) {
-            if (!dragging) sliderValue = blurStrength.toFloat()
-        }
-        TweakSlider(
-            label = "Kekuatan Liquid Glass",
-            description = "Atur intensitas kaca dan blur pada card, dialog, drawer, serta navbar.",
-            valueText = "${sliderValue.roundToInt()}%",
-            value = sliderValue,
-            range = 0f..100f,
-            steps = 0,
-            onValueChange = {
-                dragging = true
-                val before = sliderValue.roundToInt()
-                sliderValue = it
-                // Terapkan langsung saat digeser; hanya tulis bila persennya berubah.
-                val now = it.roundToInt()
-                if (now != before) onBlurChange(now)
-            },
-            onValueChangeFinished = {
-                dragging = false
-                onBlurChange(sliderValue.roundToInt())
-            },
-        )
     }
 }
 

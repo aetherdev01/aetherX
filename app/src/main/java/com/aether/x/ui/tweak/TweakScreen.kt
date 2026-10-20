@@ -319,17 +319,17 @@ fun TweakScreen(
                         itemsIndexed(dashboardState.cardOrder, key = { _, cardId -> cardId }) { index, cardId ->
                             ReorderableItem(reorderState, key = cardId) { isDragging ->
                                 // Elevation/shadow pakai spring (bukan tween) supaya
-                                // "menyembul" saat ditahan terasa punya bobot/inersia,
-                                // lalu turun tenang (no bounce) saat card dilepas.
+                                // card terasa terangkat saat ditahan dan kembali elastis
+                                // ke tempatnya saat dilepas.
                                 val elevation by animateDpAsState(
-                                    targetValue = if (isDragging) 14.dp else 0.dp,
+                                    targetValue = if (isDragging) 20.dp else 0.dp,
                                     animationSpec = spring(
                                         dampingRatio = if (isDragging) {
-                                            Spring.DampingRatioMediumBouncy
+                                            Spring.DampingRatioLowBouncy
                                         } else {
-                                            Spring.DampingRatioNoBouncy
+                                            Spring.DampingRatioMediumBouncy
                                         },
-                                        stiffness = Spring.StiffnessMedium,
+                                        stiffness = Spring.StiffnessMediumLow,
                                     ),
                                     label = "cardDragElevation",
                                 )

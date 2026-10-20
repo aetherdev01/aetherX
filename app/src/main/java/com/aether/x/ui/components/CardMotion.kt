@@ -71,31 +71,33 @@ fun rememberPressScaleInteractionSource(): MutableInteractionSource = remember {
 fun Modifier.dragPopEffect(isDragging: Boolean): Modifier {
     if (LocalReduceMotionEnabled.current) return this
     val popScale by animateFloatAsState(
-        targetValue = if (isDragging) 1.035f else 1f,
-        animationSpec = if (isDragging) {
-            spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium,
-            )
-        } else {
-            spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            )
-        },
+        targetValue = if (isDragging) 1.065f else 1f,
+        animationSpec = spring(
+            dampingRatio = if (isDragging) Spring.DampingRatioLowBouncy else Spring.DampingRatioMediumBouncy,
+            stiffness = if (isDragging) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
+        ),
         label = "dragPopScale",
     )
     val lift by animateFloatAsState(
-        targetValue = if (isDragging) -4f else 0f,
+        targetValue = if (isDragging) -7f else 0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
+            dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessLow,
         ),
         label = "dragPopLift",
+    )
+    val tilt by animateFloatAsState(
+        targetValue = if (isDragging) -0.7f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "dragPopTilt",
     )
     return this.graphicsLayer {
         scaleX = popScale
         scaleY = popScale
         translationY = lift
+        rotationZ = tilt
     }
 }
