@@ -18,7 +18,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * Daftar ID card Dashboard yang valid. Kartu baru otomatis disisipkan pada
  * posisi default-nya untuk tetap mempertahankan urutan custom milik pengguna.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("status", "quick_actions", "activity", "ram", "bonus")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("status", "recent_games", "game_monitor", "ram", "bonus")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
@@ -66,11 +66,11 @@ data class AppPreferences(
 
     val accentPreset: AccentPreset = AccentPreset.GRAPHITE,
     /** Optional user-selected ARGB accent; null means use the selected preset. */
-    val customAccentArgb: Long? = null,
+    val customAccentArgb: Long? = 0xFFB4DE9FL,
     val appFont: AppFont = AppFont.POPPINS,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
-    val blurStrength: Int = 75,
+    val blurStrength: Int = 25,
     val hapticsEnabled: Boolean = true,
     val reduceMotionEnabled: Boolean = false,
 
@@ -114,6 +114,8 @@ data class AppPreferences(
 
     val lastPlayedGamePackage: String? = null,
     val lastPlayedGameAtMillis: Long? = null,
+    /** Daftar paket game terbaru yang dibuka lewat AetherX (paling baru lebih dulu). */
+    val recentGamePackages: List<String> = emptyList(),
 
     val dashboardCardOrder: List<String> = DEFAULT_DASHBOARD_CARD_ORDER,
 
@@ -196,7 +198,7 @@ class AetherXPreferences(private val context: Context) {
 
         val LAST_PLAYED_GAME_PACKAGE = stringPreferencesKey("last_played_game_package")
         val LAST_PLAYED_GAME_AT_MILLIS = longPreferencesKey("last_played_game_at_millis")
-
+        val RECENT_GAME_PACKAGES = stringPreferencesKey("recent_game_packages")
 
         val DASHBOARD_CARD_ORDER = stringPreferencesKey("dashboard_card_order")
 
@@ -214,12 +216,12 @@ class AetherXPreferences(private val context: Context) {
                 .getOrDefault(DarkModePref.LIGHT),
             accentPreset = runCatching { AccentPreset.valueOf(prefs[Keys.ACCENT_PRESET] ?: "") }
                 .getOrDefault(AccentPreset.GRAPHITE),
-            customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB],
+            customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB] ?: if (prefs[Keys.ACCENT_PRESET] == null) 0xFFB4DE9FL else null,
             appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
                 .getOrDefault(AppFont.POPPINS),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
-            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 75).coerceIn(0, 100),
+            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 25).coerceIn(0, 100),
             hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
             reduceMotionEnabled = prefs[Keys.REDUCE_MOTION_ENABLED] ?: false,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
@@ -261,6 +263,13 @@ class AetherXPreferences(private val context: Context) {
             activeGameProfilePackage = prefs[Keys.ACTIVE_GAME_PROFILE_PACKAGE],
             lastPlayedGamePackage = prefs[Keys.LAST_PLAYED_GAME_PACKAGE],
             lastPlayedGameAtMillis = prefs[Keys.LAST_PLAYED_GAME_AT_MILLIS],
+            recentGamePackages = prefs[Keys.RECENT_GAME_PACKAGES]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() }
+                ?.distinct()
+                ?.take(8)
+                ?: emptyList(),
             dashboardCardOrder = prefs[Keys.DASHBOARD_CARD_ORDER]
                 ?.split(",")
                 ?.filter { it.isNotBlank() && it in DEFAULT_DASHBOARD_CARD_ORDER }
@@ -533,6 +542,15 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.LAST_PLAYED_GAME_PACKAGE] = packageName
             prefs[Keys.LAST_PLAYED_GAME_AT_MILLIS] = System.currentTimeMillis()
+            val previous = prefs[Keys.RECENT_GAME_PACKAGES]
+                ?.split(",")
+                ?.map { it.trim() }
+                .orEmpty()
+            prefs[Keys.RECENT_GAME_PACKAGES] = (listOf(packageName) + previous)
+                .filter { it.isNotBlank() }
+                .distinct()
+                .take(8)
+                .joinToString(",")
         }
     }
 

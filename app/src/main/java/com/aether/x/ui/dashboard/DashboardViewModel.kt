@@ -9,6 +9,7 @@ import com.aether.x.core.apps.GameProfileCatalog
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.core.apps.GameLaunchTracker
+import com.aether.x.core.monitor.GameSessionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,12 +24,14 @@ data class DashboardUiState(
     val deviceInfo: DeviceInfoSnapshot? = null,
 
     val installedGames: List<InstalledGameEntry> = emptyList(),
+    val recentPlayedGames: List<InstalledGameEntry> = emptyList(),
+    val recentGamePackages: List<String> = emptyList(),
     val loadingGames: Boolean = true,
     val lastPlayedPackage: String? = null,
     val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
 
-private val DEFAULT_CARD_ORDER = listOf("status", "quick_actions", "activity", "ram", "bonus")
+private val DEFAULT_CARD_ORDER = listOf("status", "recent_games", "game_monitor", "ram", "bonus")
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -45,8 +48,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(application)) }
+        GameSessionRepository.initialize(application.applicationContext)
         loadGames()
         observeLastPlayed()
+        observeRecentSessions()
     }
 
     private fun loadGames() {
@@ -55,6 +60,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 GameProfileCatalog.loadInstalledGames(getApplication())
             }
             _state.update { it.copy(installedGames = reorderByLastPlayed(games, it.lastPlayedPackage), loadingGames = false) }
+            refreshRecentGames()
         }
     }
 
@@ -63,6 +69,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             _state.update {
                 it.copy(
                     lastPlayedPackage = prefs.lastPlayedGamePackage,
+                    recentGamePackages = prefs.recentGamePackages,
                     installedGames = reorderByLastPlayed(it.installedGames, prefs.lastPlayedGamePackage),
                     cardOrder = if (cardOrderDirty) {
                         this@DashboardViewModel._state.value.cardOrder
@@ -71,7 +78,27 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     },
                 )
             }
+            refreshRecentGames()
         }.launchIn(viewModelScope)
+    }
+
+    private fun observeRecentSessions() {
+        GameSessionRepository.sessions.onEach {
+            refreshRecentGames()
+        }.launchIn(viewModelScope)
+    }
+
+    private fun refreshRecentGames() {
+        val current = _state.value
+        val sessionPackages = GameSessionRepository.sessions.value
+            .sortedByDescending { it.startedAtMs }
+            .map { it.packageName }
+        val packageOrder = (
+            current.recentGamePackages + sessionPackages + listOfNotNull(current.lastPlayedPackage)
+        ).filter { it.isNotBlank() }.distinct().take(8)
+        val installedByPackage = current.installedGames.associateBy { it.packageName }
+        val recent = packageOrder.mapNotNull { installedByPackage[it] }.take(6)
+        _state.update { it.copy(recentPlayedGames = recent) }
     }
 
     private fun normalizeCardOrder(saved: List<String>): List<String> {

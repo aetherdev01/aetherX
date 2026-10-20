@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -60,6 +62,7 @@ import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.StaticAetherSlider
+import com.aether.x.ui.components.CrosshairPreview
 import com.aether.x.ui.components.glassPanel
 import com.aether.x.ui.components.DialogWindowDim
 import com.aether.x.ui.theme.AccentBlue
@@ -70,11 +73,17 @@ import kotlin.math.roundToInt
 
 private val crosshairColorPalette = listOf(
     0xFFFFFFFFL,
+    0xFFB4DE9FL,
     0xFFFF3B30L,
-    0xFFE8804AL,
+    0xFFFF6B35L,
     0xFFF6C560L,
     0xFFFFD60AL,
+    0xFF34C759L,
+    0xFF00E5FFL,
     0xFF2F6FEDL,
+    0xFF6F5BFFL,
+    0xFFFF4FD8L,
+    0xFFFF80ABL,
 )
 
 private data class StyleOption(val style: CrosshairStyle, val labelRes: Int)
@@ -180,128 +189,137 @@ fun CrosshairSettingsSection(
             }
 
             if (enabled) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // Pemilih Gaya (Membuka Pop Up Dialog)
+                val selectedStyleLabel = stringResource(
+                    styleOptions.firstOrNull { it.style == style }?.labelRes ?: R.string.crosshair_style_cross,
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aetherCardSurface(shape = RoundedCornerShape(12.dp))
+                        .aetherCardSurface(shape = RoundedCornerShape(16.dp))
                         .clickable { showStylePicker = true }
-                        .padding(16.dp),
+                        .padding(horizontal = 14.dp, vertical = 13.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Gaya Crosshair",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    // Preview Icon Aktif
-                    Box(modifier = Modifier.size(24.dp)) {
-                        StyleIconButtonInner(style = style, color = AccentBlue)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Area D-Pad & Slider Vertikal (Posisi & Ukuran)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .aetherCardSurface(shape = RoundedCornerShape(12.dp))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
+                            .size(44.dp)
+                            .aetherCardSurface(shape = RoundedCornerShape(13.dp)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        PositionDPadOnly(
-                            offsetX = offsetX,
-                            offsetY = offsetY,
-                            onNudgePosition = onNudgePosition
-                        )
+                        StyleIconButtonInner(style = style, color = Color(colorArgb.toInt()))
                     }
-
-                    Box(
-                        modifier = Modifier
-                            .width(64.dp)
-                            .fillMaxHeight()
-                            .aetherCardSurface(shape = RoundedCornerShape(12.dp))
-                            .padding(top = 12.dp, bottom = 12.dp)
-                    ) {
-                        VerticalAccentSlider(
-                            label = stringResource(R.string.crosshair_size_label),
-                            valueText = "${(sizeDp / 40f).let { "%.1f".format(it) }}x",
-                            value = sizeDp.toFloat(),
-                            range = 12f..80f,
-                            onValueChange = { onSizeChange(it.toInt()) },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Gaya Crosshair", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(selectedStyleLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    Text("Ubah", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Slider Rotasi Baru (Lebih Rapi & Bagus)
+                Spacer(modifier = Modifier.height(12.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aetherCardSurface(shape = RoundedCornerShape(12.dp))
-                        .padding(16.dp)
+                        .aetherCardSurface(shape = RoundedCornerShape(16.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Rotasi",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "${rotationDegrees}°",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentBlue
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text("Pratinjau langsung", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text("${rotationDegrees}°", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     }
-                    StaticAetherSlider(
-                        value = rotationDegrees.toFloat(),
-                        onValueChange = { onRotationChange(it.roundToInt()) },
-                        valueRange = 0f..360f,
-                        steps = 0,
-                        activeColor = AccentBlue,
-                        inactiveColor = AccentBlue.copy(alpha = 0.14f),
-                        modifier = Modifier.fillMaxWidth(),
+                    CrosshairPreview(
+                        style = style,
+                        color = Color(colorArgb.toInt()),
+                        sizeDp = sizeDp.toFloat(),
+                        rotationDegrees = rotationDegrees,
+                        modifier = Modifier.fillMaxWidth().height(112.dp),
+                    )
+                    Text(
+                        "Warna, ukuran, gaya, dan rotasi langsung terlihat di pratinjau.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Pilihan Warna
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aetherCardSurface(shape = RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    crosshairColorPalette.forEach { swatch ->
-                        ColorSwatchLarge(
-                            color = swatch,
-                            selected = swatch == colorArgb,
-                            onClick = { onColorChange(swatch) },
-                            modifier = Modifier.weight(1f),
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Warna", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text("#%06X".format(colorArgb.toInt() and 0xFFFFFF), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        contentPadding = PaddingValues(vertical = 2.dp),
+                    ) {
+                        lazyItems(crosshairColorPalette, key = { it }) { swatch ->
+                            ColorSwatchLarge(
+                                color = swatch,
+                                selected = swatch == colorArgb,
+                                onClick = { onColorChange(swatch) },
+                                modifier = Modifier.width(42.dp),
+                            )
+                        }
+                        item {
+                            CustomColorSwatch(
+                                currentColorArgb = colorArgb,
+                                isCustomActive = crosshairColorPalette.none { it == colorArgb },
+                                onClick = { showColorPicker = true },
+                                modifier = Modifier.width(48.dp),
+                            )
+                        }
+                    }
+                    Text("Pilih warna siap pakai atau buka pemilih warna bebas.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                CrosshairSliderCard(
+                    title = "Ukuran",
+                    valueText = "$sizeDp dp · ${"%.2f".format(sizeDp / 40f)}×",
+                    value = sizeDp.toFloat(),
+                    range = 12f..80f,
+                    onValueChange = { onSizeChange(it.roundToInt().coerceIn(12, 80)) },
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                CrosshairSliderCard(
+                    title = "Rotasi",
+                    valueText = "$rotationDegrees°",
+                    value = rotationDegrees.toFloat(),
+                    range = 0f..360f,
+                    onValueChange = { onRotationChange(it.roundToInt().coerceIn(0, 360)) },
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aetherCardSurface(shape = RoundedCornerShape(16.dp))
+                        .padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Posisi Crosshair", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text("X $offsetX · Y $offsetY", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().height(156.dp), contentAlignment = Alignment.Center) {
+                        PositionDPadOnly(
+                            offsetX = offsetX,
+                            offsetY = offsetY,
+                            onNudgePosition = onNudgePosition,
+                            modifier = Modifier.size(154.dp),
                         )
                     }
-                    CustomColorSwatch(
-                        currentColorArgb = colorArgb,
-                        isCustomActive = crosshairColorPalette.none { it == colorArgb },
-                        onClick = { showColorPicker = true },
-                        modifier = Modifier.weight(1f),
-                    )
+                    Text("Tahan arah untuk menggeser lebih cepat.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -354,7 +372,7 @@ fun CrosshairStylePickerDialog(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 64.dp),
+                    columns = GridCells.Adaptive(minSize = 76.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 8.dp)
@@ -362,6 +380,7 @@ fun CrosshairStylePickerDialog(
                     items(styleOptions, key = { it.style.name }) { option ->
                         StyleIconButton(
                             style = option.style,
+                            label = stringResource(option.labelRes),
                             isSelected = option.style == currentStyle,
                             onClick = { onStyleSelected(option.style) }
                         )
@@ -373,29 +392,79 @@ fun CrosshairStylePickerDialog(
 }
 
 @Composable
+private fun CrosshairSliderCard(
+    title: String,
+    valueText: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(valueText, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+        StaticAetherSlider(
+            value = value.coerceIn(range.start, range.endInclusive),
+            onValueChange = onValueChange,
+            valueRange = range,
+            steps = 0,
+            activeColor = MaterialTheme.colorScheme.primary,
+            inactiveColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(range.start.roundToInt().toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(range.endInclusive.roundToInt().toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
 private fun StyleIconButton(
     style: CrosshairStyle,
+    label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
-    Box(
+    Column(
         modifier = Modifier
-            .size(64.dp)
+            .fillMaxWidth()
+            .height(82.dp)
             .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .border(
                 width = if (isSelected) 1.5.dp else 0.dp,
                 color = if (isSelected) AccentBlue else Color.Transparent,
                 shape = MaterialTheme.shapes.medium,
             )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .clickable(onClick = onClick)
+            .padding(horizontal = 3.dp, vertical = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Box(modifier = Modifier.size(26.dp)) {
+        Box(modifier = Modifier.size(28.dp)) {
             StyleIconButtonInner(
                 style = style,
-                color = if (isSelected) AccentBlue else TextSecondary
+                color = if (isSelected) AccentBlue else TextSecondary,
             )
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
     }
 }
 

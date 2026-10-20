@@ -111,8 +111,8 @@ import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.DailyBonusCard
-import com.aether.x.ui.dashboard.DashboardQuickActions
-import com.aether.x.ui.dashboard.GameActivitySection
+import com.aether.x.ui.dashboard.DashboardGameMonitorSection
+import com.aether.x.ui.dashboard.RecentlyPlayedGamesSection
 import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceStatusSection
 import com.aether.x.ui.dashboard.RamCleanerCard
@@ -346,23 +346,19 @@ fun TweakScreen(
                                         ),
                                 ) {
                                     when (cardId) {
-                                        "quick_actions" -> DashboardQuickActions(
-                                            rootGranted = privilegeStatus.rootGranted,
-                                            onOpenTweaks = { selectedSubTab = TweakSubTab.TWEAK },
-                                            onOpenProfiles = { selectedSubTab = TweakSubTab.GAME_PROFILE },
-                                            onOpenMonitor = { selectedSubTab = TweakSubTab.ROOT_MONITOR },
-                                            onOpenKernelManager = { selectedSubTab = TweakSubTab.KERNEL_MANAGER },
-                                        )
                                         "bonus" -> DailyBonusCard()
                                         "status" -> DeviceStatusSection(
                                             info = dashboardState.deviceInfo,
                                             rootGranted = privilegeStatus.rootGranted,
                                         )
-                                        "activity" -> GameActivitySection(
-                                            games = dashboardState.installedGames,
+                                        "recent_games" -> RecentlyPlayedGamesSection(
+                                            games = dashboardState.recentPlayedGames,
                                             loading = dashboardState.loadingGames,
                                             lastPlayedPackage = dashboardState.lastPlayedPackage,
                                             onGameClick = dashboardViewModel::onGameClick,
+                                        )
+                                        "game_monitor" -> DashboardGameMonitorSection(
+                                            onOpenMonitor = { selectedSubTab = TweakSubTab.GAME_MONITOR },
                                         )
                                         "ram" -> RamCleanerCard()
                                     }

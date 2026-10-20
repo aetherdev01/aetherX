@@ -224,13 +224,13 @@ fun MainScreen(
                 } else {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
                     (slideInHorizontally(
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-                        initialOffsetX = { fullWidth -> (fullWidth * 0.05f * dir).roundToInt() },
-                    ) + fadeIn(tween(220))) togetherWith
+                        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+                        initialOffsetX = { fullWidth -> (fullWidth * 0.025f * dir).roundToInt() },
+                    ) + fadeIn(tween(125))) togetherWith
                         (slideOutHorizontally(
-                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                            targetOffsetX = { fullWidth -> (-fullWidth * 0.03f * dir).roundToInt() },
-                        ) + fadeOut(tween(140)))
+                            animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing),
+                            targetOffsetX = { fullWidth -> (-fullWidth * 0.02f * dir).roundToInt() },
+                        ) + fadeOut(tween(90)))
                 }
             },
             label = "mainTabContent",
