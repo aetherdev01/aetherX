@@ -14,13 +14,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +60,7 @@ fun GameMonitorScreen(
     val sessions by GameSessionRepository.sessions.collectAsStateWithLifecycle()
     var expandedGame by remember { mutableStateOf<String?>(null) }
     var expandedSession by remember { mutableStateOf<String?>(null) }
+    var sessionToDelete by remember { mutableStateOf<GameSession?>(null) }
     val active = sessions.firstOrNull { it.endedAtMs == null }
     val groupedSessions = sessions.groupBy { it.packageName }
 
@@ -229,6 +234,15 @@ fun GameMonitorScreen(
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.primary,
                                             )
+                                            if (session.endedAtMs != null) {
+                                                IconButton(onClick = { sessionToDelete = session }) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Delete,
+                                                        contentDescription = "Hapus rekaman ${session.gameName}",
+                                                        tint = MaterialTheme.colorScheme.error,
+                                                    )
+                                                }
+                                            }
                                         }
                                         Text(
                                             text = "Avg ${valueOrDash(session.averageFps, " FPS")}  ·  Min ${valueOrDash(session.minFps, " FPS")}  ·  Max ${valueOrDash(session.maxFps, " FPS")}",
@@ -264,11 +278,23 @@ fun GameMonitorScreen(
             }
         }
 
-        Text(
-            text = "Catatan: grafik hanya menampilkan FPS. AetherX mencoba membaca frame melalui SurfaceFlinger lalu gfxinfo; dukungan tetap bergantung pada versi Android, game, dan akses Root. Metrik CPU, GPU, RAM, serta suhu ditampilkan pada detail sesi bila tersedia.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        sessionToDelete?.let { session ->
+            AlertDialog(
+                onDismissRequest = { sessionToDelete = null },
+                title = { Text("Hapus rekaman?") },
+                text = { Text("Rekaman ${session.gameName} pada ${formatDate(session.startedAtMs)} akan dihapus permanen dari riwayat lokal.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        GameSessionRepository.deleteSession(session.id)
+                        if (expandedSession == session.id) expandedSession = null
+                        sessionToDelete = null
+                    }) { Text("Hapus") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { sessionToDelete = null }) { Text("Batal") }
+                },
+            )
+        }
     }
 }
 
@@ -307,29 +333,58 @@ private fun GameAppIcon(packageName: String, gameName: String) {
 
 @Composable
 private fun StatsGrid(session: GameSession) {
-    val currentOrLast = if (session.endedAtMs == null) "sekarang" else "akhir"
+    val currentOrLast = if (session.endedAtMs == null) "Sekarang" else "Akhir"
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("FPS $currentOrLast / rata-rata", "${valueOrDash(session.currentFps, "")} / ${valueOrDash(session.averageFps, "")} FPS", Modifier.weight(1f))
-            MetricTile("FPS min / maks", "${valueOrDash(session.minFps, "")} / ${valueOrDash(session.maxFps, "")} FPS", Modifier.weight(1f))
-            MetricTile("FPS di bawah 30", "${session.lowFpsCount} sampel", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("CPU $currentOrLast / avg / maks", "${valueOrDash(session.currentCpuPercent, "")} / ${valueOrDash(session.averageCpuPercent, "")} / ${valueOrDash(session.maxCpuPercent, "")}%", Modifier.weight(1f))
-            MetricTile("GPU terakhir / avg / maks", "${valueOrDash(session.currentGpuPercent, "")} / ${valueOrDash(session.averageGpuPercent, "")} / ${valueOrDash(session.maxGpuPercent, "")}%", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("GPU clock terakhir", valueOrDash(session.currentGpuFreqMhz?.roundToInt(), " MHz"), Modifier.weight(1f))
-            MetricTile("RAM sistem sekarang / maks", "${formatGb(session.currentRamUsedMb)} / ${formatGb(session.maxRamUsedMb)}", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("Suhu awal / $currentOrLast", "${valueOrDash(session.temperatureStartC?.roundToInt(), "°C")} / ${valueOrDash(session.currentTemperatureC?.roundToInt(), "°C")}", Modifier.weight(1f))
-            MetricTile("Suhu maks / kenaikan", "${valueOrDash(session.maxTemperatureC?.roundToInt(), "°C")} / ${valueOrDash(session.temperatureRiseC?.roundToInt(), "°C")}", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("RAM sistem rata-rata", formatGb(session.averageRamUsedMb), Modifier.weight(1f))
-            MetricTile("Total sampel", "${session.sampleCount}", Modifier.weight(1f))
-        }
+        MetricRow(
+            Metric("FPS $currentOrLast", valueOrDash(session.currentFps, " FPS")),
+            Metric("FPS rata-rata", valueOrDash(session.averageFps, " FPS")),
+        )
+        MetricRow(
+            Metric("FPS terendah", valueOrDash(session.minFps, " FPS")),
+            Metric("FPS tertinggi", valueOrDash(session.maxFps, " FPS")),
+        )
+        MetricRow(
+            Metric("Drop di bawah 30 FPS", "${session.lowFpsCount} sampel"),
+            Metric("Total sampel", session.sampleCount.toString()),
+        )
+        MetricRow(
+            Metric("CPU $currentOrLast", valueOrDash(session.currentCpuPercent, "%")),
+            Metric("CPU rata-rata", valueOrDash(session.averageCpuPercent, "%")),
+        )
+        MetricRow(
+            Metric("CPU maksimum", valueOrDash(session.maxCpuPercent, "%")),
+            Metric("GPU $currentOrLast", valueOrDash(session.currentGpuPercent, "%")),
+        )
+        MetricRow(
+            Metric("GPU rata-rata", valueOrDash(session.averageGpuPercent, "%")),
+            Metric("GPU maksimum", valueOrDash(session.maxGpuPercent, "%")),
+        )
+        MetricRow(
+            Metric("GPU clock terakhir", valueOrDash(session.currentGpuFreqMhz?.roundToInt(), " MHz")),
+            Metric("RAM sekarang", formatGb(session.currentRamUsedMb)),
+        )
+        MetricRow(
+            Metric("RAM rata-rata", formatGb(session.averageRamUsedMb)),
+            Metric("RAM maksimum", formatGb(session.maxRamUsedMb)),
+        )
+        MetricRow(
+            Metric("Suhu awal", valueOrDash(session.temperatureStartC?.roundToInt(), "°C")),
+            Metric("Suhu $currentOrLast", valueOrDash(session.currentTemperatureC?.roundToInt(), "°C")),
+        )
+        MetricRow(
+            Metric("Suhu maksimum", valueOrDash(session.maxTemperatureC?.roundToInt(), "°C")),
+            Metric("Kenaikan suhu", valueOrDash(session.temperatureRiseC?.roundToInt(), "°C")),
+        )
+    }
+}
+
+private data class Metric(val label: String, val value: String)
+
+@Composable
+private fun MetricRow(first: Metric, second: Metric) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MetricTile(first.label, first.value, Modifier.weight(1f))
+        MetricTile(second.label, second.value, Modifier.weight(1f))
     }
 }
 
@@ -340,9 +395,9 @@ private fun MetricTile(label: String, value: String, modifier: Modifier = Modifi
         shape = RoundedCornerShape(13.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 9.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

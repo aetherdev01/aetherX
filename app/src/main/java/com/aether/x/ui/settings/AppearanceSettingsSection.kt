@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,13 +24,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.aether.x.data.AccentPreset
 import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
@@ -132,12 +137,31 @@ fun AppearanceSettingsSection(
         }
 
         SettingGroup(label = "Level Liquid Glass") {
-            // Pertahankan nilai lokal saat drag supaya DataStore tidak membuat slider
-            // tersendat; level deskriptif di bawahnya berubah secara langsung.
+            // Render nilai lokal seketika. Nilai disimpan dengan debounce pendek
+            // saat jari masih menggeser, jadi Liquid Glass/blur langsung berubah
+            // sebelum slider dilepas tanpa menulis DataStore untuk setiap pixel.
             var sliderValue by remember { mutableFloatStateOf(blurStrength.toFloat()) }
             var dragging by remember { mutableStateOf(false) }
+            var lastAppliedBlur by remember { mutableIntStateOf(blurStrength) }
+            val latestSliderValue by rememberUpdatedState(sliderValue)
+            val latestBlurCallback by rememberUpdatedState(onBlurChange)
             LaunchedEffect(blurStrength) {
-                if (!dragging) sliderValue = blurStrength.toFloat()
+                if (!dragging) {
+                    sliderValue = blurStrength.toFloat()
+                    lastAppliedBlur = blurStrength
+                }
+            }
+            LaunchedEffect(dragging) {
+                if (dragging) {
+                    while (true) {
+                        val target = latestSliderValue.roundToInt()
+                        if (target != lastAppliedBlur) {
+                            latestBlurCallback(target)
+                            lastAppliedBlur = target
+                        }
+                        delay(75)
+                    }
+                }
             }
             val liquidGlassLevel = when (sliderValue.roundToInt()) {
                 in 0..12 -> "Mati"
@@ -154,14 +178,14 @@ fun AppearanceSettingsSection(
                 range = 0f..100f,
                 steps = 0,
                 onValueChange = {
-                    // Render nilai lokal selama drag agar animasi tetap mulus;
-                    // simpan hanya sekali saat jari dilepas, bukan setiap pixel.
                     dragging = true
                     sliderValue = it
                 },
                 onValueChangeFinished = {
                     dragging = false
-                    onBlurChange(sliderValue.roundToInt())
+                    val finalValue = sliderValue.roundToInt()
+                    if (finalValue != lastAppliedBlur) onBlurChange(finalValue)
+                    lastAppliedBlur = finalValue
                 },
             )
             Text(
@@ -264,22 +288,28 @@ private fun CustomAccentPickerDialog(
     onDismiss: () -> Unit,
     onApply: (Long) -> Unit,
 ) {
-    val initialHsv = remember(initialColor) {
-        FloatArray(3).also { AndroidColor.colorToHSV(initialColor.toArgb(), it) }
+    var red by remember(initialColor) { mutableIntStateOf((initialColor.red * 255f).roundToInt().coerceIn(0, 255)) }
+    var green by remember(initialColor) { mutableIntStateOf((initialColor.green * 255f).roundToInt().coerceIn(0, 255)) }
+    var blue by remember(initialColor) { mutableIntStateOf((initialColor.blue * 255f).roundToInt().coerceIn(0, 255)) }
+    var hexText by remember(initialColor) {
+        mutableStateOf(String.format(Locale.ROOT, "%06X", 0xFFFFFF and initialColor.toArgb()))
     }
-    var hue by remember(initialColor) { mutableFloatStateOf(initialHsv[0]) }
-    var saturation by remember(initialColor) { mutableFloatStateOf(initialHsv[1]) }
-    var brightness by remember(initialColor) { mutableFloatStateOf(initialHsv[2]) }
-    val previewColor = Color(
-        (AndroidColor.HSVToColor(floatArrayOf(hue, saturation, brightness)).toLong()) and 0xFFFFFFFFL,
-    )
-    val previewHex = String.format(Locale.ROOT, "#%06X", 0xFFFFFF and previewColor.toArgb())
+    val previewArgb = AndroidColor.rgb(red, green, blue)
+    val previewColor = Color(previewArgb.toLong() and 0xFFFFFFFFL)
+    val previewHex = String.format(Locale.ROOT, "#%06X", 0xFFFFFF and previewArgb)
+
+    fun updateHexFromRgb() {
+        hexText = String.format(Locale.ROOT, "%06X", 0xFFFFFF and AndroidColor.rgb(red, green, blue))
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Warna aksen bebas") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            Column(
+                modifier = androidx.compose.ui.Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
@@ -293,39 +323,65 @@ private fun CustomAccentPickerDialog(
                         Text(previewHex, color = com.aether.x.ui.theme.onColorFor(previewColor), style = MaterialTheme.typography.labelMedium)
                     }
                 }
-                TweakSlider(
-                    label = "Hue / warna",
-                    description = "Pilih rona warna.",
-                    valueText = "${hue.roundToInt()}°",
-                    value = hue,
-                    range = 0f..360f,
-                    steps = 0,
-                    onValueChange = { hue = it },
+                OutlinedTextField(
+                    value = hexText,
+                    onValueChange = { raw ->
+                        val clean = raw.removePrefix("#").filter { it.digitToIntOrNull(16) != null }.take(6).uppercase(Locale.ROOT)
+                        hexText = clean
+                        if (clean.length == 6) {
+                            runCatching { AndroidColor.parseColor("#$clean") }.getOrNull()?.let { parsed ->
+                                red = AndroidColor.red(parsed)
+                                green = AndroidColor.green(parsed)
+                                blue = AndroidColor.blue(parsed)
+                            }
+                        }
+                    },
+                    label = { Text("Kode warna HEX") },
+                    prefix = { Text("#") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = "Atur komponen RGB secara bebas atau masukkan kode HEX.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 TweakSlider(
-                    label = "Saturasi",
-                    description = "Geser dari abu-abu menuju warna penuh.",
-                    valueText = "${(saturation * 100f).roundToInt()}%",
-                    value = saturation * 100f,
-                    range = 0f..100f,
-                    steps = 0,
-                    onValueChange = { saturation = (it / 100f).coerceIn(0f, 1f) },
+                    label = "Merah (R)",
+                    description = "Komponen merah dari 0 sampai 255.",
+                    valueText = red.toString(),
+                    value = red.toFloat(),
+                    range = 0f..255f,
+                    steps = 254,
+                    onValueChange = { red = it.roundToInt().coerceIn(0, 255); updateHexFromRgb() },
                 )
                 TweakSlider(
-                    label = "Kecerahan",
-                    description = "Atur seberapa terang warna aksen.",
-                    valueText = "${(brightness * 100f).roundToInt()}%",
-                    value = brightness * 100f,
-                    range = 0f..100f,
-                    steps = 0,
-                    onValueChange = { brightness = (it / 100f).coerceIn(0f, 1f) },
+                    label = "Hijau (G)",
+                    description = "Komponen hijau dari 0 sampai 255.",
+                    valueText = green.toString(),
+                    value = green.toFloat(),
+                    range = 0f..255f,
+                    steps = 254,
+                    onValueChange = { green = it.roundToInt().coerceIn(0, 255); updateHexFromRgb() },
+                )
+                TweakSlider(
+                    label = "Biru (B)",
+                    description = "Komponen biru dari 0 sampai 255.",
+                    valueText = blue.toString(),
+                    value = blue.toFloat(),
+                    range = 0f..255f,
+                    steps = 254,
+                    onValueChange = { blue = it.roundToInt().coerceIn(0, 255); updateHexFromRgb() },
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                onApply(AndroidColor.HSVToColor(floatArrayOf(hue, saturation, brightness)).toLong() and 0xFFFFFFFFL)
-            }) { Text("Terapkan") }
+            TextButton(
+                enabled = hexText.length == 6,
+                onClick = {
+                    onApply(AndroidColor.rgb(red, green, blue).toLong() and 0xFFFFFFFFL)
+                },
+            ) { Text("Terapkan") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
     )

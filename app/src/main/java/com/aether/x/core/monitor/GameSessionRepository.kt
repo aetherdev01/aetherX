@@ -136,11 +136,12 @@ object GameSessionRepository {
             minFps = if (fps != null) minOf(previous.minFps ?: fps, fps) else previous.minFps,
             maxFps = if (fps != null) maxOf(previous.maxFps ?: fps, fps) else previous.maxFps,
             lowFpsCount = previous.lowFpsCount + if (fps != null && fps < 30) 1 else 0,
-            currentCpuPercent = cpu,
+            // Do not erase the last valid reading when a transient read fails.
+            currentCpuPercent = cpu ?: previous.currentCpuPercent,
             cpuCount = previous.cpuCount + if (cpu != null) 1 else 0,
             cpuSum = previous.cpuSum + (cpu?.toLong() ?: 0L),
             maxCpuPercent = if (cpu != null) maxOf(previous.maxCpuPercent ?: cpu, cpu) else previous.maxCpuPercent,
-            currentGpuPercent = gpu,
+            currentGpuPercent = gpu ?: previous.currentGpuPercent,
             gpuCount = previous.gpuCount + if (gpu != null) 1 else 0,
             gpuSum = previous.gpuSum + (gpu?.toLong() ?: 0L),
             maxGpuPercent = if (gpu != null) maxOf(previous.maxGpuPercent ?: gpu, gpu) else previous.maxGpuPercent,
@@ -167,8 +168,21 @@ object GameSessionRepository {
     }
 
     @Synchronized
+    fun deleteSession(sessionId: String): Boolean {
+        val list = mutableSessions.value
+        val target = list.firstOrNull { it.id == sessionId } ?: return false
+        // Active sessions are owned by the monitor service; only completed
+        // recordings can be removed from history.
+        if (target.endedAtMs == null) return false
+        mutableSessions.value = list.filterNot { it.id == sessionId }
+        persist(System.currentTimeMillis())
+        return true
+    }
+
+    @Synchronized
     fun clearHistory() {
-        mutableSessions.value = emptyList()
+        // Preserve an active recording if the caller requests history cleanup.
+        mutableSessions.value = mutableSessions.value.filter { it.endedAtMs == null }
         persist(System.currentTimeMillis())
     }
 
