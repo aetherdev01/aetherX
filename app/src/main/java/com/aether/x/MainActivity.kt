@@ -133,11 +133,11 @@ private fun AetherXRoot(
     }
 
     val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
-    val appPrefsForService by preferences.preferences.collectAsStateWithLifecycle(initialValue = null)
-    LaunchedEffect(privilegeStatus.rootGranted, appPrefsForService?.gameProfiles?.keys) {
-        val hasProfiles = appPrefsForService?.gameProfiles?.isNotEmpty() == true
+    LaunchedEffect(privilegeStatus.rootGranted) {
+        // Butuh berjalan meski belum ada profil tweak: service yang sama juga
+        // merekam sesi game otomatis. Sampling metrik dibuat berkala dan ringan.
         val isRoot = privilegeStatus.rootGranted
-        if (hasProfiles && isRoot) {
+        if (isRoot) {
             GameProfileMonitorService.start(context)
         } else {
             GameProfileMonitorService.stop(context)

@@ -484,9 +484,9 @@
     <string name="game_profile_configured_badge">%1$d tweak diatur</string>
     <string name="game_profile_reset_button">Reset Profil Ini</string>
     <string name="game_profile_reset_toast">Profil game direset ke default.</string>
-    <string name="game_profile_monitor_notification_channel">Pemantau Game Profile</string>
-    <string name="game_profile_monitor_notification_title">Game Profile AetherX aktif</string>
-    <string name="game_profile_monitor_notification_text">Memantau game untuk menerapkan/mereset tweak otomatis</string>
+    <string name="game_profile_monitor_notification_channel">Pemantau Game</string>
+    <string name="game_profile_monitor_notification_title">Game Monitor AetherX aktif</string>
+    <string name="game_profile_monitor_notification_text">Merekam statistik game dan menerapkan profil otomatis</string>
 
     <!-- Rework Game Profile: info aplikasi (package name) + toggle
          dikelompokkan per kategori, alih-alih satu list panjang datar. -->

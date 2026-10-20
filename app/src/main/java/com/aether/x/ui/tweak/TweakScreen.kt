@@ -115,6 +115,7 @@ import com.aether.x.ui.dashboard.DashboardViewModel
 import com.aether.x.ui.dashboard.DeviceStatusSection
 import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
+import com.aether.x.ui.monitor.GameMonitorScreen
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -252,6 +253,7 @@ fun TweakScreen(
                     .then(
 
                         if (selectedSubTab == TweakSubTab.GAME_PROFILE ||
+                            selectedSubTab == TweakSubTab.GAME_MONITOR ||
                             selectedSubTab == TweakSubTab.APP_MANAGER ||
                             selectedSubTab == TweakSubTab.BUILD_PROP ||
                             selectedSubTab == TweakSubTab.TERMINAL
@@ -359,13 +361,21 @@ fun TweakScreen(
                     return@Column
                 }
 
-                if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
+                if (selectedSubTab == TweakSubTab.GAME_MONITOR) {
+                    GameMonitorScreen(
+                        rootGranted = privilegeStatus.rootGranted,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
+                    return@Column
+                }
 
+                if (selectedSubTab == TweakSubTab.GAME_PROFILE) {
                     GameProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-
                     )
                     return@Column
                 }
@@ -592,7 +602,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
     CpuGovernor.UNIVERSAL -> stringResource(R.string.tweak_cpu_governor_universal)
 }
 
-private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
+private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_PROFILE, GAME_MONITOR, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
 
 @Composable
 private fun TweakDrawerContent(
@@ -673,6 +683,15 @@ private fun TweakDrawerContent(
         icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
         selected = selected == TweakSubTab.GAME_PROFILE,
         onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
+        colors = NavigationDrawerItemDefaults.colors(),
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+    )
+
+    NavigationDrawerItem(
+        label = { Text("Monitor Game") },
+        icon = { Icon(imageVector = Icons.Outlined.MonitorHeart, contentDescription = null) },
+        selected = selected == TweakSubTab.GAME_MONITOR,
+        onClick = { onSelect(TweakSubTab.GAME_MONITOR) },
         colors = NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
     )
