@@ -70,7 +70,17 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                 return@launch
             }
             val snapshots = reader.readAll(executor)
-            _state.update { it.copy(loading = false, snapshots = snapshots) }
+            _state.update { current ->
+                val selectedPartition = snapshots.firstOrNull {
+                    it.partition == current.selectedPartition && it.exists
+                }?.partition ?: snapshots.firstOrNull { it.exists }?.partition
+                current.copy(
+                    loading = false,
+                    snapshots = snapshots,
+                    selectedPartition = selectedPartition ?: current.selectedPartition,
+                    searchQuery = if (selectedPartition != null && selectedPartition != current.selectedPartition) "" else current.searchQuery,
+                )
+            }
             refreshBackupList()
         }
     }
@@ -107,10 +117,11 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
             if (pending.partition !in _state.value.backedUpThisSession) {
                 val backupResult = repository.backup(executor, pending.partition)
                 if (backupResult.isFailure) {
+                    val detail = backupResult.exceptionOrNull()?.message.orEmpty()
                     _state.update {
                         it.copy(
                             pendingEdit = null,
-                            message = appString(R.string.buildprop_error_backup_failed, pending.partition.displayLabel),
+                            message = appString(R.string.buildprop_error_backup_failed_detail, pending.partition.displayLabel, detail),
                         )
                     }
                     return@launch
@@ -128,10 +139,17 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
             _state.update {
                 it.copy(
                     pendingEdit = null,
-                    message = if (result.success) {
-                        appString(R.string.buildprop_success_applied, pending.entry.key)
-                    } else {
-                        appString(R.string.buildprop_error_apply_failed, pending.entry.key)
+                    message = when {
+                        result.success && result.outputText.contains("SYSTEMLESS_SAVED_REBOOT") ->
+                            appString(R.string.buildprop_success_systemless_reboot, pending.entry.key)
+                        result.success && result.outputText.contains("SYSTEMLESS_APPLY_OK") ->
+                            appString(R.string.buildprop_success_systemless_live, pending.entry.key)
+                        result.success -> appString(R.string.buildprop_success_applied, pending.entry.key)
+                        else -> appString(
+                            R.string.buildprop_error_apply_failed_detail,
+                            pending.entry.key,
+                            result.errorText.ifBlank { "Periksa akses root dan status partisi." },
+                        )
                     },
                 )
             }
@@ -171,10 +189,15 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
             _state.update {
                 it.copy(
                     pendingRestore = null,
-                    message = if (result.success) {
-                        appString(R.string.buildprop_success_restored, backup.partition.displayLabel)
-                    } else {
-                        appString(R.string.buildprop_error_restore_failed, backup.partition.displayLabel)
+                    message = when {
+                        result.success && result.outputText.contains("RESTORE_SYSTEMLESS_OK") ->
+                            appString(R.string.buildprop_success_restored_systemless, backup.partition.displayLabel)
+                        result.success -> appString(R.string.buildprop_success_restored, backup.partition.displayLabel)
+                        else -> appString(
+                            R.string.buildprop_error_restore_failed_detail,
+                            backup.partition.displayLabel,
+                            result.errorText.ifBlank { "Periksa akses root dan file backup." },
+                        )
                     },
                 )
             }

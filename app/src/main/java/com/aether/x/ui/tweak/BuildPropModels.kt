@@ -25,4 +25,5 @@ data class BuildPropBackup(
     val partition: BuildPropPartition,
     val backupPath: String,
     val timestampMillis: Long,
+    val isSystemless: Boolean = false,
 )

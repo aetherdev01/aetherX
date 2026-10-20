@@ -4,16 +4,24 @@ import com.aether.x.core.shell.ShellExecutor
 
 class BuildPropReader {
 
+    companion object {
+        private const val OVERRIDE_BEGIN = "===AETHERX_OVERRIDES_BEGIN==="
+        private const val OVERRIDE_END = "===AETHERX_OVERRIDES_END==="
+        private const val OVERRIDE_PATH = "/data/adb/modules/aetherx_buildprop/system.prop"
+    }
+
     suspend fun readAll(executor: ShellExecutor): List<BuildPropSnapshot> {
         val script = buildString {
             for (partition in BuildPropPartition.entries) {
                 appendLine("echo ===PART_${partition.name}===")
-                appendLine("if [ -f \"${partition.path}\" ]; then echo EXISTS_YES; else echo EXISTS_NO; fi")
-
-                appendLine("if [ -w \"${partition.path}\" ]; then echo WRITABLE_YES; else echo WRITABLE_NO; fi")
+                appendLine("if [ -f ${shellQuote(partition.path)} ]; then echo EXISTS_YES; else echo EXISTS_NO; fi")
+                appendLine("if [ -w ${shellQuote(partition.path)} ]; then echo WRITABLE_YES; else echo WRITABLE_NO; fi")
                 appendLine("echo ---BODY---")
-                appendLine("cat \"${partition.path}\" 2>/dev/null")
+                appendLine("cat ${shellQuote(partition.path)} 2>/dev/null")
             }
+            appendLine("echo $OVERRIDE_BEGIN")
+            appendLine("if [ -f ${shellQuote(OVERRIDE_PATH)} ]; then cat ${shellQuote(OVERRIDE_PATH)} 2>/dev/null; fi")
+            appendLine("echo $OVERRIDE_END")
         }
         val result = executor.exec(script)
         return parseBlocks(result.output)
@@ -21,10 +29,12 @@ class BuildPropReader {
 
     private fun parseBlocks(lines: List<String>): List<BuildPropSnapshot> {
         val snapshots = mutableListOf<BuildPropSnapshot>()
+        val overrides = linkedMapOf<String, String>()
         var currentPartition: BuildPropPartition? = null
         var exists = false
         var writable = false
         var inBody = false
+        var inOverrides = false
         var bodyLines = mutableListOf<String>()
 
         fun flush() {
@@ -34,6 +44,30 @@ class BuildPropReader {
 
         for (raw in lines) {
             val trimmed = raw.trim()
+            if (trimmed == OVERRIDE_BEGIN) {
+                flush()
+                currentPartition = null
+                inBody = false
+                inOverrides = true
+                bodyLines = mutableListOf()
+                continue
+            }
+            if (trimmed == OVERRIDE_END) {
+                inOverrides = false
+                continue
+            }
+            if (inOverrides) {
+                if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
+                    val separatorIndex = raw.indexOf('=')
+                    if (separatorIndex > 0) {
+                        val key = raw.substring(0, separatorIndex).trim()
+                        val value = raw.substring(separatorIndex + 1).trim()
+                        if (key.isNotEmpty()) overrides[key] = value
+                    }
+                }
+                continue
+            }
+
             val partMatch = Regex("^===PART_(\\w+)===$").find(trimmed)
             if (partMatch != null) {
                 flush()
@@ -51,15 +85,15 @@ class BuildPropReader {
                 "WRITABLE_NO" -> { writable = false; continue }
                 "---BODY---" -> { inBody = true; continue }
             }
-            if (inBody && currentPartition != null) {
-                bodyLines.add(raw)
-            }
+            if (inBody && currentPartition != null) bodyLines.add(raw)
         }
         flush()
 
         val byPartition = snapshots.associateBy { it.partition }
-        return BuildPropPartition.entries.map { p ->
-            byPartition[p] ?: BuildPropSnapshot(p, exists = false, writable = false, entries = emptyList(), rawLineCount = 0)
+        return BuildPropPartition.entries.map { partition ->
+            val snapshot = byPartition[partition]
+                ?: BuildPropSnapshot(partition, exists = false, writable = false, entries = emptyList(), rawLineCount = 0)
+            snapshot.copy(entries = snapshot.entries.map { entry -> entry.copy(value = overrides[entry.key] ?: entry.value) })
         }
     }
 
@@ -91,4 +125,6 @@ class BuildPropReader {
             rawLineCount = bodyLines.size,
         )
     }
+
+    private fun shellQuote(value: String): String = "'" + value.replace("'", "'\''") + "'"
 }

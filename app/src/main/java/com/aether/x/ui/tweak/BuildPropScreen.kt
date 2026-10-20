@@ -27,6 +27,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +55,6 @@ import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
-import kotlinx.coroutines.delay
 
 @Composable
 fun BuildPropScreen(
@@ -64,22 +65,23 @@ fun BuildPropScreen(
 
     val activity = LocalContext.current as? Activity
     var showBackupSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     androidx.compose.runtime.LaunchedEffect(state.message) {
-        state.message?.let {
-            delay(3000)
-            viewModel.consumeMessage()
-        }
+        val message = state.message ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeMessage()
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
+      Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.buildprop_subtitle),
+                text = stringResource(R.string.buildprop_subtitle_updated),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextMuted,
                 modifier = Modifier.weight(1f).padding(bottom = 12.dp, end = 8.dp),
@@ -139,7 +141,11 @@ fun BuildPropScreen(
                 state.visibleEntries.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = stringResource(R.string.buildprop_empty),
+                            text = if (state.snapshots.none { it.exists }) {
+                                stringResource(R.string.buildprop_no_partitions)
+                            } else {
+                                stringResource(R.string.buildprop_empty)
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextMuted,
                         )
@@ -157,6 +163,11 @@ fun BuildPropScreen(
                 }
             }
         }
+      }
+      SnackbarHost(
+          hostState = snackbarHostState,
+          modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+      )
     }
 
     state.pendingEdit?.let { pending ->
@@ -298,7 +309,11 @@ private fun RestoreConfirmDialog(
         icon = Icons.Outlined.History,
         iconTint = AccentBlue,
         title = stringResource(R.string.buildprop_confirm_restore_title),
-        message = stringResource(R.string.buildprop_confirm_restore_warning, backup.partition.displayLabel),
+        message = if (backup.isSystemless) {
+            stringResource(R.string.buildprop_confirm_restore_systemless_warning)
+        } else {
+            stringResource(R.string.buildprop_confirm_restore_warning, backup.partition.displayLabel)
+        },
         confirmLabel = stringResource(R.string.buildprop_confirm_restore_button),
         onConfirm = onConfirm,
         dismissLabel = stringResource(R.string.buildprop_action_cancel),
@@ -332,11 +347,20 @@ private fun BackupListDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm").format(java.util.Date(backup.timestampMillis)),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextPrimary,
-                        )
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm").format(java.util.Date(backup.timestampMillis)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary,
+                            )
+                            Text(
+                                text = stringResource(
+                                    if (backup.isSystemless) R.string.buildprop_backup_systemless else R.string.buildprop_backup_file,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextMuted,
+                            )
+                        }
                         TextButton(onClick = { onRestore(backup) }) {
                             Text(stringResource(R.string.buildprop_action_restore))
                         }

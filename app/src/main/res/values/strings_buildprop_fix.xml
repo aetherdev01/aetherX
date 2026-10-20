@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="buildprop_subtitle_updated">Edit properti build.prop dengan backup otomatis. Pada partisi yang hanya-baca, perubahan disimpan sebagai override systemless dan mungkin memerlukan reboot.</string>
+    <string name="buildprop_backup_systemless">Systemless override (seluruh override AetherX)</string>
+    <string name="buildprop_backup_file">File build.prop</string>
+    <string name="buildprop_confirm_restore_systemless_warning">Semua override system.prop yang dikelola AetherX akan dikembalikan ke kondisi saat backup dibuat, bukan hanya partisi yang dipilih. Reboot diperlukan untuk memulihkan seluruh efek runtime.</string>
+    <string name="buildprop_success_systemless_live">%1$s tersimpan sebagai override systemless dan diterapkan ke sesi aktif.</string>
+    <string name="buildprop_success_systemless_reboot">%1$s tersimpan sebagai override systemless. Reboot untuk memuatnya saat startup.</string>
+    <string name="buildprop_success_restored_systemless">Backup %1$s dipulihkan. Reboot untuk menghapus efek override dari sesi aktif.</string>
+    <string name="buildprop_error_backup_failed_detail">Gagal membuat backup %1$s: %2$s</string>
+    <string name="buildprop_error_apply_failed_detail">Gagal menerapkan %1$s: %2$s</string>
+    <string name="buildprop_error_restore_failed_detail">Gagal memulihkan %1$s: %2$s</string>
+    <string name="buildprop_no_partitions">File build.prop tidak terbaca. Pastikan akses Root aktif dan coba muat ulang.</string>
+</resources>
