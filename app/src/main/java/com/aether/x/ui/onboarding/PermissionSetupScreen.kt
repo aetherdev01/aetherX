@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -75,6 +76,7 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.core.permission.RequestState
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.PermissionMethodCard
 import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.theme.AccentBlue
@@ -234,9 +236,10 @@ fun PermissionSetupScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 10.dp)
-                    .shadow(16.dp, RoundedCornerShape(30.dp)),
+                    .shadow(16.dp, RoundedCornerShape(30.dp))
+                    .aetherCardSurface(shape = RoundedCornerShape(30.dp)),
                 shape = RoundedCornerShape(30.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceCard.copy(alpha = 0.94f)),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                 border = BorderStroke(1.dp, StrokeSubtle.copy(alpha = 0.85f)),
             ) {
                 Column(
@@ -452,8 +455,7 @@ private fun KernelWarningPage(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(SurfaceCardAlt)
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .padding(Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
@@ -646,8 +648,7 @@ private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(SurfaceCardAlt)
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {

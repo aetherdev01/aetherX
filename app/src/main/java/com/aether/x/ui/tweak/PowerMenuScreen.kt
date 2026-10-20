@@ -1,6 +1,7 @@
 package com.aether.x.ui.tweak
 
 import androidx.compose.foundation.background
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,13 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.PopupDialog
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.showAetherToast
 import com.aether.x.ui.theme.Spacing
@@ -182,8 +184,7 @@ private fun PowerRow(action: PowerAction, onClick: (PowerAction) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f))
+            .aetherCardSurface(shape = RoundedCornerShape(16.dp))
             .clickable { onClick(action) }
             .padding(horizontal = Spacing.md, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,

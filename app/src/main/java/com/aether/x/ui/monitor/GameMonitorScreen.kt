@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.monitor.GameSession
 import com.aether.x.core.monitor.GameSessionRepository
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -203,9 +205,12 @@ fun GameMonitorScreen(
                         if (expandedGame == packageName) {
                             gameSessions.forEach { session ->
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aetherCardSurface(shape = RoundedCornerShape(14.dp)),
                                     shape = RoundedCornerShape(14.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                                    color = Color.Transparent,
+                                    tonalElevation = 0.dp,
                                 ) {
                                     Column(
                                         modifier = Modifier
@@ -391,9 +396,10 @@ private fun MetricRow(first: Metric, second: Metric) {
 @Composable
 private fun MetricTile(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.aetherCardSurface(shape = RoundedCornerShape(13.dp)),
         shape = RoundedCornerShape(13.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
     ) {
         Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

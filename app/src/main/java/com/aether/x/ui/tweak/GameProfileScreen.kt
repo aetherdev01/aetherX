@@ -1,8 +1,11 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.ui.draw.clip
+
+import androidx.compose.foundation.background
+
 import android.app.Activity
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +63,7 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.GameMode
 import com.aether.x.data.GameProfile
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.StatusPill
 import com.aether.x.ui.components.TweakSwitch
 import com.aether.x.ui.theme.AccentBlue
@@ -243,8 +246,7 @@ private fun GameListRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.42f))
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -309,8 +311,7 @@ private fun GameListRow(
 private fun ProfileMetric(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.52f))
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {

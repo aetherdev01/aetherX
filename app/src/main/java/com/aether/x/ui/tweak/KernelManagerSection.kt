@@ -1,5 +1,7 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.ui.draw.clip
+
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,7 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,7 @@ import com.aether.x.R
 import com.aether.x.core.kernel.CpuCoreInfo
 import com.aether.x.core.kernel.GpuInfo
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import kotlinx.coroutines.delay
@@ -70,8 +74,7 @@ fun KernelManagerSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surface)
+                .aetherCardSurface(shape = MaterialTheme.shapes.medium)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -209,8 +212,7 @@ private fun CpuCoreCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -401,8 +403,10 @@ private fun PresetChip(
     OutlinedCard(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier,
+        modifier = modifier.aetherCardSurface(shape = MaterialTheme.shapes.large),
         shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.outlinedCardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier

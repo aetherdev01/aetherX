@@ -60,12 +60,18 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
 # Consistent warnings for both C and C++ sources. Do not turn warnings into
 # errors so a new optional native source cannot break the whole application.
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
-    $<$<COMPILE_LANGUAGE:C>:-Wall -Wextra -Wno-unused-parameter>
-    # ANDROID_STL=none is intentional for this C-style native layer. Disable
-    # C++ exception/RTTI generation for every build type (Debug/Release) so
-    # Clang does not emit references to __cxa_begin_catch, std::terminate,
-    # or __gxx_personality_v0 that require a C++ runtime library.
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -fno-exceptions -fno-rtti>
+    # Keep C and C++ options separate so CMake applies each generator expression
+    # reliably to every configuration (Debug, Release, RelWithDebInfo, etc.).
+    $<$<COMPILE_LANGUAGE:C>:-Wall>
+    $<$<COMPILE_LANGUAGE:C>:-Wextra>
+    $<$<COMPILE_LANGUAGE:C>:-Wno-unused-parameter>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-parameter>
+    # Native code deliberately uses the C ABI and does not need a C++ runtime.
+    # These must apply to every C++ translation unit, not just Release flags.
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
 )
 
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD

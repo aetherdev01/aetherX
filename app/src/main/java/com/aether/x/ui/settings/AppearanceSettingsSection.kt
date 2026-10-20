@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
@@ -46,6 +45,8 @@ import kotlinx.coroutines.delay
 import com.aether.x.data.AccentPreset
 import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
+import com.aether.x.ui.components.glassPanel
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.theme.LocalAetherPalette
 import android.graphics.Color as AndroidColor
@@ -234,7 +235,7 @@ private fun ChoicePill(
     Box(
         modifier = Modifier
             .clip(shape)
-            .background(if (selected) primary.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant)
+            .aetherCardSurface(shape = shape)
             .border(
                 width = 1.dp,
                 color = if (selected) primary else Color.Transparent,
@@ -302,8 +303,11 @@ private fun CustomAccentPickerDialog(
         hexText = String.format(Locale.ROOT, "%06X", 0xFFFFFF and AndroidColor.rgb(red, green, blue))
     }
 
-    AlertDialog(
+    androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.glassPanel(RoundedCornerShape(28.dp)),
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
         title = { Text("Warna aksen bebas") },
         text = {
             Column(

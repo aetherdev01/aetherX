@@ -1,5 +1,7 @@
 package com.aether.x.ui.tweak
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -32,12 +34,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aether.x.core.permission.PrivilegeManager
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.theme.AetherMonoFamily
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
@@ -150,8 +152,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                .aetherCardSurface(shape = RoundedCornerShape(16.dp))
                 .verticalScroll(scroll)
                 .padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),

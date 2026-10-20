@@ -4,11 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,7 +17,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-/** Compact AetherX slider without spring/pop animations. */
+/** Compact AetherX slider with a fixed thumb/track and no spring or press animation. */
 @Composable
 fun TweakSlider(
     label: String,
@@ -62,31 +59,18 @@ fun TweakSlider(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 3.dp, bottom = 7.dp, end = 8.dp),
         )
-        Slider(
+        StaticAetherSlider(
             value = value,
             onValueChange = onValueChange,
+            valueRange = range,
+            steps = steps,
+            activeColor = activeColor,
+            inactiveColor = inactiveColor,
+            modifier = Modifier.fillMaxWidth(),
             onValueChangeFinished = {
                 haptic.performIfEnabled(hapticEnabled, HapticFeedbackType.LongPress)
                 onValueChangeFinished?.invoke()
             },
-            valueRange = range,
-            steps = steps,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .referenceSliderVisual(
-                    value = value,
-                    valueRange = range,
-                    activeColor = activeColor,
-                    inactiveColor = inactiveColor,
-                ),
-            colors = SliderDefaults.colors(
-                thumbColor = Color.Transparent,
-                activeTrackColor = Color.Transparent,
-                inactiveTrackColor = Color.Transparent,
-                activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent,
-            ),
         )
     }
 }

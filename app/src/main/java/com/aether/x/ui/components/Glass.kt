@@ -48,7 +48,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
-import com.aether.x.data.CardStyle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -71,14 +70,10 @@ val LocalCardHaze = staticCompositionLocalOf<HazeState?> { null }
 val LocalBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
 
 /**
- * v3.8 — permukaan card sesuai gaya pilihan user (Pengaturan -> Tampilan).
- * SEMUA gaya sekarang memblur latar di belakang card (Haze); gaya hanya
- * menentukan seberapa pekat tint dan bagaimana tepinya:
- *  - GLASS   : tint tipis + garis tepi berkilau  (blur paling terlihat).
- *  - SOLID   : tint pekat + garis tepi tipis.
- *  - OUTLINE : tint sangat tipis + garis tepi aksen.
- *  - SOFT    : tint tonal berwarna aksen, tanpa garis tepi.
- * Slider blur = kekuatan blur; di 0 blur mati dan card kembali ke isi biasa.
+ * Shared Liquid Glass surface for cards and nested panels. The old persisted
+ * card-style preference is intentionally ignored so no screen falls back to a
+ * solid/soft card while the app is using the Liquid Glass visual system.
+ * Slider blur controls the Haze radius and transparency at runtime.
  */
 @Composable
 fun Modifier.aetherCardSurface(
@@ -110,60 +105,39 @@ fun Modifier.aetherCardSurface(
         ),
     )
 
-    return when (s.cardStyle) {
-        CardStyle.GLASS -> this
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        p.surface.copy(alpha = if (blurOn) 0.43f - 0.06f * b else 0.94f),
-                        p.surface.copy(alpha = if (blurOn) 0.36f - 0.04f * b else 0.88f),
-                    ),
+    // Semua kartu utama dan kartu turunan selalu memakai Liquid Glass.
+    // Nilai cardStyle lama yang mungkin tersimpan sebagai SOLID/SOFT tidak
+    // boleh membuat beberapa bagian UI keluar dari bahasa visual kaca.
+    return this
+        .clip(shape)
+        .background(
+            Brush.verticalGradient(
+                listOf(
+                    p.surface.copy(alpha = if (blurOn) 0.43f - 0.06f * b else 0.88f),
+                    p.surface.copy(alpha = if (blurOn) 0.36f - 0.04f * b else 0.80f),
                 ),
-            )
-            .then(frost)
-            // Fine specular edge: a subtle top reflection makes the glass
-            // read as a surface rather than an ordinary translucent card.
-            .drawWithContent {
-                drawContent()
-                val inset = 18.dp.toPx()
-                drawLine(
-                    brush = Brush.horizontalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.02f),
-                            Color.White.copy(alpha = if (p.isDark) 0.25f else 0.72f),
-                            Color.White.copy(alpha = 0.02f),
-                        ),
-                        startX = inset,
-                        endX = size.width - inset,
+            ),
+        )
+        .then(frost)
+        .drawWithContent {
+            drawContent()
+            val inset = 18.dp.toPx()
+            drawLine(
+                brush = Brush.horizontalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.02f),
+                        Color.White.copy(alpha = if (p.isDark) 0.25f else 0.72f),
+                        Color.White.copy(alpha = 0.02f),
                     ),
-                    start = Offset(inset, 1.dp.toPx()),
-                    end = Offset(size.width - inset, 1.dp.toPx()),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
-            .border(1.dp, rim, shape)
-
-        CardStyle.SOLID -> this
-            .clip(shape)
-            .background(p.surface.copy(alpha = if (blurOn) 0.86f else 1f))
-            .then(frost)
-            .border(1.dp, p.stroke.copy(alpha = 0.8f), shape)
-
-        CardStyle.OUTLINE -> this
-            .clip(shape)
-            .background(p.surface.copy(alpha = if (blurOn) 0.36f else 0f))
-            .then(frost)
-            .border(1.2.dp, accent.copy(alpha = 0.55f), shape)
-
-        CardStyle.SOFT -> this
-            .clip(shape)
-            .background(
-                lerp(p.surface, accent, if (p.isDark) 0.14f else 0.09f)
-                    .copy(alpha = if (blurOn) 0.72f else 1f),
+                    startX = inset,
+                    endX = size.width - inset,
+                ),
+                start = Offset(inset, 1.dp.toPx()),
+                end = Offset(size.width - inset, 1.dp.toPx()),
+                strokeWidth = 1.dp.toPx(),
             )
-            .then(frost)
-    }
+        }
+        .border(1.dp, rim, shape)
 }
 
 /**

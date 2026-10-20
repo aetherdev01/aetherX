@@ -21,11 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import com.aether.x.ui.theme.AetherCyanContainer
 import com.aether.x.ui.theme.StrokeSubtle
-import com.aether.x.ui.theme.SurfaceRaised
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextSecondary
 import com.aether.x.ui.theme.TextPrimary
@@ -48,11 +47,9 @@ fun PermissionMethodCard(
     val shape = RoundedCornerShape(26.dp)
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().aetherCardSurface(shape = shape),
         shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (granted) AetherCyanContainer.copy(alpha = 0.42f) else SurfaceRaised.copy(alpha = 0.92f),
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(
             1.dp,
             if (granted) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f) else StrokeSubtle.copy(alpha = 0.82f),

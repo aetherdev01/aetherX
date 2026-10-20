@@ -1,11 +1,9 @@
 package com.aether.x.ui.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -23,17 +21,15 @@ fun CrosshairPreview(
     sizeDp: Float,
     rotationDegrees: Int = 0,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colorScheme.surface,
 ) {
     Canvas(
         modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(backgroundColor),
+            .aetherCardSurface(shape = MaterialTheme.shapes.medium),
     ) {
         val cx = size.width / 2f
         val cy = size.height / 2f
-        val r = (sizeDp.dp.toPx()).coerceAtMost(size.minDimension / 2.4f)
-        val thickness = PREVIEW_THICKNESS_DP.dp.toPx()
+        val r = sizeDp.coerceAtMost(size.minDimension / 2.4f)
+        val thickness = PREVIEW_THICKNESS_DP
         val drawColor = color
         val stroke = Stroke(width = thickness, cap = StrokeCap.Round)
 

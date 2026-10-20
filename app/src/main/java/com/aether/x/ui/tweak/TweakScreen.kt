@@ -653,12 +653,10 @@ private fun TweakDrawerContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.md, vertical = Spacing.xs)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.30f))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                .glassPanel(
                     shape = RoundedCornerShape(16.dp),
+                    blurBoost = 1.05f,
+                    tintAfterBlur = true,
                 )
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
