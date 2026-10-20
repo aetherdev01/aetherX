@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -632,159 +633,168 @@ private fun TweakDrawerContent(
     onlineUserCount: Int,
     onSelect: (TweakSubTab) -> Unit,
 ) {
-    Text(
-        text = stringResource(R.string.app_name),
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.lg),
-    )
-    // Small live presence indicator in the drawer header; it is informational,
-    // not another navigation option.
-    Row(
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.30f))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-                shape = RoundedCornerShape(16.dp),
-            )
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            .fillMaxHeight()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        Icon(
-            imageVector = Icons.Outlined.People,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp),
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.lg),
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Pengguna online",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+        // Small live presence indicator in the drawer header; it is informational,
+        // not another navigation option.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.md, vertical = Spacing.xs)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.30f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                    shape = RoundedCornerShape(16.dp),
+                )
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.People,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
             )
-            Text(
-                text = if (onlineUserCount >= 0) "$onlineUserCount sedang online" else "Menghubungkan…",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Pengguna online",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (onlineUserCount >= 0) "$onlineUserCount sedang online" else "Menghubungkan…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (onlineUserCount >= 0) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.outline,
+                    ),
             )
         }
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(
-                    if (onlineUserCount >= 0) MaterialTheme.colorScheme.tertiary
-                    else MaterialTheme.colorScheme.outline,
-                ),
-        )
-    }
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.nav_dashboard)) },
-        icon = { Icon(imageVector = Icons.Outlined.SpaceDashboard, contentDescription = null) },
-        selected = selected == TweakSubTab.DASHBOARD,
-        onClick = { onSelect(TweakSubTab.DASHBOARD) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-    )
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.nav_tweak)) },
-        icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
-        selected = selected == TweakSubTab.TWEAK,
-        onClick = { onSelect(TweakSubTab.TWEAK) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-    )
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.nav_game_profile)) },
-        icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
-        selected = selected == TweakSubTab.GAME_PROFILE,
-        onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-    )
-
-    NavigationDrawerItem(
-        label = { Text("Monitor Game") },
-        icon = { Icon(imageVector = Icons.Outlined.MonitorHeart, contentDescription = null) },
-        selected = selected == TweakSubTab.GAME_MONITOR,
-        onClick = { onSelect(TweakSubTab.GAME_MONITOR) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-    )
-
-    NavigationDrawerItem(
-        label = { Text("Pusat Kontrol · v3.10") },
-        icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
-        selected = selected == TweakSubTab.V310_CENTER,
-        onClick = { onSelect(TweakSubTab.V310_CENTER) },
-        colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-    )
-
-    if (showRootOnlyItems) {
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
-        )
-        Text(
-            text = stringResource(R.string.drawer_root_only_label),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
-        )
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_app_manager)) },
-            icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
-            selected = selected == TweakSubTab.APP_MANAGER,
-            onClick = { onSelect(TweakSubTab.APP_MANAGER) },
+            label = { Text(stringResource(R.string.nav_dashboard)) },
+            icon = { Icon(imageVector = Icons.Outlined.SpaceDashboard, contentDescription = null) },
+            selected = selected == TweakSubTab.DASHBOARD,
+            onClick = { onSelect(TweakSubTab.DASHBOARD) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.kernel_manager_title)) },
-            icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
-            selected = selected == TweakSubTab.KERNEL_MANAGER,
-            onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
+            label = { Text(stringResource(R.string.nav_tweak)) },
+            icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
+            selected = selected == TweakSubTab.TWEAK,
+            onClick = { onSelect(TweakSubTab.TWEAK) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_build_prop)) },
-            icon = { Icon(imageVector = Icons.Outlined.Code, contentDescription = null) },
-            selected = selected == TweakSubTab.BUILD_PROP,
-            onClick = { onSelect(TweakSubTab.BUILD_PROP) },
+            label = { Text(stringResource(R.string.nav_game_profile)) },
+            icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
+            selected = selected == TweakSubTab.GAME_PROFILE,
+            onClick = { onSelect(TweakSubTab.GAME_PROFILE) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
+
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_root_monitor)) },
+            label = { Text("Monitor Game") },
             icon = { Icon(imageVector = Icons.Outlined.MonitorHeart, contentDescription = null) },
-            selected = selected == TweakSubTab.ROOT_MONITOR,
-            onClick = { onSelect(TweakSubTab.ROOT_MONITOR) },
+            selected = selected == TweakSubTab.GAME_MONITOR,
+            onClick = { onSelect(TweakSubTab.GAME_MONITOR) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
+
         NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_kernel_tools)) },
-            icon = { Icon(imageVector = Icons.Outlined.Build, contentDescription = null) },
-            selected = selected == TweakSubTab.KERNEL_TOOLS,
-            onClick = { onSelect(TweakSubTab.KERNEL_TOOLS) },
+            label = { Text("Pusat Kontrol · v3.10") },
+            icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
+            selected = selected == TweakSubTab.V310_CENTER,
+            onClick = { onSelect(TweakSubTab.V310_CENTER) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
-        NavigationDrawerItem(
-            label = { Text(stringResource(R.string.nav_terminal)) },
-            icon = { Icon(imageVector = Icons.Outlined.Terminal, contentDescription = null) },
-            selected = selected == TweakSubTab.TERMINAL,
-            onClick = { onSelect(TweakSubTab.TERMINAL) },
-            colors = NavigationDrawerItemDefaults.colors(),
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
-        )
+
+        if (showRootOnlyItems) {
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
+            )
+            Text(
+                text = stringResource(R.string.drawer_root_only_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.nav_app_manager)) },
+                icon = { Icon(imageVector = Icons.Outlined.Apps, contentDescription = null) },
+                selected = selected == TweakSubTab.APP_MANAGER,
+                onClick = { onSelect(TweakSubTab.APP_MANAGER) },
+                colors = NavigationDrawerItemDefaults.colors(),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.kernel_manager_title)) },
+                icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
+                selected = selected == TweakSubTab.KERNEL_MANAGER,
+                onClick = { onSelect(TweakSubTab.KERNEL_MANAGER) },
+                colors = NavigationDrawerItemDefaults.colors(),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.nav_build_prop)) },
+                icon = { Icon(imageVector = Icons.Outlined.Code, contentDescription = null) },
+                selected = selected == TweakSubTab.BUILD_PROP,
+                onClick = { onSelect(TweakSubTab.BUILD_PROP) },
+                colors = NavigationDrawerItemDefaults.colors(),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.nav_root_monitor)) },
+                icon = { Icon(imageVector = Icons.Outlined.MonitorHeart, contentDescription = null) },
+                selected = selected == TweakSubTab.ROOT_MONITOR,
+                onClick = { onSelect(TweakSubTab.ROOT_MONITOR) },
+                colors = NavigationDrawerItemDefaults.colors(),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.nav_kernel_tools)) },
+                icon = { Icon(imageVector = Icons.Outlined.Build, contentDescription = null) },
+                selected = selected == TweakSubTab.KERNEL_TOOLS,
+                onClick = { onSelect(TweakSubTab.KERNEL_TOOLS) },
+                colors = NavigationDrawerItemDefaults.colors(),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.nav_terminal)) },
+                icon = { Icon(imageVector = Icons.Outlined.Terminal, contentDescription = null) },
+                selected = selected == TweakSubTab.TERMINAL,
+                onClick = { onSelect(TweakSubTab.TERMINAL) },
+                colors = NavigationDrawerItemDefaults.colors(),
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+        }
     }
 }
 

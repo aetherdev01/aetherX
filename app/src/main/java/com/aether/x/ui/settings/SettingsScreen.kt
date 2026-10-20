@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +42,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
-import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.cardEnterAnimation
 
@@ -55,7 +53,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val prefs by viewModel.state.collectAsStateWithLifecycle()
-    val privilegeStatus by PrivilegeManager.status.collectAsStateWithLifecycle()
     var overlayGranted by remember { mutableStateOf(viewModel.canDrawOverlays()) }
 
     val context = LocalContext.current
@@ -122,25 +119,9 @@ fun SettingsScreen(
         )
 
         SectionCard(
-            title = stringResource(R.string.settings_section_fps_monitor),
-            watermarkIcon = Icons.Outlined.Speed,
-            modifier = Modifier.cardEnterAnimation(index = 2),
-        ) {
-            FpsMonitorSettingsSection(
-                enabled = prefs.fpsMonitorEnabled,
-                style = prefs.fpsMonitorStyle,
-                overlayPermissionGranted = overlayGranted,
-                hasShellAccess = privilegeStatus.hasAccess,
-                onEnabledChange = { enabled -> viewModel.setFpsMonitorEnabled(enabled, activity) },
-                onRequestOverlayPermission = viewModel::openOverlayPermissionSettings,
-                onStyleChange = viewModel::setFpsMonitorStyle,
-            )
-        }
-
-        SectionCard(
             title = "Gerakan UI & Haptik",
             watermarkIcon = Icons.Outlined.Vibration,
-            modifier = Modifier.cardEnterAnimation(index = 3),
+            modifier = Modifier.cardEnterAnimation(index = 2),
         ) {
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -169,7 +150,7 @@ fun SettingsScreen(
         SectionCard(
             title = "Pusat Pembaruan",
             watermarkIcon = Icons.Outlined.Refresh,
-            modifier = Modifier.cardEnterAnimation(index = 4),
+            modifier = Modifier.cardEnterAnimation(index = 3),
         ) {
             SettingsInfoRow("Versi terpasang", BuildConfig.VERSION_NAME)
             val update = updateState.info

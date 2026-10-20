@@ -1,11 +1,14 @@
 package com.aether.x.ui.monitor
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,10 +28,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.monitor.GameSession
 import com.aether.x.core.monitor.GameSessionRepository
@@ -111,10 +119,17 @@ fun GameMonitorScreen(
                     Text("Grafik FPS akan muncul setelah beberapa sampel tersedia.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(
-                    text = "Rata-rata ${valueOrDash(active.averageFps, " FPS")} · Terendah ${valueOrDash(active.minFps, " FPS")} · Sampel FPS di bawah 30: ${active.lowFpsCount}",
+                    text = "AVG ${valueOrDash(active.averageFps, " FPS")} · Terendah ${valueOrDash(active.minFps, " FPS")} · Tertinggi ${valueOrDash(active.maxFps, " FPS")} · Drop di bawah 30: ${active.lowFpsCount}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (active.currentFps != null && active.currentFps < 30) {
+                    Text(
+                        text = "FPS terlalu rendah — peringatan telah dikirim oleh AetherX.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
 
@@ -139,14 +154,27 @@ fun GameMonitorScreen(
                                 .padding(vertical = 5.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = latest.gameName,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                GameAppIcon(packageName = packageName, gameName = latest.gameName)
+                                Column(
                                     modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
+                                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                                ) {
+                                    Text(
+                                        text = latest.gameName,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = "${gameSessions.size} sesi · terakhir ${formatDate(latest.startedAtMs)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                                 Text(
                                     text = if (expandedGame == packageName) "Tutup ↑" else "Detail ↓",
                                     style = MaterialTheme.typography.labelMedium,
@@ -154,12 +182,7 @@ fun GameMonitorScreen(
                                 )
                             }
                             Text(
-                                text = "${gameSessions.size} sesi · terakhir ${formatDate(latest.startedAtMs)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "FPS rata-rata ${valueOrDash(latest.averageFps, "")}  ·  Min ${valueOrDash(latest.minFps, "")}  ·  Suhu maks ${valueOrDash(latest.maxTemperatureC?.let { it.roundToInt() }, "°C")}",
+                                text = "FPS AVG ${valueOrDash(latest.averageFps, "")} · Terendah ${valueOrDash(latest.minFps, "")} · Tertinggi ${valueOrDash(latest.maxFps, "")}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -215,33 +238,6 @@ fun GameMonitorScreen(
                                                     lineColor = MaterialTheme.colorScheme.primary,
                                                 )
                                             }
-                                            val tempPoints = session.samples.mapNotNull { it.temperatureC }
-                                            if (tempPoints.size >= 2) {
-                                                Text("Perubahan suhu", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                                                RealtimeLineChart(
-                                                    values = tempPoints,
-                                                    maxValue = maxOf(45f, tempPoints.maxOrNull() ?: 45f),
-                                                    lineColor = MaterialTheme.colorScheme.tertiary,
-                                                )
-                                            }
-                                            val cpuPoints = session.samples.mapNotNull { it.cpuPercent?.toFloat() }
-                                            if (cpuPoints.size >= 2) {
-                                                Text("Beban CPU", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                                                RealtimeLineChart(
-                                                    values = cpuPoints,
-                                                    maxValue = 100f,
-                                                    lineColor = MaterialTheme.colorScheme.primary,
-                                                )
-                                            }
-                                            val gpuPoints = session.samples.mapNotNull { it.gpuPercent?.toFloat() }
-                                            if (gpuPoints.size >= 2) {
-                                                Text("Beban GPU", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                                                RealtimeLineChart(
-                                                    values = gpuPoints,
-                                                    maxValue = 100f,
-                                                    lineColor = MaterialTheme.colorScheme.secondary,
-                                                )
-                                            }
                                             Text(
                                                 text = "Paket: ${session.packageName}",
                                                 style = MaterialTheme.typography.labelSmall,
@@ -258,10 +254,43 @@ fun GameMonitorScreen(
         }
 
         Text(
-            text = "Catatan: FPS, GPU, dan suhu bergantung pada sensor serta akses yang disediakan perangkat. Tanda — berarti data tidak dapat dibaca; FPS dari gfxinfo tidak didukung oleh semua game native. Suhu yang tampil adalah sensor suhu terbaik yang tersedia, bukan jaminan suhu inti CPU/GPU.",
+            text = "Catatan: grafik hanya menampilkan FPS. AetherX mencoba membaca frame melalui SurfaceFlinger lalu gfxinfo; dukungan tetap bergantung pada versi Android, game, dan akses Root. Metrik CPU, GPU, RAM, serta suhu ditampilkan pada detail sesi bila tersedia.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun GameAppIcon(packageName: String, gameName: String) {
+    val context = LocalContext.current
+    val iconBitmap = remember(packageName) {
+        runCatching {
+            context.packageManager.getApplicationIcon(packageName)
+                .toBitmap(width = 96, height = 96)
+                .asImageBitmap()
+        }.getOrNull()
+    }
+    Surface(
+        modifier = Modifier.size(46.dp),
+        shape = RoundedCornerShape(13.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+    ) {
+        if (iconBitmap != null) {
+            Image(
+                bitmap = iconBitmap,
+                contentDescription = "Ikon $gameName",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(5.dp),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Outlined.SportsEsports,
+                contentDescription = "Ikon $gameName",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(10.dp),
+            )
+        }
     }
 }
 
