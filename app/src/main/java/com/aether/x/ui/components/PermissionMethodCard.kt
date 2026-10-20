@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.theme.StrokeSubtle
+import com.aether.x.ui.theme.SurfaceRaised
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextSecondary
 import com.aether.x.ui.theme.TextPrimary
