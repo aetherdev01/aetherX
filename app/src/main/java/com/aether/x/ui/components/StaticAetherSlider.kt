@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -69,6 +70,7 @@ fun StaticAetherSlider(
             .fillMaxWidth()
             .height(height)
             .semantics {
+                role = Role.Slider
                 progressBarRangeInfo = ProgressBarRangeInfo(
                     current = value.coerceIn(minValue, maxValue),
                     range = valueRange,
@@ -89,6 +91,11 @@ fun StaticAetherSlider(
                     var horizontalDragStarted = false
                     var ended = false
                     var cancelledByVerticalScroll = false
+                    // Limit callback frequency during a drag. Some consumers persist
+                    // values or update expensive effects (for example live blur) on
+                    // every callback, which can make the slider feel sticky.
+                    var lastEmitUptime = 0L
+                    val minEmitIntervalMs = 24L
                     while (!ended) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
@@ -103,12 +110,16 @@ fun StaticAetherSlider(
                                 horizontalDragStarted = true
                             }
                             if (horizontalDragStarted) {
-                                updateFromX(change.position.x, size.width.toFloat(), inset)
+                                if (event.uptimeMillis - lastEmitUptime >= minEmitIntervalMs) {
+                                    updateFromX(change.position.x, size.width.toFloat(), inset)
+                                    lastEmitUptime = event.uptimeMillis
+                                }
                                 change.consume()
                             }
                         } else {
                             if (!cancelledByVerticalScroll) {
-                                // A simple tap selects immediately; a drag uses its final position.
+                                // Always apply the final position so throttling never
+                                // loses the user's exact release value. A tap also updates.
                                 updateFromX(change.position.x, size.width.toFloat(), inset)
                                 latestOnValueChangeFinished?.invoke()
                             }
