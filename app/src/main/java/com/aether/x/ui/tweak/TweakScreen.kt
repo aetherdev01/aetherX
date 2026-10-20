@@ -692,6 +692,13 @@ private fun TweakDrawerContent(
                     ),
             )
         }
+        Text(
+            text = "NAVIGASI",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
+        )
         NavigationDrawerItem(
             label = { Text(stringResource(R.string.nav_dashboard)) },
             icon = { Icon(imageVector = Icons.Outlined.SpaceDashboard, contentDescription = null) },
@@ -707,6 +714,17 @@ private fun TweakDrawerContent(
             onClick = { onSelect(TweakSubTab.TWEAK) },
             colors = NavigationDrawerItemDefaults.colors(),
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.sm),
+        )
+        Text(
+            text = "GAME & MONITORING",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
             label = { Text(stringResource(R.string.nav_game_profile)) },
@@ -726,6 +744,17 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
         )
 
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.sm),
+        )
+        Text(
+            text = "ALAT TAMBAHAN",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
+        )
         NavigationDrawerItem(
             label = { Text("Pusat Kontrol · v3.10") },
             icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },

@@ -61,9 +61,7 @@ fun RealtimeLineChart(
             )
         }
 
-        if (values.size < 2) return@Canvas
-
-        val stepX = width / (values.size - 1).coerceAtLeast(1)
+        if (values.isEmpty()) return@Canvas
 
         fun yFor(value: Float): Float {
             val clamped = value.coerceIn(0f, maxValue)
@@ -73,6 +71,16 @@ fun RealtimeLineChart(
 
         val linePath = Path()
         val fillPath = Path()
+        if (values.size == 1) {
+            val y = yFor(values.first())
+            drawCircle(
+                color = lineColor,
+                radius = 4.dp.toPx(),
+                center = Offset(width - 4.dp.toPx(), y),
+            )
+            return@Canvas
+        }
+        val stepX = width / (values.size - 1).coerceAtLeast(1)
         values.forEachIndexed { index, value ->
             val x = stepX * index
             val y = yFor(value)

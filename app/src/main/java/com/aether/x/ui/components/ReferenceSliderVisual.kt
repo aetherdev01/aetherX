@@ -6,6 +6,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -18,6 +19,10 @@ fun Modifier.referenceSliderVisual(
     valueRange: ClosedFloatingPointRange<Float>,
     activeColor: Color,
     inactiveColor: Color,
+    thumbScale: Float = 1f,
+    thumbLift: Dp = 0.dp,
+    thumbPopColor: Color = Color.Transparent,
+    trackHeight: Dp = 14.dp,
 ): Modifier = drawBehind {
     val inset = 12.dp.toPx()
     val left = inset
@@ -31,14 +36,14 @@ fun Modifier.referenceSliderVisual(
     }
     val centerX = left + span * fraction
     val centerY = size.height / 2f
-    val trackHeight = 14.dp.toPx()
-    val trackCorner = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+    val trackHeightPx = trackHeight.toPx()
+    val trackCorner = CornerRadius(trackHeightPx / 2f, trackHeightPx / 2f)
 
     // Full track: subtle accent tint, not glass or glow.
     drawRoundRect(
         color = inactiveColor,
-        topLeft = Offset(left, centerY - trackHeight / 2f),
-        size = Size(span, trackHeight),
+        topLeft = Offset(left, centerY - trackHeightPx / 2f),
+        size = Size(span, trackHeightPx),
         cornerRadius = trackCorner,
     )
 
@@ -46,8 +51,8 @@ fun Modifier.referenceSliderVisual(
     if (centerX > left) {
         drawRoundRect(
             color = activeColor,
-            topLeft = Offset(left, centerY - trackHeight / 2f),
-            size = Size((centerX - left).coerceAtLeast(0f), trackHeight),
+            topLeft = Offset(left, centerY - trackHeightPx / 2f),
+            size = Size((centerX - left).coerceAtLeast(0f), trackHeightPx),
             cornerRadius = trackCorner,
         )
     }
@@ -59,12 +64,21 @@ fun Modifier.referenceSliderVisual(
         center = Offset(right, centerY),
     )
 
-    // Tall, narrow thumb matching the earlier AetherX slider.
-    val thumbWidth = 8.dp.toPx()
-    val thumbHeight = 42.dp.toPx().coerceAtMost(size.height - 2.dp.toPx())
+    // Thumb expands and lifts with the spring animation while the user holds it.
+    val thumbWidth = 8.dp.toPx() * thumbScale.coerceIn(1f, 1.35f)
+    val thumbHeight = (42.dp.toPx() * thumbScale.coerceIn(1f, 1.35f)).coerceAtMost(size.height + 10.dp.toPx())
+    val thumbCenterY = centerY - thumbLift.toPx()
+    if (thumbPopColor.alpha > 0f) {
+        drawRoundRect(
+            color = thumbPopColor,
+            topLeft = Offset(centerX - thumbWidth * 1.55f / 2f, thumbCenterY - thumbHeight * 0.62f),
+            size = Size(thumbWidth * 1.55f, thumbHeight * 1.24f),
+            cornerRadius = CornerRadius(thumbWidth, thumbWidth),
+        )
+    }
     drawRoundRect(
         color = activeColor,
-        topLeft = Offset(centerX - thumbWidth / 2f, centerY - thumbHeight / 2f),
+        topLeft = Offset(centerX - thumbWidth / 2f, thumbCenterY - thumbHeight / 2f),
         size = Size(thumbWidth, thumbHeight),
         cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f),
     )

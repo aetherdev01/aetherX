@@ -64,7 +64,7 @@ object GameSessionRepository {
     private const val KEY_SESSIONS = "sessions_json"
     private const val MAX_SESSIONS = 20
     private const val MAX_GRAPH_POINTS_PER_SESSION = 180 // ~30 menit terakhir per sesi
-    private const val GRAPH_SAMPLE_INTERVAL_MS = 10_000L
+    private const val GRAPH_SAMPLE_INTERVAL_MS = 5_000L
     private const val PERSIST_INTERVAL_MS = 15_000L
 
     private val mutableSessions = MutableStateFlow<List<GameSession>>(emptyList())
@@ -117,7 +117,7 @@ object GameSessionRepository {
         val activeIndex = list.indexOfFirst { it.endedAtMs == null }
         if (activeIndex < 0) return
         val previous = list[activeIndex]
-        val fps = sample.fps?.takeIf { it in 1..360 }
+        val fps = sample.fps?.takeIf { it in 0..360 }
         val cpu = sample.cpuPercent?.takeIf { it in 0..100 }
         val gpu = sample.gpuPercent?.takeIf { it in 0..100 }
         val temp = sample.temperatureC?.takeIf { it in 10f..100f }

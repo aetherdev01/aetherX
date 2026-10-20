@@ -46,13 +46,8 @@ fun DashboardQuickActions(
         watermarkIcon = Icons.Outlined.Tune,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = "Pintasan fitur utama AetherX.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.Tune,
                     title = "Tweak", description = "Performa & respons",
@@ -64,7 +59,7 @@ fun DashboardQuickActions(
                     onClick = onOpenProfiles,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.MonitorHeart,
                     title = "Monitor", description = if (rootGranted) "Statistik perangkat" else "Perlu izin root",
@@ -93,7 +88,7 @@ private fun DashboardActionTile(
     val contentAlpha = if (enabled) 1f else 0.58f
     Row(
         modifier = modifier
-            .heightIn(min = 78.dp)
+            .heightIn(min = 68.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.42f else 0.22f))
             .border(
@@ -102,13 +97,13 @@ private fun DashboardActionTile(
                 shape = shape,
             )
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(31.dp)
+                .size(28.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.13f else 0.06f)),
             contentAlignment = Alignment.Center,
@@ -117,7 +112,7 @@ private fun DashboardActionTile(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(17.dp),
             )
         }
         Column(
@@ -126,7 +121,7 @@ private fun DashboardActionTile(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha),
                 maxLines = 1,
@@ -136,7 +131,7 @@ private fun DashboardActionTile(
                 text = description,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha),
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }

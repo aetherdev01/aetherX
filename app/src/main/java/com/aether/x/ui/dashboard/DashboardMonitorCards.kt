@@ -55,10 +55,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.Monitor
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
@@ -106,7 +104,7 @@ fun GameActivitySection(
             )
             else -> LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 contentPadding = PaddingValues(vertical = Spacing.xs),
             ) {
                 items(games, key = { it.packageName }) { game ->
@@ -129,14 +127,14 @@ private fun GameActivityCard(
 ) {
     Column(
         modifier = Modifier
-            .width(88.dp) // Lebar kartu game diperbesar
+            .width(80.dp) // Compact game tile keeps the dashboard balanced
             .clip(MaterialTheme.shapes.large) // Radius interaktif (28.dp)
             .clickable(onClick = onClick)
             .padding(vertical = Spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Surface(
-            modifier = Modifier.size(72.dp), // Area ikon diperbesar
+            modifier = Modifier.size(60.dp), // Keep icons balanced with other dashboard cards
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         ) {
@@ -180,7 +178,8 @@ fun DeviceStatusSection(
     modifier: Modifier = Modifier,
 ) {
     SectionCard(
-        title = null,
+        title = "Status perangkat",
+        watermarkIcon = Icons.Outlined.PhoneAndroid,
         modifier = modifier.fillMaxWidth(),
     ) {
         if (info == null) {
@@ -226,13 +225,15 @@ fun DeviceStatusSection(
                 verticalArrangement = Arrangement.spacedBy(Spacing.line),
             ) {
                 Text(
-                    text = "Perangkat terdeteksi",
+                    text = "${info.manufacturer} ${info.model}".trim().ifBlank { "Perangkat Android" },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "${info.manufacturer} ${info.model}".trim(),
+                    text = "Android ${info.androidVersion} · API ${info.sdkInt}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -245,11 +246,11 @@ fun DeviceStatusSection(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
             ) {
                 Text(
-                    text = "READY",
+                    text = if (rootGranted) "ROOT ON" else "ROOT OFF",
                     modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (rootGranted) AetherGreen else AetherRed,
                 )
             }
         }
@@ -291,53 +292,72 @@ fun DeviceStatusSection(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
         )
 
-        // ── Detail: tiap baris punya warna ikon sendiri ───────────────────────
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.item)) {
-            DeviceStatusItem(
-                icon = Icons.Outlined.PhoneAndroid,
-                tint = MaterialTheme.colorScheme.primary,
-                label = "Android",
-                value = "${info.androidVersion} • API ${info.sdkInt}",
-            )
-            DeviceStatusItem(
-                icon = Icons.Outlined.DeveloperBoard,
-                tint = MaterialTheme.colorScheme.primary,
-                label = "Chipset",
-                value = info.socModel.ifBlank { info.hardware.ifBlank { info.board } }.ifBlank { "-" },
-            )
-            DeviceStatusItem(
-                icon = Icons.Outlined.Speed,
-                tint = MaterialTheme.colorScheme.primary,
-                label = "CPU",
-                value = "${info.cpuCores} core • ${info.cpuAbi.ifBlank { "-" }}",
-            )
-            if (info.refreshRateHz > 0f) {
-                DeviceStatusItem(
+        // Spesifikasi inti dibuat dalam grid 2×2 supaya dashboard tidak memanjang.
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                DeviceStatusTile(
+                    icon = Icons.Outlined.Memory,
+                    label = "CPU",
+                    value = "${info.cpuCores} core · ${info.cpuAbi.substringBefore('-').ifBlank { "-" }}",
+                    modifier = Modifier.weight(1f),
+                )
+                DeviceStatusTile(
                     icon = Icons.Outlined.Monitor,
-                    tint = MaterialTheme.colorScheme.primary,
-                    label = "Layar",
-                    value = "${info.refreshRateHz.roundToInt()} Hz",
+                    label = "Refresh rate",
+                    value = if (info.refreshRateHz > 0f) "${info.refreshRateHz.roundToInt()} Hz" else "—",
+                    modifier = Modifier.weight(1f),
                 )
             }
-            if (info.kernelVersion.isNotBlank()) {
-                DeviceStatusItem(
-                    icon = Icons.Outlined.Terminal,
-                    tint = MaterialTheme.colorScheme.primary,
-                    label = "Kernel",
-                    value = info.kernelVersion,
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
+                DeviceStatusTile(
+                    icon = Icons.Outlined.DeveloperBoard,
+                    label = "Chipset",
+                    value = info.socModel.ifBlank { info.hardware.ifBlank { info.board } }.ifBlank { "Tidak diketahui" },
+                    modifier = Modifier.weight(1f),
+                )
+                DeviceStatusTile(
+                    icon = Icons.Outlined.Security,
+                    label = "Akses",
+                    value = if (rootGranted) "Root aktif" else "No Root",
+                    valueColor = if (rootGranted) AetherGreen else AetherRed,
+                    modifier = Modifier.weight(1f),
                 )
             }
-            DeviceStatusItem(
-                icon = Icons.Outlined.Schedule,
-                tint = MaterialTheme.colorScheme.primary,
-                label = "Uptime",
-                value = formatUptime(info.uptimeMillis),
-            )
-            DeviceStatusItem(
-                icon = Icons.Outlined.Security,
-                tint = if (rootGranted) AetherGreen else AetherRed,
-                label = "Akses",
-                value = if (rootGranted) "Root aktif" else "No Root",
+        }
+    }
+}
+
+@Composable
+private fun DeviceStatusTile(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(15.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = valueColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -409,50 +429,3 @@ private fun UsageBar(
     }
 }
 
-private fun formatUptime(millis: Long): String {
-    val totalMinutes = (millis / 60_000L).coerceAtLeast(0L)
-    val days = totalMinutes / (60 * 24)
-    val hours = (totalMinutes / 60) % 24
-    val minutes = totalMinutes % 60
-    return when {
-        days > 0 -> "${days}h ${hours}j ${minutes}m"
-        hours > 0 -> "${hours}j ${minutes}m"
-        else -> "${minutes}m"
-    }
-}
-
-@Composable
-private fun DeviceStatusItem(
-    icon: ImageVector,
-    tint: Color,
-    label: String,
-    value: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(19.dp),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(66.dp),
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelLarge,
-            fontFamily = AetherMonoFamily,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}

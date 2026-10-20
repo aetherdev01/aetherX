@@ -106,17 +106,25 @@ fun GameMonitorScreen(
             }
         }
 
-        if (active != null && active.samples.isNotEmpty()) {
+        if (active != null) {
             SectionCard(title = "FPS sesi aktif", watermarkIcon = Icons.Outlined.Speed) {
                 val fpsPoints = active.samples.mapNotNull { it.fps?.toFloat() }
-                if (fpsPoints.size >= 2) {
-                    RealtimeLineChart(
-                        values = fpsPoints,
-                        maxValue = maxOf(60f, fpsPoints.maxOrNull() ?: 60f),
-                        lineColor = MaterialTheme.colorScheme.primary,
+                RealtimeLineChart(
+                    values = fpsPoints,
+                    maxValue = maxOf(60f, fpsPoints.maxOrNull() ?: 60f),
+                    lineColor = MaterialTheme.colorScheme.primary,
+                )
+                when {
+                    fpsPoints.isEmpty() -> Text(
+                        "Mengumpulkan data FPS… Jika belum muncul, pastikan game terdeteksi di katalog dan akses Root aktif.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                } else {
-                    Text("Grafik FPS akan muncul setelah beberapa sampel tersedia.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    fpsPoints.size < 2 -> Text(
+                        "Sampel pertama masuk; grafik akan terbentuk setelah sampel berikutnya.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Text(
                     text = "AVG ${valueOrDash(active.averageFps, " FPS")} · Terendah ${valueOrDash(active.minFps, " FPS")} · Tertinggi ${valueOrDash(active.maxFps, " FPS")} · Drop di bawah 30: ${active.lowFpsCount}",
@@ -230,13 +238,16 @@ fun GameMonitorScreen(
                                         if (expandedSession == session.id) {
                                             StatsGrid(session = session)
                                             val fpsPoints = session.samples.mapNotNull { it.fps?.toFloat() }
-                                            if (fpsPoints.size >= 2) {
-                                                Text("Grafik FPS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                                                RealtimeLineChart(
-                                                    values = fpsPoints,
-                                                    maxValue = maxOf(60f, fpsPoints.maxOrNull() ?: 60f),
-                                                    lineColor = MaterialTheme.colorScheme.primary,
-                                                )
+                                            Text("Grafik FPS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                                            RealtimeLineChart(
+                                                values = fpsPoints,
+                                                maxValue = maxOf(60f, fpsPoints.maxOrNull() ?: 60f),
+                                                lineColor = MaterialTheme.colorScheme.primary,
+                                            )
+                                            if (fpsPoints.isEmpty()) {
+                                                Text("Tidak ada sampel FPS valid pada sesi ini.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            } else if (fpsPoints.size < 2) {
+                                                Text("Sampel tambahan diperlukan untuk membentuk garis grafik.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                             Text(
                                                 text = "Paket: ${session.packageName}",

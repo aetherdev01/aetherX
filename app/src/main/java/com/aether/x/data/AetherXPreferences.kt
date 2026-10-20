@@ -18,7 +18,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * Daftar ID card Dashboard yang valid. Kartu baru otomatis disisipkan pada
  * posisi default-nya untuk tetap mempertahankan urutan custom milik pengguna.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("quick_actions", "status", "ram", "activity", "bonus")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("status", "quick_actions", "activity", "ram", "bonus")
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
@@ -65,6 +65,8 @@ data class AppPreferences(
     val darkModePref: DarkModePref = DarkModePref.LIGHT,
 
     val accentPreset: AccentPreset = AccentPreset.GRAPHITE,
+    /** Optional user-selected ARGB accent; null means use the selected preset. */
+    val customAccentArgb: Long? = null,
     val appFont: AppFont = AppFont.POPPINS,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
@@ -133,6 +135,7 @@ class AetherXPreferences(private val context: Context) {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DARK_MODE = stringPreferencesKey("dark_mode_pref")
         val ACCENT_PRESET = stringPreferencesKey("accent_preset")
+        val CUSTOM_ACCENT_ARGB = longPreferencesKey("custom_accent_argb")
         val APP_FONT = stringPreferencesKey("app_font")
         val CARD_STYLE = stringPreferencesKey("card_style")
         val BLUR_STRENGTH = intPreferencesKey("blur_strength")
@@ -211,6 +214,7 @@ class AetherXPreferences(private val context: Context) {
                 .getOrDefault(DarkModePref.LIGHT),
             accentPreset = runCatching { AccentPreset.valueOf(prefs[Keys.ACCENT_PRESET] ?: "") }
                 .getOrDefault(AccentPreset.GRAPHITE),
+            customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB],
             appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
                 .getOrDefault(AppFont.POPPINS),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
@@ -285,7 +289,17 @@ class AetherXPreferences(private val context: Context) {
     }
 
     suspend fun setAccentPreset(value: AccentPreset) {
-        context.dataStore.edit { it[Keys.ACCENT_PRESET] = value.name }
+        context.dataStore.edit {
+            it[Keys.ACCENT_PRESET] = value.name
+            it.remove(Keys.CUSTOM_ACCENT_ARGB)
+        }
+    }
+
+    suspend fun setCustomAccentArgb(value: Long?) {
+        context.dataStore.edit { prefs ->
+            if (value == null) prefs.remove(Keys.CUSTOM_ACCENT_ARGB)
+            else prefs[Keys.CUSTOM_ACCENT_ARGB] = value and 0xFFFFFFFFL
+        }
     }
 
     suspend fun setAppFont(value: AppFont) {

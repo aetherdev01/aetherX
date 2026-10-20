@@ -1,14 +1,17 @@
 package com.aether.x.ui.components
 
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -20,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -46,13 +51,41 @@ fun TweakSlider(
     val inactiveColor = activeColor.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.14f else 0.28f)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val isDragged by interactionSource.collectIsDraggedAsState()
+    val isActive = isPressed || isDragged
+    // A deliberately visible spring: the track and thumb pop upward on touch,
+    // then rebound when released instead of using a nearly imperceptible scale.
     val sliderScale by animateFloatAsState(
-        targetValue = if (isPressed) 1.035f else 1f,
+        targetValue = if (isActive) 1.09f else 1f,
         animationSpec = spring(
-            dampingRatio = if (isPressed) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
-            stiffness = if (isPressed) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
+            dampingRatio = if (isActive) Spring.DampingRatioMediumBouncy else Spring.DampingRatioLowBouncy,
+            stiffness = if (isActive) Spring.StiffnessMediumLow else Spring.StiffnessLow,
         ),
-        label = "sliderPressPop",
+        label = "sliderSpringPop",
+    )
+    val thumbScale by animateFloatAsState(
+        targetValue = if (isActive) 1.30f else 1f,
+        animationSpec = spring(
+            dampingRatio = if (isActive) Spring.DampingRatioMediumBouncy else Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "sliderThumbSpring",
+    )
+    val liftDp by animateFloatAsState(
+        targetValue = if (isActive) 4.5f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "sliderLiftSpring",
+    )
+    val trackHeight by animateDpAsState(
+        targetValue = if (isActive) 20.dp else 14.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "sliderTrackSpring",
     )
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -91,12 +124,22 @@ fun TweakSlider(
             interactionSource = interactionSource,
             modifier = Modifier
                 .fillMaxWidth()
+                .height(56.dp)
                 .scale(sliderScale)
+                .shadow(
+                    elevation = if (isActive) 9.dp else 0.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    clip = false,
+                )
                 .referenceSliderVisual(
                     value = value,
                     valueRange = range,
                     activeColor = activeColor,
                     inactiveColor = inactiveColor,
+                    thumbScale = thumbScale,
+                    thumbLift = liftDp.dp,
+                    thumbPopColor = activeColor.copy(alpha = if (isActive) 0.18f else 0f),
+                    trackHeight = trackHeight,
                 ),
             colors = SliderDefaults.colors(
                 // Use the real Slider for interaction and accessibility, while the

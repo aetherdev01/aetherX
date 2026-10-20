@@ -112,6 +112,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.setAccentPreset(value) }
     }
 
+    fun setCustomAccentArgb(value: Long) {
+        viewModelScope.launch { preferences.setCustomAccentArgb(value) }
+    }
+
     fun setBlurStrength(value: Int) {
         viewModelScope.launch { preferences.setBlurStrength(value) }
     }

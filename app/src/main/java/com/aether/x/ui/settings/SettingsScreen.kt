@@ -91,9 +91,11 @@ fun SettingsScreen(
         AppearanceSettingsSection(
             darkModePref = prefs.darkModePref,
             accentPreset = prefs.accentPreset,
+            customAccentArgb = prefs.customAccentArgb,
             blurStrength = prefs.blurStrength,
             onDarkModeChange = viewModel::setDarkModePref,
             onAccentChange = viewModel::setAccentPreset,
+            onCustomAccentChange = viewModel::setCustomAccentArgb,
             onBlurChange = viewModel::setBlurStrength,
             modifier = Modifier.cardEnterAnimation(index = 0),
         )

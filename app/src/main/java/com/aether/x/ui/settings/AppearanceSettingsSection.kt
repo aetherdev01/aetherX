@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
@@ -15,8 +16,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aether.x.data.AccentPreset
@@ -37,6 +43,8 @@ import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.theme.LocalAetherPalette
+import android.graphics.Color as AndroidColor
+import java.util.Locale
 import com.aether.x.ui.theme.Spacing
 import kotlin.math.roundToInt
 
@@ -49,9 +57,11 @@ import kotlin.math.roundToInt
 fun AppearanceSettingsSection(
     darkModePref: DarkModePref,
     accentPreset: AccentPreset,
+    customAccentArgb: Long?,
     blurStrength: Int,
     onDarkModeChange: (DarkModePref) -> Unit,
     onAccentChange: (AccentPreset) -> Unit,
+    onCustomAccentChange: (Long) -> Unit,
     onBlurChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -73,15 +83,52 @@ fun AppearanceSettingsSection(
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 AccentPreset.entries.forEach { preset ->
                     AccentSwatch(
                         color = Color(if (dark) preset.darkArgb else preset.lightArgb),
-                        selected = preset == accentPreset,
+                        selected = customAccentArgb == null && preset == accentPreset,
                         onClick = { onAccentChange(preset) },
                     )
                 }
+                var showCustomColor by remember { mutableStateOf(false) }
+                val customColor = customAccentArgb?.let { Color(it and 0xFFFFFFFFL) }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(customColor ?: MaterialTheme.colorScheme.surfaceVariant)
+                        .border(
+                            width = if (customAccentArgb != null) 2.5.dp else 1.dp,
+                            color = if (customAccentArgb != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
+                            shape = CircleShape,
+                        )
+                        .clickable { showCustomColor = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (customAccentArgb != null) {
+                        Icon(Icons.Outlined.Check, contentDescription = "Warna aksen kustom aktif", tint = com.aether.x.ui.theme.onColorFor(customColor!!), modifier = Modifier.size(20.dp))
+                    } else {
+                        Icon(Icons.Outlined.Add, contentDescription = "Pilih warna aksen bebas", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(21.dp))
+                    }
+                }
+                if (showCustomColor) {
+                    CustomAccentPickerDialog(
+                        initialColor = customColor ?: Color(if (dark) accentPreset.darkArgb else accentPreset.lightArgb),
+                        onDismiss = { showCustomColor = false },
+                        onApply = { argb ->
+                            onCustomAccentChange(argb)
+                            showCustomColor = false
+                        },
+                    )
+                }
             }
+            Text(
+                text = if (customAccentArgb != null) "Warna kustom aktif · #${customAccentArgb.toString(16).takeLast(6).uppercase(Locale.ROOT)}" else "Pilih preset atau tekan + untuk menentukan warna sendiri.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         SettingGroup(label = "Level Liquid Glass") {
@@ -107,12 +154,10 @@ fun AppearanceSettingsSection(
                 range = 0f..100f,
                 steps = 0,
                 onValueChange = {
+                    // Render nilai lokal selama drag agar animasi tetap mulus;
+                    // simpan hanya sekali saat jari dilepas, bukan setiap pixel.
                     dragging = true
-                    val before = sliderValue.roundToInt()
                     sliderValue = it
-                    // Terapkan langsung saat digeser; hanya tulis bila persennya berubah.
-                    val now = it.roundToInt()
-                    if (now != before) onBlurChange(now)
                 },
                 onValueChangeFinished = {
                     dragging = false
@@ -210,4 +255,78 @@ private fun AccentSwatch(color: Color, selected: Boolean, onClick: () -> Unit) {
             )
         }
     }
+}
+
+
+@Composable
+private fun CustomAccentPickerDialog(
+    initialColor: Color,
+    onDismiss: () -> Unit,
+    onApply: (Long) -> Unit,
+) {
+    val initialHsv = remember(initialColor) {
+        FloatArray(3).also { AndroidColor.colorToHSV(initialColor.toArgb(), it) }
+    }
+    var hue by remember(initialColor) { mutableFloatStateOf(initialHsv[0]) }
+    var saturation by remember(initialColor) { mutableFloatStateOf(initialHsv[1]) }
+    var brightness by remember(initialColor) { mutableFloatStateOf(initialHsv[2]) }
+    val previewColor = Color(
+        (AndroidColor.HSVToColor(floatArrayOf(hue, saturation, brightness)).toLong()) and 0xFFFFFFFFL,
+    )
+    val previewHex = String.format(Locale.ROOT, "#%06X", 0xFFFFFF and previewColor.toArgb())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Warna aksen bebas") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = previewColor,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Text("Pratinjau aksen", color = com.aether.x.ui.theme.onColorFor(previewColor), fontWeight = FontWeight.Bold)
+                        Text(previewHex, color = com.aether.x.ui.theme.onColorFor(previewColor), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                TweakSlider(
+                    label = "Hue / warna",
+                    description = "Pilih rona warna.",
+                    valueText = "${hue.roundToInt()}°",
+                    value = hue,
+                    range = 0f..360f,
+                    steps = 0,
+                    onValueChange = { hue = it },
+                )
+                TweakSlider(
+                    label = "Saturasi",
+                    description = "Geser dari abu-abu menuju warna penuh.",
+                    valueText = "${(saturation * 100f).roundToInt()}%",
+                    value = saturation * 100f,
+                    range = 0f..100f,
+                    steps = 0,
+                    onValueChange = { saturation = (it / 100f).coerceIn(0f, 1f) },
+                )
+                TweakSlider(
+                    label = "Kecerahan",
+                    description = "Atur seberapa terang warna aksen.",
+                    valueText = "${(brightness * 100f).roundToInt()}%",
+                    value = brightness * 100f,
+                    range = 0f..100f,
+                    steps = 0,
+                    onValueChange = { brightness = (it / 100f).coerceIn(0f, 1f) },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onApply(AndroidColor.HSVToColor(floatArrayOf(hue, saturation, brightness)).toLong() and 0xFFFFFFFFL)
+            }) { Text("Terapkan") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
+    )
 }

@@ -350,7 +350,7 @@ private fun MembershipPlanCard(modifier: Modifier = Modifier) {
                     text = stringResource(R.string.membership_pro_plan_monthly_badge),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF140C33),
+                    color = Color.White,
                     modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
                 )
             }

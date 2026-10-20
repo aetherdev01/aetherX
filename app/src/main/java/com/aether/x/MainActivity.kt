@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
                 AetherXTheme(
                     darkTheme = darkTheme,
                     accent = prefsValue.accentPreset,
+                    customAccentArgb = prefsValue.customAccentArgb,
                     blurStrength = prefsValue.blurStrength,
                     hapticsEnabled = prefsValue.hapticsEnabled,
                     reduceMotionEnabled = prefsValue.reduceMotionEnabled,

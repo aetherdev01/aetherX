@@ -93,7 +93,7 @@ private fun Color.fit(backgrounds: List<Color>, min: Float, dark: Boolean): Colo
     return target
 }
 
-fun aetherPalette(dark: Boolean, preset: AccentPreset): AetherPalette {
+fun aetherPalette(dark: Boolean, preset: AccentPreset, customAccentArgb: Long? = null): AetherPalette {
     val bg = if (dark) Color(0xFF0D0D11) else Color(0xFFF5F5F8)
     val surface = if (dark) Color(0xFF16161C) else Color(0xFFFFFFFF)
     val surfaceAlt = if (dark) Color(0xFF1C1C24) else Color(0xFFF0F0F4)
@@ -110,7 +110,9 @@ fun aetherPalette(dark: Boolean, preset: AccentPreset): AetherPalette {
         return c to container
     }
 
-    val (accent, accentContainer) = tone(Color(if (dark) preset.darkArgb else preset.lightArgb), if (dark) 0.22f else 0.12f)
+    val baseAccent = customAccentArgb?.let { Color(it and 0xFFFFFFFFL) }
+        ?: Color(if (dark) preset.darkArgb else preset.lightArgb)
+    val (accent, accentContainer) = tone(baseAccent, if (dark) 0.22f else 0.12f)
     val (premium, premiumContainer) = tone(if (dark) Color(0xFFF2B84E) else Color(0xFFB7791F), if (dark) 0.22f else 0.14f)
     val (success, successContainer) = tone(if (dark) Color(0xFF5BE38A) else Color(0xFF2B8A3E), if (dark) 0.20f else 0.12f)
     val (warning, warningContainer) = tone(if (dark) Color(0xFFF2B84E) else Color(0xFFD9730D), if (dark) 0.20f else 0.14f)

@@ -90,7 +90,10 @@ class GameProfileMonitorService : Service() {
             ACTION_STOP -> {
                 serviceScope.launch {
                     resetActiveProfileIfAny()
+                    val executor = PrivilegeManager.getExecutorAwaitingConnection()
+                    if (executor != null) runCatching { activeFpsReader?.stopCapture(executor) }
                     GameSessionRepository.finishActiveSession()
+                    activeFpsReader = null
                     stopSelf()
                 }
                 return START_NOT_STICKY
@@ -287,6 +290,7 @@ class GameProfileMonitorService : Service() {
             if (GameSessionRepository.activeSession != null) {
                 gameMissPolls++
                 if (gameMissPolls >= MISSED_GAME_POLLS_TO_FINISH) {
+                    runCatching { activeFpsReader?.stopCapture(executor) }
                     GameSessionRepository.finishActiveSession()
                     activeRecordedGamePackage = null
                     activeFpsReader = null
@@ -301,13 +305,16 @@ class GameProfileMonitorService : Service() {
 
         gameMissPolls = 0
         if (activeRecordedGamePackage != candidate || GameSessionRepository.activeSession == null) {
+            runCatching { activeFpsReader?.stopCapture(executor) }
             val gameName = runCatching {
                 val info: ApplicationInfo = packageManager.getApplicationInfo(candidate, 0)
                 packageManager.getApplicationLabel(info).toString()
             }.getOrDefault(candidate)
             GameSessionRepository.startSession(applicationContext, candidate, gameName)
             activeRecordedGamePackage = candidate
-            activeFpsReader = GfxInfoFpsReader(candidate)
+            activeFpsReader = GfxInfoFpsReader(candidate).also { reader ->
+                runCatching { reader.startCapture(executor) }
+            }
             lastFpsWasLow = null
             lastMetricSampleAtMs = 0L
             cachedGpuLoadPercent = null
@@ -319,6 +326,12 @@ class GameProfileMonitorService : Service() {
                 message = "AetherX mulai merekam sesi $gameName secara otomatis.",
                 notificationId = MONITOR_EVENT_NOTIFICATION_ID,
             )
+        } else if (activeFpsReader == null) {
+            // Restore the frame reader if the service was recreated while the
+            // repository still held an in-memory active session.
+            activeFpsReader = GfxInfoFpsReader(candidate).also { reader ->
+                runCatching { reader.startCapture(executor) }
+            }
         }
 
         val now = System.currentTimeMillis()
