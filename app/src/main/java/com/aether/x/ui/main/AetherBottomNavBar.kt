@@ -55,6 +55,8 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -126,9 +128,22 @@ fun AetherBottomNavBar(
     val blur = style.blur
     val glassLevel = style.glassLevel
     val surface = palette.surface
-    val outline = palette.stroke
     val isDark = palette.isDark
     val scope = rememberCoroutineScope()
+    val densityForMeasure = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+    val navLabelStyle = MaterialTheme.typography.labelSmall
+    // Ukuran indikator mengikuti panjang label tab, dengan padding yang cukup
+    // dan batas agar indikator tidak menabrak tab tetangga pada layar sempit.
+    val indicatorWidthsPx = remember(items, navLabelStyle, densityForMeasure, textMeasurer) {
+        val horizontalPaddingPx = with(densityForMeasure) { 20.dp.toPx() }
+        val minimumWidthPx = with(densityForMeasure) { 48.dp.toPx() }
+        items.map { item ->
+            (textMeasurer.measure(AnnotatedString(item.label), style = navLabelStyle).size.width + horizontalPaddingPx)
+                .toFloat()
+                .coerceAtLeast(minimumWidthPx)
+        }
+    }
 
     // Posisi pill dalam satuan "indeks slot" (0f..lastIndex). Dibaca HANYA di
     // lambda draw -> tidak memicu recomposition.
@@ -173,15 +188,15 @@ fun AetherBottomNavBar(
     val pop = remember { Animatable(0f) }
     LaunchedEffect(pressed) {
         if (pressed) {
-            pop.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 480f))
+            pop.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 600f))
         } else {
-            pop.animateTo(0f, spring(dampingRatio = 0.80f, stiffness = 480f))
+            pop.animateTo(0f, spring(dampingRatio = 0.88f, stiffness = 600f))
         }
     }
 
     val blurOn = blur > 0.01f && (hazeState != null || LocalAuroraBackdrop.current != null)
     // Radius lebih rendah menekan biaya blur off-screen, terutama saat scroll/transisi.
-    val barBlurRadius = blurRadiusFor(blur).coerceAtMost(24f).dp
+    val barBlurRadius = blurRadiusFor(blur).coerceAtMost(14f).dp
     // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
     // baterai dll.) atau slider = 0, jatuh ke blur sendiri (AuroraBlurLayer) di bawah.
     val crossWindowBlur = rememberCrossWindowBlurEnabled()
@@ -297,9 +312,11 @@ fun AetherBottomNavBar(
     val layers: @Composable (Boolean) -> Unit = { nat ->
         // Di window native, window selebar kapsul meng-clip pill -> sembulan dikecilkan
         // supaya tidak terpotong.
-        val growH = if (nat) 5.dp else 14.dp
-        val growW = if (nat) 0.06f else 0.14f
-        val lift = if (nat) 0.dp else 2.dp
+        // Jelly dibuat horizontal dan sangat ringan: tinggi capsule tetap stabil,
+        // sehingga tidak terlihat seperti cairan saat berubah arah.
+        val growH = 0.75.dp
+        val growW = 0.025f
+        val lift = 0.dp
 
         // ── Latar kaca capsule ───────────────────────────────────────────
         if (nat) {
@@ -308,11 +325,13 @@ fun AetherBottomNavBar(
                 modifier = Modifier
                     .fillMaxSize()
                     .border(
-                        width = 1.dp,
+                        width = 0.75.dp,
                         brush = Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
-                                outline.copy(alpha = 0.55f),
+                                Color.White.copy(alpha = if (isDark) 0.22f else 0.72f),
+                                (if (isDark) Color.White else Color(0xFF8E8E93)).copy(
+                                    alpha = if (isDark) 0.10f else 0.24f,
+                                ),
                             ),
                         ),
                         shape = barShape,
@@ -347,7 +366,7 @@ fun AetherBottomNavBar(
                         )
                     } else {
                         AuroraBlurLayer(
-                            blurRadius = (barBlurRadius.value * 1.15f).dp,
+                            blurRadius = barBlurRadius,
                             shape = barShape,
                             modifier = Modifier.fillMaxSize(),
                             alpha = 0.94f,
@@ -375,11 +394,13 @@ fun AetherBottomNavBar(
                             ),
                         )
                         .border(
-                            width = 1.dp,
+                            width = 0.75.dp,
                             brush = Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = if (isDark) 0.16f else 0.95f),
-                                    outline.copy(alpha = 0.55f),
+                                    Color.White.copy(alpha = if (isDark) 0.22f else 0.72f),
+                                    (if (isDark) Color.White else Color(0xFF8E8E93)).copy(
+                                        alpha = if (isDark) 0.10f else 0.24f,
+                                    ),
                                 ),
                             ),
                             shape = barShape,
@@ -399,24 +420,31 @@ fun AetherBottomNavBar(
                     val velocity = if (isDragging) dragVelocity else pillPosition.velocity
                     val p = pop.value // bisa >1 / <0 sesaat karena overshoot spring
 
-                    // Stretch searah gerak, dibatasi supaya tetap kapsul rapi.
-                    val stretch = 1f + (abs(velocity) * 0.07f).coerceAtMost(0.22f)
-                    val squash = 1f - (abs(velocity) * 0.025f).coerceAtMost(0.07f)
-
-                    val baseW = slot - inset * 2f
-                    val baseH = size.height - inset * 2f
-                    // Menyembul: melebar ~14% dan memanjang ~14dp (melewati tepi capsule).
+                    // Lebar capsule berubah mengikuti label yang sedang dilewati.
+                    // Interpolasi kontinu menjaga sliding halus tanpa resize mendadak.
+                    val lowerIndex = pos.toInt().coerceIn(0, lastIndex)
+                    val upperIndex = (lowerIndex + 1).coerceAtMost(lastIndex)
+                    val fraction = (pos - lowerIndex).coerceIn(0f, 1f)
+                    val lowerWidth = indicatorWidthsPx[lowerIndex]
+                    val upperWidth = indicatorWidthsPx[upperIndex]
+                    val labelWidth = lowerWidth + (upperWidth - lowerWidth) * fraction
+                    val minIndicatorWidth = slot * 0.60f
+                    val maxIndicatorWidth = slot * 1.06f
+                    val baseW = labelWidth.coerceIn(minIndicatorWidth, maxIndicatorWidth)
+                    // Sedikit stretch horizontal saja saat bergerak; tinggi dan radius
+                    // tetap stabil agar pill terasa elastis, bukan bentuk cair.
+                    val stretch = 1f + (abs(velocity) * 0.018f).coerceAtMost(0.055f)
                     val w = baseW * stretch * (1f + growW * p)
-                    val h = baseH * squash + growH.toPx() * p
+                    val baseH = size.height - inset * 2f
+                    val h = baseH + growH.toPx() * p
                     val cx = (pos + 0.5f) * slot
                     val left = cx - w / 2f
                     val top = (size.height - h) / 2f - lift.toPx() * p
 
                     // Neutral iOS-like gray; only icon tint uses the selected accent.
                     val solidness = pillSolidness.value.coerceIn(0f, 1f)
-                    val pillGray = if (isDark) Color(0xFF3A3A3C) else Color(0xFFE5E5EA)
-                    val pillGrayTop = if (isDark) Color(0xFF4A4A4C) else Color(0xFFF2F2F7)
-                    val pillGrayBottom = if (isDark) Color(0xFF343436) else Color(0xFFDADAE0)
+                    val pillGrayTop = if (isDark) Color(0xFF3F3F41) else Color(0xFFE8E8ED)
+                    val pillGrayBottom = if (isDark) Color(0xFF303033) else Color(0xFFE0E0E5)
                     val corner = CornerRadius(h / 2f, h / 2f)
 
                     // Solidness=0 saat sliding (hanya outline tipis), 1 setelah dilepas.
@@ -449,8 +477,8 @@ fun AetherBottomNavBar(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.White.copy(
-                                    alpha = (if (isDark) 0.06f else 0.08f) +
-                                        (if (isDark) 0.10f else 0.26f) * solidness,
+                                    alpha = (if (isDark) 0.04f else 0.05f) +
+                                        (if (isDark) 0.06f else 0.12f) * solidness,
                                 ),
                                 Color.Transparent,
                             ),
@@ -519,7 +547,7 @@ fun AetherBottomNavBar(
             if (nativeReady) {
                 NativeBlurWindow(
                     state = nativeState,
-                    blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).coerceAtMost(24f).dp.roundToPx() },
+                    blurRadiusPx = with(density) { blurRadiusFor(blur).coerceAtMost(14f).dp.roundToPx() },
                     tint = surface.copy(alpha = 0.04f + 0.18f * glassLevel),
                 ) {
                     Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {
