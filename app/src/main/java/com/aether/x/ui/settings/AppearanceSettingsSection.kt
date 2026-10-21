@@ -152,16 +152,18 @@ fun AppearanceSettingsSection(
                     lastAppliedBlur = blurStrength
                 }
             }
-            LaunchedEffect(dragging) {
-                if (dragging) {
-                    while (true) {
-                        val target = latestSliderValue.roundToInt()
-                        if (target != lastAppliedBlur) {
-                            latestBlurCallback(target)
-                            lastAppliedBlur = target
-                        }
-                        delay(75)
-                    }
+            // Debounce saat slider digeser. Jangan menulis ke DataStore setiap 75 ms:
+            // setiap penulisan membangun ulang tema dan seluruh efek Haze, yang bisa
+            // membuat perangkat tertentu crash ketika radius blur terus berubah.
+            // Jika pengguna berhenti sebentar, preview diterapkan; nilai akhir tetap
+            // disimpan langsung ketika slider dilepas.
+            LaunchedEffect(dragging, sliderValue) {
+                if (!dragging) return@LaunchedEffect
+                delay(250)
+                val target = latestSliderValue.roundToInt().coerceIn(0, 100)
+                if (target != lastAppliedBlur) {
+                    latestBlurCallback(target)
+                    lastAppliedBlur = target
                 }
             }
             val liquidGlassLevel = when (sliderValue.roundToInt()) {

@@ -2,122 +2,145 @@ package com.aether.x.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.aether.x.R
 import com.aether.x.data.AppFont
 
-val PoppinsFamily = FontFamily(
-    Font(R.font.gfthin, FontWeight.Thin),
-    Font(R.font.gfextralight, FontWeight.ExtraLight),
-    Font(R.font.gflight, FontWeight.Light),
-    Font(R.font.gfregular, FontWeight.Normal),
-    Font(R.font.gfmedium, FontWeight.Medium),
-    Font(R.font.gfsemibold, FontWeight.SemiBold),
-    Font(R.font.gfbold, FontWeight.Bold),
-    Font(R.font.gfextrabold, FontWeight.ExtraBold),
-    Font(R.font.gfblack, FontWeight.Black),
-)
+/**
+ * AetherX UI typeface.
+ *
+ * Use the platform sans-serif face rather than the old bundled "gf*" face,
+ * whose internal family name is GeForce (not Poppins). This keeps the UI
+ * clean and familiar on Android and avoids adding a large font asset.
+ * The typography scale and tracking are tuned toward the restrained,
+ * readable look commonly associated with SF Pro / MiSans.
+ */
+val AetherUiFontFamily: FontFamily = FontFamily.SansSerif
 
 /**
- * v3.5 — dipakai KHUSUS untuk pembacaan angka teknis yang sering berubah:
- * CPU/GPU %, frekuensi MHz, suhu, FPS, RAM. Ini bukan hiasan — app ini
- * secara harfiah adalah instrumen pembacaan nilai kernel/sysfs, dan angka
- * di font tabular (lebar digit konsisten) terasa jauh lebih "stabil" saat
- * update cepat dibanding proportional font yang lebar tiap digitnya beda-
- * beda (angka terlihat "bergeser" tiap refresh). Pakai
- * `FontFamily.Monospace` bawaan sistem — TIDAK butuh file font tambahan
- * (aman dari batasan aset font kustom), tersedia di semua perangkat
- * Android. JANGAN dipakai untuk body text/label biasa — hanya untuk nilai
- * numerik instrumen.
+ * Backwards-compatible alias for code that may still reference PoppinsFamily.
+ * Existing saved AppFont values are also intentionally mapped to the new UI
+ * family so an upgrade does not keep displaying the previous GeForce face.
  */
-val AetherMonoFamily = FontFamily.Monospace
+@Deprecated("Use AetherUiFontFamily")
+val PoppinsFamily: FontFamily = AetherUiFontFamily
 
-
-/** Keluarga huruf untuk pilihan font di Pengaturan. */
-fun AppFont.toFontFamily(): FontFamily = when (this) {
-    AppFont.POPPINS -> PoppinsFamily
-    // Android system sans-serif keeps the UI lightweight and adapts to the device.
-    // Its display/text hierarchy is shaped by aetherTypography rather than bundling
-    // Apple's SF Pro/SF Compact files, which are licensed for Apple-platform workflows.
-    AppFont.SYSTEM -> FontFamily.SansSerif
-    AppFont.SERIF -> FontFamily.Serif
-    AppFont.MONO -> FontFamily.Monospace
-    AppFont.CASUAL -> FontFamily.Cursive
-}
+/** Monospaced numerals remain reserved for technical readings (CPU/GPU/FPS). */
+val AetherMonoFamily: FontFamily = FontFamily.Monospace
 
 /**
- * v3.6 — tipografi dibangun dari [family] pilihan user (Pengaturan -> Font).
- * Ukuran/weight sama untuk semua font; hanya keluarga hurufnya yang berganti.
+ * Older font preferences are retained for DataStore compatibility, but all
+ * regular app UI text now uses the unified SF/MiSans-inspired sans-serif face.
+ * Technical numeric readouts can still explicitly use [AetherMonoFamily].
  */
+fun AppFont.toFontFamily(): FontFamily = AetherUiFontFamily
+
+/** Consistent typography hierarchy tuned for a modern, clean system UI. */
 fun aetherTypography(family: FontFamily): Typography = Typography(
+    displayLarge = TextStyle(
+        fontFamily = family,
+        fontWeight = FontWeight.Normal,
+        fontSize = 57.sp,
+        lineHeight = 64.sp,
+        letterSpacing = (-0.45).sp,
+    ),
+    displayMedium = TextStyle(
+        fontFamily = family,
+        fontWeight = FontWeight.Normal,
+        fontSize = 45.sp,
+        lineHeight = 52.sp,
+        letterSpacing = (-0.35).sp,
+    ),
+    displaySmall = TextStyle(
+        fontFamily = family,
+        fontWeight = FontWeight.Medium,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
+        letterSpacing = (-0.25).sp,
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = family,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        letterSpacing = (-0.35).sp,
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = family,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-0.3).sp,
+    ),
     headlineSmall = TextStyle(
         fontFamily = family,
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 30.sp,
-        lineHeight = 36.sp,
-        letterSpacing = (-0.4).sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = (-0.2).sp,
     ),
     titleLarge = TextStyle(
         fontFamily = family,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
-        letterSpacing = (-0.1).sp,
+        letterSpacing = (-0.15).sp,
     ),
     titleMedium = TextStyle(
         fontFamily = family,
-        fontWeight = FontWeight.Bold,
-        fontSize = 18.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 17.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
     ),
     titleSmall = TextStyle(
         fontFamily = family,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 21.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 15.sp,
+        lineHeight = 22.sp,
         letterSpacing = 0.sp,
     ),
     bodyLarge = TextStyle(
         fontFamily = family,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        lineHeight = 22.sp,
+        lineHeight = 23.sp,
+        letterSpacing = 0.sp,
     ),
     bodyMedium = TextStyle(
         fontFamily = family,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
         lineHeight = 21.sp,
+        letterSpacing = 0.sp,
     ),
     bodySmall = TextStyle(
         fontFamily = family,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
         lineHeight = 18.sp,
+        letterSpacing = 0.05.sp,
     ),
     labelLarge = TextStyle(
         fontFamily = family,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
-        lineHeight = 19.sp,
-        letterSpacing = 0.1.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.05.sp,
     ),
     labelMedium = TextStyle(
         fontFamily = family,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
         lineHeight = 17.sp,
         letterSpacing = 0.1.sp,
     ),
     labelSmall = TextStyle(
         fontFamily = family,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
+        fontSize = 11.sp,
         lineHeight = 15.sp,
-        letterSpacing = 0.1.sp,
+        letterSpacing = 0.15.sp,
     ),
 )
