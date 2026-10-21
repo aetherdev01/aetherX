@@ -94,7 +94,7 @@ fun AetherXTheme(
 ) {
     val palette = remember(darkTheme, accent, customAccentArgb) { aetherPalette(darkTheme, accent, customAccentArgb) }
     val colorScheme = remember(palette) { palette.toColorScheme() }
-    val typography = remember(font) { aetherTypography(font.toFontFamily()) }
+    val typography = remember { aetherTypography() }
     val style = remember(cardStyle, blurStrength, liquidGlassLevel) {
         AetherStyle(
             cardStyle = cardStyle,

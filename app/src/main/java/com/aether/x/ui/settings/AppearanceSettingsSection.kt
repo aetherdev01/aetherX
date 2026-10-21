@@ -54,8 +54,8 @@ import com.aether.x.ui.theme.Spacing
 import kotlin.math.roundToInt
 
 /**
- * Pengaturan "Tampilan": mode terang/gelap, warna aksen, dan slider blur.
- * (v3.9: opsi font dan gaya card dihapus — tetap Poppins + kaca.) Semua perubahan tersimpan di DataStore
+ * Pengaturan "Tampilan": mode terang/gelap, warna aksen, intensitas blur, dan level Liquid Glass.
+ * Tipografi memakai SF Pro Text/Display secara konsisten. Semua perubahan tersimpan di DataStore
  * dan langsung diterapkan lewat AetherXTheme di MainActivity.
  */
 @Composable
@@ -180,7 +180,7 @@ private fun LevelSlider(
     TweakSlider(
         label = label,
         description = description,
-        valueText = "Level ${level + 1}/5 · ${sliderValue.toInt()}%",
+        valueText = "",
         value = sliderValue,
         range = 0f..100f,
         steps = 3,

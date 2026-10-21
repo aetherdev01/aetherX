@@ -27,9 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,7 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aether.x.BuildConfig
@@ -80,10 +76,8 @@ fun AboutScreen(
             versionName = BuildConfig.VERSION_NAME,
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
-        AboutFeatures(modifier = Modifier.cardEnterAnimation(index = 2))
-        AboutMaintainer(modifier = Modifier.cardEnterAnimation(index = 3))
-        AboutCommunity(modifier = Modifier.cardEnterAnimation(index = 4))
-        AboutPageFooter()
+        AboutMaintainer(modifier = Modifier.cardEnterAnimation(index = 2))
+        AboutCommunity(modifier = Modifier.cardEnterAnimation(index = 3))
     }
 }
 
@@ -229,86 +223,6 @@ private fun AboutBrandHero(versionName: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AboutFeatures(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md),
-    ) {
-        SectionLabel(
-            title = "Yang bisa kamu lakukan",
-            subtitle = "Fitur utama AetherX",
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aetherCardSurface(shape = RoundedCornerShape(25.dp))
-                .padding(Spacing.card),
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) {
-            FeatureLine(
-                icon = Icons.Outlined.Speed,
-                title = "Monitor performa",
-                description = "Pantau informasi perangkat dan aktivitas gaming dengan praktis.",
-            )
-            FeatureLine(
-                icon = Icons.Outlined.Tune,
-                title = "Kontrol fleksibel",
-                description = "Sesuaikan tweak, overlay, dan tampilan sesuai kebutuhan.",
-            )
-            FeatureLine(
-                icon = Icons.Outlined.Bolt,
-                title = "Pengalaman gaming",
-                description = "Satukan alat bantu dan pengaturan penting dalam satu aplikasi.",
-            )
-        }
-    }
-}
-
-@Composable
-private fun FeatureLine(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    description: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(43.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(LocalAetherPalette.current.accentContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = LocalAetherPalette.current.accent,
-                modifier = Modifier.size(21.dp),
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
 private fun AboutMaintainer(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -383,14 +297,12 @@ private fun AboutCommunity(modifier: Modifier = Modifier) {
             CommunityTile(
                 modifier = Modifier.weight(1f),
                 title = "Telegram",
-                description = stringResource(R.string.about_link_telegram_desc),
                 url = stringResource(R.string.about_link_telegram_url),
                 iconRes = R.drawable.ic_social_telegram,
             )
             CommunityTile(
                 modifier = Modifier.weight(1f),
                 title = "YouTube",
-                description = stringResource(R.string.about_link_youtube_desc),
                 url = stringResource(R.string.about_link_youtube_url),
                 iconRes = R.drawable.ic_social_youtube,
             )
@@ -402,7 +314,6 @@ private fun AboutCommunity(modifier: Modifier = Modifier) {
 private fun CommunityTile(
     modifier: Modifier = Modifier,
     title: String,
-    description: String,
     url: String,
     iconRes: Int,
 ) {
@@ -443,21 +354,12 @@ private fun CommunityTile(
                 modifier = Modifier.size(17.dp),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
@@ -472,37 +374,6 @@ private fun SectionLabel(title: String, subtitle: String) {
         )
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun AboutPageFooter() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = Spacing.xs, bottom = Spacing.sm),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-    ) {
-        Box(
-            modifier = Modifier
-                .width(38.dp)
-                .height(3.dp)
-                .clip(CircleShape)
-                .background(LocalAetherPalette.current.accent.copy(alpha = 0.72f)),
-        )
-        Text(
-            text = "AETHERX  ·  ${BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.7.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = "Terima kasih telah menggunakan AetherX.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

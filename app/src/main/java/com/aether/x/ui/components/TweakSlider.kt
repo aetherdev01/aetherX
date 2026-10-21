@@ -46,12 +46,14 @@ fun TweakSlider(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-                color = activeColor,
-                textAlign = TextAlign.End,
-            )
+            if (valueText.isNotBlank()) {
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = activeColor,
+                    textAlign = TextAlign.End,
+                )
+            }
         }
         Text(
             text = description,

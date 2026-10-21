@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -55,6 +54,7 @@ import com.aether.x.ui.theme.StrokeSubtle
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
+import com.aether.x.ui.theme.SFProTextFamily
 
 @Composable
 fun BuildPropScreen(
@@ -218,7 +218,7 @@ private fun BuildPropRow(
             text = entry.key,
             style = MaterialTheme.typography.bodySmall,
             color = TextMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = SFProTextFamily,
             maxLines = 1,
         )
         if (editing) {
@@ -227,7 +227,7 @@ private fun BuildPropRow(
                 onValueChange = { draftValue = it },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+                textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = SFProTextFamily),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = StrokeSubtle,
@@ -255,7 +255,7 @@ private fun BuildPropRow(
                 text = entry.value.ifBlank { stringResource(R.string.buildprop_value_empty) },
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = SFProTextFamily,
                 maxLines = 2,
                 modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)),
             )
@@ -291,7 +291,7 @@ private fun EditConfirmDialog(
         Text(
             text = stringResource(R.string.buildprop_confirm_edit_diff_format, key, oldValue, newValue),
             style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = SFProTextFamily,
             color = TextSecondary,
             modifier = Modifier.padding(top = 4.dp),
         )
