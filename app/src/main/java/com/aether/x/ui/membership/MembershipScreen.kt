@@ -113,9 +113,9 @@ fun MembershipScreen(
         Column {
             Text(
                 text = stringResource(R.string.membership_headline),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.membership_subtitle),

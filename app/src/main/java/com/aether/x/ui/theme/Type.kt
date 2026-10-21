@@ -39,7 +39,10 @@ val AetherMonoFamily = FontFamily.Monospace
 /** Keluarga huruf untuk pilihan font di Pengaturan. */
 fun AppFont.toFontFamily(): FontFamily = when (this) {
     AppFont.POPPINS -> PoppinsFamily
-    AppFont.SYSTEM -> FontFamily.Default
+    // Android system sans-serif keeps the UI lightweight and adapts to the device.
+    // Its display/text hierarchy is shaped by aetherTypography rather than bundling
+    // Apple's SF Pro/SF Compact files, which are licensed for Apple-platform workflows.
+    AppFont.SYSTEM -> FontFamily.SansSerif
     AppFont.SERIF -> FontFamily.Serif
     AppFont.MONO -> FontFamily.Monospace
     AppFont.CASUAL -> FontFamily.Cursive

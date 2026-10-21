@@ -83,7 +83,7 @@ fun AetherXTheme(
     darkTheme: Boolean = false,
     accent: AccentPreset = AccentPreset.GRAPHITE,
     customAccentArgb: Long? = 0xFFB4DE9FL,
-    font: AppFont = AppFont.POPPINS,
+    font: AppFont = AppFont.SYSTEM,
     cardStyle: CardStyle = CardStyle.GLASS,
     blurStrength: Int = 25,
     hapticsEnabled: Boolean = true,

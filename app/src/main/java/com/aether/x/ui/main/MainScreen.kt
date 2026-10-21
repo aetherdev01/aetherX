@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -40,7 +41,6 @@ import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.components.AdBlockGate
 import com.aether.x.ui.components.AetherBackground
-import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
@@ -48,6 +48,7 @@ import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
 import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -156,16 +157,11 @@ fun MainScreen(
         onOpenMembership = { selectedTab = MainTab.MEMBERSHIP },
     )
 
+    // Navbar gets a dedicated HazeState so it cannot contend with the drawer's
+    // HazeState. Its stable page source captures live UI colors behind the capsule;
+    // the transparent glass still lets the animated aurora show through.
+    val navHaze = rememberHazeState(blurEnabled = true)
     AetherBackground {
-    // Gunakan state Haze backdrop yang sudah disediakan AetherBackground.
-    // Jangan membuat HazeState/snapshot layar kedua untuk navbar: pada Dashboard,
-    // TweakScreen sudah mendaftarkan kontennya ke state ini untuk drawer.
-    val navHaze = LocalBackdropHaze.current
-    val navContentModifier = if (navHaze != null) {
-        Modifier.fillMaxSize().hazeSource(navHaze, zIndex = 1f)
-    } else {
-        Modifier
-    }
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
@@ -199,6 +195,13 @@ fun MainScreen(
         // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA
         // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
         // terasa berat di perangkat mid-range.
+        // Keep the source outside AnimatedContent so the Haze source node stays
+        // stable while page transitions are running.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(navHaze, zIndex = 1f),
+        ) {
         AnimatedContent(
             modifier = Modifier.fillMaxSize(),
             targetState = selectedTab,
@@ -228,19 +231,20 @@ fun MainScreen(
                     onlineUserCount = onlineUserCount,
                 )
                 MainTab.MEMBERSHIP -> MembershipScreen(
-                    modifier = navContentModifier,
+                    modifier = Modifier,
                     contentPadding = padding,
                 )
                 MainTab.ABOUT -> AboutScreen(
-                    modifier = navContentModifier,
+                    modifier = Modifier,
                     contentPadding = padding,
                 )
                 MainTab.SETTINGS -> SettingsScreen(
-                    modifier = navContentModifier,
+                    modifier = Modifier,
                     contentPadding = padding,
                     onManageAccess = onManageAccess,
                 )
             }
+        }
         }
     }
     }

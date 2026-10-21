@@ -636,7 +636,9 @@ private fun TweakDrawerContent(
             .fillMaxHeight()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 16.dp),
+            // Leave enough scrollable room so the floating bottom navbar never
+            // covers the last drawer actions on short and low-resolution screens.
+            .padding(bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         Text(

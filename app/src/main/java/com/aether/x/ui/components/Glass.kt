@@ -1,5 +1,7 @@
 package com.aether.x.ui.components
 
+import android.app.ActivityManager
+import android.content.Context
 import android.view.WindowManager
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -45,6 +47,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
@@ -148,10 +151,10 @@ fun Modifier.aetherCardSurface(
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 /** Radius blur (dp) dialog/navbar dari slider 0f..1f. 0 berarti blur dimatikan. */
-fun blurRadiusFor(blur: Float): Float = 12f + 58f * blur
+fun blurRadiusFor(blur: Float): Float = 6f + 30f * blur
 
-/** Radius blur card: sedikit lebih kecil supaya bentuk orb latar masih terbaca di balik card. */
-fun cardBlurRadiusFor(blur: Float): Float = 12f + 46f * blur
+/** Radius card lebih kecil agar Liquid Glass tetap berwarna tanpa memaksa blur radius besar. */
+fun cardBlurRadiusFor(blur: Float): Float = 6f + 22f * blur
 
 /**
  * Panel blur serbaguna (dialog, drawer). Isi di belakang panel di-BLUR
@@ -180,7 +183,7 @@ fun Modifier.glassPanel(
     val p = LocalAetherPalette.current
     val b = LocalAetherStyle.current.blur
     val blurOn = hazeState != null && b > 0.01f
-    val radius = (blurRadiusFor(b) * blurBoost).dp
+    val radius = (blurRadiusFor(b) * blurBoost).coerceAtMost(38f).dp
     // Keep the tint deliberately light so the captured content remains
     // visibly blurred instead of looking like a merely translucent surface.
     val top = if (blurOn) ((0.54f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha) else 0.97f
@@ -429,16 +432,30 @@ fun AetherBackground(
     val bg = p.bg
     val cardHaze = rememberHazeState(blurEnabled = true)
     val backdropHaze = rememberHazeState(blurEnabled = true)
-    val motionTransition = rememberInfiniteTransition(label = "aether-background-motion")
-    val motionState = motionTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 14500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "aether-background-phase",
-    )
+
+    // Low-RAM phones keep the same aurora colors and shapes but stop repainting
+    // the entire background continuously. Regular devices retain the slow motion.
+    val context = LocalContext.current.applicationContext
+    val lowRamDevice = remember(context) {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val memoryInfo = ActivityManager.MemoryInfo()
+        manager?.getMemoryInfo(memoryInfo)
+        manager?.isLowRamDevice == true || memoryInfo.totalMem in 1L..3_500_000_000L
+    }
+    val motionState: State<Float> = if (lowRamDevice) {
+        remember { mutableStateOf(0.48f) }
+    } else {
+        val motionTransition = rememberInfiniteTransition(label = "aether-background-motion")
+        motionTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 22000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "aether-background-phase",
+        )
+    }
     val motion by motionState
     val auroraBackdrop = remember(motionState) { AuroraBackdrop(motionState) }
 

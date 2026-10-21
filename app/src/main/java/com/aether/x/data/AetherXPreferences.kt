@@ -67,7 +67,7 @@ data class AppPreferences(
     val accentPreset: AccentPreset = AccentPreset.GRAPHITE,
     /** Optional user-selected ARGB accent; null means use the selected preset. */
     val customAccentArgb: Long? = 0xFFB4DE9FL,
-    val appFont: AppFont = AppFont.POPPINS,
+    val appFont: AppFont = AppFont.SYSTEM,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
     val blurStrength: Int = 25,
@@ -218,7 +218,7 @@ class AetherXPreferences(private val context: Context) {
                 .getOrDefault(AccentPreset.GRAPHITE),
             customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB] ?: if (prefs[Keys.ACCENT_PRESET] == null) 0xFFB4DE9FL else null,
             appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
-                .getOrDefault(AppFont.POPPINS),
+                .getOrDefault(AppFont.SYSTEM),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
             blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 25).coerceIn(0, 100),

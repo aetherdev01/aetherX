@@ -107,11 +107,11 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_appearance">Slider dikembalikan ke gaya bar biru dengan penanda tegak sesuai desain referensi.</string>
-    <string name="whatsnew_item_blur">Liquid Glass disempurnakan dengan blur lebih terlihat, tint lebih ringan, dan sorotan tepi yang halus.</string>
-    <string name="whatsnew_item_colors">Control Center baru menampilkan rekomendasi tweak dan status kompatibilitas perangkat.</string>
-    <string name="whatsnew_item_dashboard">Dashboard lebih rapi: versi pindah ke header, ikon status seragam, warna tidak norak</string>
-    <string name="whatsnew_item_advanced">Advanced Hardware Monitor menampilkan RAM, frekuensi CPU yang terbaca, suhu sensor, dan penyimpanan.</string>
+    <string name="whatsnew_item_appearance">Tipografi diperbarui dengan sans-serif sistem yang ringan dan hierarki judul bergaya iOS.</string>
+    <string name="whatsnew_item_blur">Radius blur Liquid Glass dioptimalkan agar lebih ringan sambil mempertahankan warna dan gradien dari konten di belakangnya.</string>
+    <string name="whatsnew_item_colors">Sumber blur navbar dipisahkan dari drawer dan distabilkan saat pergantian halaman.</string>
+    <string name="whatsnew_item_dashboard">Header Membership dan About kini mengikuti hierarki judul Pengaturan.</string>
+    <string name="whatsnew_item_advanced">Drawer kini menyediakan area gulir tambahan agar item terbawah tidak tertutup navbar.</string>
     <string name="whatsnew_item_adblock">Riwayat tweak, impor/ekspor profil JSON, Update Center, serta kontrol haptik dan pengurangan animasi ditambahkan.</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab

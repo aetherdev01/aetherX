@@ -83,17 +83,18 @@ data class AetherNavItem(
     val accent: Color,
 )
 
-/** true = coba window blur native OS (dialog); false = blur sendiri (AuroraBlurLayer), jalur default. */
+/** true = coba window blur native OS (dialog); default menggunakan blur Haze inline. */
 private const val USE_NATIVE_NAV_BLUR = false
 
 /**
- * Tab bar capsule v3.6 — kaca.
+ * Tab bar capsule v3.11 — Liquid Glass.
  *
- *  - v3.9: latar capsule = salinan aurora yang di-BLUR (AuroraBlurLayer, RenderEffect
- *    bawaan Compose) + tint kaca putih tipis + garis tepi. Tidak bergantung pada Haze
- *    maupun flag blur OS. Opsional: USE_NATIVE_NAV_BLUR memindahkan navbar ke window
- *    dialog dengan blur native OS. Blur HANYA di latar capsule; floating pill tidak
- *    di-blur. Radius blur dari slider blur.
+ *  - Jalur utama memakai Haze untuk memburamkan konten aktual di belakang navbar.
+ *    Tint tetap tipis supaya warna elemen dan aurora di bawahnya masih terlihat.
+ *  - AuroraBlurLayer hanya menjadi fallback ketika HazeState tidak tersedia.
+ *    Radius dibatasi agar biaya blur tetap wajar pada perangkat kelas bawah.
+ *  - Opsional: USE_NATIVE_NAV_BLUR memindahkan navbar ke window dialog dengan blur
+ *    native OS. Blur hanya berlaku pada latar capsule; floating pill tidak di-blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
  *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
@@ -167,7 +168,7 @@ fun AetherBottomNavBar(
     }
 
     val blurOn = blur > 0.01f && (hazeState != null || LocalAuroraBackdrop.current != null)
-    val barBlurRadius = blurRadiusFor(blur).dp
+    val barBlurRadius = blurRadiusFor(blur).coerceAtMost(32f).dp
     // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
     // baterai dll.) atau slider = 0, jatuh ke blur sendiri (AuroraBlurLayer) di bawah.
     val crossWindowBlur = rememberCrossWindowBlurEnabled()
@@ -305,8 +306,7 @@ fun AetherBottomNavBar(
                     ),
             )
         } else {
-            // Latar kaca: salinan aurora yang di-BLUR (AuroraBlurLayer) + tint kaca + garis tepi.
-            // Tidak bergantung pada Haze maupun blur window OS.
+            // Fallback saja: bila HazeState tidak tersedia, buramkan salinan aurora.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -327,7 +327,7 @@ fun AetherBottomNavBar(
                                 .fillMaxSize()
                                 .hazeEffect(state = hazeState) {
                                     // Radius navbar dibatasi untuk menjaga beban GPU tetap wajar.
-                                    blurRadius = barBlurRadius.value.coerceAtMost(54f).dp
+                                    blurRadius = barBlurRadius
                                     noiseFactor = 0.03f
                                     backgroundColor = surface.copy(alpha = 0.08f)
                                 },
@@ -350,8 +350,8 @@ fun AetherBottomNavBar(
                                 // sama dengan latar sehingga capsule terlihat bening.
                                 if (blurOn) {
                                     listOf(
-                                        Color.White.copy(alpha = if (isDark) 0.11f else 0.38f),
-                                        Color.White.copy(alpha = if (isDark) 0.04f else 0.22f),
+                                        Color.White.copy(alpha = if (isDark) 0.08f else 0.24f),
+                                        Color.White.copy(alpha = if (isDark) 0.03f else 0.10f),
                                     )
                                 } else {
                                     listOf(
@@ -505,7 +505,7 @@ fun AetherBottomNavBar(
             if (nativeReady) {
                 NativeBlurWindow(
                     state = nativeState,
-                    blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).dp.roundToPx() },
+                    blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).coerceAtMost(32f).dp.roundToPx() },
                     tint = surface.copy(alpha = 0.12f),
                 ) {
                     Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {

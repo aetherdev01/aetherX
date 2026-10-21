@@ -62,13 +62,19 @@ fun AboutScreen(
             ),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
-        Text(
-            text = stringResource(R.string.nav_about),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = Spacing.xs),
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Text(
+                text = stringResource(R.string.nav_about),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Informasi versi, pengembang, dan komunitas AetherX.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         MaintainerHeroCard(
             versionName = BuildConfig.VERSION_NAME,
