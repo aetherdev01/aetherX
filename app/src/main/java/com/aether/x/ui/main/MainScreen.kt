@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -191,52 +192,58 @@ fun MainScreen(
             )
         },
     ) { padding ->
-        // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA
-        // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
-        // terasa berat di perangkat mid-range.
-        AnimatedContent(
+        // Tempatkan hazeSource pada container stabil di luar AnimatedContent.
+        // Sumber blur tidak ikut berpindah/berganti node saat transisi antar-tab.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(navHaze),
-            targetState = selectedTab,
-            transitionSpec = {
-                if (reduceMotion) {
-                    fadeIn(tween(80)) togetherWith fadeOut(tween(80))
-                } else {
-                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    (slideInHorizontally(
-                        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
-                        initialOffsetX = { fullWidth -> (fullWidth * 0.025f * dir).roundToInt() },
-                    ) + fadeIn(tween(125))) togetherWith
-                        (slideOutHorizontally(
-                            animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing),
-                            targetOffsetX = { fullWidth -> (-fullWidth * 0.02f * dir).roundToInt() },
-                        ) + fadeOut(tween(90)))
+        ) {
+            // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA
+            // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
+            // terasa berat di perangkat mid-range.
+            AnimatedContent(
+                modifier = Modifier.fillMaxSize(),
+                targetState = selectedTab,
+                transitionSpec = {
+                    if (reduceMotion) {
+                        fadeIn(tween(80)) togetherWith fadeOut(tween(80))
+                    } else {
+                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        (slideInHorizontally(
+                            animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+                            initialOffsetX = { fullWidth -> (fullWidth * 0.025f * dir).roundToInt() },
+                        ) + fadeIn(tween(125))) togetherWith
+                            (slideOutHorizontally(
+                                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing),
+                                targetOffsetX = { fullWidth -> (-fullWidth * 0.02f * dir).roundToInt() },
+                            ) + fadeOut(tween(90)))
+                    }
+                },
+                label = "mainTabContent",
+            ) { tab ->
+                when (tab) {
+                    MainTab.TWEAK -> TweakScreen(
+                        modifier = Modifier,
+                        contentPadding = padding,
+                        viewModel = tweakViewModel,
+                        dashboardRequest = dashboardRequest,
+                        onlineUserCount = onlineUserCount,
+                    )
+                    MainTab.MEMBERSHIP -> MembershipScreen(
+                        modifier = Modifier,
+                        contentPadding = padding,
+                    )
+                    MainTab.ABOUT -> AboutScreen(
+                        modifier = Modifier,
+                        contentPadding = padding,
+                    )
+                    MainTab.SETTINGS -> SettingsScreen(
+                        modifier = Modifier,
+                        contentPadding = padding,
+                        onManageAccess = onManageAccess,
+                    )
                 }
-            },
-            label = "mainTabContent",
-        ) { tab ->
-            when (tab) {
-                MainTab.TWEAK -> TweakScreen(
-                    modifier = Modifier,
-                    contentPadding = padding,
-                    viewModel = tweakViewModel,
-                    dashboardRequest = dashboardRequest,
-                    onlineUserCount = onlineUserCount,
-                )
-                MainTab.MEMBERSHIP -> MembershipScreen(
-                    modifier = Modifier,
-                    contentPadding = padding,
-                )
-                MainTab.ABOUT -> AboutScreen(
-                    modifier = Modifier,
-                    contentPadding = padding,
-                )
-                MainTab.SETTINGS -> SettingsScreen(
-                    modifier = Modifier,
-                    contentPadding = padding,
-                    onManageAccess = onManageAccess,
-                )
             }
         }
     }

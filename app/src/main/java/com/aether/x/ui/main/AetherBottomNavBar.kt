@@ -89,11 +89,11 @@ private const val USE_NATIVE_NAV_BLUR = false
 /**
  * Tab bar capsule v3.6 — kaca.
  *
- *  - v3.9: latar capsule = salinan aurora yang di-BLUR (AuroraBlurLayer, RenderEffect
- *    bawaan Compose) + tint kaca putih tipis + garis tepi. Tidak bergantung pada Haze
- *    maupun flag blur OS. Opsional: USE_NATIVE_NAV_BLUR memindahkan navbar ke window
- *    dialog dengan blur native OS. Blur HANYA di latar capsule; floating pill tidak
- *    di-blur. Radius blur dari slider blur.
+ *  - v3.9: latar capsule memakai Haze untuk mem-blur konten layar yang ada di belakangnya;
+ *    AuroraBlurLayer menjadi fallback bila sumber Haze tidak tersedia. Satu backend blur
+ *    aktif pada satu waktu untuk menghindari efek berlapis. Opsional: USE_NATIVE_NAV_BLUR
+ *    memindahkan navbar ke window dialog dengan blur native OS. Pill tetap tajam; radius
+ *    blur mengikuti slider blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
  *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
@@ -166,7 +166,7 @@ fun AetherBottomNavBar(
         }
     }
 
-    val blurOn = blur > 0.01f && LocalAuroraBackdrop.current != null
+    val blurOn = blur > 0.01f && (hazeState != null || LocalAuroraBackdrop.current != null)
     val barBlurRadius = blurRadiusFor(blur).dp
     // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
     // baterai dll.) atau slider = 0, jatuh ke blur sendiri (AuroraBlurLayer) di bawah.
@@ -305,8 +305,8 @@ fun AetherBottomNavBar(
                     ),
             )
         } else {
-            // Latar kaca: salinan aurora yang di-BLUR (AuroraBlurLayer) + tint kaca + garis tepi.
-            // Tidak bergantung pada Haze maupun blur window OS.
+            // Latar kaca: blur konten layar melalui Haze bila tersedia, Aurora sebagai fallback,
+            // lalu tint kaca dan garis tepi. Hanya satu backend blur aktif pada satu waktu.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -319,15 +319,10 @@ fun AetherBottomNavBar(
                     .clip(barShape),
             ) {
                 if (blurOn) {
-                    AuroraBlurLayer(
-                        blurRadius = (barBlurRadius.value * 1.15f).dp,
-                        shape = barShape,
-                        modifier = Modifier.fillMaxSize(),
-                        alpha = 0.94f,
-                    )
-                    // Blur konten layar (kartu dll.) yang lewat di belakang kapsul,
-                    // digambar di atas blur aurora.
                     if (hazeState != null) {
+                        // Gunakan satu backend blur saja: Haze menangkap konten layar
+                        // di belakang navbar. Menumpuk Haze dan RenderEffect Aurora pada
+                        // area yang sama dapat memicu crash/rendering bermasalah di GPU.
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -336,6 +331,14 @@ fun AetherBottomNavBar(
                                     noiseFactor = 0.03f
                                     backgroundColor = surface.copy(alpha = 0.08f)
                                 },
+                        )
+                    } else {
+                        // Fallback bila sumber Haze tidak tersedia.
+                        AuroraBlurLayer(
+                            blurRadius = (barBlurRadius.value * 1.15f).dp,
+                            shape = barShape,
+                            modifier = Modifier.fillMaxSize(),
+                            alpha = 0.94f,
                         )
                     }
                 }
