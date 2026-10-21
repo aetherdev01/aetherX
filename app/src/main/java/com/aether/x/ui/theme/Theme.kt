@@ -81,9 +81,9 @@ private val AetherXShapes = Shapes(
 @Composable
 fun AetherXTheme(
     darkTheme: Boolean = false,
-    accent: AccentPreset = AccentPreset.GRAPHITE,
-    customAccentArgb: Long? = 0xFFB4DE9FL,
-    font: AppFont = AppFont.SYSTEM,
+    accent: AccentPreset = AccentPreset.SAGE,
+    customAccentArgb: Long? = null,
+    font: AppFont = AppFont.POPPINS,
     cardStyle: CardStyle = CardStyle.GLASS,
     blurStrength: Int = 25,
     hapticsEnabled: Boolean = true,

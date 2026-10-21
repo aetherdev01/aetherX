@@ -23,19 +23,16 @@ private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("status", "recent_games", "gam
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
 /**
- * v3.6 — preset warna aksen tema. Nilai disimpan sebagai ARGB Long (bukan
- * Compose Color) supaya layer data tidak bergantung pada Compose. Tiap
- * preset punya varian terang (kontras aman di atas putih) dan gelap.
- * Default GRAPHITE: aksen abu-abu netral dengan kontras yang sesuai untuk tema terang dan gelap.
+ * Lima preset aksen modern. Nilai tetap disimpan sebagai ARGB Long supaya
+ * layer data tidak bergantung pada Compose. Warna kustom tambahan tersedia
+ * melalui pemilih warna pada Pengaturan > Tampilan.
  */
 enum class AccentPreset(val label: String, val lightArgb: Long, val darkArgb: Long) {
-    ORCHID("Orchid", 0xFF7048E8, 0xFFA78BFA),
-    ROSE("Rose", 0xFFD6336C, 0xFFF783AC),
-    CORAL("Coral", 0xFFE8590C, 0xFFFF9A5C),
-    AMBER("Amber", 0xFFC77700, 0xFFF2B84E),
-    OCEAN("Ocean", 0xFF1C7ED6, 0xFF5AA9FF),
-    MINT("Mint", 0xFF0CA678, 0xFF4ADE9F),
-    GRAPHITE("Graphite", 0xFF343A40, 0xFFCED4DA),
+    SAGE("Sage", 0xFFB4DE9F, 0xFFB4DE9F),
+    SKY("Sky", 0xFFA8C7FA, 0xFFA8C7FA),
+    LAVENDER("Lavender", 0xFFC7B5F5, 0xFFC7B5F5),
+    ROSE("Rose", 0xFFF2A7C7, 0xFFF2A7C7),
+    AMBER("Amber", 0xFFF6D28B, 0xFFF6D28B),
 }
 
 /** v3.6 — pilihan font UI. POPPINS = font bawaan app (res/font), sisanya font sistem. */
@@ -64,10 +61,10 @@ data class AppPreferences(
 
     val darkModePref: DarkModePref = DarkModePref.LIGHT,
 
-    val accentPreset: AccentPreset = AccentPreset.GRAPHITE,
+    val accentPreset: AccentPreset = AccentPreset.SAGE,
     /** Optional user-selected ARGB accent; null means use the selected preset. */
-    val customAccentArgb: Long? = 0xFFB4DE9FL,
-    val appFont: AppFont = AppFont.SYSTEM,
+    val customAccentArgb: Long? = null,
+    val appFont: AppFont = AppFont.POPPINS,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
     val blurStrength: Int = 25,
@@ -215,13 +212,13 @@ class AetherXPreferences(private val context: Context) {
             darkModePref = runCatching { DarkModePref.valueOf(prefs[Keys.DARK_MODE] ?: "") }
                 .getOrDefault(DarkModePref.LIGHT),
             accentPreset = runCatching { AccentPreset.valueOf(prefs[Keys.ACCENT_PRESET] ?: "") }
-                .getOrDefault(AccentPreset.GRAPHITE),
-            customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB] ?: if (prefs[Keys.ACCENT_PRESET] == null) 0xFFB4DE9FL else null,
+                .getOrDefault(AccentPreset.SAGE),
+            customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB],
             appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
-                .getOrDefault(AppFont.SYSTEM),
+                .getOrDefault(AppFont.POPPINS),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
-            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 25).coerceIn(0, 100),
+            blurStrength = (((prefs[Keys.BLUR_STRENGTH] ?: 25).coerceIn(0, 100) + 12) / 25) * 25,
             hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
             reduceMotionEnabled = prefs[Keys.REDUCE_MOTION_ENABLED] ?: false,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
@@ -320,7 +317,7 @@ class AetherXPreferences(private val context: Context) {
     }
 
     suspend fun setBlurStrength(value: Int) {
-        context.dataStore.edit { it[Keys.BLUR_STRENGTH] = value.coerceIn(0, 100) }
+        context.dataStore.edit { it[Keys.BLUR_STRENGTH] = ((value.coerceIn(0, 100) + 12) / 25) * 25 }
     }
 
     suspend fun setHapticsEnabled(enabled: Boolean) {

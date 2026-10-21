@@ -32,7 +32,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +39,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import com.aether.x.data.AccentPreset
 import com.aether.x.data.DarkModePref
 import com.aether.x.ui.components.SectionCard
@@ -91,7 +90,7 @@ fun AppearanceSettingsSection(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AccentPreset.entries.forEach { preset ->
+                listOf(AccentPreset.SAGE, AccentPreset.SKY, AccentPreset.LAVENDER, AccentPreset.ROSE, AccentPreset.AMBER).forEach { preset ->
                     AccentSwatch(
                         color = Color(if (dark) preset.darkArgb else preset.lightArgb),
                         selected = customAccentArgb == null && preset == accentPreset,
@@ -137,66 +136,77 @@ fun AppearanceSettingsSection(
             )
         }
 
-        SettingGroup(label = "Level Liquid Glass") {
-            // Render nilai lokal seketika. Nilai disimpan dengan debounce pendek
-            // saat jari masih menggeser, jadi Liquid Glass/blur langsung berubah
-            // sebelum slider dilepas tanpa menulis DataStore untuk setiap pixel.
-            var sliderValue by remember { mutableFloatStateOf(blurStrength.toFloat()) }
+        SettingGroup(label = "Liquid Glass & Blur") {
+            // Slider memiliki lima nilai pasti: 0, 25, 50, 75, dan 100.
+            // Setiap perpindahan level langsung diterapkan saat jari digeser;
+            // callback hanya dipanggil ketika level benar-benar berubah.
+            fun snapGlassLevel(value: Float): Int =
+                (value / 25f).roundToInt().coerceIn(0, 4) * 25
+
+            var sliderValue by remember { mutableFloatStateOf(snapGlassLevel(blurStrength.toFloat()).toFloat()) }
             var dragging by remember { mutableStateOf(false) }
-            var lastAppliedBlur by remember { mutableIntStateOf(blurStrength) }
-            val latestSliderValue by rememberUpdatedState(sliderValue)
-            val latestBlurCallback by rememberUpdatedState(onBlurChange)
+            var lastAppliedBlur by remember { mutableIntStateOf(snapGlassLevel(blurStrength.toFloat())) }
+
             LaunchedEffect(blurStrength) {
                 if (!dragging) {
-                    sliderValue = blurStrength.toFloat()
-                    lastAppliedBlur = blurStrength
+                    val normalized = snapGlassLevel(blurStrength.toFloat())
+                    sliderValue = normalized.toFloat()
+                    lastAppliedBlur = normalized
                 }
             }
-            // Debounce saat slider digeser. Jangan menulis ke DataStore setiap 75 ms:
-            // setiap penulisan membangun ulang tema dan seluruh efek Haze, yang bisa
-            // membuat perangkat tertentu crash ketika radius blur terus berubah.
-            // Jika pengguna berhenti sebentar, preview diterapkan; nilai akhir tetap
-            // disimpan langsung ketika slider dilepas.
-            LaunchedEffect(dragging, sliderValue) {
-                if (!dragging) return@LaunchedEffect
-                delay(250)
-                val target = latestSliderValue.roundToInt().coerceIn(0, 100)
-                if (target != lastAppliedBlur) {
-                    latestBlurCallback(target)
-                    lastAppliedBlur = target
-                }
-            }
-            val liquidGlassLevel = when (sliderValue.roundToInt()) {
-                in 0..12 -> "Mati"
-                in 13..37 -> "Lembut"
-                in 38..62 -> "Seimbang"
-                in 63..87 -> "Kuat"
-                else -> "Ultra"
-            }
+
+            val currentLevel = (snapGlassLevel(sliderValue) / 25).coerceIn(0, 4)
+            val levelNames = listOf("Mati", "Lembut", "Seimbang", "Kuat", "Ultra")
+
             TweakSlider(
-                label = "Intensitas",
-                description = "Geser untuk mengatur efek kaca dan blur pada card, dialog, drawer, serta navbar.",
-                valueText = "${sliderValue.roundToInt()}%",
+                label = "Intensitas efek",
+                description = "Satu slider mengatur kekuatan Liquid Glass dan blur pada card, dialog, drawer, serta navbar secara langsung.",
+                valueText = "Level ${currentLevel + 1}/5 · ${sliderValue.roundToInt()}%",
                 value = sliderValue,
                 range = 0f..100f,
-                steps = 0,
-                onValueChange = {
+                steps = 3,
+                onValueChange = { rawValue ->
+                    val target = snapGlassLevel(rawValue)
                     dragging = true
-                    sliderValue = it
+                    sliderValue = target.toFloat()
+                    if (target != lastAppliedBlur) {
+                        lastAppliedBlur = target
+                        onBlurChange(target)
+                    }
                 },
                 onValueChangeFinished = {
                     dragging = false
-                    val finalValue = sliderValue.roundToInt()
-                    if (finalValue != lastAppliedBlur) onBlurChange(finalValue)
-                    lastAppliedBlur = finalValue
+                    val finalValue = snapGlassLevel(sliderValue)
+                    sliderValue = finalValue.toFloat()
+                    if (finalValue != lastAppliedBlur) {
+                        lastAppliedBlur = finalValue
+                        onBlurChange(finalValue)
+                    }
                 },
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 1.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                levelNames.forEachIndexed { index, name ->
+                    Text(
+                        text = name,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (index == currentLevel) FontWeight.Bold else FontWeight.Normal,
+                        color = if (index == currentLevel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             Text(
-                text = "Level Liquid Glass → $liquidGlassLevel",
+                text = "Level ${currentLevel + 1} dari 5 · ${levelNames[currentLevel]}",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 3.dp),
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }
