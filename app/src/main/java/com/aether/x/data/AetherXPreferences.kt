@@ -29,10 +29,15 @@ enum class DarkModePref { SYSTEM, LIGHT, DARK }
  * Default GRAPHITE: aksen abu-abu netral dengan kontras yang sesuai untuk tema terang dan gelap.
  */
 enum class AccentPreset(val label: String, val lightArgb: Long, val darkArgb: Long) {
-    ORCHID("Orchid", 0xFF7048E8, 0xFFA78BFA),
+    // Preset baru untuk palet AetherX; nilai lama tetap dipertahankan agar
+    // preferensi pengguna dari versi sebelumnya tetap kompatibel.
+    SAGE("Sage", 0xFFB4DE9F, 0xFFB4DE9F),
+    SKY("Sky", 0xFF3485D8, 0xFF82BFFF),
+    LAVENDER("Lavender", 0xFF7662C8, 0xFFB4A7FF),
     ROSE("Rose", 0xFFD6336C, 0xFFF783AC),
-    CORAL("Coral", 0xFFE8590C, 0xFFFF9A5C),
     AMBER("Amber", 0xFFC77700, 0xFFF2B84E),
+    ORCHID("Orchid", 0xFF7048E8, 0xFFA78BFA),
+    CORAL("Coral", 0xFFE8590C, 0xFFFF9A5C),
     OCEAN("Ocean", 0xFF1C7ED6, 0xFF5AA9FF),
     MINT("Mint", 0xFF0CA678, 0xFF4ADE9F),
     GRAPHITE("Graphite", 0xFF343A40, 0xFFCED4DA),
@@ -64,7 +69,7 @@ data class AppPreferences(
 
     val darkModePref: DarkModePref = DarkModePref.LIGHT,
 
-    val accentPreset: AccentPreset = AccentPreset.GRAPHITE,
+    val accentPreset: AccentPreset = AccentPreset.SAGE,
     /** Optional user-selected ARGB accent; null means use the selected preset. */
     val customAccentArgb: Long? = 0xFFB4DE9FL,
     val appFont: AppFont = AppFont.SYSTEM,
@@ -218,7 +223,7 @@ class AetherXPreferences(private val context: Context) {
             darkModePref = runCatching { DarkModePref.valueOf(prefs[Keys.DARK_MODE] ?: "") }
                 .getOrDefault(DarkModePref.LIGHT),
             accentPreset = runCatching { AccentPreset.valueOf(prefs[Keys.ACCENT_PRESET] ?: "") }
-                .getOrDefault(AccentPreset.GRAPHITE),
+                .getOrDefault(AccentPreset.SAGE),
             customAccentArgb = prefs[Keys.CUSTOM_ACCENT_ARGB] ?: if (prefs[Keys.ACCENT_PRESET] == null) 0xFFB4DE9FL else null,
             appFont = runCatching { AppFont.valueOf(prefs[Keys.APP_FONT] ?: "") }
                 .getOrDefault(AppFont.SYSTEM),
