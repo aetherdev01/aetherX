@@ -3,6 +3,7 @@ package com.aether.x.ui.components
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 /**
@@ -15,10 +16,12 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PaddingValues.withoutBottom(): PaddingValues {
     val dir = LocalLayoutDirection.current
+    val left = calculateLeftPadding(dir)
+    val right = calculateRightPadding(dir)
     return PaddingValues(
-        start = calculateStartPadding(dir),
+        start = if (dir == LayoutDirection.Ltr) left else right,
         top = calculateTopPadding(),
-        end = calculateEndPadding(dir),
+        end = if (dir == LayoutDirection.Ltr) right else left,
         bottom = 0.dp,
     )
 }
