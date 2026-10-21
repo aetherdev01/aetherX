@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -41,6 +40,7 @@ import com.aether.x.R
 import com.aether.x.ui.about.AboutScreen
 import com.aether.x.ui.components.AdBlockGate
 import com.aether.x.ui.components.AetherBackground
+import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.membership.MembershipScreen
 import com.aether.x.ui.settings.SettingsScreen
@@ -48,7 +48,6 @@ import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -151,10 +150,6 @@ fun MainScreen(
         )
     }
 
-    // Sumber blur navbar: konten tab (SIBLING navbar di dalam Scaffold). Konten
-    // scroll sampai ke belakang navbar, jadi kapsul mem-blur konten itu.
-    val navHaze = rememberHazeState(blurEnabled = true)
-
     AdBlockGate(
         isMember = tweakState.isMembershipActive,
         suppress = selectedTab == MainTab.MEMBERSHIP,
@@ -162,6 +157,15 @@ fun MainScreen(
     )
 
     AetherBackground {
+    // Gunakan state Haze backdrop yang sudah disediakan AetherBackground.
+    // Jangan membuat HazeState/snapshot layar kedua untuk navbar: pada Dashboard,
+    // TweakScreen sudah mendaftarkan kontennya ke state ini untuk drawer.
+    val navHaze = LocalBackdropHaze.current
+    val navContentModifier = if (navHaze != null) {
+        Modifier.fillMaxSize().hazeSource(navHaze, zIndex = 1f)
+    } else {
+        Modifier
+    }
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
@@ -192,58 +196,50 @@ fun MainScreen(
             )
         },
     ) { padding ->
-        // Tempatkan hazeSource pada container stabil di luar AnimatedContent.
-        // Sumber blur tidak ikut berpindah/berganti node saat transisi antar-tab.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(navHaze),
-        ) {
-            // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA
-            // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
-            // terasa berat di perangkat mid-range.
-            AnimatedContent(
-                modifier = Modifier.fillMaxSize(),
-                targetState = selectedTab,
-                transitionSpec = {
-                    if (reduceMotion) {
-                        fadeIn(tween(80)) togetherWith fadeOut(tween(80))
-                    } else {
-                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        (slideInHorizontally(
-                            animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
-                            initialOffsetX = { fullWidth -> (fullWidth * 0.025f * dir).roundToInt() },
-                        ) + fadeIn(tween(125))) togetherWith
-                            (slideOutHorizontally(
-                                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing),
-                                targetOffsetX = { fullWidth -> (-fullWidth * 0.02f * dir).roundToInt() },
-                            ) + fadeOut(tween(90)))
-                    }
-                },
-                label = "mainTabContent",
-            ) { tab ->
-                when (tab) {
-                    MainTab.TWEAK -> TweakScreen(
-                        modifier = Modifier,
-                        contentPadding = padding,
-                        viewModel = tweakViewModel,
-                        dashboardRequest = dashboardRequest,
-                        onlineUserCount = onlineUserCount,
-                    )
-                    MainTab.MEMBERSHIP -> MembershipScreen(
-                        modifier = Modifier,
-                        contentPadding = padding,
-                    )
-                    MainTab.ABOUT -> AboutScreen(
-                        modifier = Modifier,
-                        contentPadding = padding,
-                    )
-                    MainTab.SETTINGS -> SettingsScreen(
-                        modifier = Modifier,
-                        contentPadding = padding,
-                        onManageAccess = onManageAccess,
-                    )
+        // Transisi antar tab: fade + geser tipis searah navigasi. Sengaja TANPA
+        // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
+        // terasa berat di perangkat mid-range.
+        AnimatedContent(
+            modifier = Modifier.fillMaxSize(),
+            targetState = selectedTab,
+            transitionSpec = {
+                if (reduceMotion) {
+                    fadeIn(tween(80)) togetherWith fadeOut(tween(80))
+                } else {
+                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInHorizontally(
+                        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+                        initialOffsetX = { fullWidth -> (fullWidth * 0.025f * dir).roundToInt() },
+                    ) + fadeIn(tween(125))) togetherWith
+                        (slideOutHorizontally(
+                            animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing),
+                            targetOffsetX = { fullWidth -> (-fullWidth * 0.02f * dir).roundToInt() },
+                        ) + fadeOut(tween(90)))
                 }
+            },
+            label = "mainTabContent",
+        ) { tab ->
+            when (tab) {
+                MainTab.TWEAK -> TweakScreen(
+                    modifier = Modifier,
+                    contentPadding = padding,
+                    viewModel = tweakViewModel,
+                    dashboardRequest = dashboardRequest,
+                    onlineUserCount = onlineUserCount,
+                )
+                MainTab.MEMBERSHIP -> MembershipScreen(
+                    modifier = navContentModifier,
+                    contentPadding = padding,
+                )
+                MainTab.ABOUT -> AboutScreen(
+                    modifier = navContentModifier,
+                    contentPadding = padding,
+                )
+                MainTab.SETTINGS -> SettingsScreen(
+                    modifier = navContentModifier,
+                    contentPadding = padding,
+                    onManageAccess = onManageAccess,
+                )
             }
         }
     }
