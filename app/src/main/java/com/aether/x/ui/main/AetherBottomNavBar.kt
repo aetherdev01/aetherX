@@ -67,6 +67,8 @@ import com.aether.x.ui.components.rememberCrossWindowBlurEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.Spacing
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -106,6 +108,12 @@ fun AetherBottomNavBar(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Sumber blur = konten tab yang ada di belakang navbar (hazeSource di MainScreen).
+     * Dengan ini kartu yang di-scroll ke belakang kapsul ikut ter-BLUR dan tembus,
+     * bukan tertutup. null = hanya blur latar aurora.
+     */
+    hazeState: HazeState? = null,
 ) {
     if (items.isEmpty()) return
 
@@ -317,6 +325,19 @@ fun AetherBottomNavBar(
                         modifier = Modifier.fillMaxSize(),
                         alpha = 0.94f,
                     )
+                    // Blur konten layar (kartu dll.) yang lewat di belakang kapsul,
+                    // digambar di atas blur aurora.
+                    if (hazeState != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .hazeEffect(state = hazeState) {
+                                    blurRadius = (barBlurRadius.value * 1.15f).dp
+                                    noiseFactor = 0.03f
+                                    backgroundColor = surface.copy(alpha = 0.08f)
+                                },
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier

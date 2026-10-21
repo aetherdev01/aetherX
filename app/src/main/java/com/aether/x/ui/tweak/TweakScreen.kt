@@ -90,6 +90,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.withoutBottom
 import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.glassPanel
 import dev.chrisbanes.haze.hazeSource
@@ -246,7 +247,7 @@ fun TweakScreen(
             modifier = modifier
                 .fillMaxSize()
                 .hazeSource(drawerHaze, zIndex = 1f)
-                .padding(contentPadding)
+                .padding(contentPadding.withoutBottom())
                 // Terminal Root must resize above the software keyboard so the
                 // command field and run button remain visible while typing.
                 .then(if (selectedSubTab == TweakSubTab.TERMINAL) Modifier.imePadding() else Modifier),
@@ -268,7 +269,14 @@ fun TweakScreen(
                             Modifier.verticalScroll(rememberScrollState())
                         },
                     )
-                    .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
+                    // Tinggi navbar ditaruh sebagai padding bawah DI DALAM area scroll,
+                    // jadi konten bisa tembus ke belakang navbar tanpa strip kosong.
+                    .padding(
+                        start = Spacing.screen,
+                        end = Spacing.screen,
+                        top = Spacing.lg,
+                        bottom = Spacing.lg + contentPadding.calculateBottomPadding(),
+                    ),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
 

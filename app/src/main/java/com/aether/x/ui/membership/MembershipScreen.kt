@@ -64,6 +64,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.withoutBottom
 import com.aether.x.R
 import com.aether.x.ui.components.PopupDialog
 import com.aether.x.ui.dashboard.DailyBonusCard
@@ -99,9 +100,14 @@ fun MembershipScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(contentPadding)
+            .padding(contentPadding.withoutBottom())
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
+            .padding(
+                start = Spacing.screen,
+                end = Spacing.screen,
+                top = Spacing.lg,
+                bottom = Spacing.lg + contentPadding.calculateBottomPadding(),
+            ),
         verticalArrangement = Arrangement.spacedBy(Spacing.section),
     ) {
         Column {

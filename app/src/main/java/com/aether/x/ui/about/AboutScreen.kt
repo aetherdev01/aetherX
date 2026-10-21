@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.withoutBottom
 import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.ui.components.aetherCardSurface
@@ -51,9 +52,14 @@ fun AboutScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(contentPadding)
+            .padding(contentPadding.withoutBottom())
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.screen, vertical = Spacing.lg),
+            .padding(
+                start = Spacing.screen,
+                end = Spacing.screen,
+                top = Spacing.lg,
+                bottom = Spacing.lg + contentPadding.calculateBottomPadding(),
+            ),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         Text(

@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.aether.x.ui.components.withoutBottom
 import com.aether.x.BuildConfig
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.ui.update.UpdateViewModel
@@ -76,9 +77,14 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(contentPadding)
+            .padding(contentPadding.withoutBottom())
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = 16.dp,
+                bottom = 16.dp + contentPadding.calculateBottomPadding(),
+            ),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
