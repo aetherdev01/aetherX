@@ -120,6 +120,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.setBlurStrength(value) }
     }
 
+    fun setLiquidGlassLevel(value: Int) {
+        viewModelScope.launch { preferences.setLiquidGlassLevel(value) }
+    }
+
     fun setFpsMonitorStyle(style: FpsMonitorStyle) {
         viewModelScope.launch { preferences.setFpsMonitorStyle(style) }
     }

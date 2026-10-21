@@ -64,10 +64,12 @@ fun AppearanceSettingsSection(
     accentPreset: AccentPreset,
     customAccentArgb: Long?,
     blurStrength: Int,
+    liquidGlassLevel: Int,
     onDarkModeChange: (DarkModePref) -> Unit,
     onAccentChange: (AccentPreset) -> Unit,
     onCustomAccentChange: (Long) -> Unit,
     onBlurChange: (Int) -> Unit,
+    onLiquidGlassLevelChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SectionCard(
@@ -136,77 +138,82 @@ fun AppearanceSettingsSection(
             )
         }
 
-        SettingGroup(label = "Liquid Glass & Blur") {
-            // Slider memiliki lima nilai pasti: 0, 25, 50, 75, dan 100.
-            // Setiap perpindahan level langsung diterapkan saat jari digeser;
-            // callback hanya dipanggil ketika level benar-benar berubah.
-            fun snapGlassLevel(value: Float): Int =
-                (value / 25f).roundToInt().coerceIn(0, 4) * 25
-
-            var sliderValue by remember { mutableFloatStateOf(snapGlassLevel(blurStrength.toFloat()).toFloat()) }
-            var dragging by remember { mutableStateOf(false) }
-            var lastAppliedBlur by remember { mutableIntStateOf(snapGlassLevel(blurStrength.toFloat())) }
-
-            LaunchedEffect(blurStrength) {
-                if (!dragging) {
-                    val normalized = snapGlassLevel(blurStrength.toFloat())
-                    sliderValue = normalized.toFloat()
-                    lastAppliedBlur = normalized
-                }
-            }
-
-            val currentLevel = (snapGlassLevel(sliderValue) / 25).coerceIn(0, 4)
-            val levelNames = listOf("Mati", "Lembut", "Seimbang", "Kuat", "Ultra")
-
-            TweakSlider(
-                label = "Intensitas efek",
-                description = "Satu slider mengatur kekuatan Liquid Glass dan blur pada card, dialog, drawer, serta navbar secara langsung.",
-                valueText = "Level ${currentLevel + 1}/5 · ${sliderValue.roundToInt()}%",
-                value = sliderValue,
-                range = 0f..100f,
-                steps = 3,
-                onValueChange = { rawValue ->
-                    val target = snapGlassLevel(rawValue)
-                    dragging = true
-                    sliderValue = target.toFloat()
-                    if (target != lastAppliedBlur) {
-                        lastAppliedBlur = target
-                        onBlurChange(target)
-                    }
-                },
-                onValueChangeFinished = {
-                    dragging = false
-                    val finalValue = snapGlassLevel(sliderValue)
-                    sliderValue = finalValue.toFloat()
-                    if (finalValue != lastAppliedBlur) {
-                        lastAppliedBlur = finalValue
-                        onBlurChange(finalValue)
-                    }
-                },
+        SettingGroup(label = "Blur Intensity") {
+            LevelSlider(
+                label = "Kekuatan blur",
+                description = "Mengatur seberapa kuat konten di belakang navbar, drawer, dan panel diburamkan.",
+                value = blurStrength,
+                levelNames = listOf("Mati", "Lembut", "Seimbang", "Kuat", "Ultra"),
+                onValueChange = onBlurChange,
             )
+        }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 1.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                levelNames.forEachIndexed { index, name ->
-                    Text(
-                        text = name,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (index == currentLevel) FontWeight.Bold else FontWeight.Normal,
-                        color = if (index == currentLevel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+        SettingGroup(label = "Liquid Glass Level") {
+            LevelSlider(
+                label = "Intensitas kaca",
+                description = "Mengatur transparansi, tint warna, dan kepekatan permukaan kaca secara terpisah dari blur.",
+                value = liquidGlassLevel,
+                levelNames = listOf("Jernih", "Tipis", "Seimbang", "Pekat", "Solid"),
+                onValueChange = onLiquidGlassLevelChange,
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun LevelSlider(
+    label: String,
+    description: String,
+    value: Int,
+    levelNames: List<String>,
+    onValueChange: (Int) -> Unit,
+) {
+    val normalized = ((value.coerceIn(0, 100) + 12) / 25).coerceIn(0, 4) * 25
+    var sliderValue by remember(value) { mutableFloatStateOf(normalized.toFloat()) }
+    var lastApplied by remember(value) { mutableIntStateOf(normalized) }
+    LaunchedEffect(value) {
+        sliderValue = ((value.coerceIn(0, 100) + 12) / 25).coerceIn(0, 4).times(25).toFloat()
+        lastApplied = sliderValue.toInt()
+    }
+    val level = (sliderValue.toInt() / 25).coerceIn(0, 4)
+    TweakSlider(
+        label = label,
+        description = description,
+        valueText = "Level ${level + 1}/5 · ${sliderValue.toInt()}%",
+        value = sliderValue,
+        range = 0f..100f,
+        steps = 3,
+        onValueChange = { raw ->
+            val snapped = (raw / 25f).roundToInt().coerceIn(0, 4) * 25
+            sliderValue = snapped.toFloat()
+            if (snapped != lastApplied) {
+                lastApplied = snapped
+                onValueChange(snapped)
             }
+        },
+        onValueChangeFinished = {
+            val snapped = (sliderValue / 25f).roundToInt().coerceIn(0, 4) * 25
+            sliderValue = snapped.toFloat()
+            if (snapped != lastApplied) {
+                lastApplied = snapped
+                onValueChange(snapped)
+            }
+        },
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 1.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        levelNames.forEachIndexed { index, name ->
             Text(
-                text = "Level ${currentLevel + 1} dari 5 · ${levelNames[currentLevel]}",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 2.dp),
+                text = name,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (index == level) FontWeight.Bold else FontWeight.Normal,
+                color = if (index == level) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

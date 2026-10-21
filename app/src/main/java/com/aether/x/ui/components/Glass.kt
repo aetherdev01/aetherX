@@ -86,6 +86,7 @@ fun Modifier.aetherCardSurface(
     val p = LocalAetherPalette.current
     val s = LocalAetherStyle.current
     val b = s.blur
+    val glass = s.glassLevel
     val haze = LocalCardHaze.current
     val blurOn = haze != null && b > 0.01f
     val radius = cardBlurRadiusFor(b).dp
@@ -96,7 +97,7 @@ fun Modifier.aetherCardSurface(
             noiseFactor = 0.04f
             // Haze 1.x needs an explicit backdrop color. Keeping it lightly
             // tinted avoids ROM/device-dependent transparent-only panels.
-            backgroundColor = p.surface.copy(alpha = 0.18f)
+            backgroundColor = p.surface.copy(alpha = 0.10f + 0.20f * glass)
         }
     } else {
         Modifier
@@ -116,8 +117,8 @@ fun Modifier.aetherCardSurface(
         .background(
             Brush.verticalGradient(
                 listOf(
-                    p.surface.copy(alpha = if (blurOn) 0.43f - 0.06f * b else 0.88f),
-                    p.surface.copy(alpha = if (blurOn) 0.36f - 0.04f * b else 0.80f),
+                    p.surface.copy(alpha = if (blurOn) 0.18f + 0.24f * glass else 0.40f + 0.48f * glass),
+                    p.surface.copy(alpha = if (blurOn) 0.14f + 0.22f * glass else 0.34f + 0.42f * glass),
                 ),
             ),
         )
@@ -181,13 +182,15 @@ fun Modifier.glassPanel(
     tintAfterBlur: Boolean = false,
 ): Modifier {
     val p = LocalAetherPalette.current
-    val b = LocalAetherStyle.current.blur
+    val style = LocalAetherStyle.current
+    val b = style.blur
+    val glass = style.glassLevel
     val blurOn = hazeState != null && b > 0.01f
     val radius = (blurRadiusFor(b) * blurBoost).coerceAtMost(38f).dp
     // Keep the tint deliberately light so the captured content remains
     // visibly blurred instead of looking like a merely translucent surface.
-    val top = if (blurOn) ((0.54f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha) else 0.97f
-    val bottom = if (blurOn) ((0.49f - 0.14f * b) * tintScale).coerceAtLeast(minAlpha - 0.04f) else 0.95f
+    val top = if (blurOn) ((0.16f + 0.42f * glass) * tintScale).coerceAtLeast(minAlpha) else (0.30f + 0.67f * glass)
+    val bottom = if (blurOn) ((0.14f + 0.38f * glass) * tintScale).coerceAtLeast(minAlpha - 0.04f) else (0.25f + 0.70f * glass)
     val tint = Brush.verticalGradient(
         listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
     )
@@ -202,7 +205,7 @@ fun Modifier.glassPanel(
                 Modifier.hazeEffect(state = hazeState) {
                     blurRadius = radius
                     noiseFactor = 0.03f
-                    backgroundColor = p.surface.copy(alpha = 0.22f)
+                    backgroundColor = p.surface.copy(alpha = 0.08f + 0.22f * glass)
                 }
             } else {
                 Modifier

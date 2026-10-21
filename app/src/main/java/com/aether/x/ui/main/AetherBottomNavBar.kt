@@ -122,7 +122,9 @@ fun AetherBottomNavBar(
     val lastIndex = count - 1
     val barShape = RoundedCornerShape(percent = 50)
     val palette = LocalAetherPalette.current
-    val blur = LocalAetherStyle.current.blur
+    val style = LocalAetherStyle.current
+    val blur = style.blur
+    val glassLevel = style.glassLevel
     val surface = palette.surface
     val outline = palette.stroke
     val isDark = palette.isDark
@@ -329,7 +331,7 @@ fun AetherBottomNavBar(
                                     // Radius navbar dibatasi untuk menjaga beban GPU tetap wajar.
                                     blurRadius = barBlurRadius
                                     noiseFactor = 0.03f
-                                    backgroundColor = surface.copy(alpha = 0.08f)
+                                    backgroundColor = surface.copy(alpha = 0.04f + 0.18f * glassLevel)
                                 },
                         )
                     } else {
@@ -356,7 +358,7 @@ fun AetherBottomNavBar(
                                 } else {
                                     listOf(
                                         lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = 0.96f),
-                                        surface.copy(alpha = 0.90f),
+                                        surface.copy(alpha = 0.30f + 0.60f * glassLevel),
                                     )
                                 },
                             ),
@@ -506,7 +508,7 @@ fun AetherBottomNavBar(
                 NativeBlurWindow(
                     state = nativeState,
                     blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).coerceAtMost(32f).dp.roundToPx() },
-                    tint = surface.copy(alpha = 0.12f),
+                    tint = surface.copy(alpha = 0.04f + 0.18f * glassLevel),
                 ) {
                     Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {
                         layers(true)

@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
                     accent = prefsValue.accentPreset,
                     customAccentArgb = prefsValue.customAccentArgb,
                     blurStrength = prefsValue.blurStrength,
+                    liquidGlassLevel = prefsValue.liquidGlassLevel,
                     hapticsEnabled = prefsValue.hapticsEnabled,
                     reduceMotionEnabled = prefsValue.reduceMotionEnabled,
                 ) {

@@ -107,10 +107,12 @@ fun SettingsScreen(
             accentPreset = prefs.accentPreset,
             customAccentArgb = prefs.customAccentArgb,
             blurStrength = prefs.blurStrength,
+            liquidGlassLevel = prefs.liquidGlassLevel,
             onDarkModeChange = viewModel::setDarkModePref,
             onAccentChange = viewModel::setAccentPreset,
             onCustomAccentChange = viewModel::setCustomAccentArgb,
             onBlurChange = viewModel::setBlurStrength,
+            onLiquidGlassLevelChange = viewModel::setLiquidGlassLevel,
             modifier = Modifier.cardEnterAnimation(index = 0),
         )
 
