@@ -70,7 +70,6 @@ import com.aether.x.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.roundToInt
 import android.graphics.Rect as AndroidRect
 import kotlinx.coroutines.Job
@@ -97,10 +96,11 @@ private const val USE_NATIVE_NAV_BLUR = false
  *    native OS. Blur hanya berlaku pada latar capsule; floating pill tidak di-blur.
  *  - Pill digambar di fase DRAW dan posisinya dibaca dari `Animatable` di
  *    dalam lambda draw, jadi saat meluncur TIDAK ada recomposition.
- *  - BARU: saat capsule DITAHAN, pill "menyembul" — membesar melewati tepi
- *    capsule dengan spring yang sengaja agak mantul (pegas), lalu kembali
- *    tenang saat dilepas. Pill ada di layer yang TIDAK di-clip supaya
- *    sembulannya terlihat.
+ *  - Pill mengikuti gestur pada fase draw agar tidak memicu recomposition setiap frame.
+ *  - Saat digeser/ditahan, indikator pill menjadi bening/transparan; setelah dilepas,
+ *    pill kembali ke abu-abu netral bergaya iOS (bukan warna aksen).
+ *  - Animasi spring disetel lebih terkontrol dan radius blur dibatasi untuk menekan
+ *    beban rendering pada perangkat kelas bawah.
  *  - Satu pointerInput saja (tap + drag digabung).
  */
 @Composable
@@ -158,19 +158,30 @@ fun AetherBottomNavBar(
         }
     }
 
-    // 0f = diam, 1f = menyembul penuh. Spring mantul (damping rendah) saat
-    // ditekan -> efek pegas; saat dilepas kembali dengan damping lebih tinggi.
+    // Material pill memudar menjadi bening ketika disentuh/digeser, lalu kembali
+    // ke abu-abu netral saat jari dilepas. Nilai Animatable dibaca pada fase draw
+    // agar perubahan alpha tidak memicu recomposition setiap frame.
+    val pillSolidness = remember { Animatable(1f) }
+    LaunchedEffect(pressed, isDragging) {
+        pillSolidness.animateTo(
+            targetValue = if (pressed || isDragging) 0f else 1f,
+            animationSpec = tween(durationMillis = 140),
+        )
+    }
+
+    // Animasi press yang halus dengan overshoot lebih kecil untuk mengurangi gerak berlebih.
     val pop = remember { Animatable(0f) }
     LaunchedEffect(pressed) {
         if (pressed) {
-            pop.animateTo(1f, spring(dampingRatio = 0.34f, stiffness = 360f))
+            pop.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 480f))
         } else {
-            pop.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 300f))
+            pop.animateTo(0f, spring(dampingRatio = 0.80f, stiffness = 480f))
         }
     }
 
     val blurOn = blur > 0.01f && (hazeState != null || LocalAuroraBackdrop.current != null)
-    val barBlurRadius = blurRadiusFor(blur).coerceAtMost(32f).dp
+    // Radius lebih rendah menekan biaya blur off-screen, terutama saat scroll/transisi.
+    val barBlurRadius = blurRadiusFor(blur).coerceAtMost(24f).dp
     // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
     // baterai dll.) atau slider = 0, jatuh ke blur sendiri (AuroraBlurLayer) di bawah.
     val crossWindowBlur = rememberCrossWindowBlurEnabled()
@@ -313,7 +324,7 @@ fun AetherBottomNavBar(
                 modifier = Modifier
                     .fillMaxSize()
                     .shadow(
-                        elevation = 10.dp,
+                        elevation = 6.dp,
                         shape = barShape,
                         ambientColor = Color.Black.copy(alpha = if (isDark) 0.35f else 0.06f),
                         spotColor = Color.Black.copy(alpha = if (isDark) 0.45f else 0.12f),
@@ -330,7 +341,7 @@ fun AetherBottomNavBar(
                                 .hazeEffect(state = hazeState) {
                                     // Radius navbar dibatasi untuk menjaga beban GPU tetap wajar.
                                     blurRadius = barBlurRadius
-                                    noiseFactor = 0.03f
+                                    noiseFactor = 0.015f
                                     backgroundColor = surface.copy(alpha = 0.04f + 0.18f * glassLevel)
                                 },
                         )
@@ -401,28 +412,20 @@ fun AetherBottomNavBar(
                     val left = cx - w / 2f
                     val top = (size.height - h) / 2f - lift.toPx() * p
 
-                    // Warna melebur antara aksen dua tab terdekat.
-                    val lo = floor(pos).toInt().coerceIn(0, lastIndex)
-                    val hi = (lo + 1).coerceAtMost(lastIndex)
-                    val t = (pos - lo).coerceIn(0f, 1f)
-                    val accent = lerp(items[lo].accent, items[hi].accent, t)
-                    val glowBoost = p.coerceIn(0f, 1.3f)
-
+                    // Neutral iOS-like gray; only icon tint uses the selected accent.
+                    val solidness = pillSolidness.value.coerceIn(0f, 1f)
+                    val pillGray = if (isDark) Color(0xFF3A3A3C) else Color(0xFFE5E5EA)
+                    val pillGrayTop = if (isDark) Color(0xFF4A4A4C) else Color(0xFFF2F2F7)
+                    val pillGrayBottom = if (isDark) Color(0xFF343436) else Color(0xFFDADAE0)
                     val corner = CornerRadius(h / 2f, h / 2f)
 
-                    // Glow lembut di belakang pill (menguat saat menyembul).
-                    drawRoundRect(
-                        color = accent.copy(alpha = 0.14f + 0.12f * glowBoost),
-                        topLeft = Offset(left - 4.dp.toPx(), top - 3.dp.toPx()),
-                        size = Size(w + 8.dp.toPx(), h + 6.dp.toPx()),
-                        cornerRadius = CornerRadius((h + 6.dp.toPx()) / 2f),
-                    )
-                    // Badan pill: gradient aksen transparan.
+                    // Solidness=0 saat sliding (hanya outline tipis), 1 setelah dilepas.
+                    // Gradient netral menggantikan glow dan fill aksen, jadi draw pass lebih ringan.
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                accent.copy(alpha = 0.30f + 0.08f * glowBoost),
-                                accent.copy(alpha = 0.14f + 0.06f * glowBoost),
+                                pillGrayTop.copy(alpha = solidness),
+                                pillGrayBottom.copy(alpha = solidness),
                             ),
                             startY = top,
                             endY = top + h,
@@ -431,23 +434,32 @@ fun AetherBottomNavBar(
                         size = Size(w, h),
                         cornerRadius = corner,
                     )
-                    // Garis tepi aksen + highlight kaca di sisi atas.
                     drawRoundRect(
-                        color = accent.copy(alpha = 0.50f),
+                        color = if (isDark) {
+                            Color.White.copy(alpha = 0.10f + 0.08f * solidness)
+                        } else {
+                            Color.Black.copy(alpha = 0.05f + 0.05f * solidness)
+                        },
                         topLeft = Offset(left, top),
                         size = Size(w, h),
                         cornerRadius = corner,
-                        style = Stroke(width = 1.dp.toPx()),
+                        style = Stroke(width = 0.8.dp.toPx()),
                     )
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.30f), Color.Transparent),
+                            colors = listOf(
+                                Color.White.copy(
+                                    alpha = (if (isDark) 0.06f else 0.08f) +
+                                        (if (isDark) 0.10f else 0.26f) * solidness,
+                                ),
+                                Color.Transparent,
+                            ),
                             startY = top,
                             endY = top + h * 0.55f,
                         ),
                         topLeft = Offset(left + 2.dp.toPx(), top + 1.dp.toPx()),
-                        size = Size(w - 4.dp.toPx(), h * 0.55f),
-                        cornerRadius = CornerRadius(h / 2f),
+                        size = Size((w - 4.dp.toPx()).coerceAtLeast(0f), h * 0.55f),
+                        cornerRadius = corner,
                     )
                 },
         )
@@ -507,7 +519,7 @@ fun AetherBottomNavBar(
             if (nativeReady) {
                 NativeBlurWindow(
                     state = nativeState,
-                    blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).coerceAtMost(32f).dp.roundToPx() },
+                    blurRadiusPx = with(density) { (blurRadiusFor(blur) * 1.15f).coerceAtMost(24f).dp.roundToPx() },
                     tint = surface.copy(alpha = 0.04f + 0.18f * glassLevel),
                 ) {
                     Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {
