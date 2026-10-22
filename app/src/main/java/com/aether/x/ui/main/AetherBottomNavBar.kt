@@ -1,6 +1,7 @@
 package com.aether.x.ui.main
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,8 +57,6 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,10 +72,18 @@ import com.aether.x.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.roundToInt
 import android.graphics.Rect as AndroidRect
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+
+/** Fase bentuk capsule: lihat penjelasan di blok popW/popH. */
+private enum class LensPhase { Rest, Hold, Travel }
 
 data class AetherNavItem(
     val icon: ImageVector,
@@ -97,10 +105,13 @@ private const val USE_NATIVE_NAV_BLUR = false
  *    native OS. Blur hanya berlaku pada latar capsule; floating pill tidak di-blur.
  *  - Pill digambar di fase DRAW dan semua nilai animasinya dibaca dari lambda
  *    draw / graphicsLayer, jadi saat meluncur TIDAK ada recomposition.
- *  - TAHAN: pill membesar menjadi "lensa kaca" dengan efek jelly. Lebar dan tinggi
- *    dianimasikan dengan dua pegas berbeda (redaman & kekakuan berbeda) sehingga
- *    keduanya bergoyang tidak serempak saat ditekan maupun dilepas. Saat bergerak,
- *    pill memanjang searah gerak dan menipis (squash & stretch) sesuai kecepatan.
+ *  - UKURAN: lebar pill tetap (satu slot), tidak mengikuti panjang label tab.
+ *  - TAHAN: saat jari diam di tab (termasuk berhenti di tab tujuan sebelum dilepas),
+ *    pill membesar menjadi "lensa kaca" dengan efek jelly. Lebar dan tinggi
+ *    dianimasikan dengan dua pegas berbeda sehingga bergoyang tidak serempak.
+ *  - GESER: saat digeser pill mengecil dan memanjang searah gerak (sisi depan lebih
+ *    maju, tinggi menipis) sesuai kecepatan; berhenti -> membesar lagi; dilepas ->
+ *    mengecil dengan jelly seperti sebelumnya.
  *  - LENSA: ikon + label yang sedang dilewati/ditempati capsule berubah ke warna
  *    aksennya secara halus (berdasarkan jarak capsule ke tiap ikon), lalu kembali
  *    abu-abu setelah capsule menjauh — bukan hanya tab tujuan.
@@ -132,20 +143,6 @@ fun AetherBottomNavBar(
     val surface = palette.surface
     val isDark = palette.isDark
     val scope = rememberCoroutineScope()
-    val densityForMeasure = LocalDensity.current
-    val textMeasurer = rememberTextMeasurer()
-    val navLabelStyle = MaterialTheme.typography.labelSmall
-    // Ukuran indikator mengikuti panjang label tab, dengan padding yang cukup
-    // dan batas agar indikator tidak menabrak tab tetangga pada layar sempit.
-    val indicatorWidthsPx = remember(items, navLabelStyle, densityForMeasure, textMeasurer) {
-        val horizontalPaddingPx = with(densityForMeasure) { 20.dp.toPx() }
-        val minimumWidthPx = with(densityForMeasure) { 48.dp.toPx() }
-        items.map { item ->
-            (textMeasurer.measure(AnnotatedString(item.label), style = navLabelStyle).size.width + horizontalPaddingPx)
-                .toFloat()
-                .coerceAtLeast(minimumWidthPx)
-        }
-    }
 
     // Posisi pill dalam satuan "indeks slot" (0f..lastIndex). Dibaca HANYA di
     // lambda draw / graphicsLayer -> tidak memicu recomposition.
@@ -176,11 +173,15 @@ fun AetherBottomNavBar(
 
     // Saat drag, event pointer berhenti ketika jari diam; tanpa peluruhan,
     // kecepatan lama akan "menempel" dan capsule tetap terlihat memanjang.
+    // Peluruhan berbasis waktu (bukan per frame) agar sama di 60 Hz dan 120 Hz.
     LaunchedEffect(isDragging) {
         if (isDragging) {
+            var last = withFrameNanos { it }
             while (true) {
-                withFrameNanos { }
-                dragVelocity *= 0.90f
+                val now = withFrameNanos { it }
+                val dt = (now - last) / 1_000_000_000f
+                last = now
+                dragVelocity *= exp(-dt / 0.06f)
             }
         }
     }
@@ -196,31 +197,65 @@ fun AetherBottomNavBar(
         )
     }
 
-    // Efek JELLY saat ditahan: lebar dan tinggi memakai pegas berbeda. Redaman rendah
-    // membuat nilai melampaui target lalu berayun balik; perbedaan frekuensi antara
-    // lebar & tinggi membuat bentuknya bergoyang seperti jeli, bukan sekadar membesar.
+    // Efek JELLY: lebar dan tinggi memakai pegas berbeda. Redaman rendah membuat nilai
+    // melampaui target lalu berayun balik; perbedaan frekuensi antara lebar & tinggi
+    // membuat bentuknya bergoyang seperti jeli, bukan sekadar membesar.
+    //
+    // Tiga fase (gaya iOS):
+    //  - Rest   : jari tidak menyentuh -> capsule kecil (versi saat dilepas, jelly mengecil).
+    //  - Hold   : jari menyentuh dan diam (termasuk berhenti di tab tujuan sebelum
+    //             dilepas) -> capsule membesar menjadi lensa.
+    //  - Travel : jari sedang bergeser cukup cepat -> capsule mengecil dan memanjang
+    //             searah geser (stretch digambar di fase draw berdasarkan kecepatan).
     val popW = remember { Animatable(0f) }
     val popH = remember { Animatable(0f) }
-    LaunchedEffect(pressed) {
-        val target = if (pressed) 1f else 0f
-        launch {
-            popW.animateTo(
-                target,
-                spring(
-                    dampingRatio = if (pressed) 0.52f else 0.40f,
-                    stiffness = if (pressed) 420f else 320f,
-                ),
-            )
+    LaunchedEffect(Unit) {
+        var travelling = false
+        snapshotFlow {
+            val isPressed = pressed
+            val position = if (isDragging) dragPosition else pillPosition.value
+            // value dibaca lebih dulu agar snapshotFlow ikut memantau perubahan posisi.
+            val velocity = if (isDragging) dragVelocity else pillPosition.velocity
+            Triple(isPressed, position, abs(velocity))
         }
-        launch {
-            popH.animateTo(
-                target,
-                spring(
-                    dampingRatio = if (pressed) 0.44f else 0.34f,
-                    stiffness = if (pressed) 330f else 250f,
-                ),
-            )
-        }
+            .map { (isPressed, _, speed) ->
+                if (!isPressed) {
+                    travelling = false
+                    LensPhase.Rest
+                } else {
+                    // Histeresis: mulai "bergeser" di atas 1.2 slot/dtk, kembali "diam"
+                    // di bawah 0.45 slot/dtk, supaya tidak berkedip saat jari bergetar.
+                    travelling = if (travelling) speed > 0.45f else speed > 1.2f
+                    if (travelling) LensPhase.Travel else LensPhase.Hold
+                }
+            }
+            .distinctUntilChanged()
+            .collectLatest { phase ->
+                val target: Float
+                val specW: SpringSpec<Float>
+                val specH: SpringSpec<Float>
+                when (phase) {
+                    LensPhase.Hold -> {
+                        target = 1f
+                        specW = spring(dampingRatio = 0.52f, stiffness = 420f)
+                        specH = spring(dampingRatio = 0.44f, stiffness = 330f)
+                    }
+                    LensPhase.Travel -> {
+                        target = 0.15f
+                        specW = spring(dampingRatio = 0.70f, stiffness = 520f)
+                        specH = spring(dampingRatio = 0.62f, stiffness = 460f)
+                    }
+                    LensPhase.Rest -> {
+                        target = 0f
+                        specW = spring(dampingRatio = 0.40f, stiffness = 320f)
+                        specH = spring(dampingRatio = 0.34f, stiffness = 250f)
+                    }
+                }
+                coroutineScope {
+                    launch { popW.animateTo(target, specW) }
+                    launch { popH.animateTo(target, specH) }
+                }
+            }
     }
 
     // Seberapa besar capsule "menutupi" ikon ke-[index] (0f..1f). Dibaca di fase
@@ -281,7 +316,6 @@ fun AetherBottomNavBar(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         val x = change.position.x
                         val travel = x - downX
-                        val dx = x - lastX
 
                         if (!dragging && abs(travel) > viewConfiguration.touchSlop) {
                             dragging = true
@@ -298,13 +332,15 @@ fun AetherBottomNavBar(
                         }
 
                         if (dragging) {
+                            val previousPosition = dragPosition
                             dragPosition = (
                                 dragOriginPosition + (x - dragOriginX) / slot
                             ).coerceIn(0f, lastIndex.toFloat())
-                            // Kecepatan sebenarnya (slot/detik) memakai selisih waktu event,
-                            // jadi hasilnya sama di layar 60 Hz maupun 120 Hz.
+                            // Kecepatan sebenarnya (slot/detik) dari pergeseran capsule dan
+                            // selisih waktu event -> sama di 60/120 Hz, dan nol saat capsule
+                            // tertahan di tepi (jari masih bergerak tapi capsule tidak).
                             val dtMs = (change.uptimeMillis - change.previousUptimeMillis).coerceAtLeast(1L)
-                            val instant = (dx / slot) / (dtMs / 1000f)
+                            val instant = (dragPosition - previousPosition) / (dtMs / 1000f)
                             dragVelocity = dragVelocity * 0.65f + instant * 0.35f
                         }
                         lastX = x
@@ -360,7 +396,7 @@ fun AetherBottomNavBar(
         // supaya tidak terpotong. Mode inline bebas menyembul melewati tepi capsule.
         val growWFraction = if (nat) 0.06f else 0.20f
         val growHeight = if (nat) 4.dp else 14.dp
-        val stretchMax = 0.14f
+        val stretchMax = 0.22f
         val squashMax = 0.09f
 
         // Border gaya iOS 27: lebih tegas dan jelas, bukan lagi mengandalkan bayangan.
@@ -450,27 +486,23 @@ fun AetherBottomNavBar(
                     val pw = popW.value
                     val ph = popH.value
 
-                    // Lebar capsule berubah mengikuti label yang sedang dilewati.
-                    // Interpolasi kontinu menjaga sliding halus tanpa resize mendadak.
-                    val lowerIndex = pos.toInt().coerceIn(0, lastIndex)
-                    val upperIndex = (lowerIndex + 1).coerceAtMost(lastIndex)
-                    val fraction = (pos - lowerIndex).coerceIn(0f, 1f)
-                    val lowerWidth = indicatorWidthsPx[lowerIndex]
-                    val upperWidth = indicatorWidthsPx[upperIndex]
-                    val labelWidth = lowerWidth + (upperWidth - lowerWidth) * fraction
-                    val minIndicatorWidth = slot * 0.60f
-                    val maxIndicatorWidth = slot * 1.06f
-                    val baseW = labelWidth.coerceIn(minIndicatorWidth, maxIndicatorWidth)
+                    // Lebar dasar capsule TETAP (satu slot dikurangi sedikit celah), tidak
+                    // lagi mengikuti panjang label tab.
+                    val baseW = slot - 8.dp.toPx()
                     val baseH = size.height - inset * 2f
 
-                    // Squash & stretch: saat meluncur capsule memanjang dan menipis;
-                    // volume visual dijaga dengan mengecilkan tinggi sedikit.
+                    // Squash & stretch searah geser: saat meluncur capsule memanjang ke arah
+                    // gerak (sisi depan lebih maju dari sisi belakang) dan menipis; volume
+                    // visual dijaga dengan mengecilkan tinggi sedikit.
                     val speed = (abs(velocity) / 8f).coerceIn(0f, 1f)
+                    val direction = if (velocity >= 0f) 1f else -1f
                     val h = (baseH * (1f - squashMax * speed) + growHeight.toPx() * ph)
                         .coerceAtLeast(baseH * 0.7f)
-                    val w = (baseW * (1f + growWFraction * pw) * (1f + stretchMax * speed))
+                    val stretchPx = baseW * stretchMax * speed
+                    val w = (baseW * (1f + growWFraction * pw) + stretchPx)
                         .coerceAtLeast(h)
-                    val cx = (pos + 0.5f) * slot
+                    // Geser pusat sedikit ke arah gerak: sisi depan memanjang ~70%, belakang ~30%.
+                    val cx = (pos + 0.5f) * slot + direction * stretchPx * 0.2f
                     val left = cx - w / 2f
                     val top = (size.height - h) / 2f
 
