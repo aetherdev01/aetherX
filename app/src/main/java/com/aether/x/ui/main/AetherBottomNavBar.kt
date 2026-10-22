@@ -394,8 +394,10 @@ fun AetherBottomNavBar(
     val layers: @Composable (Boolean) -> Unit = { nat ->
         // Di window native, window selebar kapsul meng-clip pill -> sembulan dikecilkan
         // supaya tidak terpotong. Mode inline bebas menyembul melewati tepi capsule.
-        val growWFraction = if (nat) 0.06f else 0.20f
-        val growHeight = if (nat) 4.dp else 14.dp
+        // Pill membesar SAMA besar di semua sisi (lebar & tinggi bertambah sebesar growBy),
+        // jadi jarak pill ke tepi capsule tetap seragam dan lengkungnya tetap konsentris
+        // dengan lengkung navbar (radius pill = tinggi/2, navbar = tinggi/2).
+        val growBy = if (nat) 4.dp else 14.dp
         val stretchMax = 0.22f
         val squashMax = 0.09f
 
@@ -496,10 +498,10 @@ fun AetherBottomNavBar(
                     // visual dijaga dengan mengecilkan tinggi sedikit.
                     val speed = (abs(velocity) / 8f).coerceIn(0f, 1f)
                     val direction = if (velocity >= 0f) 1f else -1f
-                    val h = (baseH * (1f - squashMax * speed) + growHeight.toPx() * ph)
+                    val h = (baseH * (1f - squashMax * speed) + growBy.toPx() * ph)
                         .coerceAtLeast(baseH * 0.7f)
                     val stretchPx = baseW * stretchMax * speed
-                    val w = (baseW * (1f + growWFraction * pw) + stretchPx)
+                    val w = (baseW + growBy.toPx() * pw + stretchPx)
                         .coerceAtLeast(h)
                     // Geser pusat sedikit ke arah gerak: sisi depan memanjang ~70%, belakang ~30%.
                     val cx = (pos + 0.5f) * slot + direction * stretchPx * 0.2f
