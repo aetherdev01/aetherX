@@ -75,9 +75,9 @@ data class AppPreferences(
     val appFont: AppFont = AppFont.SYSTEM,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
-    val blurStrength: Int = 25,
+    val blurStrength: Int = 22,
     /** 0..100 — kekuatan tampilan kaca/tint, terpisah dari blur. */
-    val liquidGlassLevel: Int = 50,
+    val liquidGlassLevel: Int = 18,
     val hapticsEnabled: Boolean = true,
     val reduceMotionEnabled: Boolean = false,
 
@@ -229,8 +229,8 @@ class AetherXPreferences(private val context: Context) {
                 .getOrDefault(AppFont.SYSTEM),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
-            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 25).coerceIn(0, 100),
-            liquidGlassLevel = (prefs[Keys.LIQUID_GLASS_LEVEL] ?: 50).coerceIn(0, 100),
+            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 22).coerceIn(0, 100),
+            liquidGlassLevel = (prefs[Keys.LIQUID_GLASS_LEVEL] ?: 18).coerceIn(0, 100),
             hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
             reduceMotionEnabled = prefs[Keys.REDUCE_MOTION_ENABLED] ?: false,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,

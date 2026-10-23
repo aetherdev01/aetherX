@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -50,7 +49,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.ui.components.AetherBackground
-import com.aether.x.ui.components.aetherCardSurface
 import kotlinx.coroutines.delay
 import com.aether.x.core.locale.str
 
@@ -117,8 +115,8 @@ fun SplashScreen(
                         scaleX = entryScale
                         scaleY = entryScale
                     }
-                    .aetherCardSurface(shape = RoundedCornerShape(32.dp))
-                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                    // Clean splash: logo and status sit directly on the animated background.
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
             ) {
                 Image(
                     painter = painterResource(R.drawable.logo),
