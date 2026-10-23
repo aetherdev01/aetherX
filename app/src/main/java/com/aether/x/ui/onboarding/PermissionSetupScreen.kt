@@ -1,9 +1,7 @@
 package com.aether.x.ui.onboarding
 
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -33,15 +31,13 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +57,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,13 +68,13 @@ import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.ui.components.AetherBackground
-import com.aether.x.ui.theme.TextMuted
-import com.aether.x.ui.theme.TextPrimary
-import com.aether.x.ui.theme.TextSecondary
+import com.aether.x.ui.components.aetherCardSurface
 
 /**
- * Compact, card-based setup page. Root is optional for entering the app;
- * features requiring elevated access remain locked until root is granted.
+ * Setup stays non-blocking: users can enter AetherX without root, while root-only
+ * controls remain unavailable until the permission manager grants access.
+ * Surfaces intentionally use the shared Liquid Glass implementation so blur,
+ * tint and glass strength follow AetherXTheme settings.
  */
 @Composable
 fun PermissionSetupScreen(
@@ -84,13 +82,10 @@ fun PermissionSetupScreen(
     requireAccessToContinue: Boolean = true,
 ) {
     val context = LocalContext.current
-    // The first-run setup is mandatory navigation: system Back must not close the app.
-    // Manage Access passes requireAccessToContinue=false and keeps normal Back behavior.
-    BackHandler(enabled = requireAccessToContinue) { /* Intentionally consume Back. */ }
-
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
     val isEnglish = remember(context) { LocaleManager.current(context) == AppLanguage.ENGLISH }
     val snackbarHostState = remember { SnackbarHostState() }
+
     var ignoringBatteryOptimizations by remember {
         mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
     }
@@ -101,7 +96,10 @@ fun PermissionSetupScreen(
         PrivilegeManager.refreshSupportingPermissions(context)
     }
 
-    LaunchedEffect(Unit) { PrivilegeManager.refreshSupportingPermissions(context) }
+    LaunchedEffect(Unit) {
+        PrivilegeManager.refreshSupportingPermissions(context)
+    }
+
     LaunchedEffect(Unit) {
         PrivilegeManager.events.collect { feedback ->
             val message = when (feedback) {
@@ -131,10 +129,16 @@ fun PermissionSetupScreen(
     }
 
     val rootStatusText = when {
-        status.checkingRoot -> if (isEnglish) "Checking access…" else "Memeriksa akses…"
+        status.checkingRoot -> if (isEnglish) "Checking access" else "Memeriksa akses"
         status.rootGranted -> stringResource(R.string.setup_status_granted)
         else -> stringResource(R.string.setup_status_not_granted)
     }
+    val supportingGranted = listOf(
+        status.writeSettingsGranted,
+        status.overlayGranted,
+        status.notificationsGranted,
+    ).count { it }
+    val completedItems = supportingGranted + if (status.rootGranted) 1 else 0
 
     AetherBackground(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -153,89 +157,284 @@ fun PermissionSetupScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(contentPadding)
-                    .statusBarsPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .statusBarsPadding(),
             ) {
-                SetupIntro(isEnglish = isEnglish)
-                RootAccessCard(
-                    isEnglish = isEnglish,
-                    rootGranted = status.rootGranted,
-                    checkingRoot = status.checkingRoot,
-                    rootStatusText = rootStatusText,
-                    onRequestRoot = { PrivilegeManager.requestRoot(context) },
-                    onRefreshRoot = { PrivilegeManager.refreshAll() },
-                )
-                SupportingPermissionsSection(
-                    isEnglish = isEnglish,
-                    writeSettingsGranted = status.writeSettingsGranted,
-                    overlayGranted = status.overlayGranted,
-                    notificationsGranted = status.notificationsGranted,
-                    onRequestWriteSettings = { PrivilegeManager.requestWriteSettings(context) },
-                    onRequestOverlay = { PrivilegeManager.requestOverlayPermission(context) },
-                    onRequestNotifications = {
-                        notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    },
-                )
-                if (!ignoringBatteryOptimizations) {
-                    BatteryOptimizationNote(
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    SetupIntro(isEnglish = isEnglish, rootGranted = status.rootGranted)
+
+                    SetupProgressCard(
                         isEnglish = isEnglish,
-                        onRequestExemption = {
-                            PrivilegeManager.requestIgnoreBatteryOptimizations(context)
+                        completed = completedItems,
+                        total = 4,
+                        rootGranted = status.rootGranted,
+                        supportingGranted = supportingGranted,
+                    )
+
+                    RootAccessCard(
+                        isEnglish = isEnglish,
+                        rootGranted = status.rootGranted,
+                        checkingRoot = status.checkingRoot,
+                        rootStatusText = rootStatusText,
+                        onRequestRoot = { PrivilegeManager.requestRoot(context) },
+                        onRefreshRoot = { PrivilegeManager.refreshAll() },
+                    )
+
+                    if (!status.rootGranted) RestrictedModeCard(isEnglish = isEnglish)
+
+                    SupportingPermissionsSection(
+                        isEnglish = isEnglish,
+                        writeSettingsGranted = status.writeSettingsGranted,
+                        overlayGranted = status.overlayGranted,
+                        notificationsGranted = status.notificationsGranted,
+                        onRequestWriteSettings = { PrivilegeManager.requestWriteSettings(context) },
+                        onRequestOverlay = { PrivilegeManager.requestOverlayPermission(context) },
+                        onRequestNotifications = {
+                            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                         },
                     )
+
+                    if (!ignoringBatteryOptimizations) {
+                        BatteryOptimizationNote(
+                            isEnglish = isEnglish,
+                            onRequestExemption = {
+                                PrivilegeManager.requestIgnoreBatteryOptimizations(context)
+                            },
+                        )
+                    }
+
+                    if (status.rootGranted) SafetyNote(isEnglish = isEnglish)
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
-                if (status.rootGranted) SafetyNote(isEnglish = isEnglish)
-                Spacer(modifier = Modifier.height(6.dp))
             }
         }
     }
 }
 
-/** Page heading rather than a large hero card: less wasted space and a clearer hierarchy. */
 @Composable
-private fun SetupIntro(isEnglish: Boolean) {
+private fun SetupIntro(isEnglish: Boolean, rootGranted: Boolean) {
     val colors = MaterialTheme.colorScheme
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(28.dp))
+            .padding(start = 19.dp, end = 19.dp, top = 20.dp, bottom = 19.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .background(colors.primary.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(colors.primary.copy(alpha = 0.13f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Bolt, contentDescription = null, tint = colors.primary, modifier = Modifier.size(21.dp))
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text("AetherX", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Text(
-                    if (isEnglish) "ACCESS & PERMISSIONS" else "AKSES & PERIZINAN",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.primary,
+                Icon(
+                    imageVector = Icons.Outlined.Bolt,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(28.dp),
                 )
             }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = "AETHERX",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.4.sp,
+                    color = colors.onSurface,
+                )
+                Text(
+                    text = if (isEnglish) "DEVICE ACCESS CENTER" else "PUSAT AKSES PERANGKAT",
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 0.7.sp,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            SetupStatusPill(
+                text = if (rootGranted) {
+                    if (isEnglish) "READY" else "SIAP"
+                } else {
+                    if (isEnglish) "SETUP" else "PERSIAPAN"
+                },
+                positive = rootGranted,
+            )
         }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = if (isEnglish) "Set up your access" else "Siapkan akses aplikasi",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text(
+                text = if (isEnglish) "Set up your access" else "Siapkan akses AetherX",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+            )
+            Text(
+                text = if (isEnglish) {
+                    "Connect the permissions AetherX needs for system controls, overlays, and background monitoring. You can review each item below."
+                } else {
+                    "Atur izin yang dibutuhkan AetherX untuk kontrol sistem, overlay, dan pemantauan latar belakang. Periksa setiap item di bawah ini."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp))
+                .background(colors.primary.copy(alpha = 0.075f))
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Icon(
+                imageVector = if (rootGranted) Icons.Outlined.CheckCircle else Icons.Outlined.Shield,
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = if (isEnglish) {
+                    if (rootGranted) "Core access is connected" else "Root unlocks advanced system controls"
+                } else {
+                    if (rootGranted) "Akses utama sudah terhubung" else "Root membuka kontrol sistem lanjutan"
+                },
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = colors.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SetupProgressCard(
+    isEnglish: Boolean,
+    completed: Int,
+    total: Int,
+    rootGranted: Boolean,
+    supportingGranted: Int,
+) {
+    val colors = MaterialTheme.colorScheme
+    val progress = completed.toFloat() / total.coerceAtLeast(1)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(23.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = if (isEnglish) "SETUP OVERVIEW" else "RINGKASAN PENGATURAN",
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurfaceVariant,
+                )
+                Text(
+                    text = if (isEnglish) "$completed of $total checks complete" else "$completed dari $total pemeriksaan selesai",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
+                )
+            }
+            Text(
+                text = "${(progress * 100).toInt()}%",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.primary,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { progress.coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(7.dp)
+                .clip(RoundedCornerShape(20.dp)),
+            color = colors.primary,
+            trackColor = colors.surfaceVariant.copy(alpha = 0.8f),
         )
-        Text(
-            text = if (isEnglish) {
-                "Enable what you need. Root is optional, and you can change permissions later."
-            } else {
-                "Aktifkan izin yang diperlukan. Root bersifat opsional dan izin bisa diatur lagi nanti."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SetupProgressMetric(
+                modifier = Modifier.weight(1f),
+                value = if (rootGranted) "1/1" else "0/1",
+                label = if (isEnglish) "Root access" else "Akses root",
+                complete = rootGranted,
+            )
+            SetupProgressMetric(
+                modifier = Modifier.weight(1f),
+                value = "$supportingGranted/3",
+                label = if (isEnglish) "Extra access" else "Izin tambahan",
+                complete = supportingGranted == 3,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SetupProgressMetric(
+    modifier: Modifier,
+    value: String,
+    label: String,
+    complete: Boolean,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(15.dp))
+            .background(colors.surfaceVariant.copy(alpha = 0.48f))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background((if (complete) colors.primary else colors.onSurfaceVariant).copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (complete) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = if (complete) colors.primary else colors.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -249,81 +448,193 @@ private fun RootAccessCard(
     onRefreshRoot: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        border = BorderStroke(1.dp, if (rootGranted) colors.primary.copy(alpha = 0.45f) else colors.outlineVariant.copy(alpha = 0.72f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(25.dp))
+            .padding(17.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                SetupIcon(
-                    imageVector = Icons.Outlined.Shield,
-                    tint = if (rootGranted) colors.primary else colors.onSurfaceVariant,
+            SetupIcon(
+                imageVector = Icons.Outlined.Shield,
+                tint = if (rootGranted) colors.primary else colors.onSurfaceVariant,
+                size = 48.dp,
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = if (isEnglish) "Core permission" else "Izin utama",
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 0.7.sp,
+                    color = colors.onSurfaceVariant,
                 )
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(if (isEnglish) "Root access" else "Akses root", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Text(
-                        text = if (rootGranted) {
-                            if (isEnglish) "Ready to use" else "Siap digunakan"
-                        } else if (checkingRoot) {
-                            if (isEnglish) "Checking status…" else "Memeriksa status…"
-                        } else rootStatusText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (rootGranted) colors.primary else TextSecondary,
+                Text(
+                    text = stringResource(R.string.setup_page_access_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
+                )
+                Text(
+                    text = rootStatusText,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (rootGranted) colors.primary else colors.onSurfaceVariant,
+                )
+            }
+            if (rootGranted) {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+
+        Text(
+            text = stringResource(R.string.setup_method_root_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp))
+                .background(colors.surfaceVariant.copy(alpha = 0.48f))
+                .padding(12.dp),
+        ) {
+            Text(
+                text = if (isEnglish) {
+                    "Works with Magisk, KernelSU, and APatch. Approve the request in your root manager, then return here."
+                } else {
+                    "Mendukung Magisk, KernelSU, dan APatch. Setujui permintaan di aplikasi pengelola root, lalu kembali ke halaman ini."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+
+        if (!rootGranted) {
+            Button(
+                onClick = onRequestRoot,
+                enabled = !checkingRoot,
+                modifier = Modifier.fillMaxWidth().height(49.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary,
+                ),
+            ) {
+                if (checkingRoot) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(17.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.onPrimary,
                     )
-                }
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = (if (rootGranted) colors.primary else colors.onSurfaceVariant).copy(alpha = 0.10f),
-                ) {
                     Text(
-                        text = if (rootGranted) (if (isEnglish) "ACTIVE" else "AKTIF") else (if (isEnglish) "OPTIONAL" else "OPSIONAL"),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (rootGranted) colors.primary else colors.onSurfaceVariant,
+                        text = if (isEnglish) "Checking access…" else "Memeriksa akses…",
+                        modifier = Modifier.padding(start = 9.dp),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                } else {
+                    Text(
+                        text = if (isEnglish) "Grant root access" else "Berikan akses root",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        modifier = Modifier.padding(start = 4.dp).size(19.dp),
                     )
                 }
             }
-            Text(
-                text = if (isEnglish) {
-                    "Unlock CPU, GPU, kernel, and other system controls. Approve the prompt in your root manager."
-                } else {
-                    "Buka kontrol CPU, GPU, kernel, dan sistem lainnya. Setujui permintaan melalui pengelola root."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-            )
-            if (!rootGranted) {
-                androidx.compose.material3.OutlinedButton(
-                    onClick = onRequestRoot,
-                    enabled = !checkingRoot,
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
-                    shape = RoundedCornerShape(13.dp),
-                    border = BorderStroke(1.dp, colors.outlineVariant),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primary),
-                ) {
-                    if (checkingRoot) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.primary)
-                        Text(if (isEnglish) "Checking…" else "Memeriksa…", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
-                    } else {
-                        Text(if (isEnglish) "Grant root access" else "Minta akses root", fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            } else {
-                TextButton(onClick = onRefreshRoot, modifier = Modifier.align(Alignment.End)) {
-                    Text(if (isEnglish) "Refresh status" else "Perbarui status")
-                }
+        } else {
+            TextButton(onClick = onRefreshRoot, modifier = Modifier.align(Alignment.End)) {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(17.dp),
+                )
+                Text(
+                    text = if (isEnglish) "Verify again" else "Periksa ulang",
+                    modifier = Modifier.padding(start = 6.dp),
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }
 }
 
+@Composable
+private fun RestrictedModeCard(isEnglish: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
+            .padding(15.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SetupIcon(Icons.Outlined.Lock, colors.error, size = 42.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = if (isEnglish) "Limited mode" else "Mode terbatas",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
+                )
+                Text(
+                    text = if (isEnglish) "Root access not connected" else "Akses root belum terhubung",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.error,
+                )
+            }
+        }
+        Text(
+            text = if (isEnglish) {
+                "You can still open AetherX and explore available screens. Root-only controls remain locked and will not apply system changes."
+            } else {
+                "Kamu tetap bisa membuka AetherX dan melihat halaman yang tersedia. Kontrol khusus root tetap terkunci dan tidak akan menerapkan perubahan sistem."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp))
+                .background(colors.error.copy(alpha = 0.07f))
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            LockedFeatureLine(if (isEnglish) "CPU/GPU and kernel controls" else "Kontrol CPU/GPU dan kernel")
+            LockedFeatureLine(if (isEnglish) "System tweaks, terminal, and app management" else "Tweak sistem, terminal, dan pengelola aplikasi")
+            LockedFeatureLine(if (isEnglish) "Automatic monitoring that requires root" else "Pemantauan otomatis yang membutuhkan root")
+        }
+    }
+}
+
+@Composable
+private fun LockedFeatureLine(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Icon(
+            imageVector = Icons.Outlined.Lock,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(15.dp),
+        )
+        Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
 
 @Composable
 private fun SupportingPermissionsSection(
@@ -335,40 +646,64 @@ private fun SupportingPermissionsSection(
     onRequestOverlay: () -> Unit,
     onRequestNotifications: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (isEnglish) "Optional permissions" else "Izin tambahan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                Text(if (isEnglish) "For features that need extra access" else "Untuk fitur tertentu saja", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+    val grantedCount = listOf(writeSettingsGranted, overlayGranted, notificationsGranted).count { it }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = if (isEnglish) "Supporting permissions" else "Izin pendukung",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (isEnglish) {
+                        "Optional access for specific tools and background features."
+                    } else {
+                        "Izin tambahan untuk alat tertentu dan fitur latar belakang."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Text(
-                text = if (isEnglish) "OPTIONAL" else "OPSIONAL",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
+            SetupStatusPill(
+                text = "$grantedCount/3",
+                positive = grantedCount == 3,
             )
         }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = colors.surface),
-            border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.72f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 13.dp)) {
-                SupportingPermissionRow(Icons.Outlined.Tune, stringResource(R.string.setup_method_write_settings), stringResource(R.string.setup_method_write_settings_desc), writeSettingsGranted, isEnglish, onRequestWriteSettings)
-                PermissionDivider()
-                SupportingPermissionRow(Icons.Outlined.Layers, stringResource(R.string.setup_method_overlay), stringResource(R.string.setup_method_overlay_desc), overlayGranted, isEnglish, onRequestOverlay)
-                PermissionDivider()
-                SupportingPermissionRow(Icons.Outlined.NotificationsActive, stringResource(R.string.setup_method_notifications), stringResource(R.string.setup_method_notifications_desc), notificationsGranted, isEnglish, onRequestNotifications)
-            }
-        }
+
+        SupportingPermissionCard(
+            icon = Icons.Outlined.Tune,
+            title = stringResource(R.string.setup_method_write_settings),
+            description = stringResource(R.string.setup_method_write_settings_desc),
+            granted = writeSettingsGranted,
+            isEnglish = isEnglish,
+            onRequest = onRequestWriteSettings,
+        )
+        SupportingPermissionCard(
+            icon = Icons.Outlined.Layers,
+            title = stringResource(R.string.setup_method_overlay),
+            description = stringResource(R.string.setup_method_overlay_desc),
+            granted = overlayGranted,
+            isEnglish = isEnglish,
+            onRequest = onRequestOverlay,
+        )
+        SupportingPermissionCard(
+            icon = Icons.Outlined.NotificationsActive,
+            title = stringResource(R.string.setup_method_notifications),
+            description = stringResource(R.string.setup_method_notifications_desc),
+            granted = notificationsGranted,
+            isEnglish = isEnglish,
+            onRequest = onRequestNotifications,
+        )
     }
 }
 
 @Composable
-private fun SupportingPermissionRow(
+private fun SupportingPermissionCard(
     icon: ImageVector,
     title: String,
     description: String,
@@ -377,68 +712,102 @@ private fun SupportingPermissionRow(
     onRequest: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
+            .padding(horizontal = 15.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            modifier = Modifier.size(36.dp).background(
-                color = (if (granted) colors.primary else colors.onSurfaceVariant).copy(alpha = 0.09f),
-                shape = RoundedCornerShape(11.dp),
-            ),
-            contentAlignment = Alignment.Center,
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(icon, contentDescription = null, tint = if (granted) colors.primary else colors.onSurfaceVariant, modifier = Modifier.size(19.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary, maxLines = 1)
-            Text(
-                text = when {
-                    granted && isEnglish -> "Granted"
-                    granted -> "Sudah diizinkan"
-                    else -> description
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (granted) colors.primary else TextSecondary,
-                maxLines = 2,
+            SetupIcon(
+                imageVector = icon,
+                tint = if (granted) colors.primary else colors.onSurfaceVariant,
+                size = 43.dp,
             )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurface,
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Icon(
+                        imageVector = if (granted) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
+                        contentDescription = null,
+                        tint = if (granted) colors.primary else colors.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = if (granted) {
+                            if (isEnglish) "Permission granted" else "Izin sudah diberikan"
+                        } else {
+                            if (isEnglish) "Permission not granted" else "Izin belum diberikan"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = if (granted) colors.primary else colors.onSurfaceVariant,
+                    )
+                }
+            }
         }
-        if (granted) {
-            Icon(Icons.Outlined.CheckCircle, contentDescription = if (isEnglish) "Granted" else "Diizinkan", tint = colors.primary, modifier = Modifier.size(20.dp))
-        } else {
-            TextButton(onClick = onRequest, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 9.dp, vertical = 5.dp)) {
-                Text(if (isEnglish) "Set up" else "Atur", fontWeight = FontWeight.SemiBold)
+        if (!granted) {
+            TextButton(
+                onClick = onRequest,
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text(
+                    text = if (isEnglish) "Grant permission" else "Beri izin",
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier.padding(start = 3.dp).size(18.dp),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PermissionDivider() {
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)))
-}
-
-@Composable
 private fun BatteryOptimizationNote(isEnglish: Boolean, onRequestExemption: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
+            .padding(15.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(Icons.Outlined.BatteryAlert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.setup_battery_optimization_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, color = TextPrimary)
-                Text(stringResource(R.string.setup_battery_optimization_desc), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-            }
-            TextButton(onClick = onRequestExemption) {
-                Text(stringResource(R.string.setup_battery_optimization_action))
+        SetupIcon(Icons.Outlined.BatteryAlert, colors.onSurfaceVariant, size = 42.dp)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(
+                text = stringResource(R.string.setup_battery_optimization_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.setup_battery_optimization_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+            TextButton(onClick = onRequestExemption, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.setup_battery_optimization_action), fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -446,34 +815,58 @@ private fun BatteryOptimizationNote(isEnglish: Boolean, onRequestExemption: () -
 
 @Composable
 private fun SafetyNote(isEnglish: Boolean) {
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .aetherCardSurface(shape = RoundedCornerShape(20.dp))
+            .padding(14.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 1.dp).size(18.dp))
+        SetupIcon(Icons.Outlined.WarningAmber, colors.onSurfaceVariant, size = 38.dp)
         Text(
             text = if (isEnglish) {
-                "Change CPU, GPU, or kernel settings carefully. Unsupported values may affect stability, temperature, and battery life."
+                "Change CPU, GPU, or kernel settings carefully. Unsupported values can affect stability, temperature, and battery life."
             } else {
-                "Ubah pengaturan CPU, GPU, atau kernel dengan hati-hati. Nilai yang tidak sesuai dapat memengaruhi stabilitas, suhu, dan baterai."
+                "Ubah pengaturan CPU, GPU, atau kernel secara hati-hati. Nilai yang tidak sesuai dapat memengaruhi stabilitas, suhu, dan daya tahan baterai."
             },
+            modifier = Modifier.weight(1f).padding(top = 2.dp),
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+            color = colors.onSurfaceVariant,
         )
     }
 }
 
 @Composable
-private fun SetupIcon(imageVector: ImageVector, tint: Color) {
+private fun SetupIcon(imageVector: ImageVector, tint: Color, size: androidx.compose.ui.unit.Dp = 40.dp) {
     Box(
-        modifier = Modifier.size(38.dp).background(color = tint.copy(alpha = 0.10f), shape = RoundedCornerShape(12.dp)),
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(14.dp))
+            .background(tint.copy(alpha = 0.11f)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = imageVector, contentDescription = null, tint = tint, modifier = Modifier.size(21.dp))
+        Icon(imageVector = imageVector, contentDescription = null, tint = tint, modifier = Modifier.size(size * 0.52f))
+    }
+}
+
+@Composable
+private fun SetupStatusPill(text: String, positive: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    val tint = if (positive) colors.primary else colors.onSurfaceVariant
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(tint.copy(alpha = 0.11f))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = tint,
+        )
     }
 }
 
@@ -484,44 +877,50 @@ private fun SetupBottomBar(
     requireAccessToContinue: Boolean,
     onContinue: () -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-        tonalElevation = 2.dp,
-        shadowElevation = 3.dp,
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aetherCardSurface(
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
+            )
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        if (requireAccessToContinue && !rootGranted) {
+            Text(
+                text = if (isEnglish) {
+                    "You can set up root later from Access settings. Root-only features will stay locked until then."
+                } else {
+                    "Akses root bisa diatur nanti melalui menu Akses. Fitur khusus root tetap terkunci sampai akses diberikan."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        Button(
+            onClick = onContinue,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.primary,
+                contentColor = colors.onPrimary,
+            ),
         ) {
-            if (requireAccessToContinue && !rootGranted) {
-                Text(
-                    text = if (isEnglish) {
-                        "Root can be configured later. Root-only features stay locked until access is granted."
-                    } else {
-                        "Root bisa diatur nanti. Fitur khusus root tetap terkunci sampai akses diberikan."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                )
-            }
-            Button(
-                onClick = onContinue,
-                modifier = Modifier.fillMaxWidth().height(49.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            ) {
-                Text(
-                    text = when {
-                        !requireAccessToContinue -> if (isEnglish) "Close" else stringResource(R.string.permission_setup_kembali)
-                        !rootGranted -> if (isEnglish) "Continue in limited mode" else "Masuk mode terbatas"
-                        else -> if (isEnglish) "Open AetherX" else "Buka AetherX"
-                    },
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+            Text(
+                text = when {
+                    !requireAccessToContinue -> if (isEnglish) "Close" else stringResource(R.string.permission_setup_kembali)
+                    !rootGranted -> if (isEnglish) "Open app (limited mode)" else "Masuk aplikasi (mode terbatas)"
+                    else -> if (isEnglish) "Open AetherX" else "Buka AetherX"
+                },
+                fontWeight = FontWeight.SemiBold,
+            )
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier.padding(start = 5.dp).size(19.dp),
+            )
         }
     }
 }

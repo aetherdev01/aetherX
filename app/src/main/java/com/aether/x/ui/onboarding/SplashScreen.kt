@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -48,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.ui.components.AetherBackground
+import com.aether.x.ui.components.aetherCardSurface
 import kotlinx.coroutines.delay
 import com.aether.x.core.locale.str
 
@@ -107,17 +110,20 @@ fun SplashScreen(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .widthIn(max = 390.dp)
                     .alpha(entrance.coerceIn(0f, 1f))
                     .graphicsLayer {
                         val entryScale = 0.94f + entrance.coerceIn(0f, 1f) * 0.06f
                         scaleX = entryScale
                         scaleY = entryScale
-                    },
+                    }
+                    .aetherCardSurface(shape = RoundedCornerShape(32.dp))
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
             ) {
                 Image(
                     painter = painterResource(R.drawable.logo),
                     contentDescription = "AetherX",
-                    colorFilter = ColorFilter.tint(colors.onBackground),
+                    colorFilter = ColorFilter.tint(colors.onSurface),
                     modifier = Modifier
                         .size(96.dp)
                         .graphicsLayer {
@@ -133,7 +139,7 @@ fun SplashScreen(
 
                 Text(
                     text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = colors.onBackground)) { append("AETHER") }
+                        withStyle(SpanStyle(color = colors.onSurface)) { append("AETHER") }
                         withStyle(SpanStyle(color = colors.primary)) { append("X") }
                     },
                     style = MaterialTheme.typography.headlineSmall,
@@ -141,7 +147,20 @@ fun SplashScreen(
                     letterSpacing = 3.4.sp,
                 )
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(7.dp))
+
+                Text(
+                    text = if (com.aether.x.core.locale.LocaleManager.current(androidx.compose.ui.platform.LocalContext.current) == com.aether.x.core.locale.AppLanguage.ENGLISH) {
+                        "KERNEL CONTROL  ·  PERFORMANCE"
+                    } else {
+                        "KONTROL KERNEL  ·  PERFORMA"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.1.sp,
+                    color = colors.onSurfaceVariant,
+                )
+
+                Spacer(Modifier.height(22.dp))
 
                 // Keep the splash uncluttered: show only the live operation status.
                 // Detailed registration/token stages remain tracked by SplashViewModel.
