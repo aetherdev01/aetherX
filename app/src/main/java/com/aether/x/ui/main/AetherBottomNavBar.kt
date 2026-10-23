@@ -475,25 +475,20 @@ fun AetherBottomNavBar(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                // Tint PUTIH (bukan warna surface): di tema gelap surface nyaris
-                                // sama dengan latar sehingga capsule terlihat bening.
+                                // Pakai warna surface tema yang sama dengan kartu AetherX,
+                                // bukan tint putih khusus navbar. Dengan begitu Dark/Light dan
+                                // level Jernih, Tipis, Seimbang, Pekat, Solid konsisten.
                                 if (blurOn) {
-                                    // Tint follows Liquid Glass Level instead of remaining
-                                    // almost constant while blur is enabled. Dark mode uses
-                                    // a smaller white contribution to preserve its dark glass.
                                     listOf(
-                                        Color.White.copy(alpha = if (isDark) 0.025f + 0.25f * glassLevel else glassTintAlpha * 0.92f),
-                                        Color.White.copy(alpha = if (isDark) 0.018f + 0.18f * glassLevel else glassTintAlpha * 0.72f),
+                                        surface.copy(alpha = (glassTintAlpha * 0.92f).coerceIn(0f, 0.88f)),
+                                        surface.copy(alpha = (glassTintAlpha * 0.76f).coerceIn(0f, 0.82f)),
                                     )
                                 } else {
-                                    // Blur may be disabled, but the glass level must still
-                                    // move the surface from clear to solid rather than leaving
-                                    // a fixed, nearly opaque top gradient.
+                                    // Samakan fallback tanpa blur dengan baseSurface pada
+                                    // aetherCardSurface agar tiap level tetap punya hasil serupa.
                                     listOf(
-                                        lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(
-                                            alpha = if (isDark) 0.08f + 0.34f * glassLevel else glassTintAlpha * 0.92f,
-                                        ),
-                                        surface.copy(alpha = glassTintAlpha),
+                                        surface.copy(alpha = 0.40f + 0.48f * glassLevel),
+                                        surface.copy(alpha = 0.34f + 0.42f * glassLevel),
                                     )
                                 },
                             ),
@@ -668,7 +663,7 @@ fun AetherBottomNavBar(
                 NativeBlurWindow(
                     state = nativeState,
                     blurRadiusPx = with(density) { blurRadiusFor(blur).coerceAtMost(14f).dp.roundToPx() },
-                    tint = surface.copy(alpha = glassTintAlpha),
+                    tint = surface.copy(alpha = (glassTintAlpha * 0.84f).coerceIn(0f, 0.80f)),
                 ) {
                     Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {
                         layers(true)
