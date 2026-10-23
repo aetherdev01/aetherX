@@ -2,12 +2,7 @@ package com.aether.x.ui.onboarding
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,37 +11,35 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.BorderStroke
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,47 +48,35 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.R
+import com.aether.x.core.locale.AppLanguage
+import com.aether.x.core.locale.LocaleManager
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
-import com.aether.x.core.permission.RequestState
 import com.aether.x.ui.components.AetherBackground
-import com.aether.x.ui.components.aetherCardSurface
-import com.aether.x.ui.components.PermissionMethodCard
-import com.aether.x.ui.components.PopupDialog
-import com.aether.x.ui.theme.AccentBlue
-import com.aether.x.ui.theme.AccentGreen
-import com.aether.x.ui.theme.AccentGreenContainer
-import com.aether.x.ui.theme.AccentRed
-import com.aether.x.ui.theme.BgVoid
-import com.aether.x.ui.theme.OnAccentBlue
-import com.aether.x.ui.theme.Spacing
-import com.aether.x.ui.theme.StrokeSubtle
-import com.aether.x.ui.theme.SurfaceCard
-import com.aether.x.ui.theme.SurfaceCardAlt
-import com.aether.x.ui.theme.SurfaceRaised
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
-import kotlinx.coroutines.launch
-import com.aether.x.core.locale.str
 
+/**
+ * Access setup is intentionally non-blocking: users without root can enter the
+ * app, while controls that require elevated privileges remain unavailable.
+ * Supporting permissions are optional and can be granted later from this page.
+ */
 @Composable
 fun PermissionSetupScreen(
     onContinue: () -> Unit,
@@ -103,51 +84,38 @@ fun PermissionSetupScreen(
 ) {
     val context = LocalContext.current
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-
-    // v3.1 PURE ROOT: mode "Lewati tanpa akses" (No Root skip) DIHAPUS
-    // TOTAL — aplikasi sekarang ketat hanya untuk pengguna root, halaman
-    // akses hanya dianggap terpenuhi kalau status.hasAccess (root granted)
-    // benar-benar true.
-    val accessSatisfied = status.hasAccess
-    val writeSettingsSatisfied = status.writeSettingsGranted
-    val overlaySatisfied = status.overlayGranted
-    val notificationsSatisfied = status.notificationsGranted
-
-    var kernelWarningAcknowledged by remember { mutableStateOf(false) }
-
-    val pageSatisfied = listOf(
-        accessSatisfied,
-        writeSettingsSatisfied,
-        overlaySatisfied,
-        notificationsSatisfied,
-        kernelWarningAcknowledged,
-    )
-    val pageCount = pageSatisfied.size
-
-
-    val pagerState = rememberPagerState(pageCount = { pageCount })
-
-    val canContinue = !requireAccessToContinue || pageSatisfied.all { it }
-
+    val isEnglish = remember(context) {
+        LocaleManager.current(context) == AppLanguage.ENGLISH
+    }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var ignoringBatteryOptimizations by remember {
+        mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
+    }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) {
+        PrivilegeManager.refreshSupportingPermissions(context)
+    }
+
+    LaunchedEffect(Unit) {
+        PrivilegeManager.refreshSupportingPermissions(context)
+    }
+
     LaunchedEffect(Unit) {
         PrivilegeManager.events.collect { feedback ->
             val message = when (feedback) {
                 is RequestFeedback.Granted -> context.getString(R.string.permission_feedback_root_granted)
                 is RequestFeedback.Failed -> when (feedback.reason) {
-                    RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE -> context.getString(R.string.permission_feedback_root_denied)
-                    RequestFailureReason.ROOT_ALREADY_IN_PROGRESS -> context.getString(R.string.permission_feedback_root_in_progress)
+                    RequestFailureReason.ROOT_DENIED_OR_UNAVAILABLE ->
+                        context.getString(R.string.permission_feedback_root_denied)
+                    RequestFailureReason.ROOT_ALREADY_IN_PROGRESS ->
+                        context.getString(R.string.permission_feedback_root_in_progress)
                 }
             }
             snackbarHostState.showSnackbar(message)
         }
-    }
-
-    val notificationLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        PrivilegeManager.refreshSupportingPermissions(context)
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -156,166 +124,88 @@ fun PermissionSetupScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 PrivilegeManager.refreshSupportingPermissions(context)
                 PrivilegeManager.refreshAll()
+                ignoringBatteryOptimizations =
+                    PrivilegeManager.isIgnoringBatteryOptimizations(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(Unit) {
-        PrivilegeManager.refreshSupportingPermissions(context)
+    val rootStatusText = when {
+        status.checkingRoot -> if (isEnglish) "Checking access" else "Memeriksa akses"
+        status.rootGranted -> stringResource(R.string.setup_status_granted)
+        else -> stringResource(R.string.setup_status_not_granted)
     }
-
-    LaunchedEffect(Unit) {
-        if (requireAccessToContinue && !status.notificationsGranted &&
-            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
-        ) {
-            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    // Auto-advance dinonaktifkan atas permintaan pengguna — sebelumnya
-    // pager pindah halaman otomatis 600ms setelah satu izin terpenuhi,
-    // tapi perilaku ini menyebabkan bug (macet/animasi tanggung, lihat
-    // riwayat komentar di versi sebelumnya). Sekarang navigasi antar
-    // halaman sepenuhnya manual: swipe atau tombol "Lanjut" di bawah.
 
     AetherBackground(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
-        ) { padding ->
+            bottomBar = {
+                SetupBottomBar(
+                    isEnglish = isEnglish,
+                    rootGranted = status.rootGranted,
+                    requireAccessToContinue = requireAccessToContinue,
+                    onContinue = onContinue,
+                )
+            },
+        ) { contentPadding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(contentPadding)
                     .statusBarsPadding(),
             ) {
-                PermissionHeader(
-                    currentPage = pagerState.currentPage,
-                    pageCount = pageCount,
-                )
-
-                PageDotsIndicator(
-                    pageCount = pageCount,
-                    currentPage = pagerState.currentPage,
-                    pageSatisfied = pageSatisfied,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                )
-
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f),
-                    userScrollEnabled = true,
-                ) { page ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp)
-                            .padding(bottom = 20.dp),
-                    ) {
-                        when (page) {
-                            0 -> AccessMethodPage(status = status, context = context)
-                            1 -> WriteSettingsPage(status = status, context = context)
-                            2 -> OverlayPage(status = status, context = context)
-                            3 -> NotificationsPage(
-                                status = status,
-                                onRequestNotifications = {
-                                    notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                },
-                            )
-                            4 -> KernelWarningPage(
-                                acknowledged = kernelWarningAcknowledged,
-                                onAcknowledgedChange = { kernelWarningAcknowledged = it },
-                            )
-                        }
-                    }
-                }
-
-                val isLastPage = pagerState.currentPage == pageCount - 1
-                val currentPageSatisfied = pageSatisfied.getOrNull(pagerState.currentPage) == true
-                val nextEnabled = when {
-                    !requireAccessToContinue -> true
-                    isLastPage -> canContinue
-                    else -> currentPageSatisfied
-                }
-
                 Column(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                        .aetherCardSurface(shape = RoundedCornerShape(30.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (isLastPage) str(R.string.permission_setup_konfirmasi_akhir) else str(R.string.permission_setup_langkah_dari, pagerState.currentPage + 1, pageCount),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                            )
-                            Text(
-                                text = if (isLastPage) {
-                                    str(R.string.permission_setup_pastikan_semua_akses_siap_sebelum)
-                                } else {
-                                    str(R.string.permission_setup_selesaikan_bagian_ini_lalu_lanjut)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary,
-                                modifier = Modifier.padding(top = 3.dp),
-                            )
-                        }
-                        TextButton(
-                            onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
-                            enabled = pagerState.currentPage > 0,
-                        ) {
-                            Text(str(R.string.permission_setup_kembali), fontWeight = FontWeight.SemiBold)
-                        }
+                    SetupIntro(isEnglish = isEnglish)
+
+                    RootAccessCard(
+                        isEnglish = isEnglish,
+                        rootGranted = status.rootGranted,
+                        checkingRoot = status.checkingRoot,
+                        rootStatusText = rootStatusText,
+                        onRequestRoot = { PrivilegeManager.requestRoot(context) },
+                        onRefreshRoot = { PrivilegeManager.refreshAll() },
+                    )
+
+                    if (!status.rootGranted) {
+                        RestrictedModeCard(isEnglish = isEnglish)
                     }
 
-                    Button(
-                        onClick = {
-                            if (isLastPage) onContinue()
-                            else scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    SupportingPermissionsSection(
+                        isEnglish = isEnglish,
+                        writeSettingsGranted = status.writeSettingsGranted,
+                        overlayGranted = status.overlayGranted,
+                        notificationsGranted = status.notificationsGranted,
+                        onRequestWriteSettings = { PrivilegeManager.requestWriteSettings(context) },
+                        onRequestOverlay = { PrivilegeManager.requestOverlayPermission(context) },
+                        onRequestNotifications = {
+                            notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                         },
-                        enabled = nextEnabled,
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentBlue,
-                            contentColor = OnAccentBlue,
-                            disabledContainerColor = SurfaceRaised,
-                            disabledContentColor = TextMuted,
-                        ),
-                    ) {
-                        Text(
-                            text = if (isLastPage) stringResource(R.string.setup_action_continue)
-                            else stringResource(R.string.setup_action_next),
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    )
 
-                    AnimatedVisibility(visible = !nextEnabled, enter = fadeIn(), exit = fadeOut()) {
-                        Text(
-                            text = if (isLastPage) {
-                                stringResource(R.string.setup_locked_final_hint)
-                            } else {
-                                stringResource(R.string.setup_locked_hint)
+                    if (!ignoringBatteryOptimizations) {
+                        BatteryOptimizationNote(
+                            isEnglish = isEnglish,
+                            onRequestExemption = {
+                                PrivilegeManager.requestIgnoreBatteryOptimizations(context)
                             },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                         )
                     }
+
+                    if (status.rootGranted) {
+                        SafetyNote(isEnglish = isEnglish)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
         }
@@ -323,283 +213,58 @@ fun PermissionSetupScreen(
 }
 
 @Composable
-private fun AccessMethodPage(
-    status: com.aether.x.core.permission.PrivilegeStatus,
-    context: android.content.Context,
-) {
-    PageIcon(icon = Icons.Outlined.Shield, tint = AccentBlue)
-    PageTitle(
-        title = stringResource(R.string.setup_page_access_title),
-        subtitle = stringResource(R.string.setup_page_access_subtitle),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    ReadinessBanner(canContinue = status.hasAccess)
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-
-        // v3.1 PURE ROOT: battery optimization tetap relevan — ROM agresif
-        // (MIUI dkk) bisa membunuh daemon root shell di background pada
-        // sebagian perangkat. Murni informatif + tombol ke dialog sistem
-        // resmi, tidak memaksa apa pun.
-        var ignoringBatteryOptimizations by remember {
-            mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
-        }
-        val batteryLifecycleOwner = LocalLifecycleOwner.current
-        DisposableEffect(batteryLifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    ignoringBatteryOptimizations = PrivilegeManager.isIgnoringBatteryOptimizations(context)
-                }
+private fun SetupIntro(isEnglish: Boolean) {
+    Column(
+        modifier = Modifier.padding(top = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.11f),
+                        shape = RoundedCornerShape(13.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Bolt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(23.dp),
+                )
             }
-            batteryLifecycleOwner.lifecycle.addObserver(observer)
-            onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "AetherX",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = if (isEnglish) "ACCESS SETUP" else "PENYIAPAN AKSES",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary,
+                )
+            }
         }
-        AnimatedVisibility(
-            visible = !ignoringBatteryOptimizations,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            BatteryOptimizationBanner(
-                onRequestExemption = { PrivilegeManager.requestIgnoreBatteryOptimizations(context) },
-            )
-        }
 
-        PermissionMethodCard(
-            title = stringResource(R.string.setup_method_root),
-            description = stringResource(R.string.setup_method_root_desc),
-            statusText = when {
-                status.checkingRoot -> stringResource(R.string.setup_status_checking)
-                status.rootGranted -> stringResource(R.string.setup_status_granted)
-                else -> stringResource(R.string.setup_status_not_granted)
-            },
-            granted = status.rootGranted,
-            actionLabel = stringResource(R.string.setup_action_request),
-            onAction = { PrivilegeManager.requestRoot(context) },
-            isRequesting = status.rootRequestState == RequestState.REQUESTING,
-            requestingLabel = stringResource(R.string.setup_action_requesting),
-        )
-    }
-}
-
-@Composable
-private fun WriteSettingsPage(
-    status: com.aether.x.core.permission.PrivilegeStatus,
-    context: android.content.Context,
-) {
-    PageIcon(icon = Icons.Outlined.Tune, tint = AccentBlue)
-    PageTitle(
-        title = stringResource(R.string.setup_page_write_settings_title),
-        subtitle = stringResource(R.string.setup_page_write_settings_subtitle),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-    ReadinessBanner(
-        canContinue = status.writeSettingsGranted,
-        notReadyText = stringResource(R.string.setup_page_write_settings_banner),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    PermissionMethodCard(
-        title = stringResource(R.string.setup_method_write_settings),
-        description = stringResource(R.string.setup_method_write_settings_desc),
-        statusText = if (status.writeSettingsGranted) {
-            stringResource(R.string.setup_status_granted)
-        } else {
-            stringResource(R.string.setup_status_not_granted)
-        },
-        granted = status.writeSettingsGranted,
-        actionLabel = stringResource(R.string.setup_action_request),
-        onAction = { PrivilegeManager.requestWriteSettings(context) },
-    )
-}
-
-@Composable
-private fun OverlayPage(
-    status: com.aether.x.core.permission.PrivilegeStatus,
-    context: android.content.Context,
-) {
-    PageIcon(icon = Icons.Outlined.Layers, tint = AccentBlue)
-    PageTitle(
-        title = stringResource(R.string.setup_page_overlay_title),
-        subtitle = stringResource(R.string.setup_page_overlay_subtitle),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-    ReadinessBanner(
-        canContinue = status.overlayGranted,
-        notReadyText = stringResource(R.string.setup_page_overlay_banner),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    PermissionMethodCard(
-        title = stringResource(R.string.setup_method_overlay),
-        description = stringResource(R.string.setup_method_overlay_desc),
-        statusText = if (status.overlayGranted) {
-            stringResource(R.string.setup_status_granted)
-        } else {
-            stringResource(R.string.setup_status_not_granted)
-        },
-        granted = status.overlayGranted,
-        actionLabel = stringResource(R.string.setup_action_request),
-        onAction = { PrivilegeManager.requestOverlayPermission(context) },
-    )
-}
-
-@Composable
-private fun NotificationsPage(
-    status: com.aether.x.core.permission.PrivilegeStatus,
-    onRequestNotifications: () -> Unit,
-) {
-    PageIcon(icon = Icons.Outlined.NotificationsActive, tint = AccentBlue)
-    PageTitle(
-        title = stringResource(R.string.setup_page_notifications_title),
-        subtitle = stringResource(R.string.setup_page_notifications_subtitle),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-    ReadinessBanner(
-        canContinue = status.notificationsGranted,
-        notReadyText = stringResource(R.string.setup_page_notifications_banner),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    PermissionMethodCard(
-        title = stringResource(R.string.setup_method_notifications),
-        description = stringResource(R.string.setup_method_notifications_desc),
-        statusText = if (status.notificationsGranted) {
-            stringResource(R.string.setup_status_granted)
-        } else {
-            stringResource(R.string.setup_status_not_granted)
-        },
-        granted = status.notificationsGranted,
-        actionLabel = stringResource(R.string.setup_action_request),
-        onAction = onRequestNotifications,
-    )
-}
-
-@Composable
-private fun KernelWarningPage(
-    acknowledged: Boolean,
-    onAcknowledgedChange: (Boolean) -> Unit,
-) {
-    PageIcon(icon = Icons.Outlined.WarningAmber, tint = AccentRed)
-    PageTitle(
-        title = stringResource(R.string.setup_page_kernel_warning_title),
-        subtitle = stringResource(R.string.setup_page_kernel_warning_subtitle),
-    )
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
-            .padding(Spacing.xl),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md),
-    ) {
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            Icon(
-                imageVector = Icons.Outlined.Bolt,
-                contentDescription = null,
-                tint = AccentRed,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = stringResource(R.string.setup_kernel_warning_point_governor),
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-        }
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            Icon(
-                imageVector = Icons.Outlined.Bolt,
-                contentDescription = null,
-                tint = AccentRed,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = stringResource(R.string.setup_kernel_warning_point_thermal),
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-        }
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            Icon(
-                imageVector = Icons.Outlined.Bolt,
-                contentDescription = null,
-                tint = AccentRed,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = stringResource(R.string.setup_kernel_warning_point_responsibility),
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(Spacing.lg))
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aetherCardSurface(shape = RoundedCornerShape(20.dp), accent = AccentRed)
-            .clickable { onAcknowledgedChange(!acknowledged) }
-            .padding(horizontal = 10.dp, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = acknowledged,
-            onCheckedChange = onAcknowledgedChange,
-            colors = CheckboxDefaults.colors(checkedColor = AccentBlue),
-        )
         Text(
-            text = stringResource(R.string.setup_kernel_warning_acknowledge),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
-            modifier = Modifier.padding(start = Spacing.xs),
-        )
-    }
-}
-
-@Composable
-private fun PageIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, tint: androidx.compose.ui.graphics.Color) {
-    Box(
-        modifier = Modifier
-            .padding(top = 8.dp)
-            .size(64.dp)
-            .aetherCardSurface(shape = RoundedCornerShape(23.dp), accent = tint)
-            .padding(10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(CircleShape)
-                .background(tint.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(25.dp))
-        }
-    }
-}
-
-@Composable
-private fun PageTitle(title: String, subtitle: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp)
-            .aetherCardSurface(shape = RoundedCornerShape(25.dp))
-            .padding(horizontal = 18.dp, vertical = 17.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        Text(
-            text = title,
+            text = if (isEnglish) "Access and permissions" else "Akses dan izin",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
         )
         Text(
-            text = subtitle,
+            text = if (isEnglish) {
+                "Root enables system controls and performance tweaks. You can still open AetherX without root; root-dependent features will stay locked until access is available."
+            } else {
+                "Root diperlukan untuk kontrol sistem dan optimasi performa. AetherX tetap bisa dibuka tanpa root, tetapi fitur yang memerlukannya akan terkunci sampai akses tersedia."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
         )
@@ -607,116 +272,261 @@ private fun PageTitle(title: String, subtitle: String) {
 }
 
 @Composable
-private fun PermissionHeader(currentPage: Int, pageCount: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .aetherCardSurface(shape = RoundedCornerShape(27.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
+private fun RootAccessCard(
+    isEnglish: Boolean,
+    rootGranted: Boolean,
+    checkingRoot: Boolean,
+    rootStatusText: String,
+    onRequestRoot: () -> Unit,
+    onRefreshRoot: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (rootGranted) colors.primary.copy(alpha = 0.45f) else colors.outlineVariant,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(47.dp)
-                .aetherCardSurface(shape = RoundedCornerShape(17.dp), accent = AccentBlue)
-                .padding(9.dp),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Bolt,
-                contentDescription = null,
-                tint = AccentBlue,
-                modifier = Modifier.size(27.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                SetupIcon(
+                    imageVector = Icons.Outlined.Shield,
+                    tint = if (rootGranted) colors.primary else colors.onSurfaceVariant,
+                )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = stringResource(R.string.setup_page_access_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                    )
+                    Text(
+                        text = rootStatusText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (rootGranted) colors.primary else colors.onSurfaceVariant,
+                    )
+                }
+                if (rootGranted) {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        tint = colors.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.setup_method_root_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
             )
+
+            if (!rootGranted) {
+                Text(
+                    text = if (isEnglish) {
+                        "Grant the request in your root manager (such as Magisk, KernelSU, or APatch), then return to this page."
+                    } else {
+                        "Setujui permintaan melalui pengelola root seperti Magisk, KernelSU, atau APatch, lalu kembali ke halaman ini."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+                Button(
+                    onClick = onRequestRoot,
+                    enabled = !checkingRoot,
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.primary,
+                        contentColor = colors.onPrimary,
+                    ),
+                ) {
+                    if (checkingRoot) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(17.dp),
+                            strokeWidth = 2.dp,
+                            color = colors.onPrimary,
+                        )
+                        Text(
+                            text = if (isEnglish) "Checking…" else "Memeriksa…",
+                            modifier = Modifier.padding(start = 9.dp),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    } else {
+                        Text(
+                            text = if (isEnglish) "Request root access" else "Minta akses root",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = if (isEnglish) {
+                        "Root access is available. System features can run when their required supporting permissions are also granted."
+                    } else {
+                        "Akses root tersedia. Fitur sistem dapat dijalankan setelah izin pendukung yang diperlukan juga diberikan."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+                TextButton(
+                    onClick = onRefreshRoot,
+                    modifier = Modifier.align(Alignment.End),
+                ) {
+                    Text(if (isEnglish) "Check again" else "Periksa ulang")
+                }
+            }
         }
-        Column(modifier = Modifier.weight(1f)) {
+    }
+}
+
+@Composable
+private fun RestrictedModeCard(isEnglish: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant.copy(alpha = 0.65f)),
+        border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.75f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = colors.error,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = if (isEnglish) "Limited mode — root unavailable" else "Mode terbatas — root belum tersedia",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                )
+            }
             Text(
-                text = "A E T H E R X",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = TextPrimary,
-            )
-            Text(
-                text = stringResource(R.string.setup_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            Text(
-                text = stringResource(R.string.setup_subtitle),
+                text = if (isEnglish) {
+                    "You can enter the app, browse its available screens, and set permissions. Root-only controls remain locked and will not apply system changes."
+                } else {
+                    "Kamu tetap bisa masuk aplikasi, melihat halaman yang tersedia, dan mengatur izin. Kontrol khusus root tetap terkunci dan tidak akan menerapkan perubahan sistem."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondary,
-                modifier = Modifier.padding(top = 3.dp),
             )
-        }
-        Box(
-            modifier = Modifier
-                .aetherCardSurface(shape = RoundedCornerShape(15.dp), accent = AccentBlue)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "${currentPage + 1}/$pageCount",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = AccentBlue,
+            LockedFeatureLine(
+                text = if (isEnglish) "CPU/GPU and kernel controls" else "Kontrol CPU/GPU dan kernel",
+            )
+            LockedFeatureLine(
+                text = if (isEnglish) "System tweaks, terminal, and app management" else "Tweak sistem, terminal, dan pengelola aplikasi",
+            )
+            LockedFeatureLine(
+                text = if (isEnglish) "Automatic monitoring that requires root" else "Pemantauan otomatis yang membutuhkan root",
             )
         }
     }
 }
 
 @Composable
-private fun PageDotsIndicator(
-    pageCount: Int,
-    currentPage: Int,
-    pageSatisfied: List<Boolean>,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+private fun LockedFeatureLine(text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Icon(
+            imageVector = Icons.Outlined.Lock,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(15.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun SupportingPermissionsSection(
+    isEnglish: Boolean,
+    writeSettingsGranted: Boolean,
+    overlayGranted: Boolean,
+    notificationsGranted: Boolean,
+    onRequestWriteSettings: () -> Unit,
+    onRequestOverlay: () -> Unit,
+    onRequestNotifications: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                text = str(R.string.permission_setup_langkah, currentPage + 1, pageCount),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
+                text = if (isEnglish) "Supporting permissions" else "Izin pendukung",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
             )
-            Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = str(R.string.permission_setup_dari_siap, pageSatisfied.count { it }, pageCount),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (pageSatisfied.all { it }) AccentGreen else TextSecondary,
+                text = if (isEnglish) {
+                    "These permissions do not replace root. Grant them only for the features that need them; you can change them later."
+                } else {
+                    "Izin ini tidak menggantikan root. Berikan sesuai kebutuhan fitur dan kamu bisa mengubahnya nanti."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
             )
         }
-        Row(
+
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
-            for (index in 0 until pageCount) {
-                val satisfied = pageSatisfied.getOrNull(index) == true
-                val isCurrent = index == currentPage
-                Box(
-                    modifier = Modifier
-                        .weight(if (isCurrent) 1.7f else 1f)
-                        .height(5.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(
-                            when {
-                                satisfied -> AccentGreen
-                                isCurrent -> AccentBlue
-                                else -> StrokeSubtle
-                            },
-                        ),
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
+                SupportingPermissionRow(
+                    icon = Icons.Outlined.Tune,
+                    title = stringResource(R.string.setup_method_write_settings),
+                    description = stringResource(R.string.setup_method_write_settings_desc),
+                    granted = writeSettingsGranted,
+                    isEnglish = isEnglish,
+                    onRequest = onRequestWriteSettings,
+                )
+                PermissionDivider()
+                SupportingPermissionRow(
+                    icon = Icons.Outlined.Layers,
+                    title = stringResource(R.string.setup_method_overlay),
+                    description = stringResource(R.string.setup_method_overlay_desc),
+                    granted = overlayGranted,
+                    isEnglish = isEnglish,
+                    onRequest = onRequestOverlay,
+                )
+                PermissionDivider()
+                SupportingPermissionRow(
+                    icon = Icons.Outlined.NotificationsActive,
+                    title = stringResource(R.string.setup_method_notifications),
+                    description = stringResource(R.string.setup_method_notifications_desc),
+                    granted = notificationsGranted,
+                    isEnglish = isEnglish,
+                    onRequest = onRequestNotifications,
                 )
             }
         }
@@ -724,73 +534,225 @@ private fun PageDotsIndicator(
 }
 
 @Composable
-private fun ReadinessBanner(canContinue: Boolean, notReadyText: String = stringResource(R.string.setup_required_banner)) {
+private fun SupportingPermissionRow(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    granted: Boolean,
+    isEnglish: Boolean,
+    onRequest: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp).size(19.dp),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+                Text(
+                    text = if (granted) {
+                        if (isEnglish) "Granted" else "Sudah diizinkan"
+                    } else {
+                        if (isEnglish) "Not granted" else "Belum diizinkan"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (granted) MaterialTheme.colorScheme.primary else TextMuted,
+                )
+            }
+        }
+        if (!granted) {
+            TextButton(
+                onClick = onRequest,
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text(
+                    text = if (isEnglish) "Grant permission" else "Beri izin",
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp)
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+    )
+}
+
+@Composable
+private fun BatteryOptimizationNote(
+    isEnglish: Boolean,
+    onRequestExemption: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .aetherCardSurface(shape = RoundedCornerShape(22.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(14.dp),
+            )
+            .padding(horizontal = 13.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            modifier = Modifier.size(9.dp).clip(CircleShape).background(if (canContinue) AccentGreen else AccentRed),
+        Icon(
+            imageVector = Icons.Outlined.BatteryAlert,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp).size(19.dp),
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.setup_battery_optimization_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary,
+            )
+            Text(
+                text = stringResource(R.string.setup_battery_optimization_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+            )
+            TextButton(
+                onClick = onRequestExemption,
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text(
+                    text = stringResource(R.string.setup_battery_optimization_action),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SafetyNote(isEnglish: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(14.dp),
+            )
+            .padding(horizontal = 13.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.WarningAmber,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 1.dp).size(18.dp),
         )
         Text(
-            text = if (canContinue) stringResource(R.string.setup_ready_hint) else notReadyText,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = if (canContinue) AccentGreen else TextSecondary,
+            text = if (isEnglish) {
+                "Change CPU, GPU, or kernel settings carefully. Unsupported values can affect stability, temperature, and battery life."
+            } else {
+                "Ubah pengaturan CPU, GPU, atau kernel secara hati-hati. Nilai yang tidak sesuai dapat memengaruhi stabilitas, suhu, dan daya tahan baterai."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
         )
     }
 }
 
-/**
- * Banner peringatan murni informatif (bukan blocker — pengguna tetap bisa
- * lanjut tanpa mengizinkan ini) yang muncul kalau AetherX MASIH kena
- * battery optimization sistem. Relevan untuk ROM agresif seperti MIUI yang
- * bisa membunuh daemon root shell AetherX di background kalau belum
- * dikecualikan dari battery saver.
- */
 @Composable
-private fun BatteryOptimizationBanner(onRequestExemption: () -> Unit) {
-    Column(
+private fun SetupIcon(
+    imageVector: ImageVector,
+    tint: Color,
+) {
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            .size(38.dp)
+            .background(
+                color = tint.copy(alpha = 0.10f),
+                shape = RoundedCornerShape(11.dp),
+            ),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.BatteryAlert,
-                contentDescription = null,
-                tint = AccentRed,
-            )
-            Text(
-                text = stringResource(R.string.setup_battery_optimization_title),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Text(
-            text = stringResource(R.string.setup_battery_optimization_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+        Icon(
+            imageVector = imageVector,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(21.dp),
         )
-        TextButton(
-            onClick = onRequestExemption,
-            modifier = Modifier.align(Alignment.End),
+    }
+}
+
+@Composable
+private fun SetupBottomBar(
+    isEnglish: Boolean,
+    rootGranted: Boolean,
+    requireAccessToContinue: Boolean,
+    onContinue: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 2.dp,
+        shadowElevation = 4.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Text(
-                text = stringResource(R.string.setup_battery_optimization_action),
-                fontWeight = FontWeight.SemiBold,
-            )
+            if (requireAccessToContinue && !rootGranted) {
+                Text(
+                    text = if (isEnglish) {
+                        "You can set up root later from Access settings. Root-only features will stay locked until then."
+                    } else {
+                        "Akses root bisa diatur nanti melalui menu Akses. Fitur khusus root tetap terkunci sampai akses diberikan."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+            }
+            Button(
+                onClick = onContinue,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(13.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            ) {
+                Text(
+                    text = when {
+                        !requireAccessToContinue -> if (isEnglish) "Close" else stringResource(R.string.permission_setup_kembali)
+                        !rootGranted -> if (isEnglish) "Open app (limited mode)" else "Masuk aplikasi (mode terbatas)"
+                        else -> if (isEnglish) "Open AetherX" else "Buka AetherX"
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }
