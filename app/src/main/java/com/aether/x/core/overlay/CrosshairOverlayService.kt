@@ -23,8 +23,15 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.LocaleManager
+import com.aether.x.core.locale.str
 
 class CrosshairOverlayService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
 
     companion object {
         const val ACTION_START = "com.aether.x.action.START_CROSSHAIR"
@@ -104,7 +111,7 @@ class CrosshairOverlayService : Service() {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.logo)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText("Overlay aktif")
+            .setContentText(str(R.string.crosshair_overlay_service_overlay_aktif))
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()

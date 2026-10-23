@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
 
 data class GameProfileUiState(
     val loadingGames: Boolean = true,
@@ -94,7 +95,7 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(profiles = it.profiles + (pkg to updated)) }
         viewModelScope.launch {
             preferences.saveGameProfile(updated)
-            history.record("Profil game", "${pkg} diperbarui")
+            history.record(str(R.string.game_profile_profil_game), str(R.string.game_profile_diperbarui, pkg))
             maybeShowAd(activity)
         }
     }
@@ -134,7 +135,7 @@ class GameProfileViewModel(application: Application) : AndroidViewModel(applicat
         _state.update { it.copy(profiles = it.profiles - pkg) }
         viewModelScope.launch {
             preferences.deleteGameProfile(pkg)
-            history.record("Profil game", "Profil $pkg direset")
+            history.record(str(R.string.game_profile_profil_game), str(R.string.game_profile_profil_direset, pkg))
             _state.update { it.copy(message = appString(R.string.game_profile_reset_toast)) }
             maybeShowAd(activity)
         }

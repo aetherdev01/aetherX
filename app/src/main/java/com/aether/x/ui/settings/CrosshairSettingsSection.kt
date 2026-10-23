@@ -69,6 +69,7 @@ import com.aether.x.ui.theme.TextSecondary
 import com.aether.x.ui.theme.AccentBlueDim
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
 
 private val crosshairColorPalette = listOf(
     0xFFFFFFFFL,
@@ -211,10 +212,10 @@ fun CrosshairSettingsSection(
                         StyleIconButtonInner(style = style, color = Color(colorArgb.toInt()))
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Gaya Crosshair", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(str(R.string.crosshair_settings_gaya_crosshair), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Text(selectedStyleLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Text("Ubah", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(str(R.string.crosshair_settings_ubah), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -226,7 +227,7 @@ fun CrosshairSettingsSection(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Warna", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(str(R.string.crosshair_settings_warna), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Text("#%06X".format(colorArgb.toInt() and 0xFFFFFF), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     LazyRow(
@@ -251,14 +252,14 @@ fun CrosshairSettingsSection(
                             )
                         }
                     }
-                    Text("Pilih warna siap pakai atau buka pemilih warna bebas.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(R.string.crosshair_settings_pilih_warna_siap_pakai_atau), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f)) {
                         CrosshairSliderCard(
-                            title = "Ukuran",
+                            title = str(R.string.crosshair_size_label),
                             valueText = "$sizeDp dp",
                             value = sizeDp.toFloat(),
                             range = 12f..80f,
@@ -267,7 +268,7 @@ fun CrosshairSettingsSection(
                     }
                     Box(modifier = Modifier.weight(1f)) {
                         CrosshairSliderCard(
-                            title = "Rotasi",
+                            title = str(R.string.crosshair_settings_rotasi),
                             valueText = "$rotationDegrees°",
                             value = rotationDegrees.toFloat(),
                             range = 0f..360f,
@@ -286,7 +287,7 @@ fun CrosshairSettingsSection(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Posisi Crosshair", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(str(R.string.crosshair_settings_posisi_crosshair), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Text("X $offsetX · Y $offsetY", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(122.dp), contentAlignment = Alignment.Center) {
@@ -297,7 +298,7 @@ fun CrosshairSettingsSection(
                             modifier = Modifier.size(122.dp),
                         )
                     }
-                    Text("Tahan arah untuk menggeser lebih cepat.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(R.string.crosshair_settings_tahan_arah_untuk_menggeser_lebih), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -344,7 +345,7 @@ fun CrosshairStylePickerDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "Pilih Gaya Crosshair",
+                    text = str(R.string.crosshair_settings_pilih_gaya_crosshair),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)

@@ -17,6 +17,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * Implementasi [InterstitialAdManager] pakai Google AdMob — menggantikan
@@ -138,7 +140,7 @@ class AdMobInterstitialAdManager(private val testMode: Boolean) : InterstitialAd
 
     override fun show(activity: Activity, onResult: (InterstitialAdResult) -> Unit) {
         if (!initialized) {
-            onResult(InterstitialAdResult.Failed("AdMob belum siap (init belum selesai)"))
+            onResult(InterstitialAdResult.Failed(str(R.string.ad_mob_interstitial_ad_manager_admob_belum_siap_init_belum)))
             return
         }
 

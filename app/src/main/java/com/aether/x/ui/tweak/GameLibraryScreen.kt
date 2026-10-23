@@ -2,6 +2,7 @@ package com.aether.x.ui.tweak
 
 import android.content.Context
 import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -58,9 +59,11 @@ import com.aether.x.ui.components.SectionCard
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import java.util.Locale
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
-private enum class LibraryFilter(val title: String) {
-    ALL("Semua"), RECENT("Baru dimainkan"), FAVORITES("Favorit")
+private enum class LibraryFilter(@StringRes val titleRes: Int) {
+    ALL(R.string.game_library_filter_all), RECENT(R.string.game_library_filter_recent), FAVORITES(R.string.game_library_filter_favorites)
 }
 
 @Composable
@@ -139,20 +142,20 @@ fun GameLibraryScreen(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Temukan game terpasang, pin favorit, dan buka langsung atau atur profil performanya.",
+                text = str(R.string.game_library_temukan_game_terpasang_pin_favorit),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        SectionCard(title = "Temukan game", watermarkIcon = Icons.Outlined.Search) {
+        SectionCard(title = str(R.string.game_library_temukan_game), watermarkIcon = Icons.Outlined.Search) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                placeholder = { Text("Cari nama atau package game") },
+                placeholder = { Text(str(R.string.game_library_cari_nama_atau_package_game)) },
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -167,7 +170,7 @@ fun GameLibraryScreen(
                     FilterChip(
                         selected = filter == item,
                         onClick = { filter = item },
-                        label = { Text(item.title) },
+                        label = { Text(str(item.titleRes)) },
                     )
                 }
             }
@@ -177,12 +180,12 @@ fun GameLibraryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = if (loading) "Memindai game…" else "${shownGames.size} game ditampilkan",
+                    text = if (loading) str(R.string.game_library_memindai_game) else str(R.string.game_library_game_ditampilkan, shownGames.size),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${games.count { it.packageName in favorites }} favorit",
+                    text = str(R.string.game_library_favorit, games.count { it.packageName in favorites }),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -197,10 +200,10 @@ fun GameLibraryScreen(
             shownGames.isEmpty() -> SectionCard(title = null, watermarkIcon = Icons.Outlined.Apps) {
                 Text(
                     text = when {
-                        filter == LibraryFilter.FAVORITES -> "Belum ada favorit. Tekan ikon bintang pada game untuk menyimpannya di sini."
-                        filter == LibraryFilter.RECENT -> "Belum ada game terbaru. Buka game lewat Game Library agar riwayat akses tercatat."
-                        games.isEmpty() -> "Game dari katalog AetherX belum terdeteksi terpasang di perangkat ini."
-                        else -> "Tidak ada game yang cocok dengan pencarian."
+                        filter == LibraryFilter.FAVORITES -> str(R.string.game_library_belum_ada_favorit_tekan_ikon)
+                        filter == LibraryFilter.RECENT -> str(R.string.game_library_belum_ada_game_terbaru_buka)
+                        games.isEmpty() -> str(R.string.game_library_game_dari_katalog_aetherx_belum)
+                        else -> str(R.string.game_library_tidak_ada_game_yang_cocok)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -253,10 +256,10 @@ fun GameLibraryScreen(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 val details = when {
-                                    session?.averageFps != null -> "Sesi ${formatLibraryDuration(session.durationMs)} · AVG ${session.averageFps} FPS"
-                                    session != null -> "Sesi ${formatLibraryDuration(session.durationMs)}"
-                                    recent -> "Baru dimainkan lewat AetherX"
-                                    else -> "Game terpasang"
+                                    session?.averageFps != null -> str(R.string.game_library_sesi_avg_fps, formatLibraryDuration(session.durationMs), session.averageFps)
+                                    session != null -> str(R.string.game_library_sesi, formatLibraryDuration(session.durationMs))
+                                    recent -> str(R.string.game_library_baru_dimainkan_lewat_aetherx)
+                                    else -> str(R.string.game_library_game_terpasang)
                                 }
                                 Text(
                                     text = details,
@@ -277,18 +280,18 @@ fun GameLibraryScreen(
                                     onClick = {
                                         scope.launch {
                                             val opened = GameLaunchTracker.launchAndTrack(appContext, game.packageName)
-                                            if (!opened) Toast.makeText(context, "Game tidak memiliki aktivitas untuk dibuka.", Toast.LENGTH_SHORT).show()
+                                            if (!opened) Toast.makeText(context, str(R.string.game_library_game_tidak_memiliki_aktivitas_untuk), Toast.LENGTH_SHORT).show()
                                         }
                                     },
                                     modifier = Modifier.size(38.dp),
                                 ) {
-                                    Icon(Icons.Outlined.PlayArrow, contentDescription = "Mainkan ${game.label}", tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Outlined.PlayArrow, contentDescription = str(R.string.game_library_mainkan, game.label), tint = MaterialTheme.colorScheme.primary)
                                 }
                                 IconButton(
                                     onClick = { onConfigureGame(game.packageName) },
                                     modifier = Modifier.size(38.dp),
                                 ) {
-                                    Icon(Icons.Outlined.Tune, contentDescription = "Atur profil ${game.label}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Icon(Icons.Outlined.Tune, contentDescription = str(R.string.game_library_atur_profil, game.label), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 IconButton(
                                     onClick = { toggleFavorite(game.packageName) },
@@ -296,7 +299,7 @@ fun GameLibraryScreen(
                                 ) {
                                     Icon(
                                         imageVector = if (game.packageName in favorites) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                                        contentDescription = if (game.packageName in favorites) "Hapus dari favorit" else "Tambahkan ke favorit",
+                                        contentDescription = if (game.packageName in favorites) str(R.string.game_library_hapus_dari_favorit) else str(R.string.game_library_tambahkan_ke_favorit),
                                         tint = if (game.packageName in favorites) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }

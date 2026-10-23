@@ -49,6 +49,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 @Composable
 fun GameMonitorScreen(
@@ -72,7 +74,7 @@ fun GameMonitorScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        SectionCard(title = "Game Monitor Otomatis", watermarkIcon = Icons.Outlined.MonitorHeart) {
+        SectionCard(title = str(R.string.game_monitor_game_monitor_otomatis), watermarkIcon = Icons.Outlined.MonitorHeart) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(
                     shape = RoundedCornerShape(50),
@@ -80,7 +82,7 @@ fun GameMonitorScreen(
                     else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
                 ) {
                     Text(
-                        text = if (rootGranted) "ROOT TERSEDIA" else "ROOT DIBUTUHKAN",
+                        text = if (rootGranted) str(R.string.game_monitor_root_tersedia) else str(R.string.game_monitor_root_dibutuhkan),
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
@@ -88,23 +90,23 @@ fun GameMonitorScreen(
                     )
                 }
                 Text(
-                    text = if (active != null) "Sedang merekam sesi game" else "Menunggu game dibuka",
+                    text = if (active != null) str(R.string.game_monitor_sedang_merekam_sesi_game) else str(R.string.game_monitor_menunggu_game_dibuka),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Text(
                 text = if (rootGranted) {
-                    "Game yang dikenali dari katalog akan direkam otomatis di latar belakang. Sampling dibuat berkala agar tetap ringan."
+                    str(R.string.game_monitor_game_yang_dikenali_dari_katalog)
                 } else {
-                    "Berikan akses Root melalui Magisk, KernelSU, atau APatch agar AetherX bisa mendeteksi game yang sedang aktif dan merekam statistik otomatis. Riwayat lama tetap dapat dilihat."
+                    str(R.string.game_monitor_berikan_akses_root_melalui_magisk)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (active != null) {
                 Text(
-                    text = "Game aktif: ${active.gameName} · ${formatDuration(active.durationMs)}",
+                    text = str(R.string.game_monitor_game_aktif, active.gameName, formatDuration(active.durationMs)),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
@@ -113,7 +115,7 @@ fun GameMonitorScreen(
         }
 
         if (active != null) {
-            SectionCard(title = "FPS sesi aktif", watermarkIcon = Icons.Outlined.Speed) {
+            SectionCard(title = str(R.string.game_monitor_fps_sesi_aktif), watermarkIcon = Icons.Outlined.Speed) {
                 val fpsPoints = active.samples.mapNotNull { it.fps?.toFloat() }
                 RealtimeLineChart(
                     values = fpsPoints,
@@ -122,7 +124,7 @@ fun GameMonitorScreen(
                 )
                 when {
                     fpsPoints.isEmpty() -> Text(
-                        "Mengumpulkan data FPS… Jika belum muncul, pastikan game terdeteksi di katalog dan akses Root aktif.",
+                        str(R.string.game_monitor_mengumpulkan_data_fps_jika_belum),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -133,14 +135,14 @@ fun GameMonitorScreen(
                     )
                 }
                 Text(
-                    text = "Rata-rata ${valueOrDash(active.averageFps, " FPS")}  ·  Min ${valueOrDash(active.minFps, " FPS")}  ·  Maks ${valueOrDash(active.maxFps, " FPS")}",
+                    text = str(R.string.game_monitor_rata_rata_min_maks, valueOrDash(active.averageFps, " FPS"), valueOrDash(active.minFps, " FPS"), valueOrDash(active.maxFps, " FPS")),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 StatsGrid(session = active)
                 if (active.currentFps != null && active.currentFps < 30) {
                     Text(
-                        text = "FPS terlalu rendah — peringatan telah dikirim oleh AetherX.",
+                        text = str(R.string.game_monitor_fps_terlalu_rendah_peringatan_telah),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -148,10 +150,10 @@ fun GameMonitorScreen(
             }
         }
 
-        SectionCard(title = "Riwayat game", watermarkIcon = Icons.Outlined.History) {
+        SectionCard(title = str(R.string.game_monitor_riwayat_game), watermarkIcon = Icons.Outlined.History) {
             if (groupedSessions.isEmpty()) {
                 Text(
-                    text = if (rootGranted) "Belum ada riwayat. Buka game yang ada di katalog AetherX; sesi akan masuk ke daftar ini otomatis." else "Riwayat masih kosong. Setelah akses Root aktif, sesi game akan tersimpan otomatis di sini.",
+                    text = if (rootGranted) "Belum ada riwayat. Buka game yang ada di katalog AetherX; sesi akan masuk ke daftar ini otomatis." else str(R.string.game_monitor_riwayat_masih_kosong_setelah_akses),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -185,19 +187,19 @@ fun GameMonitorScreen(
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
-                                        text = "${gameSessions.size} sesi · terakhir ${formatDate(latest.startedAtMs)}",
+                                        text = str(R.string.game_monitor_sesi_terakhir, gameSessions.size, formatDate(latest.startedAtMs)),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 Text(
-                                    text = if (expandedGame == packageName) "Tutup ↑" else "Detail ↓",
+                                    text = if (expandedGame == packageName) str(R.string.game_monitor_tutup) else str(R.string.game_monitor_detail),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             }
                             Text(
-                                text = "FPS AVG ${valueOrDash(latest.averageFps, "")} · Terendah ${valueOrDash(latest.minFps, "")} · Tertinggi ${valueOrDash(latest.maxFps, "")}",
+                                text = str(R.string.game_monitor_fps_avg_terendah_tertinggi, valueOrDash(latest.averageFps, ""), valueOrDash(latest.minFps, ""), valueOrDash(latest.maxFps, "")),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -235,7 +237,7 @@ fun GameMonitorScreen(
                                                 )
                                             }
                                             Text(
-                                                text = if (expandedSession == session.id) "Sembunyikan" else "Lihat data",
+                                                text = if (expandedSession == session.id) str(R.string.game_monitor_sembunyikan) else str(R.string.game_monitor_lihat_data),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.primary,
                                             )
@@ -243,38 +245,38 @@ fun GameMonitorScreen(
                                                 IconButton(onClick = { sessionToDelete = session }) {
                                                     Icon(
                                                         imageVector = Icons.Outlined.Delete,
-                                                        contentDescription = "Hapus rekaman ${session.gameName}",
+                                                        contentDescription = str(R.string.game_monitor_hapus_rekaman, session.gameName),
                                                         tint = MaterialTheme.colorScheme.error,
                                                     )
                                                 }
                                             }
                                         }
                                         Text(
-                                            text = "Avg ${valueOrDash(session.averageFps, " FPS")}  ·  Min ${valueOrDash(session.minFps, " FPS")}  ·  Max ${valueOrDash(session.maxFps, " FPS")}",
+                                            text = str(R.string.game_monitor_avg_min_max, valueOrDash(session.averageFps, " FPS"), valueOrDash(session.minFps, " FPS"), valueOrDash(session.maxFps, " FPS")),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         if (expandedSession == session.id) {
                                             val fpsPoints = session.samples.mapNotNull { it.fps?.toFloat() }
-                                            Text("Grafik FPS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(str(R.string.game_monitor_grafik_fps), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                                             RealtimeLineChart(
                                                 values = fpsPoints,
                                                 maxValue = maxOf(60f, fpsPoints.maxOrNull() ?: 60f),
                                                 lineColor = MaterialTheme.colorScheme.primary,
                                             )
                                             Text(
-                                                text = "AVG ${valueOrDash(session.averageFps, " FPS")}  ·  Min ${valueOrDash(session.minFps, " FPS")}  ·  Maks ${valueOrDash(session.maxFps, " FPS")}",
+                                                text = str(R.string.game_monitor_avg_min_maks, valueOrDash(session.averageFps, " FPS"), valueOrDash(session.minFps, " FPS"), valueOrDash(session.maxFps, " FPS")),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                             StatsGrid(session = session)
                                             if (fpsPoints.isEmpty()) {
-                                                Text("Tidak ada sampel FPS valid pada sesi ini.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(str(R.string.game_monitor_tidak_ada_sampel_fps_valid), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             } else if (fpsPoints.size < 2) {
-                                                Text("Sampel tambahan diperlukan untuk membentuk garis grafik.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(str(R.string.game_monitor_sampel_tambahan_diperlukan_untuk_membent), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                             Text(
-                                                text = "Paket: ${session.packageName}",
+                                                text = str(R.string.game_monitor_paket, session.packageName),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
@@ -291,17 +293,17 @@ fun GameMonitorScreen(
         sessionToDelete?.let { session ->
             AlertDialog(
                 onDismissRequest = { sessionToDelete = null },
-                title = { Text("Hapus rekaman?") },
-                text = { Text("Rekaman ${session.gameName} pada ${formatDate(session.startedAtMs)} akan dihapus permanen dari riwayat lokal.") },
+                title = { Text(str(R.string.game_monitor_hapus_rekaman_2)) },
+                text = { Text(str(R.string.game_monitor_rekaman_pada_akan_dihapus_permanen, session.gameName, formatDate(session.startedAtMs))) },
                 confirmButton = {
                     TextButton(onClick = {
                         GameSessionRepository.deleteSession(session.id)
                         if (expandedSession == session.id) expandedSession = null
                         sessionToDelete = null
-                    }) { Text("Hapus") }
+                    }) { Text(str(R.string.game_monitor_hapus)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { sessionToDelete = null }) { Text("Batal") }
+                    TextButton(onClick = { sessionToDelete = null }) { Text(str(R.string.membership_logout_cancel)) }
                 },
             )
         }
@@ -326,14 +328,14 @@ private fun GameAppIcon(packageName: String, gameName: String) {
         if (iconBitmap != null) {
             Image(
                 bitmap = iconBitmap,
-                contentDescription = "Ikon $gameName",
+                contentDescription = str(R.string.game_monitor_ikon, gameName),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().padding(5.dp),
             )
         } else {
             Icon(
                 imageVector = Icons.Outlined.SportsEsports,
-                contentDescription = "Ikon $gameName",
+                contentDescription = str(R.string.game_monitor_ikon, gameName),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(10.dp),
             )
@@ -343,52 +345,52 @@ private fun GameAppIcon(packageName: String, gameName: String) {
 
 @Composable
 private fun StatsGrid(session: GameSession) {
-    val currentOrLast = if (session.endedAtMs == null) "Sekarang" else "Akhir"
+    val currentOrLast = if (session.endedAtMs == null) str(R.string.game_monitor_sekarang) else str(R.string.game_monitor_akhir)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Performa utama",
+            text = str(R.string.game_monitor_performa_utama),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
         MetricRow(
             Metric("FPS $currentOrLast", valueOrDash(session.currentFps, " FPS")),
-            Metric("FPS rata-rata", valueOrDash(session.averageFps, " FPS")),
+            Metric(str(R.string.game_monitor_fps_rata_rata), valueOrDash(session.averageFps, " FPS")),
         )
         MetricRow(
-            Metric("FPS terendah", valueOrDash(session.minFps, " FPS")),
-            Metric("FPS tertinggi", valueOrDash(session.maxFps, " FPS")),
+            Metric(str(R.string.game_monitor_fps_terendah), valueOrDash(session.minFps, " FPS")),
+            Metric(str(R.string.game_monitor_fps_tertinggi), valueOrDash(session.maxFps, " FPS")),
         )
         MetricRow(
-            Metric("CPU rata-rata", valueOrDash(session.averageCpuPercent, "%")),
-            Metric("CPU maksimum", valueOrDash(session.maxCpuPercent, "%")),
+            Metric(str(R.string.game_monitor_cpu_rata_rata), valueOrDash(session.averageCpuPercent, "%")),
+            Metric(str(R.string.game_monitor_cpu_maksimum), valueOrDash(session.maxCpuPercent, "%")),
         )
         MetricRow(
-            Metric("GPU rata-rata", valueOrDash(session.averageGpuPercent, "%")),
-            Metric("GPU maksimum", valueOrDash(session.maxGpuPercent, "%")),
+            Metric(str(R.string.game_monitor_gpu_rata_rata), valueOrDash(session.averageGpuPercent, "%")),
+            Metric(str(R.string.game_monitor_gpu_maksimum), valueOrDash(session.maxGpuPercent, "%")),
         )
         val hasTemperature = session.temperatureStartC != null || session.currentTemperatureC != null || session.maxTemperatureC != null
         if (hasTemperature) {
             Text(
-                text = "Suhu perangkat",
+                text = str(R.string.game_monitor_suhu_perangkat),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             MetricRow(
-                Metric("Suhu $currentOrLast", valueOrDash(session.currentTemperatureC?.roundToInt(), "°C")),
-                Metric("Suhu maksimum", valueOrDash(session.maxTemperatureC?.roundToInt(), "°C")),
+                Metric(str(R.string.game_monitor_suhu, currentOrLast), valueOrDash(session.currentTemperatureC?.roundToInt(), "°C")),
+                Metric(str(R.string.game_monitor_suhu_maksimum), valueOrDash(session.maxTemperatureC?.roundToInt(), "°C")),
             )
             if (session.temperatureRiseC != null) {
                 MetricRow(
-                    Metric("Kenaikan suhu", valueOrDash(session.temperatureRiseC?.roundToInt(), "°C")),
-                    Metric("Drop di bawah 30 FPS", "${session.lowFpsCount} kali"),
+                    Metric(str(R.string.game_monitor_kenaikan_suhu), valueOrDash(session.temperatureRiseC?.roundToInt(), "°C")),
+                    Metric(str(R.string.game_monitor_drop_di_bawah_30_fps), str(R.string.game_monitor_kali, session.lowFpsCount)),
                 )
             }
         } else {
             MetricRow(
-                Metric("Drop di bawah 30 FPS", "${session.lowFpsCount} kali"),
-                Metric("GPU clock", valueOrDash(session.currentGpuFreqMhz?.roundToInt(), " MHz")),
+                Metric(str(R.string.game_monitor_drop_di_bawah_30_fps), str(R.string.game_monitor_kali, session.lowFpsCount)),
+                Metric("GPU clock", valueOrDash(session.currentGpuFreqMhz?.roundToInt(), str(R.string.game_monitor_mhz))),
             )
         }
     }

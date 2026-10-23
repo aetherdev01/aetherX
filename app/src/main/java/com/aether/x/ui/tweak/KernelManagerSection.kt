@@ -53,6 +53,7 @@ import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.TweakDropdown
 import com.aether.x.ui.components.TweakSlider
 import kotlinx.coroutines.delay
+import com.aether.x.core.locale.str
 
 @Composable
 fun KernelManagerSection(
@@ -136,13 +137,13 @@ fun KernelManagerSection(
 
         SectionCard(title = stringResource(R.string.kernel_manager_section_cpu), watermarkIcon = Icons.Outlined.Memory) {
             Text(
-                text = "Atur governor serta batas frekuensi minimum dan maksimum untuk setiap core yang terdeteksi. Pilihan dibatasi pada nilai yang dilaporkan kernel.",
+                text = str(R.string.kernel_manager_atur_governor_serta_batas_frekuensi),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (state.cpuCores.isEmpty()) {
                 Text(
-                    text = "Informasi core CPU belum dapat dibaca oleh sistem.",
+                    text = str(R.string.kernel_manager_informasi_core_cpu_belum_dapat),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -165,7 +166,7 @@ fun KernelManagerSection(
         state.gpu?.let { gpu ->
             SectionCard(title = stringResource(R.string.kernel_manager_section_gpu), watermarkIcon = Icons.Outlined.DeveloperBoard) {
                 Text(
-                    text = "Kontrol GPU hanya ditampilkan saat frekuensi dan governor yang didukung dapat dibaca. Ketersediaan berbeda menurut chipset dan kernel.",
+                    text = str(R.string.kernel_manager_kontrol_gpu_hanya_ditampilkan_saat),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -259,17 +260,17 @@ private fun KernelManagerOverviewCard(
         ) {
             KernelSummaryMetric(
                 value = state.cpuCores.size.toString(),
-                label = "Core CPU",
+                label = str(R.string.kernel_manager_core_cpu),
                 modifier = Modifier.weight(1f),
             )
             KernelSummaryMetric(
-                value = if (gpuReady) "Siap" else "—",
+                value = if (gpuReady) str(R.string.kernel_manager_siap) else "—",
                 label = "GPU",
                 modifier = Modifier.weight(1f),
             )
             KernelSummaryMetric(
-                value = if (state.kernelVersion.isNullOrBlank()) "—" else "Terbaca",
-                label = "Versi kernel",
+                value = if (state.kernelVersion.isNullOrBlank()) "—" else str(R.string.kernel_manager_terbaca),
+                label = str(R.string.kernel_manager_versi_kernel),
                 modifier = Modifier.weight(1f),
             )
         }

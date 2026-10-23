@@ -45,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.cardEnterAnimation
+import com.aether.x.core.locale.str
 
 @Composable
 fun SettingsScreen(
@@ -95,11 +96,14 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Atur tampilan, kontrol game, interaksi, dan pembaruan AetherX.",
+                text = str(R.string.settings_atur_tampilan_kontrol_game_interaksi),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        SettingsGroupLabel(stringResource(R.string.settings_group_language))
+        LanguageSettingsSection(modifier = Modifier.cardEnterAnimation(index = 0))
 
         SettingsGroupLabel("TAMPILAN")
         AppearanceSettingsSection(
@@ -116,7 +120,7 @@ fun SettingsScreen(
             modifier = Modifier.cardEnterAnimation(index = 0),
         )
 
-        SettingsGroupLabel("KONTROL & OVERLAY")
+        SettingsGroupLabel(str(R.string.settings_kontrol_overlay))
         CrosshairSettingsSection(
             enabled = prefs.crosshairEnabled,
             style = prefs.crosshairStyle,
@@ -139,14 +143,14 @@ fun SettingsScreen(
 
         SettingsGroupLabel("INTERAKSI")
         SectionCard(
-            title = "Gerakan UI & Haptik",
+            title = str(R.string.settings_gerakan_ui_haptik),
             watermarkIcon = Icons.Outlined.Vibration,
             modifier = Modifier.cardEnterAnimation(index = 2),
         ) {
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Getaran sentuhan", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Respons haptik pada kontrol yang mendukungnya.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(R.string.settings_getaran_sentuhan), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(str(R.string.settings_respons_haptik_pada_kontrol_yang), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(
                     checked = prefs.hapticsEnabled,
@@ -156,33 +160,33 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Kurangi animasi", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Kurangi pergerakan transisi dan animasi kartu.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(R.string.settings_kurangi_animasi), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(str(R.string.settings_kurangi_pergerakan_transisi_dan_animasi), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(
                     checked = prefs.reduceMotionEnabled,
                     onCheckedChange = { enabled -> scope.launch { preferences.setReduceMotionEnabled(enabled) } },
                 )
             }
-            Text("Kekuatan blur diatur pada bagian Tampilan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(str(R.string.settings_kekuatan_blur_diatur_pada_bagian), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         SettingsGroupLabel("SISTEM")
         SectionCard(
-            title = "Pusat Pembaruan",
+            title = str(R.string.settings_pusat_pembaruan),
             watermarkIcon = Icons.Outlined.Refresh,
             modifier = Modifier.cardEnterAnimation(index = 3),
         ) {
-            SettingsInfoRow("Versi terpasang", BuildConfig.VERSION_NAME)
+            SettingsInfoRow(str(R.string.settings_versi_terpasang), BuildConfig.VERSION_NAME)
             val update = updateState.info
             when {
                 update.latestVersionCode <= 0 -> Text(
-                    "Informasi update belum tersedia. Periksa lagi saat koneksi tersedia.",
+                    str(R.string.settings_informasi_update_belum_tersedia_periksa),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 update.latestVersionCode > updateState.currentVersionCode -> {
-                    SettingsInfoRow("Versi tersedia", update.latestVersionName.ifBlank { "Build ${update.latestVersionCode}" })
+                    SettingsInfoRow(str(R.string.settings_versi_tersedia), update.latestVersionName.ifBlank { str(R.string.settings_build, update.latestVersionCode) })
                     if (update.description.isNotBlank()) {
                         Text(update.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
@@ -196,10 +200,10 @@ fun SettingsScreen(
                         },
                         enabled = update.downloadUrl.startsWith("https://"),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Buka unduhan update") }
+                    ) { Text(str(R.string.settings_buka_unduhan_update)) }
                 }
                 else -> Text(
-                    "Aplikasi sudah memakai versi terbaru yang dilaporkan server.",
+                    str(R.string.settings_aplikasi_sudah_memakai_versi_terbaru),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )

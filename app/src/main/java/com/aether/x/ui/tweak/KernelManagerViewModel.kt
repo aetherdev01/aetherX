@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
 
 data class KernelManagerUiState(
     val loading: Boolean = true,
@@ -82,7 +83,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreFrequency(executor, coreIndex, minKhz, maxKhz)
-            history.record("Kernel CPU", "Frekuensi core $coreIndex diubah", result.success)
+            history.record("Kernel CPU", str(R.string.kernel_manager_frekuensi_core_diubah, coreIndex), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_frequency, coreIndex)) }
             }
@@ -95,7 +96,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreGovernor(executor, coreIndex, governorName)
-            history.record("Kernel CPU", "Governor core $coreIndex → $governorName", result.success)
+            history.record("Kernel CPU", str(R.string.kernel_manager_governor_core, coreIndex, governorName), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_governor, coreIndex)) }
             }
@@ -115,7 +116,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuFrequency(executor, path, minKhz, maxKhz)
-            history.record("Kernel GPU", "Frekuensi GPU diubah", result.success)
+            history.record("Kernel GPU", str(R.string.kernel_manager_frekuensi_gpu_diubah), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_frequency)) }
             }
@@ -129,7 +130,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuGovernor(executor, path, governorName)
-            history.record("Kernel GPU", "Governor GPU → $governorName", result.success)
+            history.record("Kernel GPU", str(R.string.kernel_manager_governor_gpu, governorName), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_governor)) }
             }

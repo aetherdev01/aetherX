@@ -124,6 +124,7 @@ import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import com.aether.x.core.locale.str
 
 @Composable
 fun TweakScreen(
@@ -301,7 +302,7 @@ fun TweakScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Text(
-                            text = "Ringkasan perangkat, game, dan alat performa.",
+                            text = str(R.string.tweak_ringkasan_perangkat_game_dan_alat),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -670,12 +671,12 @@ private fun TweakDrawerContent(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Pengguna online",
+                    text = str(R.string.tweak_pengguna_online),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = if (onlineUserCount >= 0) "$onlineUserCount sedang online" else "Menghubungkan…",
+                    text = if (onlineUserCount >= 0) str(R.string.tweak_sedang_online, onlineUserCount) else str(R.string.tweak_menghubungkan),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -709,7 +710,7 @@ private fun TweakDrawerContent(
             label = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.nav_tweak), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Sentuhan, refresh rate, CPU/GPU, dan pembersih RAM", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                    Text(str(R.string.tweak_sentuhan_refresh_rate_cpu_gpu), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             },
             icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
@@ -723,7 +724,7 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.sm),
         )
         Text(
-            text = "GAME & MONITORING",
+            text = str(R.string.tweak_game_monitoring),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -733,7 +734,7 @@ private fun TweakDrawerContent(
             label = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("Game Library", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Cari, favoritkan, mainkan, dan buka profil game", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                    Text(str(R.string.tweak_cari_favoritkan_mainkan_dan_buka), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             },
             icon = { Icon(imageVector = Icons.Outlined.VideogameAsset, contentDescription = null) },
@@ -747,7 +748,7 @@ private fun TweakDrawerContent(
             label = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.nav_game_profile), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Atur preset performa untuk tiap game", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                    Text(str(R.string.tweak_atur_preset_performa_untuk_tiap), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             },
             icon = { Icon(imageVector = Icons.Outlined.SportsEsports, contentDescription = null) },
@@ -758,7 +759,7 @@ private fun TweakDrawerContent(
         )
 
         NavigationDrawerItem(
-            label = { Text("Monitor Game") },
+            label = { Text(str(R.string.tweak_monitor_game)) },
             icon = { Icon(imageVector = Icons.Outlined.MonitorHeart, contentDescription = null) },
             selected = selected == TweakSubTab.GAME_MONITOR,
             onClick = { onSelect(TweakSubTab.GAME_MONITOR) },
@@ -771,14 +772,14 @@ private fun TweakDrawerContent(
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.sm),
         )
         Text(
-            text = "ALAT TAMBAHAN",
+            text = str(R.string.tweak_alat_tambahan),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.xs),
         )
         NavigationDrawerItem(
-            label = { Text("Pusat Kontrol") },
+            label = { Text(str(R.string.tweak_pusat_kontrol)) },
             icon = { Icon(imageVector = Icons.Outlined.Tune, contentDescription = null) },
             selected = selected == TweakSubTab.V310_CENTER,
             onClick = { onSelect(TweakSubTab.V310_CENTER) },
@@ -809,7 +810,7 @@ private fun TweakDrawerContent(
                 label = {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(stringResource(R.string.kernel_manager_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Frekuensi dan governor sistem yang tersedia", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                        Text(str(R.string.tweak_frekuensi_dan_governor_sistem_yang), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                     }
                 },
                 icon = { Icon(imageVector = Icons.Outlined.DeveloperBoard, contentDescription = null) },
@@ -884,13 +885,13 @@ private fun TweakOverviewCard(rootGranted: Boolean) {
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Tweak & Performance",
+                    text = str(R.string.tweak_tweak_performance),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Atur respons sentuhan, layar, CPU, memori, dan perilaku sistem dalam kelompok yang lebih mudah dipahami.",
+                    text = str(R.string.tweak_atur_respons_sentuhan_layar_cpu),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -902,15 +903,15 @@ private fun TweakOverviewCard(rootGranted: Boolean) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             StatusPill(
-                text = if (rootGranted) "ROOT AKTIF" else "TANPA ROOT",
+                text = if (rootGranted) str(R.string.tweak_root_aktif) else str(R.string.tweak_tanpa_root),
                 containerColor = if (rootGranted) accent.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = if (rootGranted) accent else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = if (rootGranted) {
-                    "Kontrol kernel yang didukung perangkat siap digunakan."
+                    str(R.string.tweak_kontrol_kernel_yang_didukung_perangkat)
                 } else {
-                    "Kontrol sistem tertentu memerlukan akses root."
+                    str(R.string.tweak_kontrol_sistem_tertentu_memerlukan_akses)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

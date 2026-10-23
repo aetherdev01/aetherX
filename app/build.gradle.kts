@@ -86,6 +86,14 @@ android {
         }
     }
 
+    // Biar pilihan bahasa di dalam app (ID/EN) tetap jalan di App Bundle
+    // walau bahasa sistem HP berbeda.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

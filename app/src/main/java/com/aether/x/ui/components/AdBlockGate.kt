@@ -20,6 +20,8 @@ import com.aether.x.core.ads.AdBlockGuard
 import com.aether.x.ui.theme.AccentAmber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * v3.6 — dialog "Pemblokir Iklan Terdeteksi" untuk pengguna GRATIS.
@@ -86,22 +88,22 @@ fun AdBlockGate(
         onDismissRequest = onOpenMembership,
         icon = Icons.Outlined.Block,
         iconTint = AccentAmber,
-        title = "Pemblokir Iklan Terdeteksi",
-        message = "AetherX versi gratis didukung iklan. Matikan pemblokir iklan " +
-            "(DNS pribadi, hosts, atau VPN) untuk AetherX, atau berlangganan " +
-            "Membership Pro agar bebas iklan.",
-        confirmLabel = if (checking) "Memeriksa…" else "Cek Ulang",
+        title = str(R.string.ad_block_gate_pemblokir_iklan_terdeteksi),
+        message = str(R.string.ad_block_gate_aetherx_versi_gratis_didukung_iklan) +
+            str(R.string.ad_block_gate_dns_pribadi_hosts_atau_vpn) +
+            str(R.string.ad_block_gate_membership_pro_agar_bebas_iklan),
+        confirmLabel = if (checking) str(R.string.setup_status_checking) else str(R.string.ad_block_gate_cek_ulang),
         onConfirm = {
             if (!checking) {
                 scope.launch {
                     runCheck()
                     if (blocked) {
-                        context.showAetherToast("Pemblokir iklan masih aktif")
+                        context.showAetherToast(str(R.string.ad_block_gate_pemblokir_iklan_masih_aktif))
                     }
                 }
             }
         },
-        dismissLabel = "Lihat Membership",
+        dismissLabel = str(R.string.ad_block_gate_lihat_membership),
         dismissOnBackPress = false,
         dismissOnClickOutside = false,
     )

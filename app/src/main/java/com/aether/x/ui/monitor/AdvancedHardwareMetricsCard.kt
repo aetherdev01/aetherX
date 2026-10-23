@@ -30,6 +30,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 private data class AdvancedHardwareSnapshot(
     val usedRamMb: Long? = null,
@@ -58,7 +60,7 @@ fun AdvancedHardwareMetricsCard() {
         val ramUsed = snapshot.usedRamMb
         if (ramTotal != null && ramUsed != null && ramTotal > 0) {
             MetricPair(
-                label = "RAM terpakai",
+                label = str(R.string.advanced_hardware_metrics_card_ram_terpakai),
                 value = "${formatGb(ramUsed)} / ${formatGb(ramTotal)} GB",
             )
             androidx.compose.material3.LinearProgressIndicator(
@@ -68,29 +70,29 @@ fun AdvancedHardwareMetricsCard() {
                 trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
             )
         } else {
-            MetricPair("RAM", "Tidak tersedia")
+            MetricPair("RAM", str(R.string.advanced_hardware_metrics_card_tidak_tersedia))
         }
 
         val frequencies = snapshot.cpuFrequencyMhz
         MetricPair(
-            label = "Frekuensi CPU terbaca",
+            label = str(R.string.advanced_hardware_metrics_card_frekuensi_cpu_terbaca),
             value = if (frequencies.isNotEmpty()) {
-                "${frequencies.minOrNull()}–${frequencies.maxOrNull()} MHz (${frequencies.size} core)"
-            } else "Akses sysfs dibatasi",
+                str(R.string.advanced_hardware_metrics_card_mhz_core, frequencies.minOrNull(), frequencies.maxOrNull(), frequencies.size)
+            } else str(R.string.advanced_hardware_metrics_card_akses_sysfs_dibatasi),
         )
 
         MetricPair(
-            label = "Suhu terdeteksi",
-            value = snapshot.batteryTemperatureC?.let { "${(it * 10).roundToInt() / 10f} °C" } ?: "Tidak tersedia",
+            label = str(R.string.advanced_hardware_metrics_card_suhu_terdeteksi),
+            value = snapshot.batteryTemperatureC?.let { "${(it * 10).roundToInt() / 10f} °C" } ?: str(R.string.advanced_hardware_metrics_card_tidak_tersedia),
         )
 
         val usedStorage = snapshot.usedStorageGb
         val totalStorage = snapshot.totalStorageGb
         MetricPair(
-            label = "Penyimpanan internal",
+            label = str(R.string.advanced_hardware_metrics_card_penyimpanan_internal),
             value = if (usedStorage != null && totalStorage != null) {
                 "${(usedStorage * 10).roundToInt() / 10f} / ${(totalStorage * 10).roundToInt() / 10f} GB"
-            } else "Tidak tersedia",
+            } else str(R.string.advanced_hardware_metrics_card_tidak_tersedia),
         )
 
         Text(

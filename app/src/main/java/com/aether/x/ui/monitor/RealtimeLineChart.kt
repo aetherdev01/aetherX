@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /** Lightweight FPS history chart with a labeled Y axis and dashed guide lines. */
 @Composable
@@ -138,8 +140,8 @@ fun RealtimeLineChart(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Awal", style = MaterialTheme.typography.labelSmall, color = labelColor)
-            Text("Terbaru", style = MaterialTheme.typography.labelSmall, color = labelColor)
+            Text(str(R.string.realtime_line_chart_awal), style = MaterialTheme.typography.labelSmall, color = labelColor)
+            Text(str(R.string.realtime_line_chart_terbaru), style = MaterialTheme.typography.labelSmall, color = labelColor)
         }
     }
 }

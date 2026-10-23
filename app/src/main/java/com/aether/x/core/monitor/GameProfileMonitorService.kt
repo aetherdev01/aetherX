@@ -26,8 +26,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.LocaleManager
+import com.aether.x.core.locale.str
 
 class GameProfileMonitorService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
 
     companion object {
         const val ACTION_START = "com.aether.x.action.START_GAME_PROFILE_MONITOR"
@@ -101,8 +108,8 @@ class GameProfileMonitorService : Service() {
             else -> {
                 startForeground(NOTIFICATION_ID, buildNotification())
                 postEventNotification(
-                    title = "Monitor Game AetherX aktif",
-                    message = "AetherX siap merekam otomatis saat game dibuka.",
+                    title = str(R.string.game_profile_monitor_service_monitor_game_aetherx_aktif),
+                    message = str(R.string.game_profile_monitor_service_aetherx_siap_merekam_otomatis_saat),
                     notificationId = MONITOR_EVENT_NOTIFICATION_ID,
                 )
                 startPollLoop()
@@ -120,17 +127,17 @@ class GameProfileMonitorService : Service() {
                 getString(R.string.game_profile_monitor_notification_channel),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Notifikasi aktif saat AetherX memantau sesi game."
+                description = str(R.string.game_profile_monitor_service_notifikasi_aktif_saat_aetherx_memantau)
                 setShowBadge(false)
             },
         )
         manager.createNotificationChannel(
             NotificationChannel(
                 FPS_ALERT_CHANNEL_ID,
-                "Peringatan FPS Game",
+                str(R.string.game_profile_monitor_service_peringatan_fps_game),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Peringatan saat FPS game terlalu rendah atau kembali stabil."
+                description = str(R.string.game_profile_monitor_service_peringatan_saat_fps_game_terlalu)
             },
         )
     }
@@ -149,8 +156,8 @@ class GameProfileMonitorService : Service() {
             .setSmallIcon(R.drawable.ic_notification_mark)
             .setContentTitle(getString(R.string.game_profile_monitor_notification_title))
             .setContentText(
-                gameName?.let { "Sedang merekam: $it" }
-                    ?: "Siap merekam otomatis saat game dibuka",
+                gameName?.let { str(R.string.game_profile_monitor_service_sedang_merekam, it) }
+                    ?: str(R.string.game_profile_monitor_service_siap_merekam_otomatis_saat_game),
             )
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -186,16 +193,16 @@ class GameProfileMonitorService : Service() {
             fps < 30 && lastFpsWasLow != true -> {
                 lastFpsWasLow = true
                 postEventNotification(
-                    title = "FPS terlalu rendah",
-                    message = "$gameName berjalan pada $fps FPS. Performa sedang turun di bawah 30 FPS.",
+                    title = str(R.string.game_profile_monitor_service_fps_terlalu_rendah),
+                    message = str(R.string.game_profile_monitor_service_berjalan_pada_fps_performa_sedang, gameName, fps),
                     notificationId = FPS_EVENT_NOTIFICATION_ID,
                 )
             }
             fps >= 45 && lastFpsWasLow == true -> {
                 lastFpsWasLow = false
                 postEventNotification(
-                    title = "FPS kembali stabil",
-                    message = "$gameName sekarang mencapai $fps FPS.",
+                    title = str(R.string.game_profile_monitor_service_fps_kembali_stabil),
+                    message = str(R.string.game_profile_monitor_service_sekarang_mencapai_fps, gameName, fps),
                     notificationId = FPS_EVENT_NOTIFICATION_ID,
                 )
             }
@@ -319,8 +326,8 @@ class GameProfileMonitorService : Service() {
             rootCpuFallback.reset()
             updateOngoingNotification(gameName)
             postEventNotification(
-                title = "Mulai merekam game",
-                message = "AetherX mulai merekam sesi $gameName secara otomatis.",
+                title = str(R.string.game_profile_monitor_service_mulai_merekam_game),
+                message = str(R.string.game_profile_monitor_service_aetherx_mulai_merekam_sesi_secara, gameName),
                 notificationId = MONITOR_EVENT_NOTIFICATION_ID,
             )
         }

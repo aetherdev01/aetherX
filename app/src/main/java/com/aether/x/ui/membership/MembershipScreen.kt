@@ -601,6 +601,6 @@ private fun statusSubtitle(status: MembershipUiStatus, expiresAtMillis: Long?): 
 }
 
 private fun formatDate(millis: Long): String {
-    val formatter = SimpleDateFormat("d MMMM yyyy", Locale("id", "ID"))
+    val formatter = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
     return formatter.format(Date(millis))
 }

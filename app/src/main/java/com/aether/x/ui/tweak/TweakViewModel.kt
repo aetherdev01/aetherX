@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
 
 data class TweakUiState(
     val displayInfo: DisplayInfo = DisplayInfo(1080, 2400, 420, listOf(60f)),
@@ -129,56 +130,56 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onPointerSpeedChangeFinished(activity: Activity? = null) {
         val speed = _state.value.pointerSpeed
-        applyAndPersist(activity, "Kecepatan pointer → $speed") { executor -> repository.applyPointerSpeed(executor, speed) }
+        applyAndPersist(activity, str(R.string.tweak_kecepatan_pointer, speed)) { executor -> repository.applyPointerSpeed(executor, speed) }
     }
 
     fun onTouchBoostChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(touchBoost = checked) }
-        applyAndPersist(activity, "Touch boost → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyTouchBoost(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_touch_boost_2, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyTouchBoost(executor, checked) }
     }
 
     fun onForceRefreshChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(forceMaxRefreshRate = checked) }
-        applyAndPersist(activity, "Refresh rate maksimal → ${if (checked) "aktif" else "nonaktif"}") { executor ->
+        applyAndPersist(activity, str(R.string.tweak_refresh_rate_maksimal, str(if (checked) R.string.state_on else R.string.state_off))) { executor ->
             repository.applyRefreshRate(executor, checked, _state.value.displayInfo.maxRefreshRate)
         }
     }
 
     fun onRotationLockChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(rotationLockEnabled = checked) }
-        applyAndPersist(activity, "Kunci orientasi → ${if (checked) "aktif" else "nonaktif"}") { executor ->
+        applyAndPersist(activity, str(R.string.tweak_kunci_orientasi, str(if (checked) R.string.state_on else R.string.state_off))) { executor ->
             repository.applyRotationLock(executor, checked)
         }
     }
 
     fun onGameModeChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(gameModeEnabled = checked) }
-        applyAndPersist(activity, "Game mode → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyGameMode(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_game_mode_2, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyGameMode(executor, checked) }
     }
 
     fun onCpuGovernorChange(governor: CpuGovernor, activity: Activity? = null) {
         _state.update { it.copy(cpuGovernor = governor) }
-        applyAndPersist(activity, "CPU governor → ${governor.name}") { executor -> repository.applyCpuGovernor(executor, governor) }
+        applyAndPersist(activity, str(R.string.tweak_cpu_governor_2, governor.name)) { executor -> repository.applyCpuGovernor(executor, governor) }
     }
 
     fun onRamPriorityModeChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(ramPriorityMode = checked) }
-        applyAndPersist(activity, "RAM priority → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyRamPriority(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_ram_priority_2, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyRamPriority(executor, checked) }
     }
 
     fun onThermalThrottleOverrideChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(thermalThrottleOverride = checked) }
-        applyAndPersist(activity, "Thermal override → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyThermalThrottleOverride(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_thermal_override, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyThermalThrottleOverride(executor, checked) }
     }
 
     fun onGpuPerformanceModeChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(gpuPerformanceMode = checked) }
-        applyAndPersist(activity, "GPU performance → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyGpuPerformanceMode(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_gpu_performance_2, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyGpuPerformanceMode(executor, checked) }
     }
 
     fun onIoSchedulerBoostChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(ioSchedulerBoost = checked) }
-        applyAndPersist(activity, "I/O scheduler boost → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyIoSchedulerBoost(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_i_o_scheduler_boost, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyIoSchedulerBoost(executor, checked) }
     }
 
     fun onKillBackgroundAppsChange(checked: Boolean, activity: Activity? = null) {
@@ -190,7 +191,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { it.copy(message = appString(R.string.tweak_no_access_toast)) }
             } else {
                 val result = repository.applyKillBackgroundApps(executor, true)
-                history.record("Tweak sistem", "Bersihkan aplikasi latar", result.success)
+                history.record(str(R.string.tweak_tweak_sistem), str(R.string.tweak_bersihkan_aplikasi_latar), result.success)
                 _state.update {
                     it.copy(
                         message = if (result.success) {
@@ -209,12 +210,12 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onVmHeapBoostChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(vmHeapBoost = checked) }
-        applyAndPersist(activity, "VM heap boost → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyVmHeapBoost(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_vm_heap_boost_2, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyVmHeapBoost(executor, checked) }
     }
 
     fun onDozeDisabledChange(checked: Boolean, activity: Activity? = null) {
         _state.update { it.copy(dozeDisabled = checked) }
-        applyAndPersist(activity, "Doze disable → ${if (checked) "aktif" else "nonaktif"}") { executor -> repository.applyDozeDisable(executor, checked) }
+        applyAndPersist(activity, str(R.string.tweak_doze_disable, str(if (checked) R.string.state_on else R.string.state_off))) { executor -> repository.applyDozeDisable(executor, checked) }
     }
 
     fun consumeMessage() {
@@ -241,7 +242,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                 resetResults += repository.applyDozeDisable(executor, false)
                 resetSucceeded = resetResults.all { it.success }
             }
-            history.record("Reset tweak", "Mengembalikan konfigurasi utama", resetSucceeded)
+            history.record(str(R.string.tweak_reset_tweak), str(R.string.tweak_mengembalikan_konfigurasi_utama), resetSucceeded)
             preferences.clearTweakState()
             _state.update {
                 it.copy(
@@ -267,7 +268,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun applyAndPersist(
         activity: Activity? = null,
-        actionLabel: String = "Konfigurasi tweak",
+        actionLabel: String = str(R.string.tweak_konfigurasi_tweak),
         action: suspend (ShellExecutor) -> ShellResult,
     ) {
         viewModelScope.launch {
@@ -282,7 +283,7 @@ class TweakViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(message = appString(R.string.tweak_command_failed_toast)) }
                 }
             }
-            history.record("Tweak sistem", actionLabel, succeeded)
+            history.record(str(R.string.tweak_tweak_sistem), actionLabel, succeeded)
             val s = _state.value
             preferences.saveTweakState(
                 pointerSpeed = s.pointerSpeed,

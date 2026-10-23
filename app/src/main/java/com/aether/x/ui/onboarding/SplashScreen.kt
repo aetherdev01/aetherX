@@ -49,6 +49,7 @@ import com.aether.x.BuildConfig
 import com.aether.x.R
 import com.aether.x.ui.components.AetherBackground
 import kotlinx.coroutines.delay
+import com.aether.x.core.locale.str
 
 private const val MIN_SPLASH_MILLIS = 950L
 
@@ -165,20 +166,20 @@ fun SplashScreen(
                 if (uiState.failed) {
                     Spacer(Modifier.height(18.dp))
                     Text(
-                        text = "Verifikasi perangkat belum berhasil",
+                        text = str(R.string.splash_verifikasi_perangkat_belum_berhasil),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.error,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Periksa koneksi internet lalu coba lagi.",
+                        text = str(R.string.splash_periksa_koneksi_internet_lalu_coba),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = viewModel::retry) {
                         Text(
-                            text = "Coba lagi",
+                            text = str(R.string.splash_coba_lagi),
                             color = colors.primary,
                             fontWeight = FontWeight.SemiBold,
                         )

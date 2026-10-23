@@ -52,6 +52,7 @@ import com.aether.x.ui.components.rememberPressScaleInteractionSource
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
+import com.aether.x.core.locale.str
 
 @Composable
 fun AboutScreen(
@@ -94,7 +95,7 @@ private fun AboutPageHeading(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "Kenali aplikasi, fitur, dan pengembang AetherX.",
+            text = str(R.string.about_kenali_aplikasi_fitur_dan_pengembang),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -207,7 +208,7 @@ private fun AboutBrandHero(versionName: String, modifier: Modifier = Modifier) {
             }
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 Text(
-                    text = "Performa dan kontrol,\ndalam satu tempat.",
+                    text = str(R.string.about_performa_dan_kontrol_dalam_satu),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -229,8 +230,8 @@ private fun AboutMaintainer(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         SectionLabel(
-            title = "Di balik AetherX",
-            subtitle = "Dikembangkan dan dirawat secara independen",
+            title = str(R.string.about_di_balik_aetherx),
+            subtitle = str(R.string.about_dikembangkan_dan_dirawat_secara_independ),
         )
         Row(
             modifier = Modifier
@@ -286,8 +287,8 @@ private fun AboutCommunity(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         SectionLabel(
-            title = "Kanal resmi",
-            subtitle = "Ikuti kabar terbaru dan panduan AetherX",
+            title = str(R.string.about_kanal_resmi),
+            subtitle = str(R.string.about_ikuti_kabar_terbaru_dan_panduan),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -349,7 +350,7 @@ private fun CommunityTile(
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                contentDescription = "Buka $title",
+                contentDescription = str(R.string.about_buka, title),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(17.dp),
             )

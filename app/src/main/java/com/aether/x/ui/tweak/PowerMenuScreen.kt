@@ -1,5 +1,6 @@
 package com.aether.x.ui.tweak
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 
 import androidx.compose.foundation.clickable
@@ -42,6 +43,8 @@ import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.components.showAetherToast
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * v3.6 — Advanced -> Power Menu (khusus Root).
@@ -51,69 +54,69 @@ import kotlinx.coroutines.launch
  * konfirmasi dan dijalankan memakai shell root yang sama dengan fitur lain.
  */
 private enum class PowerAction(
-    val title: String,
-    val description: String,
+    @StringRes val title: Int,
+    @StringRes val description: Int,
     val icon: ImageVector,
     val command: String,
-    val confirmTitle: String,
-    val confirmMessage: String,
+    @StringRes val confirmTitle: Int,
+    @StringRes val confirmMessage: Int,
     val destructive: Boolean = false,
 ) {
     REBOOT(
-        title = "Reboot",
-        description = "Mulai ulang perangkat seperti biasa",
+        title = R.string.power_reboot_title,
+        description = R.string.power_reboot_desc,
         icon = Icons.Outlined.RestartAlt,
         command = "sync; svc power reboot || reboot",
-        confirmTitle = "Reboot perangkat?",
-        confirmMessage = "Semua aplikasi akan ditutup dan perangkat dimulai ulang.",
+        confirmTitle = R.string.power_reboot_confirm_title,
+        confirmMessage = R.string.power_reboot_confirm_msg,
     ),
     SOFT_REBOOT(
-        title = "Soft Reboot",
-        description = "Restart framework Android tanpa mematikan kernel (lebih cepat)",
+        title = R.string.power_soft_reboot_title,
+        description = R.string.power_soft_reboot_desc,
         icon = Icons.Outlined.Refresh,
         command = "setprop ctl.restart zygote",
-        confirmTitle = "Soft reboot?",
-        confirmMessage = "Framework Android dimulai ulang. Layar akan sesaat kembali ke logo boot.",
+        confirmTitle = R.string.power_soft_reboot_confirm_title,
+        confirmMessage = R.string.power_soft_reboot_confirm_msg,
     ),
     SYSTEMUI(
-        title = "Restart SystemUI",
-        description = "Muat ulang status bar & panel notifikasi",
+        title = R.string.power_systemui_title,
+        description = R.string.power_systemui_desc,
         icon = Icons.Outlined.PhoneAndroid,
         command = "killall com.android.systemui || pkill -f com.android.systemui",
-        confirmTitle = "Restart SystemUI?",
-        confirmMessage = "Status bar dan panel notifikasi dimuat ulang sesaat.",
+        confirmTitle = R.string.power_systemui_confirm_title,
+        confirmMessage = R.string.power_systemui_confirm_msg,
     ),
     RECOVERY(
-        title = "Reboot Recovery",
-        description = "Mulai ulang langsung ke mode Recovery",
+        title = R.string.power_recovery_title,
+        description = R.string.power_recovery_desc,
         icon = Icons.Outlined.SettingsBackupRestore,
         command = "sync; reboot recovery",
-        confirmTitle = "Reboot ke Recovery?",
-        confirmMessage = "Perangkat dimulai ulang ke mode Recovery. Pastikan kamu tahu cara keluar dari Recovery.",
+        confirmTitle = R.string.power_recovery_confirm_title,
+        confirmMessage = R.string.power_recovery_confirm_msg,
     ),
     BOOTLOADER(
-        title = "Reboot Bootloader",
-        description = "Mulai ulang ke bootloader / fastboot",
+        title = R.string.power_bootloader_title,
+        description = R.string.power_bootloader_desc,
         icon = Icons.Outlined.DeveloperBoard,
         command = "sync; reboot bootloader",
-        confirmTitle = "Reboot ke Bootloader?",
-        confirmMessage = "Perangkat dimulai ulang ke mode bootloader (fastboot).",
+        confirmTitle = R.string.power_bootloader_confirm_title,
+        confirmMessage = R.string.power_bootloader_confirm_msg,
     ),
     DOWNLOAD(
-        title = "Download Mode",
-        description = "Mode Odin untuk perangkat Samsung",
+        title = R.string.power_download_title,
+        description = R.string.power_download_desc,
         icon = Icons.Outlined.Download,
         command = "sync; reboot download",
-        confirmTitle = "Reboot ke Download Mode?",
-        confirmMessage = "Hanya berlaku di perangkat Samsung. Di perangkat lain perintah ini bisa diabaikan.",
+        confirmTitle = R.string.power_download_confirm_title,
+        confirmMessage = R.string.power_download_confirm_msg,
     ),
     POWER_OFF(
-        title = "Matikan",
-        description = "Matikan perangkat sepenuhnya",
+        title = R.string.power_off_title,
+        description = R.string.power_off_desc,
         icon = Icons.Outlined.PowerSettingsNew,
         command = "sync; reboot -p || svc power shutdown",
-        confirmTitle = "Matikan perangkat?",
-        confirmMessage = "Perangkat akan dimatikan. Kamu perlu menyalakannya lagi secara manual.",
+        confirmTitle = R.string.power_off_confirm_title,
+        confirmMessage = R.string.power_off_confirm_msg,
         destructive = true,
     ),
 }
@@ -133,16 +136,16 @@ fun PowerMenuScreen(modifier: Modifier = Modifier) {
             } else {
                 MaterialTheme.colorScheme.primary
             },
-            title = action.confirmTitle,
-            message = action.confirmMessage,
-            confirmLabel = "Ya, lanjutkan",
+            title = str(action.confirmTitle),
+            message = str(action.confirmMessage),
+            confirmLabel = str(R.string.power_menu_ya_lanjutkan),
             confirmIsDestructive = action.destructive,
             onConfirm = {
                 pending = null
                 scope.launch {
                     val executor = PrivilegeManager.getExecutorAwaitingConnection()
                     if (executor == null) {
-                        context.showAetherToast("Akses root tidak tersedia")
+                        context.showAetherToast(str(R.string.kernel_manager_error_root_unavailable))
                     } else {
                         // Perintah reboot mematikan proses ini sebelum exec() sempat
                         // kembali; hasilnya memang tidak ditunggu.
@@ -150,7 +153,7 @@ fun PowerMenuScreen(modifier: Modifier = Modifier) {
                     }
                 }
             },
-            dismissLabel = "Batal",
+            dismissLabel = str(R.string.membership_logout_cancel),
         )
     }
 
@@ -158,18 +161,18 @@ fun PowerMenuScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
-        SectionCard(title = "Restart", watermarkIcon = Icons.Outlined.RestartAlt) {
+        SectionCard(title = str(R.string.power_menu_restart), watermarkIcon = Icons.Outlined.RestartAlt) {
             PowerRow(PowerAction.REBOOT) { pending = it }
             PowerRow(PowerAction.SOFT_REBOOT) { pending = it }
             PowerRow(PowerAction.SYSTEMUI) { pending = it }
         }
-        SectionCard(title = "Mode Boot", watermarkIcon = Icons.Outlined.SettingsBackupRestore) {
+        SectionCard(title = str(R.string.power_menu_mode_boot), watermarkIcon = Icons.Outlined.SettingsBackupRestore) {
             PowerRow(PowerAction.RECOVERY) { pending = it }
             PowerRow(PowerAction.BOOTLOADER) { pending = it }
             PowerRow(PowerAction.DOWNLOAD) { pending = it }
         }
         SectionCard(
-            title = "Matikan",
+            title = str(R.string.overlay_notification_action_stop),
             watermarkIcon = Icons.Outlined.PowerSettingsNew,
             accent = com.aether.x.ui.theme.AccentRed,
         ) {
@@ -206,12 +209,12 @@ private fun PowerRow(action: PowerAction, onClick: (PowerAction) -> Unit) {
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = action.title,
+                text = str(action.title),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = action.description,
+                text = str(action.description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

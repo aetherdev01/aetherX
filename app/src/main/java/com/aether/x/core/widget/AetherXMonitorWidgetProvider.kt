@@ -19,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.LocaleManager
 
 /**
  * Widget layar utama (v3.5) — kartu kecil menampilkan CPU/GPU load
@@ -45,7 +46,8 @@ class AetherXMonitorWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        appWidgetIds.forEach { id -> refreshWidget(context, appWidgetManager, id) }
+        val localized = LocaleManager.wrap(context)
+        appWidgetIds.forEach { id -> refreshWidget(localized, appWidgetManager, id) }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -53,7 +55,8 @@ class AetherXMonitorWidgetProvider : AppWidgetProvider() {
         if (intent.action != ACTION_REFRESH) return
         val manager = AppWidgetManager.getInstance(context)
         val ids = manager.getAppWidgetIds(ComponentName(context, AetherXMonitorWidgetProvider::class.java))
-        ids.forEach { id -> refreshWidget(context, manager, id) }
+        val localized = LocaleManager.wrap(context)
+        ids.forEach { id -> refreshWidget(localized, manager, id) }
     }
 
     private fun refreshWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {

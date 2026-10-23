@@ -73,6 +73,7 @@ import com.aether.x.ui.theme.SurfaceCardAlt
 import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
+import com.aether.x.core.locale.str
 
 @Composable
 fun GameProfileScreen(
@@ -149,7 +150,7 @@ private fun GameProfileRootRequiredNotice(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             StatusPill(
-                text = "AKSES ROOT DIBUTUHKAN",
+                text = str(R.string.game_profile_akses_root_dibutuhkan),
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 leadingIcon = Icons.Outlined.Lock,
@@ -178,17 +179,17 @@ private fun GameProfileListPane(
         ) {
             ProfileMetric(
                 value = state.installedGames.size.toString(),
-                label = "Game terdeteksi",
+                label = str(R.string.game_profile_game_terdeteksi),
                 modifier = Modifier.weight(1f),
             )
             ProfileMetric(
                 value = configuredProfiles.toString(),
-                label = "Profil disetel",
+                label = str(R.string.game_profile_profil_disetel),
                 modifier = Modifier.weight(1f),
             )
             ProfileMetric(
                 value = if (state.activeGameProfilePackage != null) "1" else "0",
-                label = "Sedang aktif",
+                label = str(R.string.game_profile_sedang_aktif),
                 modifier = Modifier.weight(1f),
             )
         }
@@ -220,13 +221,13 @@ private fun GameProfileListPane(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "Pilih game",
+                text = str(R.string.game_profile_pilih_game),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "${state.filteredGames.size} tersedia",
+                text = str(R.string.game_profile_tersedia, state.filteredGames.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -331,14 +332,14 @@ private fun GameProfileHeaderCard(isActive: Boolean) {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Personalisasi preset dan kontrol performa untuk setiap game.",
+                    text = str(R.string.game_profile_personalisasi_preset_dan_kontrol_perform),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         StatusPill(
-            text = if (isActive) "PROFIL GAME AKTIF" else "MENUNGGU GAME",
+            text = if (isActive) str(R.string.game_profile_profil_game_aktif) else str(R.string.game_profile_menunggu_game),
             containerColor = if (isActive) AccentGreen.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (isActive) AccentGreen else MaterialTheme.colorScheme.onSurfaceVariant,
             leadingIcon = if (isActive) Icons.Outlined.Bolt else Icons.Outlined.Info,
@@ -400,7 +401,7 @@ private fun GameListRow(
                     text = if (configuredTweakCount > 0) {
                         stringResource(R.string.game_profile_configured_badge, configuredTweakCount)
                     } else {
-                        "Profil default · belum disesuaikan"
+                        str(R.string.game_profile_profil_default_belum_disesuaikan)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (configuredTweakCount > 0) AccentBlue else TextMuted,
@@ -460,19 +461,19 @@ private fun GameProfileDetailPane(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Kembali ke daftar game",
+                    contentDescription = str(R.string.game_profile_kembali_ke_daftar_game),
                     tint = TextPrimary,
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "Konfigurasi Game",
+                    text = str(R.string.game_profile_konfigurasi_game),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary,
                 )
                 Text(
-                    text = "Atur mode dan kontrol yang didukung perangkat.",
+                    text = str(R.string.game_profile_atur_mode_dan_kontrol_yang),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary,
                 )

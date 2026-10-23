@@ -4,6 +4,8 @@ import com.aether.x.core.buildprop.BuildPropBackup
 import com.aether.x.core.buildprop.BuildPropPartition
 import com.aether.x.core.shell.ShellExecutor
 import com.aether.x.core.shell.ShellResult
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * Writes build properties directly only if the target filesystem accepts writes.
@@ -54,10 +56,10 @@ class BuildPropRepository {
         } else {
             val detail = when {
                 result.outputText.contains("SYSTEMLESS_UNAVAILABLE") ->
-                    "Partisi hanya-baca dan modul system.prop tidak tersedia pada root manager ini."
-                result.outputText.contains("BACKUP_DIRECTORY_FAILED") -> "Folder backup tidak dapat dibuat."
-                result.outputText.contains("BACKUP_FILE_FAILED") -> "Gagal menulis file backup."
-                else -> result.errorText.ifBlank { result.outputText }.ifBlank { "Gagal membuat backup." }
+                    str(R.string.build_prop_partisi_hanya_baca_dan_modul)
+                result.outputText.contains("BACKUP_DIRECTORY_FAILED") -> str(R.string.build_prop_folder_backup_tidak_dapat_dibuat)
+                result.outputText.contains("BACKUP_FILE_FAILED") -> str(R.string.build_prop_gagal_menulis_file_backup)
+                else -> result.errorText.ifBlank { result.outputText }.ifBlank { str(R.string.build_prop_gagal_membuat_backup) }
             }
             Result.failure(IllegalStateException(detail))
         }
@@ -98,7 +100,7 @@ class BuildPropRepository {
     ): ShellResult {
         val safeValue = newValue.replace("\n", "").replace("\r", "")
         if (!key.matches(Regex("[A-Za-z0-9._-]+"))) {
-            return ShellResult.failure("Nama properti tidak valid.")
+            return ShellResult.failure(str(R.string.build_prop_nama_properti_tidak_valid))
         }
 
         val lineNumber = lineIndex + 1
@@ -151,12 +153,12 @@ class BuildPropRepository {
             result.outputText.contains("SYSTEMLESS_SAVED_REBOOT") ->
                 ShellResult(success = true, output = result.output + "APPLY_OK" + "SYSTEMLESS_SAVED_REBOOT")
             result.outputText.contains("SYSTEMLESS_UNAVAILABLE") ->
-                ShellResult.failure("Partisi hanya-baca dan root manager tidak mendukung override system.prop. Tidak ada perubahan diterapkan.")
+                ShellResult.failure(str(R.string.build_prop_partisi_hanya_baca_dan_root))
             result.outputText.contains("SYSTEMLESS_WRITE_FAILED") ->
-                ShellResult.failure("Gagal menyimpan override system.prop.")
+                ShellResult.failure(str(R.string.build_prop_gagal_menyimpan_override_system_prop))
             result.outputText.contains("APPLY_FILE_FAILED") ->
-                ShellResult.failure("File dapat ditulis, tetapi penggantian baris properti gagal.")
-            else -> ShellResult.failure(result.errorText.ifBlank { result.outputText }.ifBlank { "Gagal menulis $path." })
+                ShellResult.failure(str(R.string.build_prop_file_dapat_ditulis_tetapi_penggantian))
+            else -> ShellResult.failure(result.errorText.ifBlank { result.outputText }.ifBlank { str(R.string.build_prop_gagal_menulis, path) })
         }
     }
 
@@ -201,10 +203,10 @@ class BuildPropRepository {
             result.outputText.contains("RESTORE_FILE_OK") || result.outputText.contains("RESTORE_SYSTEMLESS_OK") ->
                 ShellResult(success = true, output = result.output + "RESTORE_OK")
             result.outputText.contains("SYSTEMLESS_UNAVAILABLE") ->
-                ShellResult.failure("Root manager tidak dapat memulihkan override system.prop.")
+                ShellResult.failure(str(R.string.build_prop_root_manager_tidak_dapat_memulihkan))
             result.outputText.contains("RESTORE_BACKUP_MISSING") ->
-                ShellResult.failure("File backup tidak ditemukan.")
-            else -> ShellResult.failure(result.errorText.ifBlank { result.outputText }.ifBlank { "Gagal memulihkan ${backup.partition.path}." })
+                ShellResult.failure(str(R.string.build_prop_file_backup_tidak_ditemukan))
+            else -> ShellResult.failure(result.errorText.ifBlank { result.outputText }.ifBlank { str(R.string.build_prop_gagal_memulihkan, backup.partition.path) })
         }
     }
 

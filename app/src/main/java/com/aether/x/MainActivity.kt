@@ -49,8 +49,15 @@ import com.aether.x.ui.theme.AetherXTheme
 import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.LocaleManager
+import android.content.Context
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()

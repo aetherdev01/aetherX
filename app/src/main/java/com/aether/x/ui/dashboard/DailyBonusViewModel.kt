@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 data class DailyBonusUiState(
     val loading: Boolean = true,
@@ -80,14 +82,14 @@ class DailyBonusViewModel(application: Application) : AndroidViewModel(applicati
             when (result) {
                 is DailyBonusClaimResult.Granted -> {
                     refresh()
-                    app.showAetherToast("Bonus diterima: +${result.credits} kredit preset kernel")
+                    app.showAetherToast(str(R.string.daily_bonus_bonus_diterima_kredit_preset_kernel, result.credits))
                 }
                 DailyBonusClaimResult.AlreadyClaimed ->
-                    app.showAetherToast("Bonus hari ini sudah diklaim")
+                    app.showAetherToast(str(R.string.daily_bonus_bonus_hari_ini_sudah_diklaim))
                 DailyBonusClaimResult.AdNotReady ->
-                    app.showAetherToast("Iklan belum siap, coba lagi sebentar")
+                    app.showAetherToast(str(R.string.kernel_preset_ad_not_ready))
                 DailyBonusClaimResult.Cancelled ->
-                    app.showAetherToast("Tonton iklan sampai selesai untuk mendapat bonus")
+                    app.showAetherToast(str(R.string.daily_bonus_tonton_iklan_sampai_selesai_untuk))
             }
         }
     }

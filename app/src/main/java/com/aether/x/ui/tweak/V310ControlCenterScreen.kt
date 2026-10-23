@@ -56,6 +56,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * v3.10 utility center kept intentionally focused: device compatibility,
@@ -86,11 +88,11 @@ fun V310ControlCenterScreen(
                 val written = withContext(Dispatchers.IO) {
                     runCatching {
                         context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(raw) }
-                            ?: error("Tidak dapat membuka file tujuan")
+                            ?: error(str(R.string.v310_error_open_target))
                     }.isSuccess
                 }
-                importExportMessage = if (written) "Profil berhasil diekspor (${profiles.gameProfiles.size})" else "Ekspor gagal. Coba pilih lokasi lain."
-                historyRepository.record("Ekspor profil", "${profiles.gameProfiles.size} profil", written)
+                importExportMessage = if (written) str(R.string.v310_control_center_profil_berhasil_diekspor, profiles.gameProfiles.size) else str(R.string.v310_control_center_ekspor_gagal_coba_pilih_lokasi)
+                historyRepository.record(str(R.string.v310_control_center_ekspor_profil), str(R.string.v310_control_center_profil, profiles.gameProfiles.size), written)
                 refreshHistory()
             }
         }
@@ -104,10 +106,10 @@ fun V310ControlCenterScreen(
                 val result = withContext(Dispatchers.IO) {
                     runCatching {
                         val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                            ?: error("File tidak dapat dibaca")
+                            ?: error(str(R.string.v310_error_file_unreadable))
                         val json = JSONObject(raw)
                         val parsed = GameProfileSerializer.deserialize(json.toString())
-                        if (parsed.isEmpty() && json.length() > 0) error("Format profil tidak valid")
+                        if (parsed.isEmpty() && json.length() > 0) error(str(R.string.v310_error_profile_format))
                         parsed.mapNotNull { (pkg, profile) ->
                             val normalizedPkg = pkg.trim()
                             if (!normalizedPkg.matches(Regex("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+"))) null
@@ -120,11 +122,11 @@ fun V310ControlCenterScreen(
                     withContext(Dispatchers.IO) {
                         profiles.forEach { (_, profile) -> preferences.saveGameProfile(profile) }
                     }
-                    importExportMessage = "Impor selesai: ${profiles.size} profil diproses"
-                    historyRepository.record("Impor profil", "${profiles.size} profil", true)
+                    importExportMessage = str(R.string.v310_control_center_impor_selesai_profil_diproses, profiles.size)
+                    historyRepository.record(str(R.string.v310_control_center_impor_profil), str(R.string.v310_control_center_profil, profiles.size), true)
                 } catch (error: Throwable) {
-                    importExportMessage = "Impor gagal: ${error.message ?: "format file tidak valid"}"
-                    historyRepository.record("Impor profil", error.message ?: "Format file tidak valid", false)
+                    importExportMessage = str(R.string.v310_control_center_impor_gagal, error.message ?: str(R.string.v310_control_center_format_file_tidak_valid))
+                    historyRepository.record(str(R.string.v310_control_center_impor_profil), error.message ?: str(R.string.v310_control_center_format_file_tidak_valid_2), false)
                 }
                 refreshHistory()
             }
@@ -158,36 +160,36 @@ fun V310ControlCenterScreen(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Pusat Kontrol AetherX",
+                text = str(R.string.v310_control_center_pusat_kontrol_aetherx),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "v${BuildConfig.VERSION_NAME} · kompatibilitas, riwayat, dan cadangan profil",
+                text = str(R.string.v310_control_center_v_kompatibilitas_riwayat_dan_cadangan, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        SectionCard(title = "Kompatibilitas Perangkat", watermarkIcon = Icons.Outlined.Devices) {
-            CompatibilityRow("Perangkat", "${Build.MANUFACTURER} ${Build.MODEL}")
+        SectionCard(title = str(R.string.v310_control_center_kompatibilitas_perangkat), watermarkIcon = Icons.Outlined.Devices) {
+            CompatibilityRow(str(R.string.v310_control_center_perangkat), "${Build.MANUFACTURER} ${Build.MODEL}")
             CompatibilityRow("SoC", "$socManufacturer · $socModel")
-            CompatibilityRow("Android", "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            CompatibilityRow("Android", str(R.string.v310_control_center_api, Build.VERSION.RELEASE, Build.VERSION.SDK_INT))
             CompatibilityRow("ABI", Build.SUPPORTED_ABIS.joinToString(", "))
-            CompatibilityRow("Root", if (privilege.rootGranted) "Diizinkan" else if (privilege.rootAvailable == true) "Terdeteksi, belum diizinkan" else "Tidak tersedia")
-            CompatibilityRow("CPU frequency interface", if (cpuFreqPath.exists()) "Terdeteksi" else "Belum terbaca")
-            CompatibilityRow("GPU devfreq node", gpuNodes.firstOrNull() ?: "Tidak terdeteksi / akses dibatasi")
-            Text("Status interface dibaca dari file sistem yang bisa diakses saat ini. ‘Belum terbaca’ tidak selalu berarti hardware tidak mendukungnya.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            CompatibilityRow("Root", if (privilege.rootGranted) str(R.string.v310_control_center_diizinkan) else if (privilege.rootAvailable == true) str(R.string.v310_control_center_terdeteksi_belum_diizinkan) else str(R.string.advanced_hardware_metrics_card_tidak_tersedia))
+            CompatibilityRow("CPU frequency interface", if (cpuFreqPath.exists()) str(R.string.v310_control_center_terdeteksi) else str(R.string.v310_control_center_belum_terbaca))
+            CompatibilityRow("GPU devfreq node", gpuNodes.firstOrNull() ?: str(R.string.v310_control_center_tidak_terdeteksi_akses_dibatasi))
+            Text(str(R.string.v310_control_center_status_interface_dibaca_dari_file), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             Button(onClick = onOpenMonitor, modifier = Modifier.fillMaxWidth(), enabled = privilege.rootGranted) {
-                Text(if (privilege.rootGranted) "Buka Monitor Hardware Lanjutan" else "Monitor memerlukan izin root")
+                Text(if (privilege.rootGranted) str(R.string.v310_control_center_buka_monitor_hardware_lanjutan) else str(R.string.v310_control_center_monitor_memerlukan_izin_root))
             }
         }
 
-        SectionCard(title = "Riwayat Tweak", watermarkIcon = Icons.Outlined.History) {
-            Text("Riwayat lokal menyimpan perubahan yang dicatat AetherX di perangkat ini. Maksimum 40 entri terakhir.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        SectionCard(title = str(R.string.v310_control_center_riwayat_tweak), watermarkIcon = Icons.Outlined.History) {
+            Text(str(R.string.v310_control_center_riwayat_lokal_menyimpan_perubahan_yang), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (history.isEmpty()) {
-                Text("Belum ada riwayat perubahan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(str(R.string.v310_control_center_belum_ada_riwayat_perubahan), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 history.take(8).forEachIndexed { index, item ->
                     if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
@@ -198,11 +200,11 @@ fun V310ControlCenterScreen(
                 onClick = { historyRepository.clear(); refreshHistory() },
                 enabled = history.isNotEmpty(),
                 modifier = Modifier.align(Alignment.End),
-            ) { Text("Hapus riwayat") }
+            ) { Text(str(R.string.v310_control_center_hapus_riwayat)) }
         }
 
-        SectionCard(title = "Cadangan Profil Game", watermarkIcon = Icons.Outlined.Backup) {
-            Text("Cadangkan atau pindahkan profil game sebagai JSON. File diimpor dengan validasi nama paket sebelum disimpan.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        SectionCard(title = str(R.string.v310_control_center_cadangan_profil_game), watermarkIcon = Icons.Outlined.Backup) {
+            Text(str(R.string.v310_control_center_cadangkan_atau_pindahkan_profil_game), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = { exportProfiles.launch("AetherX_game_profiles.json") },
@@ -210,7 +212,7 @@ fun V310ControlCenterScreen(
                 ) {
                     androidx.compose.material3.Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(6.dp))
-                    Text("Ekspor")
+                    Text(str(R.string.v310_control_center_ekspor))
                 }
                 Button(
                     onClick = { importProfiles.launch(arrayOf("application/json", "text/plain")) },
@@ -218,7 +220,7 @@ fun V310ControlCenterScreen(
                 ) {
                     androidx.compose.material3.Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(6.dp))
-                    Text("Impor")
+                    Text(str(R.string.v310_control_center_impor))
                 }
             }
             importExportMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }

@@ -62,6 +62,7 @@ import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
+import com.aether.x.core.locale.str
 
 @Composable
 fun AppManagerScreen(
@@ -245,7 +246,7 @@ private fun AppManagerOverviewCard(
             IconButton(onClick = onRefresh, enabled = !state.loading) {
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "Muat ulang daftar aplikasi",
+                    contentDescription = str(R.string.app_manager_muat_ulang_daftar_aplikasi),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -257,12 +258,12 @@ private fun AppManagerOverviewCard(
         ) {
             AppManagerMetric(
                 value = state.apps.size.toString(),
-                label = "Dikelola",
+                label = str(R.string.app_manager_dikelola),
                 modifier = Modifier.weight(1f),
             )
             AppManagerMetric(
                 value = frozenCount.toString(),
-                label = "Dibekukan",
+                label = str(R.string.app_manager_dibekukan),
                 modifier = Modifier.weight(1f),
             )
             AppManagerMetric(

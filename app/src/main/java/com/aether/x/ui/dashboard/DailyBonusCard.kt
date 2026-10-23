@@ -37,6 +37,8 @@ import com.aether.x.ui.theme.AetherGreen
 import com.aether.x.ui.theme.AetherOrange
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * Kartu "Bonus Harian": klaim kredit tambahan (Preset Kernel) dengan menonton
@@ -59,7 +61,7 @@ fun DailyBonusCard(
     LaunchedEffect(Unit) { viewModel.refresh() }
 
     SectionCard(
-        title = "Bonus Harian",
+        title = str(R.string.daily_bonus_card_bonus_harian),
         modifier = modifier,
         watermarkIcon = Icons.Outlined.CardGiftcard,
         accent = AetherOrange,
@@ -89,13 +91,13 @@ fun DailyBonusCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = if (state.claimedToday) "Sudah diklaim hari ini" else "+${state.nextRewardCredits} kredit",
+                    text = if (state.claimedToday) str(R.string.daily_bonus_card_sudah_diklaim_hari_ini) else str(R.string.daily_bonus_card_kredit, state.nextRewardCredits),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = if (state.claimedToday) "Streak ${state.streak} hari · kembali besok" else "Bonus harian · streak ${state.streak} hari",
+                    text = if (state.claimedToday) str(R.string.daily_bonus_card_streak_hari_kembali_besok, state.streak) else str(R.string.daily_bonus_card_bonus_harian_streak_hari, state.streak),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -117,8 +119,8 @@ fun DailyBonusCard(
                         strokeWidth = 2.dp,
                         color = LocalAetherPalette.current.onBonus,
                     )
-                    state.claimedToday -> Text("Selesai", fontWeight = FontWeight.SemiBold)
-                    else -> Text("Klaim", fontWeight = FontWeight.SemiBold)
+                    state.claimedToday -> Text(str(R.string.dashboard_order_done), fontWeight = FontWeight.SemiBold)
+                    else -> Text(str(R.string.daily_bonus_card_klaim), fontWeight = FontWeight.SemiBold)
                 }
             }
         }

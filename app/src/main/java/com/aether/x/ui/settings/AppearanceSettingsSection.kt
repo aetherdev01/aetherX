@@ -52,6 +52,8 @@ import android.graphics.Color as AndroidColor
 import java.util.Locale
 import com.aether.x.ui.theme.Spacing
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * Pengaturan "Tampilan": mode terang/gelap, warna aksen, intensitas blur, dan level Liquid Glass.
@@ -73,19 +75,19 @@ fun AppearanceSettingsSection(
     modifier: Modifier = Modifier,
 ) {
     SectionCard(
-        title = "Tampilan",
+        title = str(R.string.settings_section_appearance),
         watermarkIcon = Icons.Outlined.Palette,
         modifier = modifier,
     ) {
-        SettingGroup(label = "Mode") {
+        SettingGroup(label = str(R.string.appearance_settings_mode)) {
             ChoiceRow {
-                ChoicePill("Terang", darkModePref == DarkModePref.LIGHT) { onDarkModeChange(DarkModePref.LIGHT) }
-                ChoicePill("Gelap", darkModePref == DarkModePref.DARK) { onDarkModeChange(DarkModePref.DARK) }
-                ChoicePill("Ikuti Sistem", darkModePref == DarkModePref.SYSTEM) { onDarkModeChange(DarkModePref.SYSTEM) }
+                ChoicePill(str(R.string.settings_appearance_light), darkModePref == DarkModePref.LIGHT) { onDarkModeChange(DarkModePref.LIGHT) }
+                ChoicePill(str(R.string.settings_appearance_dark), darkModePref == DarkModePref.DARK) { onDarkModeChange(DarkModePref.DARK) }
+                ChoicePill(str(R.string.settings_appearance_system), darkModePref == DarkModePref.SYSTEM) { onDarkModeChange(DarkModePref.SYSTEM) }
             }
         }
 
-        SettingGroup(label = "Warna aksen") {
+        SettingGroup(label = str(R.string.appearance_settings_warna_aksen)) {
             val dark = LocalAetherPalette.current.isDark
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -115,9 +117,9 @@ fun AppearanceSettingsSection(
                     contentAlignment = Alignment.Center,
                 ) {
                     if (customAccentArgb != null) {
-                        Icon(Icons.Outlined.Check, contentDescription = "Warna aksen kustom aktif", tint = com.aether.x.ui.theme.onColorFor(customColor!!), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Outlined.Check, contentDescription = str(R.string.appearance_settings_warna_aksen_kustom_aktif), tint = com.aether.x.ui.theme.onColorFor(customColor!!), modifier = Modifier.size(20.dp))
                     } else {
-                        Icon(Icons.Outlined.Add, contentDescription = "Pilih warna aksen bebas", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(21.dp))
+                        Icon(Icons.Outlined.Add, contentDescription = str(R.string.appearance_settings_pilih_warna_aksen_bebas), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(21.dp))
                     }
                 }
                 if (showCustomColor) {
@@ -132,7 +134,7 @@ fun AppearanceSettingsSection(
                 }
             }
             Text(
-                text = if (customAccentArgb != null) "Warna kustom aktif · #${customAccentArgb.toString(16).takeLast(6).uppercase(Locale.ROOT)}" else "Pilih preset atau tekan + untuk menentukan warna sendiri.",
+                text = if (customAccentArgb != null) str(R.string.appearance_settings_warna_kustom_aktif, customAccentArgb.toString(16).takeLast(6).uppercase(Locale.ROOT)) else str(R.string.appearance_settings_pilih_preset_atau_tekan_untuk),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -140,20 +142,20 @@ fun AppearanceSettingsSection(
 
         SettingGroup(label = "Blur Intensity") {
             LevelSlider(
-                label = "Kekuatan blur",
-                description = "Mengatur seberapa kuat konten di belakang navbar, drawer, dan panel diburamkan.",
+                label = str(R.string.appearance_settings_kekuatan_blur),
+                description = str(R.string.appearance_settings_mengatur_seberapa_kuat_konten_di),
                 value = blurStrength,
-                levelNames = listOf("Mati", "Lembut", "Seimbang", "Kuat", "Ultra"),
+                levelNames = listOf(str(R.string.appearance_settings_mati), str(R.string.appearance_settings_lembut), str(R.string.kernel_preset_balanced), str(R.string.appearance_settings_kuat), str(R.string.appearance_settings_ultra)),
                 onValueChange = onBlurChange,
             )
         }
 
         SettingGroup(label = "Liquid Glass Level") {
             LevelSlider(
-                label = "Intensitas kaca",
-                description = "Mengatur transparansi, tint warna, dan kepekatan permukaan kaca secara terpisah dari blur.",
+                label = str(R.string.appearance_settings_intensitas_kaca),
+                description = str(R.string.appearance_settings_mengatur_transparansi_tint_warna_dan),
                 value = liquidGlassLevel,
-                levelNames = listOf("Jernih", "Tipis", "Seimbang", "Pekat", "Solid"),
+                levelNames = listOf(str(R.string.appearance_settings_jernih), str(R.string.appearance_settings_tipis), str(R.string.kernel_preset_balanced), str(R.string.appearance_settings_pekat), "Solid"),
                 onValueChange = onLiquidGlassLevelChange,
             )
         }
@@ -220,7 +222,7 @@ private fun LevelSlider(
 }
 
 @Composable
-private fun SettingGroup(label: String, content: @Composable () -> Unit) {
+internal fun SettingGroup(label: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
             text = label,
@@ -232,7 +234,7 @@ private fun SettingGroup(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ChoiceRow(content: @Composable () -> Unit) {
+internal fun ChoiceRow(content: @Composable () -> Unit) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -243,7 +245,7 @@ private fun ChoiceRow(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ChoicePill(
+internal fun ChoicePill(
     label: String,
     selected: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
@@ -327,7 +329,7 @@ private fun CustomAccentPickerDialog(
         modifier = Modifier.glassPanel(RoundedCornerShape(28.dp)),
         containerColor = Color.Transparent,
         tonalElevation = 0.dp,
-        title = { Text("Warna aksen bebas") },
+        title = { Text(str(R.string.appearance_settings_warna_aksen_bebas)) },
         text = {
             Column(
                 modifier = androidx.compose.ui.Modifier.verticalScroll(rememberScrollState()),
@@ -342,7 +344,7 @@ private fun CustomAccentPickerDialog(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalArrangement = Arrangement.spacedBy(3.dp),
                     ) {
-                        Text("Pratinjau aksen", color = com.aether.x.ui.theme.onColorFor(previewColor), fontWeight = FontWeight.Bold)
+                        Text(str(R.string.appearance_settings_pratinjau_aksen), color = com.aether.x.ui.theme.onColorFor(previewColor), fontWeight = FontWeight.Bold)
                         Text(previewHex, color = com.aether.x.ui.theme.onColorFor(previewColor), style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -359,19 +361,19 @@ private fun CustomAccentPickerDialog(
                             }
                         }
                     },
-                    label = { Text("Kode warna HEX") },
+                    label = { Text(str(R.string.appearance_settings_kode_warna_hex)) },
                     prefix = { Text("#") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    text = "Atur komponen RGB secara bebas atau masukkan kode HEX.",
+                    text = str(R.string.appearance_settings_atur_komponen_rgb_secara_bebas),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 TweakSlider(
-                    label = "Merah (R)",
-                    description = "Komponen merah dari 0 sampai 255.",
+                    label = str(R.string.appearance_settings_merah_r),
+                    description = str(R.string.appearance_settings_komponen_merah_dari_0_sampai),
                     valueText = red.toString(),
                     value = red.toFloat(),
                     range = 0f..255f,
@@ -379,8 +381,8 @@ private fun CustomAccentPickerDialog(
                     onValueChange = { red = it.roundToInt().coerceIn(0, 255); updateHexFromRgb() },
                 )
                 TweakSlider(
-                    label = "Hijau (G)",
-                    description = "Komponen hijau dari 0 sampai 255.",
+                    label = str(R.string.appearance_settings_hijau_g),
+                    description = str(R.string.appearance_settings_komponen_hijau_dari_0_sampai),
                     valueText = green.toString(),
                     value = green.toFloat(),
                     range = 0f..255f,
@@ -388,8 +390,8 @@ private fun CustomAccentPickerDialog(
                     onValueChange = { green = it.roundToInt().coerceIn(0, 255); updateHexFromRgb() },
                 )
                 TweakSlider(
-                    label = "Biru (B)",
-                    description = "Komponen biru dari 0 sampai 255.",
+                    label = str(R.string.appearance_settings_biru_b),
+                    description = str(R.string.appearance_settings_komponen_biru_dari_0_sampai),
                     valueText = blue.toString(),
                     value = blue.toFloat(),
                     range = 0f..255f,
@@ -404,8 +406,8 @@ private fun CustomAccentPickerDialog(
                 onClick = {
                     onApply(AndroidColor.rgb(red, green, blue).toLong() and 0xFFFFFFFFL)
                 },
-            ) { Text("Terapkan") }
+            ) { Text(str(R.string.crosshair_custom_color_apply)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(str(R.string.membership_logout_cancel)) } },
     )
 }

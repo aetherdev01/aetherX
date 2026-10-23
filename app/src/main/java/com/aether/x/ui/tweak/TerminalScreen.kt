@@ -43,6 +43,8 @@ import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.theme.AetherMonoFamily
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /**
  * v3.6 — Advanced -> Terminal Root. Konsol satu-perintah: ketik perintah,
@@ -77,7 +79,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
         scope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection()
             val entry = if (executor == null) {
-                TerminalEntry(cmd, "Akses root tidak tersedia.", false)
+                TerminalEntry(cmd, str(R.string.kernel_tools_akses_root_tidak_tersedia), false)
             } else {
                 val result = executor.exec(cmd)
                 val text = buildString {
@@ -86,7 +88,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
                         if (isNotEmpty()) append('\n')
                         append(result.errorText)
                     }
-                }.ifBlank { "(tanpa output)" }
+                }.ifBlank { str(R.string.terminal_tanpa_output) }
                 TerminalEntry(cmd, text.take(MAX_OUTPUT_CHARS), result.success)
             }
             history.add(entry)
@@ -110,12 +112,12 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
         ) {
             Column {
                 Text(
-                    text = "Terminal Root",
+                    text = str(R.string.nav_terminal),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = "Perintah dijalankan sebagai root",
+                    text = str(R.string.terminal_perintah_dijalankan_sebagai_root),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -123,7 +125,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
             IconButton(onClick = { history.clear() }, enabled = history.isNotEmpty()) {
                 Icon(
                     imageVector = Icons.Outlined.DeleteSweep,
-                    contentDescription = "Bersihkan",
+                    contentDescription = str(R.string.app_manager_clear_cache_confirm_action),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -159,7 +161,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
         ) {
             if (history.isEmpty()) {
                 Text(
-                    text = "Ketik perintah di bawah, atau pilih salah satu contoh di atas.",
+                    text = str(R.string.terminal_ketik_perintah_di_bawah_atau),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -189,7 +191,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
             onValueChange = { input = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text("perintah…", fontFamily = AetherMonoFamily) },
+            placeholder = { Text(str(R.string.terminal_perintah), fontFamily = AetherMonoFamily) },
             textStyle = TextStyle(fontFamily = AetherMonoFamily, fontSize = 14.sp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { run(input) }),
@@ -200,7 +202,7 @@ fun TerminalScreen(modifier: Modifier = Modifier) {
                     IconButton(onClick = { run(input) }, enabled = input.isNotBlank()) {
                         Icon(
                             imageVector = Icons.Outlined.PlayArrow,
-                            contentDescription = "Jalankan",
+                            contentDescription = str(R.string.terminal_jalankan),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }

@@ -35,6 +35,8 @@ import com.aether.x.ui.components.TweakSlider
 import com.aether.x.ui.theme.Spacing
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /** v3.6 — Advanced -> Kernel Tools (khusus Root). Lihat [KernelToolsViewModel]. */
 @Composable
@@ -61,7 +63,7 @@ fun KernelToolsSection(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = "I/O, jaringan, dan memori",
+                    text = str(R.string.kernel_tools_i_o_jaringan_dan_memori),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -69,7 +71,7 @@ fun KernelToolsSection(
             IconButton(onClick = viewModel::refresh) {
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "Muat ulang",
+                    contentDescription = str(R.string.kernel_manager_refresh_cd),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -87,7 +89,7 @@ fun KernelToolsSection(
 
         if (!state.rootAvailable) {
             Text(
-                text = "Akses root tidak tersedia.",
+                text = str(R.string.kernel_tools_akses_root_tidak_tersedia),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -96,14 +98,14 @@ fun KernelToolsSection(
 
         SectionCard(title = "I/O Scheduler", watermarkIcon = Icons.Outlined.SdStorage) {
             if (state.blockDevices.isEmpty()) {
-                EmptyHint("Perangkat blok tidak terdeteksi.")
+                EmptyHint(str(R.string.kernel_tools_perangkat_blok_tidak_terdeteksi))
             }
             state.blockDevices.forEachIndexed { index, dev ->
                 val current = dev.currentScheduler
                 if (current != null && dev.availableSchedulers.isNotEmpty()) {
                     TweakDropdown(
                         label = dev.name,
-                        description = "Scheduler antrean I/O",
+                        description = str(R.string.kernel_tools_scheduler_antrean_i_o),
                         options = dev.availableSchedulers,
                         selected = current,
                         optionLabel = { it },
@@ -115,7 +117,7 @@ fun KernelToolsSection(
                     val options = (listOf(128, 256, 512, 1024, 2048, 4096) + ra).distinct().sorted()
                     TweakDropdown(
                         label = "Read-ahead ${dev.name}",
-                        description = "Prabaca data (KB)",
+                        description = str(R.string.kernel_tools_prabaca_data_kb),
                         options = options,
                         selected = ra,
                         optionLabel = { "$it KB" },
@@ -131,12 +133,12 @@ fun KernelToolsSection(
             }
         }
 
-        SectionCard(title = "Jaringan (TCP)", watermarkIcon = Icons.Outlined.NetworkCheck) {
+        SectionCard(title = str(R.string.kernel_tools_jaringan_tcp), watermarkIcon = Icons.Outlined.NetworkCheck) {
             val current = state.tcpCurrent
             if (current != null && state.tcpAvailable.isNotEmpty()) {
                 TweakDropdown(
                     label = "TCP congestion control",
-                    description = "Algoritma pengatur kemacetan jaringan",
+                    description = str(R.string.kernel_tools_algoritma_pengatur_kemacetan_jaringan),
                     options = state.tcpAvailable,
                     selected = current,
                     optionLabel = { it },
@@ -144,16 +146,16 @@ fun KernelToolsSection(
                     icon = Icons.Outlined.NetworkCheck,
                 )
             } else {
-                EmptyHint("Kernel ini tidak menyediakan pilihan TCP congestion control.")
+                EmptyHint(str(R.string.kernel_tools_kernel_ini_tidak_menyediakan_pilihan))
             }
         }
 
-        SectionCard(title = "Memori Virtual", watermarkIcon = Icons.Outlined.Memory) {
+        SectionCard(title = str(R.string.kernel_tools_memori_virtual), watermarkIcon = Icons.Outlined.Memory) {
             state.swappiness?.let { value ->
                 var slider by remember(value) { mutableFloatStateOf(value.toFloat()) }
                 TweakSlider(
                     label = "Swappiness",
-                    description = "Seberapa agresif kernel memindahkan memori ke swap/ZRAM (0-200)",
+                    description = str(R.string.kernel_tools_seberapa_agresif_kernel_memindahkan_memo),
                     valueText = slider.roundToInt().toString(),
                     value = slider,
                     range = 0f..200f,
@@ -166,7 +168,7 @@ fun KernelToolsSection(
                 var slider by remember(value) { mutableFloatStateOf(value.toFloat()) }
                 TweakSlider(
                     label = "VFS cache pressure",
-                    description = "Seberapa cepat cache direktori/inode dibuang (1-500)",
+                    description = str(R.string.kernel_tools_seberapa_cepat_cache_direktori_inode),
                     valueText = slider.roundToInt().toString(),
                     value = slider,
                     range = 1f..500f,
@@ -176,17 +178,17 @@ fun KernelToolsSection(
                 )
             }
             if (state.swappiness == null && state.vfsCachePressure == null) {
-                EmptyHint("Parameter memori virtual tidak terbaca.")
+                EmptyHint(str(R.string.kernel_tools_parameter_memori_virtual_tidak_terbaca))
             }
         }
 
         SectionCard(title = "ZRAM", watermarkIcon = Icons.Outlined.Tune) {
             val size = state.zramSizeBytes
             if (size == null) {
-                EmptyHint("ZRAM tidak aktif di perangkat ini.")
+                EmptyHint(str(R.string.kernel_tools_zram_tidak_aktif_di_perangkat))
             } else {
-                InfoLine("Ukuran", String.format(Locale.US, "%.2f GB", size / 1_073_741_824.0))
-                state.zramAlgorithm?.let { InfoLine("Algoritma", it) }
+                InfoLine(str(R.string.crosshair_size_label), String.format(Locale.US, "%.2f GB", size / 1_073_741_824.0))
+                state.zramAlgorithm?.let { InfoLine(str(R.string.kernel_tools_algoritma), it) }
             }
         }
     }

@@ -56,6 +56,8 @@ import com.aether.x.ui.theme.Spacing
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 @Composable
 fun RecentlyPlayedGamesSection(
@@ -77,12 +79,12 @@ fun RecentlyPlayedGamesSection(
     }
 
     SectionCard(
-        title = "Baru Dimainkan",
+        title = str(R.string.dashboard_game_cards_baru_dimainkan),
         watermarkIcon = Icons.Outlined.History,
         modifier = modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "Akses cepat ke game terakhir. Ketuk kartu untuk langsung membuka game.",
+            text = str(R.string.dashboard_game_cards_akses_cepat_ke_game_terakhir),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -98,13 +100,13 @@ fun RecentlyPlayedGamesSection(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "Memuat game yang tersedia…",
+                    text = str(R.string.dashboard_game_cards_memuat_game_yang_tersedia),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             games.isEmpty() -> Text(
-                text = "Game yang dibuka lewat AetherX atau tercatat di Monitor Game akan muncul di sini.",
+                text = str(R.string.dashboard_game_cards_game_yang_dibuka_lewat_aetherx),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -170,12 +172,12 @@ fun RecentlyPlayedGamesSection(
                         val sessionDetail = session?.let {
                             buildString {
                                 append(formatSessionDuration(it.durationMs))
-                                append(" sesi")
-                                it.averageFps?.let { fps -> append(" · AVG $fps FPS") }
+                                append(str(R.string.dashboard_game_cards_sesi))
+                                it.averageFps?.let { fps -> append(str(R.string.dashboard_game_cards_avg_fps, fps)) }
                             }
                         }
                         Text(
-                            text = sessionDetail ?: if (isLastPlayed) "Terakhir dibuka" else "Siap dimainkan",
+                            text = sessionDetail ?: if (isLastPlayed) str(R.string.dashboard_game_cards_terakhir_dibuka) else str(R.string.dashboard_game_cards_siap_dimainkan),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -201,7 +203,7 @@ fun DashboardGameMonitorSection(
     val latest = sessions.maxByOrNull { it.startedAtMs }
 
     SectionCard(
-        title = "Monitor Game",
+        title = str(R.string.tweak_monitor_game),
         watermarkIcon = Icons.Outlined.MonitorHeart,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -224,16 +226,16 @@ fun DashboardGameMonitorSection(
                     )
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Belum ada sesi game", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(str(R.string.dashboard_game_cards_belum_ada_sesi_game), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "FPS dan grafik akan muncul setelah sesi monitor pertama.",
+                        str(R.string.dashboard_game_cards_fps_dan_grafik_akan_muncul),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             TextButton(onClick = onOpenMonitor, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Text("Buka Monitor Game")
+                Text(str(R.string.dashboard_game_cards_buka_monitor_game))
                 Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         } else {
@@ -279,14 +281,14 @@ fun DashboardGameMonitorSection(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = if (latest.endedAtMs == null) "Sedang direkam · ${formatSessionDuration(latest.durationMs)}"
-                        else "Sesi terakhir · ${formatSessionDuration(latest.durationMs)}",
+                        text = if (latest.endedAtMs == null) str(R.string.dashboard_game_cards_sedang_direkam, formatSessionDuration(latest.durationMs))
+                        else str(R.string.dashboard_game_cards_sesi_terakhir, formatSessionDuration(latest.durationMs)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 TextButton(onClick = onOpenMonitor, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                    Text("Detail")
+                    Text(str(R.string.dashboard_game_cards_detail))
                     Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(17.dp))
                 }
             }
@@ -299,7 +301,7 @@ fun DashboardGameMonitorSection(
             )
             if (latest.samples.none { it.fps != null }) {
                 Text(
-                    "Menunggu sampel FPS yang valid…",
+                    str(R.string.dashboard_game_cards_menunggu_sampel_fps_yang_valid),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -314,12 +316,12 @@ fun DashboardGameMonitorSection(
                     modifier = Modifier.weight(1f),
                 )
                 MonitorSummary(
-                    label = "Terendah",
+                    label = str(R.string.dashboard_game_cards_terendah),
                     value = latest.minFps?.let { "$it" } ?: "—",
                     modifier = Modifier.weight(1f),
                 )
                 MonitorSummary(
-                    label = "Tertinggi",
+                    label = str(R.string.dashboard_game_cards_tertinggi),
                     value = latest.maxFps?.let { "$it" } ?: "—",
                     modifier = Modifier.weight(1f),
                 )

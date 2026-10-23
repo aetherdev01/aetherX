@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
 
 data class PendingBuildPropEdit(
     val partition: BuildPropPartition,
@@ -148,7 +149,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                         else -> appString(
                             R.string.buildprop_error_apply_failed_detail,
                             pending.entry.key,
-                            result.errorText.ifBlank { "Periksa akses root dan status partisi." },
+                            result.errorText.ifBlank { str(R.string.build_prop_periksa_akses_root_dan_status) },
                         )
                     },
                 )
@@ -196,7 +197,7 @@ class BuildPropViewModel(application: Application) : AndroidViewModel(applicatio
                         else -> appString(
                             R.string.buildprop_error_restore_failed_detail,
                             backup.partition.displayLabel,
-                            result.errorText.ifBlank { "Periksa akses root dan file backup." },
+                            result.errorText.ifBlank { str(R.string.build_prop_periksa_akses_root_dan_file) },
                         )
                     },
                 )

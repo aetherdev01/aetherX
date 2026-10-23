@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 /** Compact action grid: smaller cards with consistent icon, title, and detail hierarchy. */
 @Composable
@@ -42,7 +44,7 @@ fun DashboardQuickActions(
     modifier: Modifier = Modifier,
 ) {
     SectionCard(
-        title = "Aksi cepat",
+        title = str(R.string.dashboard_quick_actions_aksi_cepat),
         watermarkIcon = Icons.Outlined.Tune,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -50,24 +52,24 @@ fun DashboardQuickActions(
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.Tune,
-                    title = "Tweak", description = "Performa & respons",
+                    title = "Tweak", description = str(R.string.dashboard_quick_actions_performa_respons),
                     onClick = onOpenTweaks,
                 )
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.SportsEsports,
-                    title = "Profil game", description = "Atur tiap game",
+                    title = str(R.string.game_profile_profil_game), description = str(R.string.dashboard_quick_actions_atur_tiap_game),
                     onClick = onOpenProfiles,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.MonitorHeart,
-                    title = "Monitor", description = if (rootGranted) "Statistik perangkat" else "Perlu izin root",
+                    title = "Monitor", description = if (rootGranted) str(R.string.dashboard_quick_actions_statistik_perangkat) else str(R.string.dashboard_quick_actions_perlu_izin_root),
                     enabled = rootGranted, onClick = onOpenMonitor,
                 )
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.DeveloperBoard,
-                    title = "Kernel", description = if (rootGranted) "CPU & GPU" else "Perlu izin root",
+                    title = "Kernel", description = if (rootGranted) str(R.string.dashboard_quick_actions_cpu_gpu) else str(R.string.dashboard_quick_actions_perlu_izin_root),
                     enabled = rootGranted, onClick = onOpenKernelManager,
                 )
             }

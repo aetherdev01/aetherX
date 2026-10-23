@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.LocaleManager
+import android.content.Context
 
 /**
  * Tile Quick Settings untuk toggle Crosshair tanpa buka app — efeknya
@@ -28,6 +30,11 @@ import kotlinx.coroutines.launch
  * MainActivity supaya user diarahkan ke alur permission normal.
  */
 class CrosshairTileService : TileService() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
 
     private var listenScope: CoroutineScope? = null
 

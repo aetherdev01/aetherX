@@ -67,6 +67,7 @@ import com.aether.x.ui.theme.AetherGreen
 import com.aether.x.ui.theme.AetherRed
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.str
 
 @Composable
 fun GameActivitySection(
@@ -177,8 +178,8 @@ fun DeviceStatusSection(
     rootGranted: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val deviceTitle = info?.let { "${it.manufacturer} ${it.model}".trim().ifBlank { "Perangkat Android" } }
-        ?: "Mendeteksi perangkat…"
+    val deviceTitle = info?.let { "${it.manufacturer} ${it.model}".trim().ifBlank { str(R.string.dashboard_monitor_cards_perangkat_android) } }
+        ?: str(R.string.dashboard_monitor_cards_mendeteksi_perangkat)
     SectionCard(
         title = deviceTitle,
         watermarkIcon = Icons.Outlined.PhoneAndroid,
@@ -196,7 +197,7 @@ fun DeviceStatusSection(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "Mendeteksi perangkat...",
+                    text = str(R.string.dashboard_monitor_cards_mendeteksi_perangkat_2),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -235,7 +236,7 @@ fun DeviceStatusSection(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "API ${info.sdkInt} · ${info.cpuCores} core",
+                    text = str(R.string.dashboard_monitor_cards_api_core, info.sdkInt, info.cpuCores),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -248,7 +249,7 @@ fun DeviceStatusSection(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
             ) {
                 Text(
-                    text = if (rootGranted) "ROOT ON" else "ROOT OFF",
+                    text = if (rootGranted) str(R.string.dashboard_monitor_cards_root_on) else str(R.string.dashboard_monitor_cards_root_off),
                     modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.ExtraBold,
@@ -280,7 +281,7 @@ fun DeviceStatusSection(
                 val tempText = info.batteryTempC?.let { " • ${String.format(Locale.US, "%.1f", it)}°C" }.orEmpty()
                 UsageBar(
                     icon = if (info.isCharging) Icons.Outlined.BatteryChargingFull else Icons.Outlined.BatteryFull,
-                    label = "Baterai",
+                    label = str(R.string.dashboard_monitor_cards_baterai),
                     detail = "${info.batteryPercent}%${if (info.isCharging) " • mengisi" else ""}$tempText",
                     fraction = info.batteryPercent / 100f,
                     // Baterai: rendah = buruk (kebalikan RAM/Storage).
@@ -300,12 +301,12 @@ fun DeviceStatusSection(
                 DeviceStatusTile(
                     icon = Icons.Outlined.Memory,
                     label = "CPU",
-                    value = "${info.cpuCores} core · ${info.cpuAbi.substringBefore('-').ifBlank { "-" }}",
+                    value = str(R.string.dashboard_monitor_cards_core, info.cpuCores, info.cpuAbi.substringBefore('-').ifBlank { "-" }),
                     modifier = Modifier.weight(1f),
                 )
                 DeviceStatusTile(
                     icon = Icons.Outlined.Monitor,
-                    label = "Refresh rate",
+                    label = str(R.string.dashboard_monitor_cards_refresh_rate),
                     value = if (info.refreshRateHz > 0f) "${info.refreshRateHz.roundToInt()} Hz" else "—",
                     modifier = Modifier.weight(1f),
                 )
@@ -313,14 +314,14 @@ fun DeviceStatusSection(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.fillMaxWidth()) {
                 DeviceStatusTile(
                     icon = Icons.Outlined.DeveloperBoard,
-                    label = "Chipset",
-                    value = info.socModel.ifBlank { info.hardware.ifBlank { info.board } }.ifBlank { "Tidak diketahui" },
+                    label = str(R.string.dashboard_monitor_cards_chipset),
+                    value = info.socModel.ifBlank { info.hardware.ifBlank { info.board } }.ifBlank { str(R.string.dashboard_monitor_cards_tidak_diketahui) },
                     modifier = Modifier.weight(1f),
                 )
                 DeviceStatusTile(
                     icon = Icons.Outlined.Security,
-                    label = "Akses",
-                    value = if (rootGranted) "Root aktif" else "No Root",
+                    label = str(R.string.dashboard_monitor_cards_akses),
+                    value = if (rootGranted) str(R.string.dashboard_monitor_cards_root_aktif) else str(R.string.dashboard_monitor_cards_no_root),
                     valueColor = if (rootGranted) AetherGreen else AetherRed,
                     modifier = Modifier.weight(1f),
                 )

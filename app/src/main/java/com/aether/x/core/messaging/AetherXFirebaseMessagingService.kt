@@ -9,8 +9,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.LocaleManager
+import android.content.Context
 
 class AetherXFirebaseMessagingService : FirebaseMessagingService() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

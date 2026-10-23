@@ -15,6 +15,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.LocaleManager
+import android.content.Context
 
 class AetherXApp : Application() {
 
@@ -50,6 +52,10 @@ class AetherXApp : Application() {
         fun launchInAppScope(block: suspend CoroutineScope.() -> Unit) {
             appScope.launch(block = block)
         }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
     }
 
     override fun onCreate() {

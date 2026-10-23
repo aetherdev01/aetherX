@@ -94,6 +94,7 @@ import com.aether.x.ui.theme.TextMuted
 import com.aether.x.ui.theme.TextPrimary
 import com.aether.x.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
 
 @Composable
 fun PermissionSetupScreen(
@@ -257,16 +258,16 @@ fun PermissionSetupScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (isLastPage) "KONFIRMASI AKHIR" else "LANGKAH ${pagerState.currentPage + 1} DARI $pageCount",
+                                text = if (isLastPage) str(R.string.permission_setup_konfirmasi_akhir) else str(R.string.permission_setup_langkah_dari, pagerState.currentPage + 1, pageCount),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary,
                             )
                             Text(
                                 text = if (isLastPage) {
-                                    "Pastikan semua akses siap sebelum masuk."
+                                    str(R.string.permission_setup_pastikan_semua_akses_siap_sebelum)
                                 } else {
-                                    "Selesaikan bagian ini, lalu lanjut ke langkah berikutnya."
+                                    str(R.string.permission_setup_selesaikan_bagian_ini_lalu_lanjut)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary,
@@ -277,7 +278,7 @@ fun PermissionSetupScreen(
                             onClick = { scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } },
                             enabled = pagerState.currentPage > 0,
                         ) {
-                            Text("Kembali", fontWeight = FontWeight.SemiBold)
+                            Text(str(R.string.permission_setup_kembali), fontWeight = FontWeight.SemiBold)
                         }
                     }
 
@@ -685,14 +686,14 @@ private fun PageDotsIndicator(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "LANGKAH ${currentPage + 1} / $pageCount",
+                text = str(R.string.permission_setup_langkah, currentPage + 1, pageCount),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "${pageSatisfied.count { it }} DARI $pageCount SIAP",
+                text = str(R.string.permission_setup_dari_siap, pageSatisfied.count { it }, pageCount),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (pageSatisfied.all { it }) AccentGreen else TextSecondary,
             )

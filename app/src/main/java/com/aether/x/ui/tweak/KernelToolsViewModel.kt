@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 data class BlockDeviceInfo(
     val name: String,
@@ -70,7 +72,7 @@ class KernelToolsViewModel(application: Application) : AndroidViewModel(applicat
     fun setScheduler(device: String, scheduler: String, activity: Activity? = null) {
         val dev = _state.value.blockDevices.firstOrNull { it.name == device } ?: return
         if (scheduler !in dev.availableSchedulers) return
-        write("echo $scheduler > /sys/block/${dev.name}/queue/scheduler", "I/O scheduler ${dev.name}", activity)
+        write("echo $scheduler > /sys/block/${dev.name}/queue/scheduler", str(R.string.kernel_tools_i_o_scheduler, dev.name), activity)
     }
 
     fun setReadAhead(device: String, kb: Int, activity: Activity? = null) {
@@ -81,7 +83,7 @@ class KernelToolsViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setTcp(algorithm: String, activity: Activity? = null) {
         if (algorithm !in _state.value.tcpAvailable) return
-        write("echo $algorithm > /proc/sys/net/ipv4/tcp_congestion_control", "TCP congestion", activity)
+        write("echo $algorithm > /proc/sys/net/ipv4/tcp_congestion_control", str(R.string.kernel_tools_tcp_congestion), activity)
     }
 
     fun setSwappiness(value: Int, activity: Activity? = null) {
@@ -100,9 +102,9 @@ class KernelToolsViewModel(application: Application) : AndroidViewModel(applicat
             val result = executor.exec(command)
             val app = getApplication<Application>()
             if (result.success) {
-                app.showAetherToast("$label diterapkan")
+                app.showAetherToast(str(R.string.kernel_tools_diterapkan, label))
             } else {
-                app.showAetherToast("Gagal menerapkan $label")
+                app.showAetherToast(str(R.string.kernel_tools_gagal_menerapkan, label))
             }
             // Baca ulang supaya UI menampilkan nilai yang BENAR-BENAR tersimpan
             // (kernel boleh menolak atau membulatkan nilai).

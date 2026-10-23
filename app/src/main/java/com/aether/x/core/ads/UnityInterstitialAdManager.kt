@@ -14,6 +14,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.aether.x.core.locale.str
+import com.aether.x.R
 
 class UnityInterstitialAdManager(private val testMode: Boolean) : InterstitialAdManager {
 
@@ -128,7 +130,7 @@ class UnityInterstitialAdManager(private val testMode: Boolean) : InterstitialAd
 
     override fun show(activity: Activity, onResult: (InterstitialAdResult) -> Unit) {
         if (!initialized) {
-            onResult(InterstitialAdResult.Failed("Unity Ads belum siap (init belum selesai)"))
+            onResult(InterstitialAdResult.Failed(str(R.string.unity_interstitial_ad_manager_unity_ads_belum_siap_init)))
             return
         }
         if (!loaded) {

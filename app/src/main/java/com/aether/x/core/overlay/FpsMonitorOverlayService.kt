@@ -32,8 +32,14 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.aether.x.core.locale.LocaleManager
 
 class FpsMonitorOverlayService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
 
     companion object {
         const val ACTION_START = "com.aether.x.action.START_FPS_MONITOR"
