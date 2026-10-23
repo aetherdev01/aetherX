@@ -326,7 +326,7 @@ private fun GameProfileHeaderCard(isActive: Boolean) {
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
-                    text = "Game Profile",
+                    text = str(R.string.game_profile_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,

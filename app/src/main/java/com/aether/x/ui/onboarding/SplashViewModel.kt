@@ -90,7 +90,7 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
             if (initialServerResponse != null) {
                 updateStep(CHECK_SERVER, SplashStepStatus.COMPLETE, str(R.string.splash_koneksi_server_terkonfirmasi))
             } else {
-                failStep(CHECK_SERVER, "Server belum merespons; proses lain tetap dicoba")
+                failStep(CHECK_SERVER, str(R.string.splash_server_no_response_continue))
             }
 
             updateStep(VERIFY_DEVICE, SplashStepStatus.ACTIVE, str(R.string.splash_memeriksa_identitas_perangkat_di_server))
@@ -132,7 +132,7 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
                 // as successful; the application also attempts FCM sync in its app scope.
                 val registrationStep = _state.value.steps.first { it.id == REGISTER_DEVICE }
                 if (registrationStep.status == SplashStepStatus.PENDING) {
-                    updateStep(REGISTER_DEVICE, SplashStepStatus.SKIPPED, "Dilewati sementara; memakai ID lokal tersimpan")
+                    updateStep(REGISTER_DEVICE, SplashStepStatus.SKIPPED, str(R.string.splash_registration_skipped_using_saved_id))
                 }
                 listOf(RECORD_DEVICE, FETCH_TOKEN, SYNC_TOKEN).forEach { id ->
                     val step = _state.value.steps.first { it.id == id }
@@ -150,7 +150,7 @@ class SplashViewModel(application: Application) : AndroidViewModel(application) 
                 userId = resolution.userId
                 if (resolution.alreadyRegistered) {
                     updateStep(VERIFY_DEVICE, SplashStepStatus.COMPLETE, str(R.string.splash_device_id_ditemukan_di_server))
-                    updateStep(REGISTER_DEVICE, SplashStepStatus.SKIPPED, "Sudah terdaftar; tidak membuat ID baru")
+                    updateStep(REGISTER_DEVICE, SplashStepStatus.SKIPPED, str(R.string.splash_device_already_registered_no_new_id))
                 } else {
                     updateStep(VERIFY_DEVICE, SplashStepStatus.COMPLETE, str(R.string.splash_pemeriksaan_server_berhasil))
                     updateStep(REGISTER_DEVICE, SplashStepStatus.COMPLETE, str(R.string.splash_device_id_berhasil_didaftarkan))

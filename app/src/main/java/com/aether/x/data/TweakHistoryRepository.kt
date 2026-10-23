@@ -1,6 +1,8 @@
 package com.aether.x.data
 
 import android.content.Context
+import com.aether.x.R
+import com.aether.x.core.locale.str
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -39,7 +41,7 @@ class TweakHistoryRepository(context: Context) {
                 val item = array.optJSONObject(index) ?: continue
                 add(
                     TweakHistoryEntry(
-                        title = item.optString("title", "Perubahan"),
+                        title = item.optString("title", str(R.string.tweak_history_default_title)),
                         detail = item.optString("detail", ""),
                         timestamp = item.optLong("timestamp", 0L),
                         success = item.optBoolean("success", true),

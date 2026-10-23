@@ -58,7 +58,7 @@ fun KernelToolsSection(
         ) {
             Column {
                 Text(
-                    text = "Kernel Tools",
+                    text = str(R.string.kernel_tools_title),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
@@ -96,7 +96,7 @@ fun KernelToolsSection(
             return@Column
         }
 
-        SectionCard(title = "I/O Scheduler", watermarkIcon = Icons.Outlined.SdStorage) {
+        SectionCard(title = str(R.string.kernel_tools_io_scheduler_title), watermarkIcon = Icons.Outlined.SdStorage) {
             if (state.blockDevices.isEmpty()) {
                 EmptyHint(str(R.string.kernel_tools_perangkat_blok_tidak_terdeteksi))
             }
@@ -116,7 +116,7 @@ fun KernelToolsSection(
                 dev.readAheadKb?.let { ra ->
                     val options = (listOf(128, 256, 512, 1024, 2048, 4096) + ra).distinct().sorted()
                     TweakDropdown(
-                        label = "Read-ahead ${dev.name}",
+                        label = str(R.string.kernel_tools_read_ahead_label, dev.name),
                         description = str(R.string.kernel_tools_prabaca_data_kb),
                         options = options,
                         selected = ra,
@@ -137,7 +137,7 @@ fun KernelToolsSection(
             val current = state.tcpCurrent
             if (current != null && state.tcpAvailable.isNotEmpty()) {
                 TweakDropdown(
-                    label = "TCP congestion control",
+                    label = str(R.string.kernel_tools_tcp_congestion_control_label),
                     description = str(R.string.kernel_tools_algoritma_pengatur_kemacetan_jaringan),
                     options = state.tcpAvailable,
                     selected = current,
@@ -154,7 +154,7 @@ fun KernelToolsSection(
             state.swappiness?.let { value ->
                 var slider by remember(value) { mutableFloatStateOf(value.toFloat()) }
                 TweakSlider(
-                    label = "Swappiness",
+                    label = str(R.string.kernel_tools_swappiness_label),
                     description = str(R.string.kernel_tools_seberapa_agresif_kernel_memindahkan_memo),
                     valueText = slider.roundToInt().toString(),
                     value = slider,
@@ -167,7 +167,7 @@ fun KernelToolsSection(
             state.vfsCachePressure?.let { value ->
                 var slider by remember(value) { mutableFloatStateOf(value.toFloat()) }
                 TweakSlider(
-                    label = "VFS cache pressure",
+                    label = str(R.string.kernel_tools_vfs_cache_pressure_label),
                     description = str(R.string.kernel_tools_seberapa_cepat_cache_direktori_inode),
                     valueText = slider.roundToInt().toString(),
                     value = slider,

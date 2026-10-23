@@ -232,7 +232,7 @@ private fun AppManagerOverviewCard(
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
-                    text = "App Manager",
+                    text = str(R.string.app_manager_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -268,12 +268,12 @@ private fun AppManagerOverviewCard(
             )
             AppManagerMetric(
                 value = bloatwareCount.toString(),
-                label = "Bloatware",
+                label = str(R.string.app_manager_bloatware_metric),
                 modifier = Modifier.weight(1f),
             )
         }
         Text(
-            text = "Gunakan menu aplikasi untuk hentikan proses atau bersihkan cache. Sakelar membekukan aplikasi; aktifkan kembali bila aplikasi dibutuhkan.",
+            text = str(R.string.app_manager_usage_tip),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

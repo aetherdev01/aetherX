@@ -857,4 +857,73 @@
     <string name="power_off_desc">Fully power off the device</string>
     <string name="power_off_confirm_title">Power off device?</string>
     <string name="power_off_confirm_msg">The device will be powered off. You\'ll need to turn it back on manually.</string>
+
+    <!-- Localized UI strings migrated from hardcoded Kotlin text. -->
+    <string name="permission_setup_eyebrow">ACCESS SETUP</string>
+    <string name="permission_setup_heading">Access and permissions</string>
+    <string name="permission_setup_intro">Root enables system controls and performance tweaks. You can still open AetherX without root; root-dependent features will stay locked until access is available.</string>
+    <string name="permission_setup_checking_access">Checking access</string>
+    <string name="permission_setup_root_request_hint">Grant the request in your root manager, such as Magisk, KernelSU, or APatch, then return to this page.</string>
+    <string name="permission_setup_request_root">Request root access</string>
+    <string name="permission_setup_root_available_desc">Root access is available. System features can run when their required supporting permissions are also granted.</string>
+    <string name="permission_setup_check_again">Check again</string>
+    <string name="permission_setup_limited_title">Limited mode — root unavailable</string>
+    <string name="permission_setup_limited_desc">You can enter the app, browse its available screens, and set permissions. Root-only controls remain locked and will not apply system changes.</string>
+    <string name="permission_setup_locked_cpu_gpu">CPU/GPU and kernel controls</string>
+    <string name="permission_setup_locked_tools">System tweaks, terminal, and app management</string>
+    <string name="permission_setup_locked_monitoring">Automatic monitoring that requires root</string>
+    <string name="permission_setup_supporting_title">Supporting permissions</string>
+    <string name="permission_setup_supporting_desc">These permissions do not replace root. Grant them only for the features that need them; you can change them later.</string>
+    <string name="permission_setup_status_granted">Granted</string>
+    <string name="permission_setup_status_not_granted">Not granted</string>
+    <string name="permission_setup_grant_permission">Grant permission</string>
+    <string name="permission_setup_safety_note">Change CPU, GPU, or kernel settings carefully. Unsupported values can affect stability, temperature, and battery life.</string>
+    <string name="permission_setup_root_later_hint">You can set up root later from Access settings. Root-only features will stay locked until then.</string>
+    <string name="permission_setup_close">Close</string>
+    <string name="permission_setup_open_limited">Open app (limited mode)</string>
+    <string name="permission_setup_open_app">Open AetherX</string>
+    <string name="advanced_hardware_metrics_title">Advanced Hardware Metrics</string>
+    <string name="advanced_hardware_metrics_sensor_disclaimer">CPU frequency and temperature come from interfaces exposed by the device. Some ROMs restrict access or do not provide these sensors.</string>
+    <string name="game_monitor_first_sample_help">The first sample has been received. The chart will appear after the next sample.</string>
+    <string name="game_monitor_history_empty_root">No history yet. Launch a game listed in the AetherX catalog and its session will appear here automatically.</string>
+    <string name="game_monitor_session_running">Running</string>
+    <string name="game_monitor_session_completed">Completed</string>
+    <string name="kernel_manager_summary_description">Manage power presets, governors, and CPU/GPU frequency ranges. Available options depend on device support; kernel changes may affect temperature, power use, and stability.</string>
+    <string name="app_manager_title">App Manager</string>
+    <string name="app_manager_bloatware_metric">Bloatware</string>
+    <string name="app_manager_usage_tip">Use an app menu to stop its process or clear its cache. The switch freezes an app; turn it back on when you need it.</string>
+    <string name="label_latest">LATEST</string>
+    <string name="game_library_title">Game Library</string>
+    <string name="game_profile_title">Game Profile</string>
+    <string name="kernel_tools_title">Kernel Tools</string>
+    <string name="kernel_tools_io_scheduler_title">I/O Scheduler</string>
+    <string name="kernel_tools_read_ahead_label">Read-ahead %1$s</string>
+    <string name="kernel_tools_tcp_congestion_control_label">TCP congestion control</string>
+    <string name="kernel_tools_swappiness_label">Swappiness</string>
+    <string name="kernel_tools_vfs_cache_pressure_label">VFS cache pressure</string>
+    <string name="appearance_blur_intensity">Blur Intensity</string>
+    <string name="appearance_liquid_glass_level">Liquid Glass Level</string>
+    <string name="settings_group_appearance">APPEARANCE</string>
+    <string name="settings_group_interaction">INTERACTION</string>
+    <string name="settings_group_system">SYSTEM</string>
+    <string name="tweak_navigation_section">NAVIGATION</string>
+    <string name="dashboard_monitor_cards_storage">Storage</string>
+    <string name="dashboard_monitor_cards_charging">Charging</string>
+    <string name="daily_bonus_day_short">D%1$d</string>
+    <string name="splash_server_no_response_continue">The server did not respond; the remaining steps will still be attempted.</string>
+    <string name="splash_registration_skipped_using_saved_id">Skipped for now; using the saved local ID.</string>
+    <string name="splash_device_already_registered_no_new_id">Device is already registered; no new ID was created.</string>
+
+    <!-- Additional localized UI labels. -->
+    <string name="about_logo_content_description">AetherX logo</string>
+    <string name="about_product_descriptor">KERNEL MANAGER</string>
+    <string name="dashboard_quick_actions_tweak_title">Tweak</string>
+    <string name="dashboard_quick_actions_monitor_title">Monitor</string>
+    <string name="dashboard_quick_actions_kernel_title">Kernel</string>
+
+    <!-- Localized history labels. -->
+    <string name="tweak_history_default_title">Change</string>
+    <string name="kernel_history_cpu">Kernel CPU</string>
+    <string name="kernel_history_gpu">Kernel GPU</string>
+    <string name="kernel_history_preset">Kernel preset</string>
 </resources>

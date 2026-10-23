@@ -129,7 +129,7 @@ fun GameMonitorScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     fpsPoints.size < 2 -> Text(
-                        "Sampel pertama masuk; grafik akan terbentuk setelah sampel berikutnya.",
+                        str(R.string.game_monitor_first_sample_help),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -153,7 +153,7 @@ fun GameMonitorScreen(
         SectionCard(title = str(R.string.game_monitor_riwayat_game), watermarkIcon = Icons.Outlined.History) {
             if (groupedSessions.isEmpty()) {
                 Text(
-                    text = if (rootGranted) "Belum ada riwayat. Buka game yang ada di katalog AetherX; sesi akan masuk ke daftar ini otomatis." else str(R.string.game_monitor_riwayat_masih_kosong_setelah_akses),
+                    text = if (rootGranted) str(R.string.game_monitor_history_empty_root) else str(R.string.game_monitor_riwayat_masih_kosong_setelah_akses),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -231,7 +231,7 @@ fun GameMonitorScreen(
                                                     color = MaterialTheme.colorScheme.onSurface,
                                                 )
                                                 Text(
-                                                    text = "${formatDuration(session.durationMs)} · ${if (session.endedAtMs == null) "Sedang berjalan" else "Selesai"}",
+                                                    text = "${formatDuration(session.durationMs)} · ${if (session.endedAtMs == null) str(R.string.game_monitor_session_running) else str(R.string.game_monitor_session_completed)}",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )

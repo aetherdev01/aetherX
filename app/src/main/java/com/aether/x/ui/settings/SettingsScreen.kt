@@ -105,7 +105,7 @@ fun SettingsScreen(
         SettingsGroupLabel(stringResource(R.string.settings_group_language))
         LanguageSettingsSection(modifier = Modifier.cardEnterAnimation(index = 0))
 
-        SettingsGroupLabel("TAMPILAN")
+        SettingsGroupLabel(str(R.string.settings_group_appearance))
         AppearanceSettingsSection(
             darkModePref = prefs.darkModePref,
             accentPreset = prefs.accentPreset,
@@ -141,7 +141,7 @@ fun SettingsScreen(
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
 
-        SettingsGroupLabel("INTERAKSI")
+        SettingsGroupLabel(str(R.string.settings_group_interaction))
         SectionCard(
             title = str(R.string.settings_gerakan_ui_haptik),
             watermarkIcon = Icons.Outlined.Vibration,
@@ -171,7 +171,7 @@ fun SettingsScreen(
             Text(str(R.string.settings_kekuatan_blur_diatur_pada_bagian), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        SettingsGroupLabel("SISTEM")
+        SettingsGroupLabel(str(R.string.settings_group_system))
         SectionCard(
             title = str(R.string.settings_pusat_pembaruan),
             watermarkIcon = Icons.Outlined.Refresh,

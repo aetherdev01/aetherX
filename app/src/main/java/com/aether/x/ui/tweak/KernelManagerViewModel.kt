@@ -83,7 +83,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreFrequency(executor, coreIndex, minKhz, maxKhz)
-            history.record("Kernel CPU", str(R.string.kernel_manager_frekuensi_core_diubah, coreIndex), result.success)
+            history.record(str(R.string.kernel_history_cpu), str(R.string.kernel_manager_frekuensi_core_diubah, coreIndex), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_frequency, coreIndex)) }
             }
@@ -96,7 +96,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setCoreGovernor(executor, coreIndex, governorName)
-            history.record("Kernel CPU", str(R.string.kernel_manager_governor_core, coreIndex, governorName), result.success)
+            history.record(str(R.string.kernel_history_cpu), str(R.string.kernel_manager_governor_core, coreIndex, governorName), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_core_governor, coreIndex)) }
             }
@@ -116,7 +116,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuFrequency(executor, path, minKhz, maxKhz)
-            history.record("Kernel GPU", str(R.string.kernel_manager_frekuensi_gpu_diubah), result.success)
+            history.record(str(R.string.kernel_history_gpu), str(R.string.kernel_manager_frekuensi_gpu_diubah), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_frequency)) }
             }
@@ -130,7 +130,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val executor = PrivilegeManager.getExecutorAwaitingConnection() ?: return@launch
             val result = repository.setGpuGovernor(executor, path, governorName)
-            history.record("Kernel GPU", str(R.string.kernel_manager_governor_gpu, governorName), result.success)
+            history.record(str(R.string.kernel_history_gpu), str(R.string.kernel_manager_governor_gpu, governorName), result.success)
             if (!result.success) {
                 _state.update { it.copy(message = appString(R.string.kernel_manager_error_gpu_governor)) }
             }
@@ -252,7 +252,7 @@ class KernelManagerViewModel(application: Application) : AndroidViewModel(applic
         val refreshedCores = reader.readCpuCores(executor)
         val refreshedGpu = reader.readGpuInfo(executor)
         val presetLabel = appString(presetLabelRes(preset))
-        history.record("Kernel preset", presetLabel, presetSucceeded)
+        history.record(str(R.string.kernel_history_preset), presetLabel, presetSucceeded)
         _state.update {
             it.copy(
                 cpuCores = refreshedCores,

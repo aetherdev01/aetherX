@@ -151,7 +151,7 @@ fun RecentlyPlayedGamesSection(
                                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                                 ) {
                                     Text(
-                                        text = "TERBARU",
+                                        text = str(R.string.label_latest),
                                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,

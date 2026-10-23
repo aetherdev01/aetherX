@@ -296,7 +296,7 @@ fun TweakScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = "Dashboard",
+                            text = stringResource(R.string.nav_dashboard),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground,
@@ -692,7 +692,7 @@ private fun TweakDrawerContent(
             )
         }
         Text(
-            text = "NAVIGASI",
+            text = str(R.string.tweak_navigation_section),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -733,7 +733,7 @@ private fun TweakDrawerContent(
         NavigationDrawerItem(
             label = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Game Library", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text(str(R.string.game_library_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                     Text(str(R.string.tweak_cari_favoritkan_mainkan_dan_buka), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             },

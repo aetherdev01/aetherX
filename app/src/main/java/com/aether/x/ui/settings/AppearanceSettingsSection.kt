@@ -140,7 +140,7 @@ fun AppearanceSettingsSection(
             )
         }
 
-        SettingGroup(label = "Blur Intensity") {
+        SettingGroup(label = str(R.string.appearance_blur_intensity)) {
             LevelSlider(
                 label = str(R.string.appearance_settings_kekuatan_blur),
                 description = str(R.string.appearance_settings_mengatur_seberapa_kuat_konten_di),
@@ -150,7 +150,7 @@ fun AppearanceSettingsSection(
             )
         }
 
-        SettingGroup(label = "Liquid Glass Level") {
+        SettingGroup(label = str(R.string.appearance_liquid_glass_level)) {
             LevelSlider(
                 label = str(R.string.appearance_settings_intensitas_kaca),
                 description = str(R.string.appearance_settings_mengatur_transparansi_tint_warna_dan),

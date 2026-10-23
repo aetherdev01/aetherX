@@ -156,7 +156,7 @@ private fun AboutBrandHero(versionName: String, modifier: Modifier = Modifier) {
                 ) {
                     Image(
                         painter = painterResource(R.drawable.ic_aetherx_logo),
-                        contentDescription = "AetherX logo",
+                        contentDescription = str(R.string.about_logo_content_description),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.size(47.dp),
                     )
@@ -173,7 +173,7 @@ private fun AboutBrandHero(versionName: String, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "KERNEL MANAGER",
+                        text = str(R.string.about_product_descriptor),
                         style = MaterialTheme.typography.labelSmall,
                         letterSpacing = 1.15.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

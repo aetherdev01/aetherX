@@ -52,7 +52,7 @@ fun DashboardQuickActions(
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.Tune,
-                    title = "Tweak", description = str(R.string.dashboard_quick_actions_performa_respons),
+                    title = str(R.string.dashboard_quick_actions_tweak_title), description = str(R.string.dashboard_quick_actions_performa_respons),
                     onClick = onOpenTweaks,
                 )
                 DashboardActionTile(
@@ -64,12 +64,12 @@ fun DashboardQuickActions(
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.MonitorHeart,
-                    title = "Monitor", description = if (rootGranted) str(R.string.dashboard_quick_actions_statistik_perangkat) else str(R.string.dashboard_quick_actions_perlu_izin_root),
+                    title = str(R.string.dashboard_quick_actions_monitor_title), description = if (rootGranted) str(R.string.dashboard_quick_actions_statistik_perangkat) else str(R.string.dashboard_quick_actions_perlu_izin_root),
                     enabled = rootGranted, onClick = onOpenMonitor,
                 )
                 DashboardActionTile(
                     modifier = Modifier.weight(1f), icon = Icons.Outlined.DeveloperBoard,
-                    title = "Kernel", description = if (rootGranted) str(R.string.dashboard_quick_actions_cpu_gpu) else str(R.string.dashboard_quick_actions_perlu_izin_root),
+                    title = str(R.string.dashboard_quick_actions_kernel_title), description = if (rootGranted) str(R.string.dashboard_quick_actions_cpu_gpu) else str(R.string.dashboard_quick_actions_perlu_izin_root),
                     enabled = rootGranted, onClick = onOpenKernelManager,
                 )
             }

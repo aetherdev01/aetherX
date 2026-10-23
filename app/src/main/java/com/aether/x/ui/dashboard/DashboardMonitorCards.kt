@@ -273,7 +273,7 @@ fun DeviceStatusSection(
             )
             UsageBar(
                 icon = Icons.Outlined.SdStorage,
-                label = "Storage",
+                label = str(R.string.dashboard_monitor_cards_storage),
                 detail = "${info.usedStorageBytes.toGbLabel()} / ${info.totalStorageBytes.toGbLabel()}",
                 fraction = info.storageUsedFraction,
             )
@@ -282,7 +282,7 @@ fun DeviceStatusSection(
                 UsageBar(
                     icon = if (info.isCharging) Icons.Outlined.BatteryChargingFull else Icons.Outlined.BatteryFull,
                     label = str(R.string.dashboard_monitor_cards_baterai),
-                    detail = "${info.batteryPercent}%${if (info.isCharging) " • mengisi" else ""}$tempText",
+                    detail = "${info.batteryPercent}%${if (info.isCharging) " • ${str(R.string.dashboard_monitor_cards_charging)}" else ""}$tempText",
                     fraction = info.batteryPercent / 100f,
                     // Baterai: rendah = buruk (kebalikan RAM/Storage).
                     invert = true,

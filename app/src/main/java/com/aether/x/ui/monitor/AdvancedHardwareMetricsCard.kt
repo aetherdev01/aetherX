@@ -55,7 +55,7 @@ fun AdvancedHardwareMetricsCard() {
         }
     }
 
-    SectionCard(title = "Advanced Hardware Metrics", watermarkIcon = Icons.Outlined.Memory) {
+    SectionCard(title = str(R.string.advanced_hardware_metrics_title), watermarkIcon = Icons.Outlined.Memory) {
         val ramTotal = snapshot.totalRamMb
         val ramUsed = snapshot.usedRamMb
         if (ramTotal != null && ramUsed != null && ramTotal > 0) {
@@ -96,7 +96,7 @@ fun AdvancedHardwareMetricsCard() {
         )
 
         Text(
-            "Frekuensi CPU dan suhu berasal dari interface yang dapat dibaca perangkat; sebagian ROM membatasi atau tidak menyediakan sensor tersebut.",
+            str(R.string.advanced_hardware_metrics_sensor_disclaimer),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

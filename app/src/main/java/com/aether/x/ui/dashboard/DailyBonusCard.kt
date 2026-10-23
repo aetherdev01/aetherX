@@ -180,7 +180,7 @@ private fun StreakRow(streak: Int, claimedToday: Boolean) {
                     }
                 }
                 Text(
-                    text = "H${index + 1}",
+                    text = str(R.string.daily_bonus_day_short, index + 1),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

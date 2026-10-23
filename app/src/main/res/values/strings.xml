@@ -1021,4 +1021,73 @@
     <string name="power_off_desc">Matikan perangkat sepenuhnya</string>
     <string name="power_off_confirm_title">Matikan perangkat?</string>
     <string name="power_off_confirm_msg">Perangkat akan dimatikan. Kamu perlu menyalakannya lagi secara manual.</string>
+
+    <!-- Localized UI strings migrated from hardcoded Kotlin text. -->
+    <string name="permission_setup_eyebrow">PENYIAPAN AKSES</string>
+    <string name="permission_setup_heading">Akses dan izin</string>
+    <string name="permission_setup_intro">Root diperlukan untuk kontrol sistem dan optimasi performa. AetherX tetap bisa dibuka tanpa root, tetapi fitur yang memerlukannya akan terkunci sampai akses tersedia.</string>
+    <string name="permission_setup_checking_access">Memeriksa akses</string>
+    <string name="permission_setup_root_request_hint">Setujui permintaan melalui pengelola root seperti Magisk, KernelSU, atau APatch, lalu kembali ke halaman ini.</string>
+    <string name="permission_setup_request_root">Minta akses root</string>
+    <string name="permission_setup_root_available_desc">Akses root tersedia. Fitur sistem dapat dijalankan setelah izin pendukung yang diperlukan juga diberikan.</string>
+    <string name="permission_setup_check_again">Periksa ulang</string>
+    <string name="permission_setup_limited_title">Mode terbatas — root belum tersedia</string>
+    <string name="permission_setup_limited_desc">Kamu tetap bisa masuk aplikasi, melihat halaman yang tersedia, dan mengatur izin. Kontrol khusus root tetap terkunci dan tidak akan menerapkan perubahan sistem.</string>
+    <string name="permission_setup_locked_cpu_gpu">Kontrol CPU/GPU dan kernel</string>
+    <string name="permission_setup_locked_tools">Tweak sistem, terminal, dan pengelola aplikasi</string>
+    <string name="permission_setup_locked_monitoring">Pemantauan otomatis yang membutuhkan root</string>
+    <string name="permission_setup_supporting_title">Izin pendukung</string>
+    <string name="permission_setup_supporting_desc">Izin ini tidak menggantikan root. Berikan sesuai kebutuhan fitur dan kamu bisa mengubahnya nanti.</string>
+    <string name="permission_setup_status_granted">Sudah diizinkan</string>
+    <string name="permission_setup_status_not_granted">Belum diizinkan</string>
+    <string name="permission_setup_grant_permission">Beri izin</string>
+    <string name="permission_setup_safety_note">Ubah pengaturan CPU, GPU, atau kernel secara hati-hati. Nilai yang tidak sesuai dapat memengaruhi stabilitas, suhu, dan daya tahan baterai.</string>
+    <string name="permission_setup_root_later_hint">Akses root bisa diatur nanti melalui menu Akses. Fitur khusus root tetap terkunci sampai akses diberikan.</string>
+    <string name="permission_setup_close">Tutup</string>
+    <string name="permission_setup_open_limited">Masuk aplikasi (mode terbatas)</string>
+    <string name="permission_setup_open_app">Buka AetherX</string>
+    <string name="advanced_hardware_metrics_title">Metrik Perangkat Keras Lanjutan</string>
+    <string name="advanced_hardware_metrics_sensor_disclaimer">Frekuensi CPU dan suhu berasal dari antarmuka yang dapat dibaca perangkat. Sebagian ROM membatasi akses atau tidak menyediakan sensor tersebut.</string>
+    <string name="game_monitor_first_sample_help">Sampel pertama diterima. Grafik akan terbentuk setelah sampel berikutnya.</string>
+    <string name="game_monitor_history_empty_root">Belum ada riwayat. Buka game yang terdaftar di katalog AetherX; sesinya akan masuk ke daftar ini secara otomatis.</string>
+    <string name="game_monitor_session_running">Sedang berjalan</string>
+    <string name="game_monitor_session_completed">Selesai</string>
+    <string name="kernel_manager_summary_description">Kelola preset daya, governor, serta rentang frekuensi CPU/GPU. Opsi yang tersedia mengikuti dukungan perangkat; perubahan kernel dapat memengaruhi suhu, konsumsi daya, dan stabilitas.</string>
+    <string name="app_manager_title">Pengelola Aplikasi</string>
+    <string name="app_manager_bloatware_metric">Bloatware</string>
+    <string name="app_manager_usage_tip">Gunakan menu aplikasi untuk menghentikan proses atau membersihkan cache. Sakelar akan membekukan aplikasi; aktifkan kembali jika aplikasi dibutuhkan.</string>
+    <string name="label_latest">TERBARU</string>
+    <string name="game_library_title">Pustaka Game</string>
+    <string name="game_profile_title">Profil Game</string>
+    <string name="kernel_tools_title">Alat Kernel</string>
+    <string name="kernel_tools_io_scheduler_title">Penjadwal I/O</string>
+    <string name="kernel_tools_read_ahead_label">Prabaca %1$s</string>
+    <string name="kernel_tools_tcp_congestion_control_label">Kontrol kemacetan TCP</string>
+    <string name="kernel_tools_swappiness_label">Swappiness</string>
+    <string name="kernel_tools_vfs_cache_pressure_label">Tekanan cache VFS</string>
+    <string name="appearance_blur_intensity">Intensitas Blur</string>
+    <string name="appearance_liquid_glass_level">Level Liquid Glass</string>
+    <string name="settings_group_appearance">TAMPILAN</string>
+    <string name="settings_group_interaction">INTERAKSI</string>
+    <string name="settings_group_system">SISTEM</string>
+    <string name="tweak_navigation_section">NAVIGASI</string>
+    <string name="dashboard_monitor_cards_storage">Penyimpanan</string>
+    <string name="dashboard_monitor_cards_charging">Mengisi daya</string>
+    <string name="daily_bonus_day_short">H%1$d</string>
+    <string name="splash_server_no_response_continue">Server belum merespons; proses lainnya tetap dicoba.</string>
+    <string name="splash_registration_skipped_using_saved_id">Dilewati sementara; menggunakan ID lokal yang tersimpan.</string>
+    <string name="splash_device_already_registered_no_new_id">Perangkat sudah terdaftar; ID baru tidak dibuat.</string>
+
+    <!-- Additional localized UI labels. -->
+    <string name="about_logo_content_description">Logo AetherX</string>
+    <string name="about_product_descriptor">PENGELOLA KERNEL</string>
+    <string name="dashboard_quick_actions_tweak_title">Tweak</string>
+    <string name="dashboard_quick_actions_monitor_title">Pemantauan</string>
+    <string name="dashboard_quick_actions_kernel_title">Kernel</string>
+
+    <!-- Localized history labels. -->
+    <string name="tweak_history_default_title">Perubahan</string>
+    <string name="kernel_history_cpu">Kernel CPU</string>
+    <string name="kernel_history_gpu">Kernel GPU</string>
+    <string name="kernel_history_preset">Preset Kernel</string>
 </resources>

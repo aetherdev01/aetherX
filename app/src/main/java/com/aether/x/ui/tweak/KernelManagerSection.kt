@@ -250,7 +250,7 @@ private fun KernelManagerOverviewCard(
             }
         }
         Text(
-            text = "Kelola preset daya, governor, dan rentang frekuensi CPU/GPU. Nilai yang tersedia mengikuti dukungan perangkat; perubahan kernel dapat memengaruhi suhu, daya, dan stabilitas.",
+            text = str(R.string.kernel_manager_summary_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

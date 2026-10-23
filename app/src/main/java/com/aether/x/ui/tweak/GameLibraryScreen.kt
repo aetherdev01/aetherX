@@ -136,7 +136,7 @@ fun GameLibraryScreen(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Game Library",
+                text = str(R.string.game_library_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -270,7 +270,7 @@ fun GameLibraryScreen(
                                 )
                                 if (recent || game.packageName in favorites) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                        if (recent) LibraryStatusLabel("TERBARU")
+                                        if (recent) LibraryStatusLabel(str(R.string.label_latest))
                                         if (game.packageName in favorites) LibraryStatusLabel("FAVORIT")
                                     }
                                 }
