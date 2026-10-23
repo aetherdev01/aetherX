@@ -153,12 +153,14 @@ fun AetherBottomNavBar(
     var isDragging by remember { mutableStateOf(false) }
     var pressed by remember { mutableStateOf(false) }
 
-    // Saat dilepas, capsule mendarat pada tab terdekat dengan pegas singkat.
-    // Selama jari masih menyentuh layar, posisinya mengikuti pointer secara langsung.
-    // Tap/drag release: responsif dengan overshoot ringan, tanpa ayunan panjang.
-    // Follow: sedikit lebih teredam agar perpindahan tetap halus saat target berubah cepat.
-    val settleSpec = remember { spring<Float>(dampingRatio = 0.82f, stiffness = 760f) }
-    val followSpec = remember { spring<Float>(dampingRatio = 0.90f, stiffness = 500f) }
+    // Saat dilepas, capsule mendarat pada tab terdekat dengan pegas bergaya iOS — lebih
+    // santai, tidak buru-buru, dengan overshoot lembut.
+    // travelSpec dipakai untuk SATU perjalanan utuh (tekan -> meluncur -> mendarat) agar
+    // tidak ada "sambungan"/mengekor yang terlihat saat jari dilepas di tengah jalan.
+    // releaseSpec khusus untuk mendaratkan capsule setelah geser cepat (fling), membawa
+    // kecepatan lepas jari supaya gerakannya terasa menyambung.
+    val travelSpec = remember { spring<Float>(dampingRatio = 0.86f, stiffness = 300f) }
+    val releaseSpec = remember { spring<Float>(dampingRatio = 0.82f, stiffness = 420f) }
     // Mencegah LaunchedEffect menjalankan animasi kedua setelah gesture sudah settle.
     var settledByTouch by remember { mutableStateOf(false) }
 
@@ -169,7 +171,7 @@ fun AetherBottomNavBar(
             return@LaunchedEffect
         }
         if (!isDragging && abs(pillPosition.value - target) > 0.01f) {
-            pillPosition.animateTo(target.toFloat(), followSpec)
+            pillPosition.animateTo(target.toFloat(), travelSpec)
         }
     }
 
@@ -194,7 +196,7 @@ fun AetherBottomNavBar(
     LaunchedEffect(pressed, isDragging) {
         pillSolidness.animateTo(
             targetValue = if (pressed || isDragging) 0f else 1f,
-            animationSpec = tween(durationMillis = 115),
+            animationSpec = tween(durationMillis = 150),
         )
     }
 
@@ -214,15 +216,23 @@ fun AetherBottomNavBar(
         var travelling = false
         snapshotFlow {
             val isPressed = pressed
-            val position = if (isDragging) dragPosition else pillPosition.value
-            // value dibaca lebih dulu agar snapshotFlow ikut memantau perubahan posisi.
-            val velocity = if (isDragging) dragVelocity else pillPosition.velocity
-            Triple(isPressed, position, abs(velocity))
+            val dragging = isDragging
+            // dragVelocity sendiri State yang meluruh tiap frame selagi drag (lihat efek
+            // peluruhan di atas), jadi cukup dibaca di sini agar flow ini otomatis
+            // terpicu ulang tiap frame selama jari digeser.
+            val speed = if (dragging) abs(dragVelocity) else 0f
+            Triple(isPressed, dragging, speed)
         }
-            .map { (isPressed, _, speed) ->
+            .map { (isPressed, dragging, speed) ->
                 if (!isPressed) {
                     travelling = false
                     LensPhase.Rest
+                } else if (!dragging) {
+                    // Tap-and-hold (termasuk saat capsule masih meluncur menuju tab yang
+                    // disentuh): lensa langsung membesar begitu jari ditekan, bukan
+                    // menunggu capsule sampai dulu baru mulai animasi pegasnya.
+                    travelling = false
+                    LensPhase.Hold
                 } else {
                     // Histeresis: mulai "bergeser" di atas 1.2 slot/dtk, kembali "diam"
                     // di bawah 0.45 slot/dtk, supaya tidak berkedip saat jari bergetar.
@@ -238,18 +248,18 @@ fun AetherBottomNavBar(
                 when (phase) {
                     LensPhase.Hold -> {
                         target = 1f
-                        specW = spring(dampingRatio = 0.60f, stiffness = 560f)
-                        specH = spring(dampingRatio = 0.54f, stiffness = 460f)
+                        specW = spring(dampingRatio = 0.62f, stiffness = 420f)
+                        specH = spring(dampingRatio = 0.56f, stiffness = 350f)
                     }
                     LensPhase.Travel -> {
                         target = 0.15f
-                        specW = spring(dampingRatio = 0.76f, stiffness = 640f)
-                        specH = spring(dampingRatio = 0.68f, stiffness = 520f)
+                        specW = spring(dampingRatio = 0.78f, stiffness = 480f)
+                        specH = spring(dampingRatio = 0.70f, stiffness = 400f)
                     }
                     LensPhase.Rest -> {
                         target = 0f
-                        specW = spring(dampingRatio = 0.58f, stiffness = 440f)
-                        specH = spring(dampingRatio = 0.50f, stiffness = 360f)
+                        specW = spring(dampingRatio = 0.60f, stiffness = 340f)
+                        specH = spring(dampingRatio = 0.52f, stiffness = 280f)
                     }
                 }
                 coroutineScope {
@@ -308,7 +318,7 @@ fun AetherBottomNavBar(
                     // Jika jari mulai digeser, animasi ini dibatalkan dan posisi
                     // capsule dilanjutkan langsung dari posisi visual terakhir.
                     var moveJob: Job? = scope.launch {
-                        pillPosition.animateTo(touchTarget.toFloat(), followSpec)
+                        pillPosition.animateTo(touchTarget.toFloat(), travelSpec)
                     }
 
                     while (true) {
@@ -358,31 +368,40 @@ fun AetherBottomNavBar(
                     }
                     // Jangan memanggil suspend API langsung dari AwaitPointerEventScope.
                     // Mutasi Animatable dijalankan pada coroutine scope biasa di bawah.
-                    moveJob?.cancel()
                     settledByTouch = target != selectedIndex
                     pressed = false
 
                     if (dragging) {
+                        // moveJob sudah dibatalkan saat drag mulai (lihat atas); di sini
+                        // capsule mendarat dari posisi geser terakhir, dengan kecepatan
+                        // lepas jari dibawa ke releaseSpec agar gerakannya menyambung.
                         val releasePosition = dragPosition
                         val releaseVelocity = dragVelocity.coerceIn(-12f, 12f)
                         scope.launch {
                             // Sinkronkan posisi terakhir saat drag sebelum mulai settle,
-                            // sehingga capsule tidak snap saat jari dilepas. Kecepatan
-                            // lepas jari dibawa ke pegas agar gerakannya terasa menyambung.
+                            // sehingga capsule tidak snap saat jari dilepas.
                             pillPosition.snapTo(releasePosition)
                             isDragging = false
                             dragVelocity = 0f
                             pillPosition.animateTo(
                                 targetValue = target.toFloat(),
-                                animationSpec = settleSpec,
+                                animationSpec = releaseSpec,
                                 initialVelocity = releaseVelocity,
                             )
                         }
                     } else {
+                        // TAP: moveJob sudah meluncur sejak jari ditekan, memakai travelSpec
+                        // yang sama dari awal sampai akhir. Biarkan saja berjalan sampai
+                        // selesai — tidak dibatalkan lalu diganti pegas lain, supaya tidak
+                        // ada "sambungan"/mengekor terlihat saat jari dilepas.
                         isDragging = false
                         dragVelocity = 0f
-                        scope.launch {
-                            pillPosition.animateTo(target.toFloat(), settleSpec)
+                        if (moveJob?.isActive != true && abs(pillPosition.value - target) > 0.01f) {
+                            // Jaga-jaga: moveJob sudah selesai lebih dulu (tab dekat +
+                            // tekanan lama) tapi posisi belum pas, susulkan dengan pegas sama.
+                            scope.launch {
+                                pillPosition.animateTo(target.toFloat(), travelSpec)
+                            }
                         }
                     }
                     onSelect(target)
