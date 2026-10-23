@@ -1,6 +1,7 @@
 package com.aether.x
 
 import android.app.Application
+import com.aether.x.core.ads.AdBackBlocker
 import com.aether.x.core.ads.AdMobInterstitialAdManager
 import com.aether.x.core.ads.FallbackInterstitialAdManager
 import com.aether.x.core.ads.UnityInterstitialAdManager
@@ -60,6 +61,8 @@ class AetherXApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Blokir tombol back selama iklan (AdMob/Unity) tampil.
+        AdBackBlocker.install(this)
         PrivilegeManager.init(this)
 
         FcmTokenRepository.subscribeToDefaultTopics()
