@@ -65,6 +65,7 @@ import com.aether.x.ui.components.LocalAuroraBackdrop
 import com.aether.x.ui.components.NativeBlurWindow
 import com.aether.x.ui.components.NativeBlurWindowState
 import com.aether.x.ui.components.blurRadiusFor
+import com.aether.x.ui.components.liquidGlassTintAlpha
 import com.aether.x.ui.components.rememberCrossWindowBlurEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
@@ -140,6 +141,7 @@ fun AetherBottomNavBar(
     val style = LocalAetherStyle.current
     val blur = style.blur
     val glassLevel = style.glassLevel
+    val glassTintAlpha = liquidGlassTintAlpha(glassLevel)
     val surface = palette.surface
     val isDark = palette.isDark
     val scope = rememberCoroutineScope()
@@ -456,7 +458,7 @@ fun AetherBottomNavBar(
                                     // Radius navbar dibatasi untuk menjaga beban GPU tetap wajar.
                                     blurRadius = barBlurRadius
                                     noiseFactor = 0.015f
-                                    backgroundColor = surface.copy(alpha = 0.06f + 0.20f * glassLevel)
+                                    backgroundColor = surface.copy(alpha = 0.035f)
                                 },
                         )
                     } else {
@@ -476,14 +478,22 @@ fun AetherBottomNavBar(
                                 // Tint PUTIH (bukan warna surface): di tema gelap surface nyaris
                                 // sama dengan latar sehingga capsule terlihat bening.
                                 if (blurOn) {
+                                    // Tint follows Liquid Glass Level instead of remaining
+                                    // almost constant while blur is enabled. Dark mode uses
+                                    // a smaller white contribution to preserve its dark glass.
                                     listOf(
-                                        Color.White.copy(alpha = if (isDark) 0.10f else 0.30f),
-                                        Color.White.copy(alpha = if (isDark) 0.05f else 0.16f),
+                                        Color.White.copy(alpha = if (isDark) 0.025f + 0.25f * glassLevel else glassTintAlpha * 0.92f),
+                                        Color.White.copy(alpha = if (isDark) 0.018f + 0.18f * glassLevel else glassTintAlpha * 0.72f),
                                     )
                                 } else {
+                                    // Blur may be disabled, but the glass level must still
+                                    // move the surface from clear to solid rather than leaving
+                                    // a fixed, nearly opaque top gradient.
                                     listOf(
-                                        lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(alpha = 0.96f),
-                                        surface.copy(alpha = 0.30f + 0.60f * glassLevel),
+                                        lerp(surface, Color.White, if (isDark) 0.04f else 0.0f).copy(
+                                            alpha = if (isDark) 0.08f + 0.34f * glassLevel else glassTintAlpha * 0.92f,
+                                        ),
+                                        surface.copy(alpha = glassTintAlpha),
                                     )
                                 },
                             ),
@@ -658,7 +668,7 @@ fun AetherBottomNavBar(
                 NativeBlurWindow(
                     state = nativeState,
                     blurRadiusPx = with(density) { blurRadiusFor(blur).coerceAtMost(14f).dp.roundToPx() },
-                    tint = surface.copy(alpha = 0.06f + 0.20f * glassLevel),
+                    tint = surface.copy(alpha = glassTintAlpha),
                 ) {
                     Box(modifier = Modifier.fillMaxSize().then(gestureModifier)) {
                         layers(true)

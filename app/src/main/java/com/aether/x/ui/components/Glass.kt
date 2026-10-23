@@ -76,7 +76,7 @@ val LocalBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
  * Shared Liquid Glass surface for cards and nested panels. The old persisted
  * card-style preference is intentionally ignored so no screen falls back to a
  * solid/soft card while the app is using the Liquid Glass visual system.
- * Slider blur controls the Haze radius and transparency at runtime.
+ * Blur Intensity controls the Haze radius; Liquid Glass Level controls the surface tint and opacity.
  */
 @Composable
 fun Modifier.aetherCardSurface(
@@ -87,17 +87,19 @@ fun Modifier.aetherCardSurface(
     val s = LocalAetherStyle.current
     val b = s.blur
     val glass = s.glassLevel
+    val glassAlpha = liquidGlassTintAlpha(glass)
     val haze = LocalCardHaze.current
     val blurOn = haze != null && b > 0.01f
     val radius = cardBlurRadiusFor(b).dp
 
     val frost = if (blurOn) {
-        Modifier.hazeEffect(state = haze) {
+        Modifier.hazeEffect(state = haze!!) {
             blurRadius = radius
             noiseFactor = 0.04f
-            // Haze 1.x needs an explicit backdrop color. Keeping it lightly
-            // tinted avoids ROM/device-dependent transparent-only panels.
-            backgroundColor = p.surface.copy(alpha = 0.10f + 0.20f * glass)
+            // Keep Haze's own base tint almost neutral. The dedicated overlay
+            // below is the actual Liquid Glass Level control, so blur no longer
+            // hides the difference between Clear, Thin, Balanced, Dense and Solid.
+            backgroundColor = p.surface.copy(alpha = 0.035f)
         }
     } else {
         Modifier
@@ -108,21 +110,26 @@ fun Modifier.aetherCardSurface(
             p.stroke.copy(alpha = if (p.isDark) 0.55f else 0.70f),
         ),
     )
+    val baseSurface = Brush.verticalGradient(
+        listOf(
+            p.surface.copy(alpha = if (blurOn) 0.025f else 0.40f + 0.48f * glass),
+            p.surface.copy(alpha = if (blurOn) 0.02f else 0.34f + 0.42f * glass),
+        ),
+    )
+    val levelTint = Brush.verticalGradient(
+        listOf(
+            p.surface.copy(alpha = (glassAlpha * 0.92f).coerceIn(0f, 0.88f)),
+            p.surface.copy(alpha = (glassAlpha * 0.76f).coerceIn(0f, 0.82f)),
+        ),
+    )
 
-    // Semua kartu utama dan kartu turunan selalu memakai Liquid Glass.
-    // Nilai cardStyle lama yang mungkin tersimpan sebagai SOLID/SOFT tidak
-    // boleh membuat beberapa bagian UI keluar dari bahasa visual kaca.
+    // Semua kartu tetap memakai Liquid Glass. Saat blur aktif, tint level sengaja
+    // digambar SETELAH Haze agar hasil blur tidak menutupi perubahan opacity.
     return this
         .clip(shape)
-        .background(
-            Brush.verticalGradient(
-                listOf(
-                    p.surface.copy(alpha = if (blurOn) 0.18f + 0.24f * glass else 0.40f + 0.48f * glass),
-                    p.surface.copy(alpha = if (blurOn) 0.14f + 0.22f * glass else 0.34f + 0.42f * glass),
-                ),
-            ),
-        )
+        .background(baseSurface)
         .then(frost)
+        .then(if (blurOn) Modifier.background(levelTint) else Modifier)
         .drawWithContent {
             drawContent()
             val inset = 18.dp.toPx()
@@ -151,6 +158,14 @@ fun Modifier.aetherCardSurface(
  */
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
+/**
+ * Opacity tint Liquid Glass. Dikeluarkan sebagai helper bersama supaya kartu,
+ * dialog, drawer, dan navbar memiliki rentang visual yang konsisten.
+ * 0 = sangat bening, 1 = hampir solid. Radius blur tetap diatur terpisah.
+ */
+fun liquidGlassTintAlpha(level: Float): Float =
+    0.04f + 0.80f * level.coerceIn(0f, 1f)
+
 /** Radius blur (dp) dialog/navbar dari slider 0f..1f. 0 berarti blur dimatikan. */
 fun blurRadiusFor(blur: Float): Float = 6f + 30f * blur
 
@@ -159,9 +174,9 @@ fun cardBlurRadiusFor(blur: Float): Float = 6f + 22f * blur
 
 /**
  * Panel blur serbaguna (dialog, drawer). Isi di belakang panel di-BLUR
- * sungguhan lewat Haze (`hazeEffect`), lalu diberi tint tipis supaya teks
- * tetap terbaca. Slider blur menentukan radius blur; di 0 blur mati dan
- * panel jadi hampir pekat.
+ * sungguhan lewat Haze (`hazeEffect`), lalu diberi tint yang dikendalikan oleh
+ * Liquid Glass Level. Slider Blur Intensity menentukan radius blur secara terpisah;
+ * bila blur tidak tersedia, permukaan tetap memakai tint sebagai fallback.
  *
  * [hazeState] harus berupa state yang sumbernya (`hazeSource`) adalah
  * SIBLING panel ini, bukan induknya. Dialog memakai state root.
@@ -169,17 +184,17 @@ fun cardBlurRadiusFor(blur: Float): Float = 6f + 22f * blur
 @Composable
 fun Modifier.glassPanel(
     shape: Shape,
-    minAlpha: Float = 0.30f,
+    minAlpha: Float = 0.04f,
     hazeState: HazeState? = LocalHazeState.current,
     /** Pengali radius blur (drawer memakai > 1 supaya isi di belakangnya benar-benar kabur). */
     blurBoost: Float = 1f,
     /** Pengali kepekatan tint (< 1 = lebih bening, blur lebih terlihat). */
     tintScale: Float = 1f,
     /**
-     * true = tint digambar SETELAH blur sehingga selalu merata di seluruh panel
-     * (dipakai drawer). false = tint di bawah blur (perilaku lama dialog).
+     * true = tint digambar SETELAH blur sehingga level opacity tetap terlihat.
+     * false = tint di bawah blur untuk kasus khusus yang memerlukan perilaku lama.
      */
-    tintAfterBlur: Boolean = false,
+    tintAfterBlur: Boolean = true,
 ): Modifier {
     val p = LocalAetherPalette.current
     val style = LocalAetherStyle.current
@@ -187,25 +202,29 @@ fun Modifier.glassPanel(
     val glass = style.glassLevel
     val blurOn = hazeState != null && b > 0.01f
     val radius = (blurRadiusFor(b) * blurBoost).coerceAtMost(38f).dp
-    // Keep the tint deliberately light so the captured content remains
-    // visibly blurred instead of looking like a merely translucent surface.
-    val top = if (blurOn) ((0.16f + 0.42f * glass) * tintScale).coerceAtLeast(minAlpha) else (0.30f + 0.67f * glass)
-    val bottom = if (blurOn) ((0.14f + 0.38f * glass) * tintScale).coerceAtLeast(minAlpha - 0.04f) else (0.25f + 0.70f * glass)
+    // Liquid Glass Level controls the post-blur tint over a broad opacity range.
+    // Previously minAlpha=0.30f flattened the first two stops into almost the same
+    // value, so users could not see any meaningful change at low levels.
+    val levelAlpha = liquidGlassTintAlpha(glass)
+    val floor = minAlpha.coerceIn(0.02f, 0.12f)
+    val top = if (blurOn) (levelAlpha * tintScale).coerceAtLeast(floor).coerceAtMost(0.94f) else (0.30f + 0.67f * glass)
+    val bottom = if (blurOn) (levelAlpha * 0.82f * tintScale).coerceAtLeast(floor * 0.82f).coerceAtMost(0.90f) else (0.25f + 0.70f * glass)
     val tint = Brush.verticalGradient(
         listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
     )
     return this
         .clip(shape)
-        // Default: tint sebelum Haze (dialog). Untuk drawer, tint di bawah blur
-        // tertutup hasil blur yang opaque sehingga area tertentu terlihat
-        // transparan/tidak merata -> pakai tintAfterBlur.
+        // Default tint berada di atas hasil Haze supaya perubahan Liquid Glass
+        // Level tetap terlihat. Kasus khusus boleh memilih tint sebelum Haze.
         .then(if (tintAfterBlur) Modifier else Modifier.background(tint))
         .then(
             if (blurOn) {
                 Modifier.hazeEffect(state = hazeState) {
                     blurRadius = radius
                     noiseFactor = 0.03f
-                    backgroundColor = p.surface.copy(alpha = 0.08f + 0.22f * glass)
+                    // Keep Haze's baseline tint low. Level-specific tint is painted
+                    // as a separate background after the effect to remain visible.
+                    backgroundColor = p.surface.copy(alpha = 0.035f)
                 }
             } else {
                 Modifier

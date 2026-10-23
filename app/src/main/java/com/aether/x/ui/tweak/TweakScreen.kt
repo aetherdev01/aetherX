@@ -225,7 +225,7 @@ fun TweakScreen(
                         ),
                         // Tint digambar setelah blur -> merata di seluruh sheet,
                         // tidak ada bagian yang terlihat transparan.
-                        minAlpha = 0.20f,
+                        minAlpha = 0.06f,
                         hazeState = drawerHaze,
                         blurBoost = 2.15f,
                         tintScale = 0.62f,
@@ -296,7 +296,7 @@ fun TweakScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = stringResource(R.string.nav_dashboard),
+                            text = "Dashboard",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground,
@@ -692,7 +692,7 @@ private fun TweakDrawerContent(
             )
         }
         Text(
-            text = str(R.string.tweak_navigation_section),
+            text = "NAVIGASI",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -733,7 +733,7 @@ private fun TweakDrawerContent(
         NavigationDrawerItem(
             label = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(str(R.string.game_library_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Game Library", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                     Text(str(R.string.tweak_cari_favoritkan_mainkan_dan_buka), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             },
