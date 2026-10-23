@@ -96,7 +96,7 @@ data class AetherNavItem(
 private const val USE_NATIVE_NAV_BLUR = false
 
 /**
- * Tab bar capsule v3.12 — Liquid Glass (acuan iOS 26/27).
+ * Tab bar capsule v3.13 — Liquid Glass dengan motion iOS-inspired.
  *
  *  - Jalur utama memakai Haze untuk memburamkan konten aktual di belakang navbar.
  *    Gaya iOS 27: tanpa drop shadow, border lebih tegas, kaca sedikit lebih solid.
@@ -115,7 +115,7 @@ private const val USE_NATIVE_NAV_BLUR = false
  *  - LENSA: ikon + label yang sedang dilewati/ditempati capsule berubah ke warna
  *    aksennya secara halus (berdasarkan jarak capsule ke tiap ikon), lalu kembali
  *    abu-abu setelah capsule menjauh — bukan hanya tab tujuan.
- *  - Spesifikasi pegas perpindahan tab (settle/follow) tidak diubah.
+ *  - Perpindahan cepat dan terkontrol; sedikit overshoot untuk kesan spring iOS.
  *  - Satu pointerInput saja (tap + drag digabung).
  */
 @Composable
@@ -155,8 +155,10 @@ fun AetherBottomNavBar(
 
     // Saat dilepas, capsule mendarat pada tab terdekat dengan pegas singkat.
     // Selama jari masih menyentuh layar, posisinya mengikuti pointer secara langsung.
-    val settleSpec = remember { spring<Float>(dampingRatio = 0.86f, stiffness = 520f) }
-    val followSpec = remember { spring<Float>(dampingRatio = 0.9f, stiffness = 220f) }
+    // Tap/drag release: responsif dengan overshoot ringan, tanpa ayunan panjang.
+    // Follow: sedikit lebih teredam agar perpindahan tetap halus saat target berubah cepat.
+    val settleSpec = remember { spring<Float>(dampingRatio = 0.82f, stiffness = 760f) }
+    val followSpec = remember { spring<Float>(dampingRatio = 0.90f, stiffness = 500f) }
     // Mencegah LaunchedEffect menjalankan animasi kedua setelah gesture sudah settle.
     var settledByTouch by remember { mutableStateOf(false) }
 
@@ -186,14 +188,13 @@ fun AetherBottomNavBar(
         }
     }
 
-    // Material pill memudar menjadi bening ketika disentuh/digeser, lalu kembali
-    // ke abu-abu netral saat jari dilepas. Nilai Animatable dibaca pada fase draw
-    // agar perubahan alpha tidak memicu recomposition setiap frame.
+    // Pill menjadi lebih bening saat disentuh/digeser, lalu kembali ke abu-abu
+    // netral dengan transisi singkat saat dilepas.
     val pillSolidness = remember { Animatable(1f) }
     LaunchedEffect(pressed, isDragging) {
         pillSolidness.animateTo(
             targetValue = if (pressed || isDragging) 0f else 1f,
-            animationSpec = tween(durationMillis = 140),
+            animationSpec = tween(durationMillis = 115),
         )
     }
 
@@ -237,18 +238,18 @@ fun AetherBottomNavBar(
                 when (phase) {
                     LensPhase.Hold -> {
                         target = 1f
-                        specW = spring(dampingRatio = 0.52f, stiffness = 420f)
-                        specH = spring(dampingRatio = 0.44f, stiffness = 330f)
+                        specW = spring(dampingRatio = 0.60f, stiffness = 560f)
+                        specH = spring(dampingRatio = 0.54f, stiffness = 460f)
                     }
                     LensPhase.Travel -> {
                         target = 0.15f
-                        specW = spring(dampingRatio = 0.70f, stiffness = 520f)
-                        specH = spring(dampingRatio = 0.62f, stiffness = 460f)
+                        specW = spring(dampingRatio = 0.76f, stiffness = 640f)
+                        specH = spring(dampingRatio = 0.68f, stiffness = 520f)
                     }
                     LensPhase.Rest -> {
                         target = 0f
-                        specW = spring(dampingRatio = 0.40f, stiffness = 320f)
-                        specH = spring(dampingRatio = 0.34f, stiffness = 250f)
+                        specW = spring(dampingRatio = 0.58f, stiffness = 440f)
+                        specH = spring(dampingRatio = 0.50f, stiffness = 360f)
                     }
                 }
                 coroutineScope {
@@ -299,7 +300,6 @@ fun AetherBottomNavBar(
 
                     val downX = down.position.x
                     val touchTarget = slotAt(downX).roundToInt().coerceIn(0, lastIndex)
-                    var lastX = downX
                     var dragging = false
                     var dragOriginX = downX
                     var dragOriginPosition = pillPosition.value
@@ -343,7 +343,6 @@ fun AetherBottomNavBar(
                             val instant = (dragPosition - previousPosition) / (dtMs / 1000f)
                             dragVelocity = dragVelocity * 0.65f + instant * 0.35f
                         }
-                        lastX = x
 
                         if (change.changedToUp()) {
                             change.consume()

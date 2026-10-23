@@ -31,6 +31,12 @@ android {
         val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
 
         base.archivesName = "AXKM_v$versionName.r$ciRunNumber" + "_$versionCode"
+        // Satu APK universal yang memuat native library untuk kedua ABI.
+        // Tidak membuat APK terpisah per-ABI.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+
         externalNativeBuild {
             cmake {
                 arguments += listOf("-DANDROID_STL=none")
@@ -73,18 +79,7 @@ android {
         }
     }
 
-    // Split APK per-ABI supaya user tidak download native code arm64 DAN
-    // armeabi-v7a sekaligus dalam satu APK universal. Kalau distribusi lewat
-    // App Bundle (.aab), blok ini bisa diabaikan — Play Store sudah otomatis
-    // melakukan hal yang sama per-device.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = false
-        }
-    }
+    // ABI splits dinonaktifkan: hasil APK memuat arm64-v8a dan armeabi-v7a.
 
     // Biar pilihan bahasa di dalam app (ID/EN) tetap jalan di App Bundle
     // walau bahasa sistem HP berbeda.
