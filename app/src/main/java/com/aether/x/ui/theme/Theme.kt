@@ -27,7 +27,7 @@ import com.aether.x.ui.components.LocalReduceMotionEnabled
 data class AetherStyle(
     val cardStyle: CardStyle = CardStyle.GLASS,
     val blur: Float = 0.22f,
-    val glassLevel: Float = 0.18f,
+    val glassLevel: Float = 0.40f,
 )
 
 val LocalAetherStyle = staticCompositionLocalOf { AetherStyle() }
@@ -87,7 +87,7 @@ fun AetherXTheme(
     font: AppFont = AppFont.SYSTEM,
     cardStyle: CardStyle = CardStyle.GLASS,
     blurStrength: Int = 22,
-    liquidGlassLevel: Int = 18,
+    liquidGlassLevel: Int = 40,
     hapticsEnabled: Boolean = true,
     reduceMotionEnabled: Boolean = false,
     content: @Composable () -> Unit,
