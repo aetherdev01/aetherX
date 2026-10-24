@@ -569,8 +569,8 @@ fun AetherBottomNavBar(
         // jadi jarak pill ke tepi capsule tetap seragam dan lengkungnya tetap konsentris
         // dengan lengkung navbar (radius pill = tinggi/2, navbar = tinggi/2).
         val growBy = if (nat) 4.dp else 20.dp
-        // Tambahan pembesaran salinan ikon di dalam lensa (di atas skala ikon bawaan).
-        val lensMagnify = 0.28f
+        // Tambahan pembesaran salinan ikon di dalam lensa (di atas swell tab 5%): 1.05 x 1.16 ~ 1.22.
+        val lensMagnify = 0.16f
 
         // Border gaya iOS 27: lebih tegas dan jelas, bukan lagi mengandalkan bayangan.
         val rimBrush = Brush.verticalGradient(
@@ -739,7 +739,7 @@ fun AetherBottomNavBar(
                     }
                 },
         ) {
-            NavItemsRow(items = items, coverageOf = coverageOf, pop = { popW.value })
+            NavItemsRow(items = items, coverageOf = coverageOf, swell = { 1f - pillSolidness.value })
         }
 
         // ── Item (salinan LENSA / "cermin") ──────────────────────────────
@@ -771,7 +771,7 @@ fun AetherBottomNavBar(
                 .graphicsLayer {
                     val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
                     val r = lensRectOf(size, this, growBy)
-                    // Total pembesaran ikon di dalam lensa ~1.5x (skala ikon bawaan + ini).
+                    // Diukur dari video: isi lensa ~1.22x ukuran diam = 1.05 (swell tab) x 1.16 (ini).
                     val magnify = 1f + lensMagnify * lens
                     if (lensShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         scaleX = 1f
@@ -803,7 +803,7 @@ fun AetherBottomNavBar(
                     }
                 },
         ) {
-            NavItemsRow(items = items, coverageOf = coverageOf, pop = { popW.value })
+            NavItemsRow(items = items, coverageOf = coverageOf, swell = { 1f - pillSolidness.value })
         }
 
         // ── Rim lensa: refraksi + dispersi warna (di ATAS ikon) ──────────
@@ -962,7 +962,7 @@ fun AetherBottomNavBar(
 private fun NavItemsRow(
     items: List<AetherNavItem>,
     coverageOf: (Int) -> Float,
-    pop: () -> Float,
+    swell: () -> Float,
 ) {
     Row(
         modifier = Modifier
@@ -975,7 +975,7 @@ private fun NavItemsRow(
             NavBarItem(
                 item = item,
                 coverage = { coverageOf(index) },
-                pop = pop,
+                swell = swell,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
@@ -995,8 +995,11 @@ private fun NavBarItem(
     item: AetherNavItem,
     /** 0f..1f — seberapa besar capsule menutupi tab ini saat ini. */
     coverage: () -> Float,
-    /** Progres tahan/jelly capsule (bisa >1 sesaat); dipakai untuk membesarkan ikon sedikit. */
-    pop: () -> Float,
+    /**
+     * 0f..1f — seberapa aktif lensa (0 = diam, 1 = ditahan/digeser). Seluruh tab (ikon +
+     * label) ikut membesar tipis, seperti pada tab bar iOS saat lensa aktif.
+     */
+    swell: () -> Float,
     modifier: Modifier = Modifier,
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1004,7 +1007,16 @@ private fun NavBarItem(
 
     Column(
         modifier = modifier
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+                // Diukur dari video iOS: tab di LUAR lensa ikut membesar ~5% saat lensa aktif
+                // (diskalakan terhadap pusat tabnya sendiri), jadi nyaris sama besar dengan
+                // isi lensa (~1.2x). Ikon + label diskalakan bersama.
+                val s = 1f + 0.05f * swell().coerceIn(0f, 1f)
+                scaleX = s
+                scaleY = s
+                transformOrigin = TransformOrigin.Center
+            }
             .drawWithContent {
                 drawContent()
                 drawRect(
@@ -1019,14 +1031,6 @@ private fun NavBarItem(
             imageVector = item.icon,
             contentDescription = item.label,
             tint = Color.Black,
-            modifier = Modifier.graphicsLayer {
-                val c = coverage().coerceIn(0f, 1f)
-                // Ikon di bawah lensa sedikit "diperbesar", dan makin besar saat ditahan.
-                val s = 1f + 0.12f * c + 0.06f * c * pop().coerceIn(0f, 1.3f)
-                scaleX = s
-                scaleY = s
-                transformOrigin = TransformOrigin.Center
-            },
         )
         Text(
             text = item.label,
