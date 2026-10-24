@@ -187,9 +187,6 @@ fun SettingsScreen(
                 )
                 update.latestVersionCode > updateState.currentVersionCode -> {
                     SettingsInfoRow(str(R.string.settings_versi_tersedia), update.latestVersionName.ifBlank { str(R.string.settings_build, update.latestVersionCode) })
-                    if (update.description.isNotBlank()) {
-                        Text(update.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    }
                     Button(
                         onClick = {
                             runCatching {

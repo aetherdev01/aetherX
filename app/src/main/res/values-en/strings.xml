@@ -55,12 +55,7 @@
     <string name="dashboard_order_move_down_cd">Move down</string>
     <string name="whatsnew_title">What\'s New in v%1$s</string>
     <string name="whatsnew_confirm">Got it</string>
-    <string name="whatsnew_item_appearance">Typography updated with a light system sans-serif and iOS-style heading hierarchy.</string>
-    <string name="whatsnew_item_blur">Liquid Glass blur radius optimized to be lighter while keeping the colors and gradients of the content behind it.</string>
-    <string name="whatsnew_item_colors">The navbar blur source is separated from the drawer and stabilized during page changes.</string>
-    <string name="whatsnew_item_dashboard">Membership and About headers now follow the Settings heading hierarchy.</string>
-    <string name="whatsnew_item_advanced">The drawer now provides extra scroll space so the bottom items aren\'t covered by the navbar.</string>
-    <string name="whatsnew_item_adblock">Added tweak history, JSON profile import/export, Update Center, plus haptic and reduce-animation controls.</string>
+    <string name="whatsnew_item_appearance">Navbar Liquid Glass effect improved with a new lens effect and refined animation tuning.</string>
     <string name="nav_tweak">Tweak</string>
     <string name="nav_bottom_dashboard">Dashboard</string>
     <string name="nav_membership">Membership</string>
