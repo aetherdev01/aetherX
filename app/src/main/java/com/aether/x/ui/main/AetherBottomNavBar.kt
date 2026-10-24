@@ -41,13 +41,17 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -57,8 +61,11 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.components.AuroraBlurLayer
 import com.aether.x.ui.components.LocalAuroraBackdrop
@@ -85,6 +92,30 @@ import kotlinx.coroutines.launch
 
 /** Fase bentuk capsule: lihat penjelasan di blok popW/popH. */
 private enum class LensPhase { Rest, Hold, Travel }
+
+/** Kotak lensa pada satu frame (px). [speed] 0f..1f = kecepatan gerak ternormalisasi. */
+private class LensRect(
+    val left: Float,
+    val top: Float,
+    val width: Float,
+    val height: Float,
+    val speed: Float,
+) {
+    val centerX: Float get() = left + width / 2f
+}
+
+/** Path rounded-rect penuh (stadium) untuk clip bentuk lensa. */
+private fun lensPath(r: LensRect): Path = Path().apply {
+    addRoundRect(
+        RoundRect(
+            left = r.left,
+            top = r.top,
+            right = r.left + r.width,
+            bottom = r.top + r.height,
+            cornerRadius = CornerRadius(r.height / 2f, r.height / 2f),
+        ),
+    )
+}
 
 data class AetherNavItem(
     val icon: ImageVector,
@@ -116,6 +147,10 @@ private const val USE_NATIVE_NAV_BLUR = false
  *  - LENSA: ikon + label yang sedang dilewati/ditempati capsule berubah ke warna
  *    aksennya secara halus (berdasarkan jarak capsule ke tiap ikon), lalu kembali
  *    abu-abu setelah capsule menjauh — bukan hanya tab tujuan.
+ *  - CERMIN: saat ditahan/digeser, lensa menampilkan salinan baris ikon yang diperbesar
+ *    (berpusat di tengah lensa -> parallax), sedangkan ikon asli di bawah lensa
+ *    dipotong keluar agar tidak dobel. Tepi lensa diberi pita refraksi atas/bawah dan
+ *    dispersi warna (merah/hijau/biru) yang makin kuat saat bergerak cepat.
  *  - Perpindahan cepat dan terkontrol; sedikit overshoot untuk kesan spring iOS.
  *  - Satu pointerInput saja (tap + drag digabung).
  */
@@ -281,6 +316,42 @@ fun AetherBottomNavBar(
         1f - t * t * (3f - 2f * t)
     }
 
+    // Geometri lensa/pill pada saat ini (posisi, lebar, tinggi, kecepatan). Satu sumber
+    // kebenaran untuk pill dasar, clip baris normal, clip salinan lensa, dan rim — jadi
+    // semuanya selalu persis sejajar. Dipanggil dari fase draw / graphicsLayer saja.
+    val lensRectOf: (Size, Density, Dp) -> LensRect = { size, d, growBy ->
+        with(d) {
+            val slot = size.width / count
+            val inset = 4.dp.toPx()
+            val pos = if (isDragging) dragPosition else pillPosition.value
+            val velocity = if (isDragging) dragVelocity else pillPosition.velocity
+            // popW/popH bisa >1 atau <0 sesaat karena overshoot pegas -> inilah jelly-nya.
+            val pw = popW.value
+            val ph = popH.value
+
+            // Lebar dasar TETAP (satu slot dikurangi celah), tidak mengikuti panjang label.
+            val baseW = slot - 8.dp.toPx()
+            val baseH = size.height - inset * 2f
+
+            // Squash & stretch searah geser: memanjang ke arah gerak dan menipis.
+            val speed = (abs(velocity) / 8f).coerceIn(0f, 1f)
+            val direction = if (velocity >= 0f) 1f else -1f
+            val h = (baseH * (1f - 0.09f * speed) + growBy.toPx() * ph)
+                .coerceAtLeast(baseH * 0.7f)
+            val stretchPx = baseW * 0.22f * speed
+            val w = (baseW + growBy.toPx() * pw + stretchPx).coerceAtLeast(h)
+            // Sisi depan memanjang ~70%, belakang ~30%.
+            val cx = (pos + 0.5f) * slot + direction * stretchPx * 0.2f
+            LensRect(
+                left = cx - w / 2f,
+                top = (size.height - h) / 2f,
+                width = w,
+                height = h,
+                speed = speed,
+            )
+        }
+    }
+
     val blurOn = blur > 0.01f && (hazeState != null || LocalAuroraBackdrop.current != null)
     // Radius lebih rendah menekan biaya blur off-screen, terutama saat scroll/transisi.
     val barBlurRadius = blurRadiusFor(blur).coerceAtMost(14f).dp
@@ -418,8 +489,8 @@ fun AetherBottomNavBar(
         // jadi jarak pill ke tepi capsule tetap seragam dan lengkungnya tetap konsentris
         // dengan lengkung navbar (radius pill = tinggi/2, navbar = tinggi/2).
         val growBy = if (nat) 4.dp else 14.dp
-        val stretchMax = 0.22f
-        val squashMax = 0.09f
+        // Tambahan pembesaran salinan ikon di dalam lensa (di atas skala ikon bawaan).
+        val lensMagnify = 0.22f
 
         // Border gaya iOS 27: lebih tegas dan jelas, bukan lagi mengandalkan bayangan.
         val rimBrush = Brush.verticalGradient(
@@ -498,38 +569,18 @@ fun AetherBottomNavBar(
             }
         }
 
-        // ── Pill / lensa (draw phase, TIDAK di-blur) ─────────────────────
+        // ── Pill dasar (draw phase, TIDAK di-blur) ───────────────────────
+        // Isi pill: solid abu-abu saat diam, kaca tipis saat ditahan/digeser. Garis tepi
+        // lensa dan efek refraksi digambar di lapisan ATAS (setelah ikon), lihat bawah.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .drawBehind {
-                    val slot = size.width / count
-                    val inset = 4.dp.toPx()
-                    val pos = if (isDragging) dragPosition else pillPosition.value
-                    val velocity = if (isDragging) dragVelocity else pillPosition.velocity
-                    // popW/popH bisa >1 atau <0 sesaat karena overshoot pegas -> inilah jelly-nya.
-                    val pw = popW.value
-                    val ph = popH.value
-
-                    // Lebar dasar capsule TETAP (satu slot dikurangi sedikit celah), tidak
-                    // lagi mengikuti panjang label tab.
-                    val baseW = slot - 8.dp.toPx()
-                    val baseH = size.height - inset * 2f
-
-                    // Squash & stretch searah geser: saat meluncur capsule memanjang ke arah
-                    // gerak (sisi depan lebih maju dari sisi belakang) dan menipis; volume
-                    // visual dijaga dengan mengecilkan tinggi sedikit.
-                    val speed = (abs(velocity) / 8f).coerceIn(0f, 1f)
-                    val direction = if (velocity >= 0f) 1f else -1f
-                    val h = (baseH * (1f - squashMax * speed) + growBy.toPx() * ph)
-                        .coerceAtLeast(baseH * 0.7f)
-                    val stretchPx = baseW * stretchMax * speed
-                    val w = (baseW + growBy.toPx() * pw + stretchPx)
-                        .coerceAtLeast(h)
-                    // Geser pusat sedikit ke arah gerak: sisi depan memanjang ~70%, belakang ~30%.
-                    val cx = (pos + 0.5f) * slot + direction * stretchPx * 0.2f
-                    val left = cx - w / 2f
-                    val top = (size.height - h) / 2f
+                    val r = lensRectOf(size, this, growBy)
+                    val left = r.left
+                    val top = r.top
+                    val w = r.width
+                    val h = r.height
 
                     // Neutral iOS-like gray; only icon tint uses the selected accent.
                     val solidness = pillSolidness.value.coerceIn(0f, 1f)
@@ -571,23 +622,6 @@ fun AetherBottomNavBar(
                         cornerRadius = corner,
                         style = Stroke(width = 0.8.dp.toPx()),
                     )
-                    // Rim terang pada lensa: tepi atas bersinar, tepi bawah meredup.
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = (if (isDark) 0.34f else 0.90f) * lens),
-                                (if (isDark) Color.White else Color(0xFF8E8E93)).copy(
-                                    alpha = (if (isDark) 0.12f else 0.30f) * lens,
-                                ),
-                            ),
-                            startY = top,
-                            endY = top + h,
-                        ),
-                        topLeft = Offset(left, top),
-                        size = Size(w, h),
-                        cornerRadius = corner,
-                        style = Stroke(width = 1.dp.toPx()),
-                    )
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -607,25 +641,154 @@ fun AetherBottomNavBar(
                 },
         )
 
-        // ── Item ─────────────────────────────────────────────────────────
-        Row(
+        // ── Item (baris NORMAL) ──────────────────────────────────────────
+        // Saat lensa aktif, area di bawah lensa DIPOTONG keluar supaya ikon asli tidak
+        // terlihat dobel; yang tampil di area itu hanya salinan yang diperbesar (di bawah).
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = Spacing.xs, vertical = Spacing.xs),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
+                .drawWithContent {
+                    val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
+                    if (lens > 0.01f) {
+                        val r = lensRectOf(size, this, growBy)
+                        clipPath(lensPath(r), clipOp = ClipOp.Difference) {
+                            this@drawWithContent.drawContent()
+                        }
+                    } else {
+                        drawContent()
+                    }
+                },
         ) {
-            items.forEachIndexed { index, item ->
-                NavBarItem(
-                    item = item,
-                    coverage = { coverageOf(index) },
-                    pop = { popW.value },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                )
-            }
+            NavItemsRow(items = items, coverageOf = coverageOf, pop = { popW.value })
         }
+
+        // ── Item (salinan LENSA / "cermin") ──────────────────────────────
+        // Salinan baris ikon yang diskalakan dengan titik pusat di tengah lensa, lalu
+        // di-clip ke bentuk lensa. Karena berpusat di lensa, ikon di dalamnya tampak lebih
+        // besar dan bergeser lebih cepat daripada ikon di luar (parallax) -> terasa seperti
+        // lup yang melewati navbar. Pada lens ~ 0 skalanya ~ 1 sehingga identik dengan baris
+        // normal (tidak ada lompatan saat fade-in), dan tidak digambar sama sekali saat diam.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clearAndSetSemantics { }
+                .drawWithContent {
+                    val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
+                    if (lens > 0.01f) {
+                        val r = lensRectOf(size, this, growBy)
+                        clipPath(lensPath(r)) {
+                            this@drawWithContent.drawContent()
+                        }
+                    }
+                }
+                .graphicsLayer {
+                    val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
+                    val r = lensRectOf(size, this, growBy)
+                    // Total pembesaran ikon di dalam lensa ~1.4x (skala ikon bawaan + ini).
+                    val magnify = 1f + lensMagnify * lens
+                    scaleX = magnify
+                    scaleY = magnify
+                    transformOrigin = TransformOrigin(
+                        pivotFractionX = (r.centerX / size.width).coerceIn(0f, 1f),
+                        pivotFractionY = 0.5f,
+                    )
+                },
+        ) {
+            NavItemsRow(items = items, coverageOf = coverageOf, pop = { popW.value })
+        }
+
+        // ── Rim lensa: refraksi + dispersi warna (di ATAS ikon) ──────────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val lens = (1f - pillSolidness.value).coerceIn(0f, 1f)
+                    if (lens <= 0.01f) return@drawBehind
+                    val r = lensRectOf(size, this, growBy)
+                    val left = r.left
+                    val top = r.top
+                    val w = r.width
+                    val h = r.height
+                    val corner = CornerRadius(h / 2f, h / 2f)
+
+                    // 1) Pita gelap tipis di tepi atas & bawah: isi lensa menekuk di tepi,
+                    //    seperti yang tampak pada lensa iOS.
+                    val bandH = 5.dp.toPx().coerceAtMost(h * 0.18f)
+                    val bandAlpha = (if (isDark) 0.38f else 0.20f) * lens
+                    clipPath(lensPath(r)) {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = bandAlpha), Color.Transparent),
+                                startY = top,
+                                endY = top + bandH,
+                            ),
+                            topLeft = Offset(left, top),
+                            size = Size(w, bandH),
+                        )
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = bandAlpha)),
+                                startY = top + h - bandH,
+                                endY = top + h,
+                            ),
+                            topLeft = Offset(left, top + h - bandH),
+                            size = Size(w, bandH),
+                        )
+                    }
+
+                    // 2) Dispersi warna (chromatic aberration): tiga garis tipis merah/hijau/biru
+                    //    bertumpuk dari tepi ke dalam, paling kuat di ujung kiri & kanan dan
+                    //    makin kuat saat lensa bergerak cepat.
+                    val fringe = lens * (0.40f + 0.60f * r.speed)
+                    val fringeColors = listOf(
+                        Color(0xFFFF5A4D),
+                        Color(0xFF4DFF9A),
+                        Color(0xFF4D7DFF),
+                    )
+                    fringeColors.forEachIndexed { i, c ->
+                        val inset = (0.5f + i).dp.toPx()
+                        val a = 0.55f * fringe
+                        drawRoundRect(
+                            brush = Brush.horizontalGradient(
+                                0f to c.copy(alpha = a),
+                                0.22f to c.copy(alpha = a * 0.35f),
+                                0.78f to c.copy(alpha = a * 0.35f),
+                                1f to c.copy(alpha = a),
+                                startX = left,
+                                endX = left + w,
+                            ),
+                            topLeft = Offset(left + inset, top + inset),
+                            size = Size(
+                                (w - inset * 2f).coerceAtLeast(0f),
+                                (h - inset * 2f).coerceAtLeast(0f),
+                            ),
+                            cornerRadius = CornerRadius(
+                                (h / 2f - inset).coerceAtLeast(0f),
+                                (h / 2f - inset).coerceAtLeast(0f),
+                            ),
+                            style = Stroke(width = 1.1.dp.toPx()),
+                        )
+                    }
+
+                    // 3) Rim terang: tepi atas bersinar, tepi bawah meredup.
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = (if (isDark) 0.34f else 0.90f) * lens),
+                                (if (isDark) Color.White else Color(0xFF8E8E93)).copy(
+                                    alpha = (if (isDark) 0.12f else 0.30f) * lens,
+                                ),
+                            ),
+                            startY = top,
+                            endY = top + h,
+                        ),
+                        topLeft = Offset(left, top),
+                        size = Size(w, h),
+                        cornerRadius = corner,
+                        style = Stroke(width = 1.dp.toPx()),
+                    )
+                },
+        )
     }
 
     // Lapisan luar tetap selebar layar agar navbar terletak di tengah pada tablet.
@@ -681,6 +844,33 @@ fun AetherBottomNavBar(
             ) {
                 layers(false)
             }
+        }
+    }
+}
+
+/** Baris semua tab. Dipakai dua kali: baris normal dan salinan di dalam lensa. */
+@Composable
+private fun NavItemsRow(
+    items: List<AetherNavItem>,
+    coverageOf: (Int) -> Float,
+    pop: () -> Float,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = Spacing.xs, vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEachIndexed { index, item ->
+            NavBarItem(
+                item = item,
+                coverage = { coverageOf(index) },
+                pop = pop,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
         }
     }
 }
