@@ -7,6 +7,7 @@ package com.aether.x.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -35,11 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -49,7 +47,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
-import androidx.compose.ui.util.lerp
 import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.kyant.backdrop.Backdrop
@@ -70,11 +67,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
 
-internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
-
-// Keep optical strength stable across Clear/Thin/Balanced/Dense/Solid.
-// This is the Balanced-style lens amount; Liquid Glass Level only changes tint/opacity.
-private const val NAVBAR_LENS_STRENGTH = 0.62f
+internal val LocalLiquidBottomTabReadOnly = staticCompositionLocalOf { false }
 
 /** Continuous selection progress driven by the moving capsule, avoiding stale tab colors. */
 internal val LocalLiquidBottomTabSelectionProgress =
@@ -94,12 +87,13 @@ fun LiquidBottomTabs(
     val style = LocalAetherStyle.current
     val palette = LocalAetherPalette.current
     val glass = style.glassLevel.coerceIn(0f, 1f)
-    // Idle capsule memakai warna KONTRAS (textPrimary + wash accent), bukan palette.surface yang
-    // sama dengan navbar, supaya selalu terlihat di semua Glass Level. Lens & geometri tetap.
-    val idleCapsuleFill = palette.textPrimary.copy(alpha = 0.10f + 0.06f * glass)
-    val idleCapsuleAccent = palette.accent.copy(alpha = 0.12f)
+    // Glass Level changes only the capsule tint/opacity. Its geometry and lens recipe stay fixed.
+    // Keep a visible minimum tint so the idle capsule does not disappear over the navbar.
+    val capsuleTintAlpha = (0.38f + 0.60f * glass).coerceIn(0.38f, 0.98f)
     val containerAlpha = liquidGlassTintAlpha(glass)
     val containerColor = palette.surface.copy(alpha = containerAlpha)
+    val capsuleSurfaceColor = palette.surface.copy(alpha = capsuleTintAlpha)
+    val navbarShape = remember { RoundedCornerShape(32.dp) }
     val tabsBackdrop = rememberLayerBackdrop()
     val selectedTabReaderState = rememberUpdatedState(selectedTabIndex)
     val onTabSelectedState = rememberUpdatedState(onTabSelected)
@@ -119,10 +113,10 @@ fun LiquidBottomTabs(
 
         val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
         val panelOffsetState = rememberUpdatedState(panelOffset)
-        val tabWidthState = rememberUpdatedState(tabWidth)
         val animationScope = rememberCoroutineScope()
         var currentIndex by remember(selectedTabReader) { mutableIntStateOf(selectedTabReader()) }
         var notifyParentAfterDrag by remember { androidx.compose.runtime.mutableStateOf(false) }
+        var didDrag by remember { androidx.compose.runtime.mutableStateOf(false) }
         val dampedDragAnimation = remember(animationScope, tabsCount) {
             DampedDragAnimation(
                 animationScope = animationScope,
@@ -133,18 +127,26 @@ fun LiquidBottomTabs(
                 pressedScale = 78f / 56f,
                 onDragStarted = {},
                 onDragStopped = {
-                    val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
-                    if (targetIndex != currentIndex) {
-                        notifyParentAfterDrag = true
-                        currentIndex = targetIndex
+                    // A simple tap is handled by the tab's clickable. Only a real horizontal
+                    // drag may commit the drag target; this prevents tap/drag state races.
+                    if (didDrag) {
+                        val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
+                        if (targetIndex != currentIndex) {
+                            notifyParentAfterDrag = true
+                            currentIndex = targetIndex
+                        }
+                        animateToValue(targetIndex.toFloat())
+                        animationScope.launch { offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f)) }
                     }
-                    animateToValue(targetIndex.toFloat())
-                    animationScope.launch { offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f)) }
+                    didDrag = false
                 },
                 onDrag = { _, dragAmount ->
-                    val width = tabWidthState.value.coerceAtLeast(1f)
-                    updateValue((targetValue + dragAmount.x / width * if (isLtr) 1f else -1f).fastCoerceIn(0f, (tabsCount - 1).toFloat()))
-                    animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
+                    if (abs(dragAmount.x) > 0.5f) {
+                        didDrag = true
+                        val width = tabWidth.coerceAtLeast(1f)
+                        updateValue((targetValue + dragAmount.x / width * if (isLtr) 1f else -1f).fastCoerceIn(0f, (tabsCount - 1).toFloat()))
+                        animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
+                    }
                 },
             )
         }
@@ -180,9 +182,7 @@ fun LiquidBottomTabs(
             (1f - abs(dampedDragAnimation.value - index.toFloat())).coerceIn(0f, 1f)
         }
 
-        // Base row: ikon di luar kapsul TIDAK ikut membesar saat ditahan.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { 1f },
             LocalLiquidBottomTabSelectionProgress provides selectionProgress,
         ) {
             Row(
@@ -190,7 +190,7 @@ fun LiquidBottomTabs(
                     .graphicsLayer { translationX = panelOffset }
                     .drawBackdrop(
                         backdrop = backdrop,
-                        shape = { Capsule() },
+                        shape = { navbarShape },
                         effects = {
                             vibrancy()
                             if (style.blur > 0.01f) {
@@ -202,17 +202,15 @@ fun LiquidBottomTabs(
                     .then(interactiveHighlight.modifier)
                     .height(64f.dp)
                     .fillMaxWidth()
-                    .padding(4f.dp)
-                    .clearAndSetSemantics {},
+                    .padding(4f.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
             )
         }
 
-        // Layer yang dibiaskan lensa: hanya ini yang membesar (1.2x), dan hanya terlihat di dalam kapsul.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
             LocalLiquidBottomTabSelectionProgress provides selectionProgress,
+            LocalLiquidBottomTabReadOnly provides true,
         ) {
             Row(
                 Modifier
@@ -222,7 +220,7 @@ fun LiquidBottomTabs(
                     .graphicsLayer { translationX = panelOffset }
                     .drawBackdrop(
                         backdrop = backdrop,
-                        shape = { Capsule() },
+                        shape = { navbarShape },
                         effects = {
                             vibrancy()
                             if (style.blur > 0.01f) {
@@ -248,28 +246,31 @@ fun LiquidBottomTabs(
                     translationX = if (isLtr) dampedDragAnimation.value * tabWidth + panelOffset
                     else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset
                 }
+                // The moving capsule owns press/drag gestures, like the upstream implementation.
+                // This avoids the foreground icon layer swallowing horizontal drags.
+                .then(interactiveHighlight.gestureModifier)
+                .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
-                    shape = { Capsule() },
+                    shape = { navbarShape },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Chromatic lens is interaction-only and always uses Balanced-like strength.
+                        // Balanced-style lens recipe, enabled only while pressed/sliding.
                         if (progress > 0.001f) {
-                            val lensWidth = (24f + 8f * progress) * NAVBAR_LENS_STRENGTH * progress
-                            val lensHeight = (28f + 10f * progress) * NAVBAR_LENS_STRENGTH * progress
                             lens(
-                                lensWidth.dp.toPx(),
-                                lensHeight.dp.toPx(),
+                                10f.dp.toPx() * progress,
+                                14f.dp.toPx() * progress,
                                 chromaticAberration = true,
                             )
                         }
                     },
                     highlight = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        Highlight.Default.copy(alpha = 0.30f + 0.50f * progress)
+                        // Keep the idle capsule outlined/visible; interaction increases the rim.
+                        Highlight.Default.copy(alpha = 0.28f + 0.44f * progress)
                     },
                     shadow = {
-                        Shadow(alpha = 0.10f + 0.48f * dampedDragAnimation.pressProgress)
+                        Shadow(alpha = 0.16f + 0.42f * dampedDragAnimation.pressProgress)
                     },
                     innerShadow = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
@@ -279,8 +280,8 @@ fun LiquidBottomTabs(
                         )
                     },
                     layerBlock = {
-                        // Skala pegas penuh (underdamped, ada overshoot) seperti upstream, seragam di X/Y
-                        // supaya lengkung kapsul tetap sebangun dengan navbar. Idle = 1f (inset 4dp rata).
+                        // Preserve the original spring deformation. At rest both scales are 1,
+                        // so the capsule is not skewed; press makes it taller than the 64dp bar.
                         scaleX = dampedDragAnimation.scaleX
                         scaleY = dampedDragAnimation.scaleY
                         val velocity = dampedDragAnimation.velocity / 10f
@@ -289,38 +290,38 @@ fun LiquidBottomTabs(
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Idle shows a stable capsule tint. During interaction the fill fades
-                        // so the navbar backdrop is visible through the moving lens.
-                        drawRect(idleCapsuleFill, alpha = 1f - progress)
-                        drawRect(idleCapsuleAccent, alpha = 1f - progress)
+                        // The capsule is solid/tinted at rest. On interaction its fill fades away,
+                        // exposing the sampled navbar layer inside the liquid lens.
+                        drawRect(capsuleSurfaceColor, alpha = 1f - progress)
                         if (progress > 0f) {
-                            drawRect(palette.accent.copy(alpha = 0.025f * progress))
+                            drawRect(palette.accent.copy(alpha = 0.035f * progress))
                         }
                     },
+                )
+                .border(
+                    width = 1.dp,
+                    color = palette.stroke.copy(alpha = 0.42f),
+                    shape = navbarShape,
                 )
                 .height(56f.dp)
                 .fillMaxWidth(1f / tabsCount),
         )
 
-        // Foreground controls stay crisp and saturated above the optical capsule. Keeping the
-        // gestures on this top row also avoids the glass layer intercepting tab taps/drags.
-        // Foreground crisp hanya untuk idle: memudar saat ditahan agar isi navbar yang dibiaskan
-        // lensa di dalam kapsul terlihat (sebelumnya tertutup ikon tajam ini). Tetap hit-testable.
+        // Foreground controls stay crisp and saturated above the optical capsule. This copy is
+        // visual only; accessibility/taps remain on the real row and drag stays on the capsule.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { 1f },
             LocalLiquidBottomTabSelectionProgress provides selectionProgress,
+            // This final crisp copy is visual only; taps are handled by the real row below it
+            // and drags are handled by the moving capsule above the backdrop source.
+            LocalLiquidBottomTabReadOnly provides true,
         ) {
             Row(
                 Modifier
-                    .graphicsLayer {
-                        translationX = panelOffset
-                        alpha = 1f - dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                    }
+                    .graphicsLayer { translationX = panelOffset }
                     .height(64f.dp)
                     .fillMaxWidth()
                     .padding(4f.dp)
-                    .then(interactiveHighlight.gestureModifier)
-                    .then(dampedDragAnimation.modifier),
+                    .clearAndSetSemantics {},
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
             )
@@ -335,38 +336,19 @@ fun RowScope.LiquidBottomTab(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scale = LocalLiquidBottomTabScale.current
+    val isReadOnlyCopy = LocalLiquidBottomTabReadOnly.current
     Column(
         modifier
             .clip(Capsule())
-            .clickable(interactionSource = null, indication = null, role = Role.Tab, onClick = onClick)
+            // Backdrop/foreground copies must never intercept real taps.
+            .then(
+                if (isReadOnlyCopy) Modifier
+                else Modifier.clickable(interactionSource = null, indication = null, role = Role.Tab, onClick = onClick),
+            )
             .fillMaxHeight()
-            .weight(1f)
-            .graphicsLayer {
-                val targetScale = scale()
-                scaleX = targetScale
-                scaleY = targetScale
-            },
+            .weight(1f),
         verticalArrangement = Arrangement.spacedBy(2f.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
         content = content,
     )
-}
-
-/**
- * Mewarnai konten tab dari warna dasar ke [to] mengikuti posisi kapsul, di fase DRAW.
- * Sebelumnya warna dihitung di composition sehingga setiap frame animasi memicu recomposition
- * semua tab di ketiga layer (berat, terasa tidak responsif). Konten tab harus digambar dengan
- * warna dasar (mis. textSecondary); modifier ini meng-crossfade-nya ke [to].
- */
-@Composable
-fun Modifier.liquidTabTint(index: Int, to: Color): Modifier {
-    val progressOf = LocalLiquidBottomTabSelectionProgress.current
-    return this
-        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawContent()
-            val p = progressOf(index).coerceIn(0f, 1f)
-            if (p > 0f) drawRect(to.copy(alpha = to.alpha * p), blendMode = BlendMode.SrcAtop)
-        }
 }
