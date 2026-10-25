@@ -34,11 +34,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -67,11 +71,17 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.sign
+import kotlin.math.tanh
 
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
@@ -86,10 +96,125 @@ internal const val NAV_MIN_BLUR_DP = 18f
 internal val LocalLiquidBottomTabSelectionProgress =
     staticCompositionLocalOf<(Int) -> Float> { { 0f } }
 
+// ---------------------------------------------------------------------------------------------
+// Penyetelan visual kapsul & tab. Semua angka yang sering diutak-atik ada di sini.
+// ---------------------------------------------------------------------------------------------
+
+/** Skala ikon + label SEMUA tab (idle, pita lensa, dan foreground). 1f = ukuran lama. */
+private const val NAV_TAB_CONTENT_SCALE = 1.16f
+
+/** Pembesaran ikon/label di dalam kapsul saat ditahan (dikali [NAV_TAB_CONTENT_SCALE]). */
+private const val CAPSULE_MAGNIFY = 1.2f
+
+/** Skala kapsul saat ditahan (78dp / 56dp). */
+private const val CAPSULE_PRESSED_SCALE = 78f / 56f
+
+/**
+ * Lensa kapsul. Tinggi dijaga ~sama dengan celah kapsul-pita (~9dp setelah skala) supaya pita tidak
+ * "memenuhi" kapsul; kekuatan pembiasan ([CAPSULE_LENS_AMOUNT_DP]) yang dinaikkan agar fringe
+ * chromatic aberration (merah/biru di tepi) terlihat jelas. Naikkan ke 12-14 bila masih kurang.
+ */
+private const val CAPSULE_LENS_HEIGHT_DP = 8f
+private const val CAPSULE_LENS_AMOUNT_DP = 10f
+
+/**
+ * Stroke tipis ber-blur di tepi kapsul saat ditahan/digeser: [CAPSULE_RIM_LAYER_ALPHA] per lapis,
+ * ditumpuk dari lapis tipis (terang di tepi) sampai lapis lebar (memudar ke dalam) = efek blur.
+ */
+private const val CAPSULE_RIM_LAYER_ALPHA = 0.085f
+private val CAPSULE_RIM_LAYER_WIDTHS_DP = floatArrayOf(1.0f, 2.0f, 3.4f, 5.0f)
+
+/**
+ * Squash & stretch kapsul saat bergerak. Simetris kiri/kanan, jenuh halus (tanh) dan kecil, jadi
+ * kapsul tidak pernah memipih. [CAPSULE_STRETCH_MAX] = lebar maks +9%; tinggi menyusut
+ * [CAPSULE_SQUASH_RATIO] kalinya. [CAPSULE_STRETCH_SPEED_REF] = kecepatan (tab/detik) di mana
+ * efek mencapai ~76% dari maksimum.
+ */
+private const val CAPSULE_STRETCH_MAX = 0.09f
+private const val CAPSULE_SQUASH_RATIO = 0.55f
+private const val CAPSULE_STRETCH_SPEED_REF = 14f
+
+/**
+ * Perpindahan tab jauh. Spring posisi bawaan kaku (1000) dan tidak peduli jarak, jadi lompat 4 tab
+ * melaju ~47 tab/detik (terasa kasar). Jarak > [FAR_DIRECT_MAX_TABS] ditempuh lewat "lompatan"
+ * berantai sepanjang [FAR_HOP_TABS] tab; lompatan berikutnya disambung saat kapsul sudah menempuh
+ * [FAR_HOP_HANDOFF] dari lompatan sekarang, jadi kapsul meluncur kontinu (puncak ~21 tab/detik)
+ * dengan durasi yang ikut jarak. Target akhir tetap benar sehingga lepas-tekan lensa tetap sinkron.
+ */
+private const val FAR_DIRECT_MAX_TABS = 2.0f
+private const val FAR_HOP_TABS = 1.2f
+private const val FAR_HOP_HANDOFF = 0.6f
+private const val FAR_HOP_TIMEOUT_MS = 450L
+
 /** State gesture non-snapshot; hanya disentuh dari callback gesture. */
 private class TabDragState {
     var target = 0f
     var travelled = 0f
+}
+
+/**
+ * Menggerakkan kapsul ke tab tujuan. Dekat -> perilaku bawaan [DampedDragAnimation]. Jauh ->
+ * lompatan berantai (lihat [FAR_HOP_TABS]). Dipanggil dari callback gesture dan perubahan dari luar.
+ */
+private class CapsuleTravel(private val scope: CoroutineScope) {
+    private var job: Job? = null
+
+    /** Tujuan akhir perjalanan terakhir; NaN bila jari mengambil alih (drag). */
+    var lastTarget: Float = Float.NaN
+        private set
+
+    /** Jari mulai menggeser: hentikan perjalanan otomatis, drag yang menggerakkan kapsul. */
+    fun takeOver() {
+        job?.cancel()
+        job = null
+        lastTarget = Float.NaN
+    }
+
+    /** [settle] = true: akhiri dengan animateToValue (press -> settle -> release, seperti bawaan). */
+    fun travel(anim: DampedDragAnimation, target: Float, settle: Boolean) {
+        job?.cancel()
+        job = null
+        lastTarget = target
+        val from = anim.value
+        if (abs(target - from) <= FAR_DIRECT_MAX_TABS) {
+            if (settle) anim.animateToValue(target) else anim.updateValue(target)
+            return
+        }
+        job = scope.launch {
+            var pos = from
+            var guard = 0
+            while (abs(target - pos) > FAR_HOP_TABS * 1.6f && guard++ < 24) {
+                val dir = sign(target - pos)
+                val segStart = pos
+                anim.updateValue(segStart + dir * FAR_HOP_TABS)
+                pos = withTimeoutOrNull(FAR_HOP_TIMEOUT_MS) {
+                    snapshotFlow { anim.value }
+                        .first { (it - segStart) * dir >= FAR_HOP_TABS * FAR_HOP_HANDOFF }
+                } ?: anim.value
+            }
+            if (settle) anim.animateToValue(target) else anim.updateValue(target)
+        }
+    }
+}
+
+/**
+ * Stroke tipis ber-blur di tepi kapsul: beberapa stroke inset dengan lebar bertingkat dan alpha
+ * rendah ditumpuk, sehingga paling terang tepat di tepi lalu memudar ke dalam (mirip blur tipis).
+ * Digambar di dalam clip kapsul. [scale] = skala layer kapsul agar lebar visual tetap konstan.
+ */
+private fun DrawScope.drawSoftCapsuleRim(color: Color, progress: Float, scale: Float) {
+    val layerColor = color.copy(alpha = color.alpha * CAPSULE_RIM_LAYER_ALPHA * progress)
+    for (widthDp in CAPSULE_RIM_LAYER_WIDTHS_DP) {
+        val strokeWidth = widthDp.dp.toPx() / scale
+        val half = strokeWidth / 2f
+        drawRoundRect(
+            color = layerColor,
+            topLeft = Offset(half, half),
+            size = Size(max(0f, size.width - strokeWidth), max(0f, size.height - strokeWidth)),
+            cornerRadius = CornerRadius(max(0f, (size.height - strokeWidth) / 2f)),
+            style = Stroke(width = strokeWidth),
+        )
+    }
 }
 
 /**
@@ -153,6 +278,7 @@ fun LiquidBottomTabs(
         val animationScope = rememberCoroutineScope()
         var currentIndex by remember(selectedTabReader) { mutableIntStateOf(selectedTabReader()) }
         val drag = remember { TabDragState() }
+        val capsuleTravel = remember(animationScope) { CapsuleTravel(animationScope) }
         val dampedDragAnimation = remember(animationScope, tabsCount) {
             DampedDragAnimation(
                 animationScope = animationScope,
@@ -160,22 +286,23 @@ fun LiquidBottomTabs(
                 valueRange = 0f..(tabsCount - 1).toFloat(),
                 visibilityThreshold = 0.001f,
                 initialScale = 1f,
-                pressedScale = 78f / 56f,
+                pressedScale = CAPSULE_PRESSED_SCALE,
                 onDragStarted = { position ->
                     // Tahan di tab tujuan -> kapsul langsung "berjalan" ke sana (tanpa menunggu lepas).
+                    // Tab jauh ditempuh berantai supaya tidak melesat (lihat CapsuleTravel).
                     val w = tabWidthState.value.coerceAtLeast(1f)
                     val column = (position.x / w).toInt().coerceIn(0, tabsCount - 1)
                     val index = if (isLtr) column else tabsCount - 1 - column
                     drag.target = index.toFloat()
                     drag.travelled = 0f
-                    updateValue(drag.target)
+                    capsuleTravel.travel(this, drag.target, settle = false)
                 },
                 onDragStopped = {
                     val targetIndex = drag.target.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
                     val isTap = drag.travelled < tapSlopPx
                     val changed = targetIndex != currentIndex
                     currentIndex = targetIndex
-                    animateToValue(targetIndex.toFloat())
+                    capsuleTravel.travel(this, targetIndex.toFloat(), settle = true)
                     animationScope.launch { offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f)) }
                     // Tap pada tab yang sama tetap diteruskan (mis. Dashboard mereset sub-tab).
                     if (changed || isTap) onTabSelectedState.value(targetIndex)
@@ -185,7 +312,12 @@ fun LiquidBottomTabs(
                     drag.travelled += abs(dragAmount.x)
                     drag.target = (drag.target + dragAmount.x / w * if (isLtr) 1f else -1f)
                         .fastCoerceIn(0f, (tabsCount - 1).toFloat())
-                    updateValue(drag.target)
+                    // Goyangan jari kecil saat tap tidak boleh membatalkan perjalanan ke tab tujuan;
+                    // baru setelah melewati slop, jari mengambil alih kapsul.
+                    if (drag.travelled >= tapSlopPx) {
+                        capsuleTravel.takeOver()
+                        updateValue(drag.target)
+                    }
                     animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
                 },
             )
@@ -196,8 +328,11 @@ fun LiquidBottomTabs(
         }
         LaunchedEffect(dampedDragAnimation) {
             snapshotFlow { currentIndex }.drop(1).collectLatest { index ->
-                if (abs(dampedDragAnimation.targetValue - index) > 0.001f) {
-                    dampedDragAnimation.animateToValue(index.toFloat())
+                // Gesture sudah menggerakkan kapsul ke tab ini (lastTarget) -> jangan diulang.
+                if (capsuleTravel.lastTarget != index.toFloat() &&
+                    abs(dampedDragAnimation.targetValue - index) > 0.001f
+                ) {
+                    capsuleTravel.travel(dampedDragAnimation, index.toFloat(), settle = true)
                 }
             }
         }
@@ -239,10 +374,10 @@ fun LiquidBottomTabs(
         }
 
         // Layer "pita" navbar untuk lensa: salinan navbar yang LEBIH KECIL (setinggi kapsul idle)
-        // + ikon/label membesar 1.2x dan SEMUA berwarna accent. Tidak terlihat langsung (alpha 0);
-        // hanya tampak lewat lensa kapsul, jadi ikon/label yang dilewati kapsul ikut berwarna.
+        // + ikon/label membesar [CAPSULE_MAGNIFY] dan SEMUA berwarna accent. Tidak terlihat langsung
+        // (alpha 0); hanya tampak lewat lensa kapsul, jadi ikon/label yang dilewati kapsul ikut berwarna.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
+            LocalLiquidBottomTabScale provides { lerp(1f, CAPSULE_MAGNIFY, dampedDragAnimation.pressProgress) },
             LocalLiquidBottomTabSelectionProgress provides { 1f },
         ) {
             Row(
@@ -294,14 +429,15 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Chromatic lens hanya saat interaksi. Pembiasan sengaja TIPIS (< celah antara
-                        // tepi kapsul dan pita navbar ~9dp): lensa yang kuat menarik isi pita dari
-                        // dalam sampai menutupi celah, sehingga pita terlihat memenuhi kapsul.
-                        // Pembesaran ikon berasal dari skala 1.2x pada pita, bukan dari lensa.
+                        // Chromatic lens hanya saat interaksi. TINGGI lensa dijaga <= celah antara
+                        // tepi kapsul dan pita navbar (~9dp): lensa yang terlalu lebar menarik isi pita
+                        // sampai menutupi celah, sehingga pita terlihat memenuhi kapsul. Yang dinaikkan
+                        // hanya kekuatan pembiasan (amount) -> fringe chromatic lebih tegas.
+                        // Pembesaran ikon berasal dari skala [CAPSULE_MAGNIFY] pada pita, bukan dari lensa.
                         if (progress > 0.001f) {
                             lens(
-                                8f.dp.toPx() * progress * sizeFactor,
-                                6f.dp.toPx() * progress * sizeFactor,
+                                CAPSULE_LENS_HEIGHT_DP.dp.toPx() * progress * sizeFactor,
+                                CAPSULE_LENS_AMOUNT_DP.dp.toPx() * progress * sizeFactor,
                                 chromaticAberration = true,
                             )
                         }
@@ -319,13 +455,30 @@ fun LiquidBottomTabs(
                         )
                     },
                     layerBlock = {
-                        // Skala pegas penuh (underdamped, overshoot) seragam di X/Y supaya lengkung
-                        // kapsul tetap sebangun dengan navbar. Idle = 1f (inset 4dp rata).
-                        scaleX = dampedDragAnimation.scaleX
-                        scaleY = dampedDragAnimation.scaleY
-                        val velocity = dampedDragAnimation.velocity / 10f
-                        scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
-                        scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
+                        // Skala dasar pegas (overshoot) dibuat SERAGAM di X/Y (rata-rata keduanya;
+                        // spring X dan Y bawaan beda redaman) supaya lengkung kapsul tetap sebangun
+                        // dengan navbar. Idle = 1f (inset 4dp rata).
+                        val sx = dampedDragAnimation.scaleX
+                        val sy = dampedDragAnimation.scaleY
+                        val base = if (sx.isFinite() && sy.isFinite()) {
+                            ((sx + sy) * 0.5f).fastCoerceIn(0.85f, CAPSULE_PRESSED_SCALE * 1.12f)
+                        } else {
+                            1f
+                        }
+                        // Squash & stretch dari kecepatan gerak. Sebelumnya velocity yang di-clamp keras
+                        // di +-0.2 hampir selalu jenuh saat pindah tab (lebar +25%, tinggi -20% mendadak =
+                        // kapsul "gepeng", dan miring ke arah sebaliknya saat ke kiri). Kini simetris,
+                        // jenuh halus (tanh), dan kecil. velocity bawaan dinormalisasi lebar range
+                        // (tabsCount - 1), dikembalikan ke satuan tab/detik; nilai tak-finite diabaikan.
+                        val rawVelocity = dampedDragAnimation.velocity
+                        val speedTabs = if (rawVelocity.isFinite()) {
+                            abs(rawVelocity) * (tabsCount - 1).coerceAtLeast(1)
+                        } else {
+                            0f
+                        }
+                        val stretch = CAPSULE_STRETCH_MAX * tanh(speedTabs / CAPSULE_STRETCH_SPEED_REF)
+                        scaleX = base * (1f + stretch)
+                        scaleY = base * (1f - CAPSULE_SQUASH_RATIO * stretch)
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
@@ -336,6 +489,14 @@ fun LiquidBottomTabs(
                         drawRect(idleCapsuleAccent, alpha = idle)
                         if (progress > 0f) {
                             drawRect(palette.accent.copy(alpha = 0.025f * progress))
+                        }
+                        // Ditahan/digeser: stroke tipis ber-blur di tepi kapsul (bukan glow putih).
+                        if (progress > 0.001f) {
+                            drawSoftCapsuleRim(
+                                color = palette.textPrimary,
+                                progress = progress,
+                                scale = lerp(1f, CAPSULE_PRESSED_SCALE, progress),
+                            )
                         }
                     },
                 )
@@ -385,7 +546,8 @@ fun RowScope.LiquidBottomTab(
             .fillMaxHeight()
             .weight(1f)
             .graphicsLayer {
-                val targetScale = scale()
+                // Ukuran ikon + label dibesarkan di satu tempat ini (berlaku untuk semua layer).
+                val targetScale = scale() * NAV_TAB_CONTENT_SCALE
                 scaleX = targetScale
                 scaleY = targetScale
             },
