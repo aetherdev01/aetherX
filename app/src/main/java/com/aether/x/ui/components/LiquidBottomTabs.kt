@@ -34,10 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -75,13 +72,12 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
-import kotlin.math.tanh
 
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
 // Keep optical strength stable across Clear/Thin/Balanced/Dense/Solid.
 // Liquid Glass Level only changes tint/opacity.
-private const val NAVBAR_LENS_STRENGTH = 0.62f
+private const val NAVBAR_LENS_STRENGTH = 0.82f
 
 /** Blur minimum kaca navbar (dp). Elemen di belakang navbar selalu ter-blur, tidak pernah tajam. */
 internal const val NAV_MIN_BLUR_DP = 18f
@@ -172,8 +168,7 @@ fun LiquidBottomTabs(
                     val index = if (isLtr) column else tabsCount - 1 - column
                     drag.target = index.toFloat()
                     drag.travelled = 0f
-                    // Lompat jauh: biarkan kapsul meluncur dengan spring, bukan snap instan.
-                    if (abs(value - drag.target) > 0.6f) animateToValue(drag.target) else updateValue(drag.target)
+                    updateValue(drag.target)
                 },
                 onDragStopped = {
                     val targetIndex = drag.target.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
@@ -181,7 +176,7 @@ fun LiquidBottomTabs(
                     val changed = targetIndex != currentIndex
                     currentIndex = targetIndex
                     animateToValue(targetIndex.toFloat())
-                    animationScope.launch { offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f)) }
+                    animationScope.launch { offsetAnimation.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 220f)) }
                     // Tap pada tab yang sama tetap diteruskan (mis. Dashboard mereset sub-tab).
                     if (changed || isTap) onTabSelectedState.value(targetIndex)
                 },
@@ -190,11 +185,8 @@ fun LiquidBottomTabs(
                     drag.travelled += abs(dragAmount.x)
                     drag.target = (drag.target + dragAmount.x / w * if (isLtr) 1f else -1f)
                         .fastCoerceIn(0f, (tabsCount - 1).toFloat())
-                    // Jitter kecil saat tap tidak boleh membatalkan spring; baru ikut jari setelah benar-benar menggeser.
-                    if (drag.travelled >= tapSlopPx) {
-                        updateValue(drag.target)
-                        animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
-                    }
+                    updateValue(drag.target)
+                    animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
                 },
             )
         }
@@ -268,8 +260,9 @@ fun LiquidBottomTabs(
                             blur(navBlurDp.dp.toPx())
                             if (progress > 0.001f) {
                                 lens(
+                                    20f.dp.toPx() * progress * sizeFactor,
                                     18f.dp.toPx() * progress * sizeFactor,
-                                    18f.dp.toPx() * progress * sizeFactor,
+                                    chromaticAberration = true,
                                 )
                             }
                         },
@@ -308,7 +301,7 @@ fun LiquidBottomTabs(
                         // Pembesaran ikon berasal dari skala 1.2x pada pita, bukan dari lensa.
                         if (progress > 0.001f) {
                             lens(
-                                14f.dp.toPx() * progress * sizeFactor,
+                                16f.dp.toPx() * progress * sizeFactor,
                                 12f.dp.toPx() * progress * sizeFactor,
                                 chromaticAberration = true,
                             )
@@ -327,14 +320,12 @@ fun LiquidBottomTabs(
                         )
                     },
                     layerBlock = {
-                        // Skala pegas penuh (underdamped, overshoot) seragam di X/Y supaya lengkung
-                        // kapsul tetap sebangun dengan navbar. Idle = 1f (inset 4dp rata).
-                        // Stretch searah gerak (simetris kiri/kanan), dibatasi halus dengan tanh agar
-                        // lompatan jauh / lonjakan velocity tidak membuat kapsul gepeng mendadak.
-                        val velocity = dampedDragAnimation.velocity / 10f
-                        val stretch = 0.10f * tanh(abs(velocity) * 0.75f / 0.10f)
-                        scaleX = (dampedDragAnimation.scaleX * (1f + stretch)).fastCoerceIn(0.9f, 1.6f)
-                        scaleY = (dampedDragAnimation.scaleY * (1f - stretch * 0.5f)).fastCoerceIn(0.9f, 1.6f)
+                        // Selalu gunakan satu skala uniform. Perbedaan scaleX/scaleY yang
+                        // sebelumnya dipengaruhi velocity dapat membuat kapsul sesaat gepeng.
+                        val uniformScale = ((dampedDragAnimation.scaleX + dampedDragAnimation.scaleY) * 0.5f)
+                            .fastCoerceIn(0.985f, 1.08f)
+                        scaleX = uniformScale
+                        scaleY = uniformScale
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
@@ -345,26 +336,38 @@ fun LiquidBottomTabs(
                         drawRect(idleCapsuleAccent, alpha = idle)
                         if (progress > 0f) {
                             drawRect(palette.accent.copy(alpha = 0.025f * progress))
-                            // Pinggiran agak buram seperti stroke tipis: beberapa stroke lebar -> tipis,
-                            // alpha makin kecil ke luar, hanya muncul saat ditahan / digeser.
-                            val r = size.height / 2f
-                            fun ring(widthDp: Float, a: Float) {
-                                val w = widthDp.dp.toPx()
-                                val inset = w / 2f + 0.5f.dp.toPx()
-                                drawRoundRect(
-                                    color = Color.White.copy(alpha = a * progress),
-                                    topLeft = Offset(inset, inset),
-                                    size = Size(size.width - inset * 2f, size.height - inset * 2f),
-                                    cornerRadius = CornerRadius(r - inset, r - inset),
-                                    style = Stroke(width = w),
-                                )
-                            }
-                            ring(4.5f, 0.05f)
-                            ring(3f, 0.09f)
-                            ring(1.6f, 0.20f)
                         }
                     },
                 )
+                // Frosted hairline rim: lebih terlihat saat kapsul ditekan/di-slide,
+                // tetapi tetap lembut agar terasa seperti kaca, bukan border solid.
+                .drawWithContent {
+                    drawContent()
+                    val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                    val rimAlpha = 0.10f + 0.16f * progress
+                    drawRoundRect(
+                        color = palette.textPrimary.copy(alpha = rimAlpha),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 1.15f.dp.toPx()
+                        ),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                            x = size.height * 0.5f,
+                            y = size.height * 0.5f
+                        )
+                    )
+                    if (progress > 0.01f) {
+                        drawRoundRect(
+                            color = palette.accent.copy(alpha = 0.045f * progress),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 2.4f.dp.toPx()
+                            ),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                                x = size.height * 0.5f,
+                                y = size.height * 0.5f
+                            )
+                        )
+                    }
+                }
                 .height(capsuleHeight)
                 .fillMaxWidth(1f / tabsCount),
         )
