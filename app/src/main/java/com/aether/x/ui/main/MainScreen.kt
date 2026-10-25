@@ -47,6 +47,8 @@ import com.aether.x.ui.settings.SettingsScreen
 import com.aether.x.ui.tweak.TweakScreen
 import com.aether.x.ui.tweak.TweakViewModel
 import com.aether.x.ui.whatsnew.WhatsNewDialog
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.hazeSource
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -161,6 +163,8 @@ fun MainScreen(
     // Jangan membuat HazeState/snapshot layar kedua untuk navbar: pada Dashboard,
     // TweakScreen sudah mendaftarkan kontennya ke state ini untuk drawer.
     val navHaze = LocalBackdropHaze.current
+    // Layer konten layar: dipakai kaca navbar supaya elemen yang scroll di belakangnya tembus/ter-blur.
+    val contentBackdrop = rememberLayerBackdrop()
     val navContentModifier = if (navHaze != null) {
         Modifier.fillMaxSize().hazeSource(navHaze, zIndex = 1f)
     } else {
@@ -174,6 +178,7 @@ fun MainScreen(
                 items = navBarItems,
                 selectedIndex = navItems.indexOf(selectedTab),
                 hazeState = navHaze,
+                contentBackdrop = contentBackdrop,
                 onSelect = { index ->
                     val tab = navItems[index]
                     val changed = tab != selectedTab
@@ -200,7 +205,7 @@ fun MainScreen(
         // scale — scale memaksa seluruh layar di-raster ulang tiap frame dan
         // terasa berat di perangkat mid-range.
         AnimatedContent(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().layerBackdrop(contentBackdrop),
             targetState = selectedTab,
             transitionSpec = {
                 if (reduceMotion) {
