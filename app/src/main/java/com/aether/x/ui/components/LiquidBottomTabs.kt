@@ -5,6 +5,7 @@
 package com.aether.x.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
@@ -176,7 +177,7 @@ fun LiquidBottomTabs(
                     val changed = targetIndex != currentIndex
                     currentIndex = targetIndex
                     animateToValue(targetIndex.toFloat())
-                    animationScope.launch { offsetAnimation.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 220f)) }
+                    animationScope.launch { offsetAnimation.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = 260f)) }
                     // Tap pada tab yang sama tetap diteruskan (mis. Dashboard mereset sub-tab).
                     if (changed || isTap) onTabSelectedState.value(targetIndex)
                 },
@@ -214,7 +215,7 @@ fun LiquidBottomTabs(
 
         // Base row: navbar kaca. Ikon di luar kapsul TIDAK ikut membesar saat ditahan.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { 1f },
+            LocalLiquidBottomTabScale provides { 1.08f },
             LocalLiquidBottomTabSelectionProgress provides baseSelectionProgress,
         ) {
             Row(
@@ -242,7 +243,7 @@ fun LiquidBottomTabs(
         // + ikon/label membesar 1.2x dan SEMUA berwarna accent. Tidak terlihat langsung (alpha 0);
         // hanya tampak lewat lensa kapsul, jadi ikon/label yang dilewati kapsul ikut berwarna.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
+            LocalLiquidBottomTabScale provides { lerp(1.08f, 1.24f, dampedDragAnimation.pressProgress) },
             LocalLiquidBottomTabSelectionProgress provides { 1f },
         ) {
             Row(
@@ -323,12 +324,20 @@ fun LiquidBottomTabs(
                         // Selalu gunakan satu skala uniform. Perbedaan scaleX/scaleY yang
                         // sebelumnya dipengaruhi velocity dapat membuat kapsul sesaat gepeng.
                         val dragScale = ((dampedDragAnimation.scaleX + dampedDragAnimation.scaleY) * 0.5f)
-                            .fastCoerceIn(0.985f, 1.06f)
-                        // Kapsul kembali membesar saat ditekan / digeser seperti versi sebelumnya,
-                        // tetapi tetap uniform agar tidak pernah gepeng.
+                            .fastCoerceIn(0.985f, 1.16f)
+                        // Overshoot yang lebih jelas: saat hold/slide kapsul boleh sedikit
+                        // keluar dari tinggi navbar, lalu memantul kembali dengan spring.
                         val pressProgress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        val pressScale = lerp(1f, 1.075f, pressProgress)
-                        val uniformScale = (dragScale * pressScale).fastCoerceIn(0.985f, 1.075f)
+                        val targetPressScale = lerp(1f, 1.20f, pressProgress)
+                        val springPressScale by animateFloatAsState(
+                            targetValue = targetPressScale,
+                            animationSpec = spring(
+                                dampingRatio = 0.62f,
+                                stiffness = 520f,
+                            ),
+                            label = "liquidCapsulePressSpring",
+                        )
+                        val uniformScale = (dragScale * springPressScale).fastCoerceIn(0.985f, 1.20f)
                         scaleX = uniformScale
                         scaleY = uniformScale
                     },
