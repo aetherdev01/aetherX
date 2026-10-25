@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -82,7 +84,9 @@ import com.aether.x.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 import kotlin.math.roundToInt
 import android.graphics.Rect as AndroidRect
 import android.graphics.RenderEffect as AndroidRenderEffect
@@ -194,6 +198,45 @@ private fun lensPath(r: LensRect): Path = Path().apply {
             cornerRadius = CornerRadius(r.height / 2f, r.height / 2f),
         ),
     )
+}
+
+/**
+ * Bentuk bar yang "menyatu" dengan lensa (gooey): profil setengah-tinggi bar digabung dengan
+ * profil lensa lewat smooth-max, sehingga di dekat lensa tepi bar menekuk/menonjol halus
+ * mengikuti lensa. [k] = radius penghalusan (0 = tanpa penyatuan, hanya bar biasa).
+ * Koordinat: lebar [w]; bar setinggi [barH] berpusat vertikal di [extra] + barH/2.
+ */
+private fun mergedBarPath(w: Float, extra: Float, barH: Float, lens: LensRect, k: Float): Path {
+    val br = barH / 2f
+    val cy = extra + br
+    val lr = lens.height / 2f
+    val flat = (lens.width / 2f - lr).coerceAtLeast(0f)
+    fun barE(x: Float): Float {
+        val dx = (kotlin.math.abs(x - w / 2f) - (w / 2f - br)).coerceAtLeast(0f)
+        return sqrt((br * br - dx * dx).coerceAtLeast(0f))
+    }
+    fun lensE(x: Float): Float {
+        val dx = kotlin.math.abs(x - lens.centerX) - flat
+        if (dx <= 0f) return lr
+        if (dx >= lr) return 0f
+        return sqrt(lr * lr - dx * dx)
+    }
+    fun e(x: Float): Float {
+        val a = barE(x)
+        val b = lensE(x)
+        if (k <= 0f || b <= 0.01f) return max(a, b)
+        val h = (k - kotlin.math.abs(a - b)).coerceAtLeast(0f) / k
+        return max(a, b) + h * h * k * 0.25f
+    }
+    val n = 200
+    // Jarak cosine: sampel rapat di kedua ujung agar tutup bulat bar tetap mulus.
+    fun xAt(i: Int): Float = (1f - kotlin.math.cos(Math.PI.toFloat() * i / n)) / 2f * w
+    return Path().apply {
+        moveTo(0f, cy)
+        for (i in 1..n) lineTo(xAt(i), cy - e(xAt(i)))
+        for (i in n downTo 0) lineTo(xAt(i), cy + e(xAt(i)))
+        close()
+    }
 }
 
 data class AetherNavItem(
@@ -570,7 +613,11 @@ fun AetherBottomNavBar(
         // dengan lengkung navbar (radius pill = tinggi/2, navbar = tinggi/2).
         val growBy = if (nat) 4.dp else 14.dp
         // Tambahan pembesaran salinan ikon di dalam lensa (di atas skala ikon bawaan).
-        val lensMagnify = 0f
+        val lensMagnify = 0.18f
+        // Tinggi bar yang tampak di dalam lensa mengecil: 0.20 = jadi 80% tinggi bar.
+        val lensBarShrink = 0.20f
+        // Kanvas kaca bar dibuat lebih tinggi sebesar ini (atas & bawah) agar tonjolan tak terpotong.
+        val glassExtra = 10.dp
 
         // Border gaya iOS 27: lebih tegas dan jelas, bukan lagi mengandalkan bayangan.
         val rimBrush = Brush.verticalGradient(
@@ -595,8 +642,31 @@ fun AetherBottomNavBar(
             // Tanpa drop shadow (iOS 27 menghilangkan bayangan pada Liquid Glass).
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clip(barShape),
+                    .layout { measurable, constraints ->
+                        val extra = glassExtra.roundToPx()
+                        val p = measurable.measure(
+                            constraints.copy(
+                                minHeight = constraints.maxHeight + extra * 2,
+                                maxHeight = constraints.maxHeight + extra * 2,
+                            ),
+                        )
+                        layout(p.width, constraints.maxHeight) { p.place(0, -extra) }
+                    }
+                    .drawWithContent {
+                        // Bentuk kaca = bar yang menyatu halus dengan lensa (lihat mergedBarPath).
+                        val extra = glassExtra.toPx()
+                        val barSize = Size(size.width, size.height - extra * 2f)
+                        val l0 = lensRectOf(barSize, this, growBy)
+                        val lr = LensRect(l0.left, l0.top + extra, l0.width, l0.height, l0.speed)
+                        val active = (1f - pillSolidness.value).coerceIn(0f, 1f)
+                        val path = mergedBarPath(size.width, extra, barSize.height, lr, 10.dp.toPx() * active)
+                        clipPath(path) { this@drawWithContent.drawContent() }
+                        // Garis tepi bar mengikuti bentuk gabungan, kecuali di dalam lensa
+                        // (lensa punya rim sendiri) supaya tidak ada garis dobel.
+                        clipPath(lensPath(lr), clipOp = ClipOp.Difference) {
+                            drawPath(path, brush = rimBrush, style = Stroke(width = 1.dp.toPx()))
+                        }
+                    },
             ) {
                 if (blurOn) {
                     if (hazeState != null) {
@@ -615,7 +685,7 @@ fun AetherBottomNavBar(
                     } else {
                         AuroraBlurLayer(
                             blurRadius = barBlurRadius,
-                            shape = barShape,
+                            shape = RectangleShape,
                             modifier = Modifier.fillMaxSize(),
                             alpha = 0.94f,
                         )
@@ -643,8 +713,7 @@ fun AetherBottomNavBar(
                                     )
                                 },
                             ),
-                        )
-                        .border(width = 1.dp, brush = rimBrush, shape = barShape),
+                        ),
                 )
             }
         }
@@ -735,6 +804,33 @@ fun AetherBottomNavBar(
                         size = Size((w - 4.dp.toPx()).coerceAtLeast(0f), h * 0.55f),
                         cornerRadius = corner,
                     )
+
+                    // Bar tampak MENGECIL di dalam lensa: tepinya tertarik ke dalam (80% tinggi),
+                    // menyisakan pita bening di atas/bawah di dalam lensa. Blur bar tetap utuh.
+                    if (lens > 0.01f) {
+                        val bh = size.height * (1f - lensBarShrink * lens)
+                        val mini = Path().apply {
+                            addRoundRect(
+                                RoundRect(
+                                    left = 0f,
+                                    top = (size.height - bh) / 2f,
+                                    right = size.width,
+                                    bottom = (size.height + bh) / 2f,
+                                    cornerRadius = CornerRadius(bh / 2f, bh / 2f),
+                                ),
+                            )
+                        }
+                        clipPath(lensPath(r)) {
+                            clipPath(mini, clipOp = ClipOp.Difference) {
+                                drawRect(Color.White.copy(alpha = (if (isDark) 0.10f else 0.20f) * lens))
+                            }
+                            drawPath(
+                                mini,
+                                color = Color.White.copy(alpha = (if (isDark) 0.20f else 0.45f) * lens),
+                                style = Stroke(width = 1.dp.toPx()),
+                            )
+                        }
+                    }
                 },
         )
 
@@ -789,7 +885,7 @@ fun AetherBottomNavBar(
                     val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
                     val r = lensRectOf(size, this, growBy)
                     // Total pembesaran ikon di dalam lensa ~1.5x (skala ikon bawaan + ini).
-                    val magnify = 1f + lensMagnify * lens
+                    val magnify = 1f + lensMagnify * popW.value.coerceIn(0f, 1.4f) * (1f - 0.15f * r.speed)
                     if (lensShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         scaleX = 1f
                         scaleY = 1f
@@ -803,7 +899,7 @@ fun AetherBottomNavBar(
                                 mag = magnify,
                                 bend = lens,
                                 // Dispersi warna makin kuat saat lensa bergerak cepat.
-                                disp = (0.005f + 0.015f * r.speed) * lens,
+                                disp = (0.03f + 0.05f * r.speed) * lens,
                                 edge = 9.dp.toPx(),
                             )
                         } else {
@@ -873,7 +969,7 @@ fun AetherBottomNavBar(
                     )
                     fringeColors.forEachIndexed { i, c ->
                         val inset = (0.5f + i).dp.toPx()
-                        val a = (if (lensShader != null) 0.22f else 0.35f) * fringe
+                        val a = (if (lensShader != null) 0.40f else 0.55f) * fringe
                         drawRoundRect(
                             brush = Brush.horizontalGradient(
                                 0f to c.copy(alpha = a),
@@ -916,17 +1012,6 @@ fun AetherBottomNavBar(
                         size = Size(w, h),
                         cornerRadius = corner,
                         style = Stroke(width = 1.3.dp.toPx()),
-                    )
-                    val glowInset = 2.dp.toPx()
-                    drawRoundRect(
-                        color = Color.White.copy(alpha = 0.07f * k * lens),
-                        topLeft = Offset(left + glowInset, top + glowInset),
-                        size = Size((w - glowInset * 2f).coerceAtLeast(0f), (h - glowInset * 2f).coerceAtLeast(0f)),
-                        cornerRadius = CornerRadius(
-                            (h / 2f - glowInset).coerceAtLeast(0f),
-                            (h / 2f - glowInset).coerceAtLeast(0f),
-                        ),
-                        style = Stroke(width = 4.dp.toPx()),
                     )
                 },
         )
