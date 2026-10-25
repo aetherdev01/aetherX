@@ -268,10 +268,10 @@ fun LiquidBottomTabs(
                         // Rim tipis seperti navbar asli supaya bentuk pita terbaca di dalam kapsul.
                         highlight = { Highlight.Default.copy(alpha = 0.55f) },
                         onDrawSurface = {
+                            // Tint yang sama dengan navbar asli (bening), cukup dibedakan dari latar
+                            // di dalam kapsul lewat rim highlight + sedikit angkat warna.
                             drawRect(containerBrush)
-                            // Kontras KUAT (terang di tema gelap, gelap di tema terang) agar pita
-                            // kecil ini jelas berbeda dari latar di dalam kapsul.
-                            drawRect(palette.textPrimary.copy(alpha = 0.22f))
+                            drawRect(palette.textPrimary.copy(alpha = 0.05f))
                         },
                     )
                     .height(capsuleHeight)
@@ -294,13 +294,14 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Chromatic lens hanya saat interaksi; ukuran mengikuti tinggi kapsul.
+                        // Chromatic lens hanya saat interaksi. Pembiasan sengaja TIPIS (< celah antara
+                        // tepi kapsul dan pita navbar ~9dp): lensa yang kuat menarik isi pita dari
+                        // dalam sampai menutupi celah, sehingga pita terlihat memenuhi kapsul.
+                        // Pembesaran ikon berasal dari skala 1.2x pada pita, bukan dari lensa.
                         if (progress > 0.001f) {
-                            val lensWidth = (24f + 8f * progress) * NAVBAR_LENS_STRENGTH * progress * sizeFactor
-                            val lensHeight = (28f + 10f * progress) * NAVBAR_LENS_STRENGTH * progress * sizeFactor
                             lens(
-                                lensWidth.dp.toPx(),
-                                lensHeight.dp.toPx(),
+                                8f.dp.toPx() * progress * sizeFactor,
+                                6f.dp.toPx() * progress * sizeFactor,
                                 chromaticAberration = true,
                             )
                         }
