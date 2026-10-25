@@ -34,11 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -274,7 +277,9 @@ fun LiquidBottomTabs(
                             drawRect(palette.textPrimary.copy(alpha = 0.05f))
                         },
                     )
-                    .height(capsuleHeight)
+                    // Sedikit lebih rendah dari kapsul idle -> celah antara tepi kapsul dan pita
+                    // lebih lebar, jadi lensa yang lebih kuat tidak menutupi tepi pita.
+                    .height(capsuleHeight - 6f.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 4f.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -294,19 +299,19 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Chromatic lens hanya saat interaksi. Pembiasan sengaja TIPIS (< celah antara
-                        // tepi kapsul dan pita navbar ~9dp): lensa yang kuat menarik isi pita dari
-                        // dalam sampai menutupi celah, sehingga pita terlihat memenuhi kapsul.
+                        // Chromatic lens hanya saat interaksi. Pembiasan dijaga < celah antara tepi
+                        // kapsul dan pita navbar (~12dp): lebih besar dari itu, isi pita ditarik
+                        // sampai menutupi celah dan pita terlihat memenuhi kapsul.
                         // Pembesaran ikon berasal dari skala 1.2x pada pita, bukan dari lensa.
                         if (progress > 0.001f) {
                             lens(
-                                8f.dp.toPx() * progress * sizeFactor,
-                                6f.dp.toPx() * progress * sizeFactor,
+                                14f.dp.toPx() * progress * sizeFactor,
+                                12f.dp.toPx() * progress * sizeFactor,
                                 chromaticAberration = true,
                             )
                         }
                     },
-                    // Tanpa highlight/glow putih di tepi kapsul.
+                    // Highlight bawaan dimatikan; pinggiran kapsul digambar sendiri (stroke) di onDrawSurface.
                     highlight = { Highlight.Default.copy(alpha = 0f) },
                     shadow = {
                         Shadow(alpha = 0.10f + 0.48f * dampedDragAnimation.pressProgress)
@@ -336,6 +341,19 @@ fun LiquidBottomTabs(
                         drawRect(idleCapsuleAccent, alpha = idle)
                         if (progress > 0f) {
                             drawRect(palette.accent.copy(alpha = 0.025f * progress))
+                            // Pinggiran (stroke) kapsul saat ditahan: terang di atas, memudar ke bawah.
+                            val sw = 2.2f.dp.toPx()
+                            val rimTop = Color.White.copy(alpha = 0.95f * progress)
+                            val rimBottom =
+                                if (palette.isDark) Color.White.copy(alpha = 0.40f * progress)
+                                else palette.stroke.copy(alpha = 0.80f * progress)
+                            drawRoundRect(
+                                brush = Brush.verticalGradient(listOf(rimTop, rimBottom)),
+                                topLeft = Offset(sw / 2f, sw / 2f),
+                                size = Size(size.width - sw, size.height - sw),
+                                cornerRadius = CornerRadius((size.height - sw) / 2f),
+                                style = Stroke(width = sw),
+                            )
                         }
                     },
                 )
