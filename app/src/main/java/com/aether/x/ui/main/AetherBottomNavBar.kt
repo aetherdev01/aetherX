@@ -125,10 +125,10 @@ half4 main(float2 fragCoord) {
     }
     // t: 0 di bagian dalam, 1 tepat di tepi. Kuadratik agar bagian tengah tetap bersih.
     float t = 1.0 - smoothstep(0.0, edge, -d);
-    t = pow(t, 2.2);
+    t = pow(t, 2.0);
     // Tengah: sampel lebih dekat ke pusat (memperbesar). Tepi: sampel lebih JAUH dari
     // pusat (isi tampak tertekan/menekuk ke arah tepi).
-    float s = mix(1.0 / mag, 1.0 + 0.45 * bend, t);
+    float s = mix(1.0 / mag, 1.0 + 0.10 * bend, t);
     float2 pr = lens.xy + p * s * (1.0 + disp * t);
     float2 pg = lens.xy + p * s;
     float2 pb = lens.xy + p * s * (1.0 - disp * t);
@@ -571,8 +571,6 @@ fun AetherBottomNavBar(
         val growBy = if (nat) 4.dp else 14.dp
         // Tambahan pembesaran salinan ikon di dalam lensa (di atas skala ikon bawaan).
         val lensMagnify = 0f
-        // Seberapa mengecil bar kaca (tinggi) di dalam lensa: 0.20 = jadi 80%.
-        val lensBarShrink = 0.20f
 
         // Border gaya iOS 27: lebih tegas dan jelas, bukan lagi mengandalkan bayangan.
         val rimBrush = Brush.verticalGradient(
@@ -584,30 +582,12 @@ fun AetherBottomNavBar(
             ),
         )
 
-        val tintTop = if (blurOn) (glassTintAlpha * 0.92f).coerceIn(0f, 0.88f) else 0.40f + 0.48f * glassLevel
-        val tintBottom = if (blurOn) (glassTintAlpha * 0.76f).coerceIn(0f, 0.82f) else 0.34f + 0.42f * glassLevel
-
-        // Area lensa "dilubangi" dari bar asli: di dalam lensa yang tampak hanya salinan bar
-        // yang mengecil (lihat lapisan cermin) di atas latar tembus pandang.
-        val holeLens = Modifier.drawWithContent {
-            val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
-            if (lens > 0.01f) {
-                val r = lensRectOf(size, this, growBy)
-                clipPath(lensPath(r), clipOp = ClipOp.Difference) {
-                    this@drawWithContent.drawContent()
-                }
-            } else {
-                drawContent()
-            }
-        }
-
         // ── Latar kaca capsule ───────────────────────────────────────────
         if (nat) {
             // Blur + tint dikerjakan window (lihat NativeBlurWindow); di sini cukup garis tepi.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(holeLens)
                     .border(width = 1.dp, brush = rimBrush, shape = barShape),
             )
         } else {
@@ -616,8 +596,7 @@ fun AetherBottomNavBar(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(barShape)
-                    .then(holeLens),
+                    .clip(barShape),
             ) {
                 if (blurOn) {
                     if (hazeState != null) {
@@ -824,8 +803,8 @@ fun AetherBottomNavBar(
                                 mag = magnify,
                                 bend = lens,
                                 // Dispersi warna makin kuat saat lensa bergerak cepat.
-                                disp = (0.012f + 0.03f * r.speed) * lens,
-                                edge = 14.dp.toPx(),
+                                disp = (0.005f + 0.015f * r.speed) * lens,
+                                edge = 9.dp.toPx(),
                             )
                         } else {
                             null
@@ -841,23 +820,6 @@ fun AetherBottomNavBar(
                     }
                 },
         ) {
-            // Salinan bar kaca yang MENGECIL: di dalam lensa, bar tampak tertarik ke dalam
-            // (tepi atas/bawahnya menjauh dari tepi lensa); shader ikut membengkokkannya.
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val lens = 1f - pillSolidness.value.coerceIn(0f, 1f)
-                        scaleY = 1f - lensBarShrink * lens
-                    }
-                    .clip(barShape)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(surface.copy(alpha = tintTop), surface.copy(alpha = tintBottom)),
-                        ),
-                    )
-                    .border(width = 1.dp, brush = rimBrush, shape = barShape),
-            )
             NavItemsRow(items = items, coverageOf = coverageOf, pop = { popW.value })
         }
 
