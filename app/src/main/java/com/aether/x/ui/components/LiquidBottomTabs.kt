@@ -322,8 +322,13 @@ fun LiquidBottomTabs(
                     layerBlock = {
                         // Selalu gunakan satu skala uniform. Perbedaan scaleX/scaleY yang
                         // sebelumnya dipengaruhi velocity dapat membuat kapsul sesaat gepeng.
-                        val uniformScale = ((dampedDragAnimation.scaleX + dampedDragAnimation.scaleY) * 0.5f)
-                            .fastCoerceIn(0.985f, 1.08f)
+                        val dragScale = ((dampedDragAnimation.scaleX + dampedDragAnimation.scaleY) * 0.5f)
+                            .fastCoerceIn(0.985f, 1.06f)
+                        // Kapsul kembali membesar saat ditekan / digeser seperti versi sebelumnya,
+                        // tetapi tetap uniform agar tidak pernah gepeng.
+                        val pressProgress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                        val pressScale = lerp(1f, 1.075f, pressProgress)
+                        val uniformScale = (dragScale * pressScale).fastCoerceIn(0.985f, 1.075f)
                         scaleX = uniformScale
                         scaleY = uniformScale
                     },
