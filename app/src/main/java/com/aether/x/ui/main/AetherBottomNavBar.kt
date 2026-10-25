@@ -214,15 +214,27 @@ private fun mergedBarPath(
     barH: Float,
     lens: LensRect,
     k: Float,
+    dip: Float,
+    fall: Float,
 ): Path {
     val br = barH / 2f
     val cy = oy + br
     val cx = ox + w / 2f
     val lr = lens.height / 2f
     val flat = (lens.width / 2f - lr).coerceAtLeast(0f)
+    val ll = lens.left
+    val lrr = lens.left + lens.width
+    // Tepi bar menukik ke arah tengah saat mendekati sisi kiri/kanan lensa (leher yang
+    // menyatu seperti cairan), sedalam [dip] dan dimulai [fall] px sebelum lensa.
+    fun dive(x: Float): Float {
+        if (dip <= 0f) return br
+        val sd = max(max(ll - x, x - lrr), 0f)
+        val u = (1f - sd / fall).coerceIn(0f, 1f)
+        return br - dip * (u * u * (3f - 2f * u))
+    }
     fun barE(x: Float): Float {
         val dx = (kotlin.math.abs(x - cx) - (w / 2f - br)).coerceAtLeast(0f)
-        return sqrt((br * br - dx * dx).coerceAtLeast(0f))
+        return min(sqrt((br * br - dx * dx).coerceAtLeast(0f)), dive(x))
     }
     fun lensE(x: Float): Float {
         val dx = kotlin.math.abs(x - lens.centerX) - flat
@@ -630,7 +642,9 @@ fun AetherBottomNavBar(
         // Tambahan pembesaran salinan ikon di dalam lensa (di atas skala ikon bawaan).
         val lensMagnify = 0.18f
         // Tinggi bar yang tampak di dalam lensa mengecil: 0.20 = jadi 80% tinggi bar.
-        val lensBarShrink = 0.12f
+        val lensBarShrink = 0.18f
+        // Jarak (sebelum sisi lensa) tempat tepi bar mulai menukik ke arah lensa.
+        val barDive = 36.dp
         // Kanvas kaca bar dibuat lebih tinggi sebesar ini (atas & bawah) agar tonjolan tak terpotong.
         val glassExtra = 10.dp
         val glassExtraX = 24.dp
@@ -679,7 +693,8 @@ fun AetherBottomNavBar(
                         val l0 = lensRectOf(barSize, this, growBy)
                         val lr = LensRect(l0.left + extraX, l0.top + extra, l0.width, l0.height, l0.speed)
                         val active = (1f - pillSolidness.value).coerceIn(0f, 1f)
-                        val path = mergedBarPath(size.width, extraX, barSize.width, extra, barSize.height, lr, 3.dp.toPx() * active)
+                        val path = mergedBarPath(size.width, extraX, barSize.width, extra, barSize.height, lr, 8.dp.toPx() * active,
+                            dip = barSize.height / 2f * lensBarShrink * active, fall = barDive.toPx())
                         clipPath(path) { this@drawWithContent.drawContent() }
                         // Garis tepi bar mengikuti bentuk gabungan, kecuali di dalam lensa
                         // (lensa punya rim sendiri) supaya tidak ada garis dobel.
@@ -834,14 +849,11 @@ fun AetherBottomNavBar(
                         val cy = size.height / 2f
                         val barHalf = size.height / 2f
                         val miniHalf = barHalf * (1f - lensBarShrink * lens)
-                        val lensR = r.height / 2f
-                        // Jarak dari ujung lensa sampai tepi bar menyentuh lengkung lensa.
-                        val d0 = lensR - sqrt((lensR * lensR - barHalf * barHalf).coerceAtLeast(0f))
-                        val xL = r.left + d0
-                        val xR = r.left + r.width - d0
-                        val tw = ((xR - xL) * 0.5f).coerceAtMost(34.dp.toPx()).coerceAtLeast(1f)
+                        val fall = barDive.toPx()
                         fun half(x: Float): Float {
-                            val u = (min(x - xL, xR - x) / tw).coerceIn(0f, 1f)
+                            // Kelanjutan kurva tepi bar dari luar lensa (lihat mergedBarPath).
+                            val sd = max(max(r.left - x, x - (r.left + r.width)), 0f)
+                            val u = (1f - sd / fall).coerceIn(0f, 1f)
                             val t = barHalf + (miniHalf - barHalf) * (u * u * (3f - 2f * u))
                             // Tutup bulat di ujung bar (0 di luar bar).
                             val dx = (abs(x - size.width / 2f) - (size.width / 2f - miniHalf)).coerceAtLeast(0f)
