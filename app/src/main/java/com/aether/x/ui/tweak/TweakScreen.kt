@@ -94,6 +94,19 @@ import com.aether.x.ui.components.LiquidOutlinedButton
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.glassPanel
+import com.aether.x.ui.components.blurRadiusFor
+import com.aether.x.ui.components.liquidGlassTintAlpha
+import com.aether.x.ui.components.rememberAetherLiquidBackdrop
+import com.aether.x.ui.theme.LocalAetherPalette
+import com.aether.x.ui.theme.LocalAetherStyle
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.lifecycle.Lifecycle
@@ -145,6 +158,9 @@ fun TweakScreen(
     val backdropHaze = LocalBackdropHaze.current
     val ownHaze = rememberHazeState(blurEnabled = true)
     val drawerHaze = backdropHaze ?: ownHaze
+    // Backdrop Liquid Glass drawer: latar aurora + isi layar Tweak (SIBLING sheet, bukan induknya).
+    val drawerContentBackdrop = rememberLayerBackdrop()
+    val drawerBackdrop = rememberCombinedBackdrop(rememberAetherLiquidBackdrop(), drawerContentBackdrop)
     val coroutineScope = rememberCoroutineScope()
 
     val dashboardViewModel: DashboardViewModel = viewModel()
@@ -219,18 +235,12 @@ fun TweakScreen(
                 // App Manager and Build.prop) can leave the lower part unblurred.
                 modifier = Modifier
                     .fillMaxHeight()
-                    .glassPanel(
+                    .drawerLensPanel(
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(
                             topEnd = 28.dp,
                             bottomEnd = 28.dp,
                         ),
-                        // Tint digambar setelah blur -> merata di seluruh sheet,
-                        // tidak ada bagian yang terlihat transparan.
-                        minAlpha = 0.06f,
-                        hazeState = drawerHaze,
-                        blurBoost = 2.15f,
-                        tintScale = 0.62f,
-                        tintAfterBlur = true,
+                        backdrop = drawerBackdrop,
                     ),
             ) {
                 TweakDrawerContent(
@@ -249,6 +259,7 @@ fun TweakScreen(
             modifier = modifier
                 .fillMaxSize()
                 .hazeSource(drawerHaze, zIndex = 1f)
+                .layerBackdrop(drawerContentBackdrop)
                 .padding(contentPadding.withoutBottom())
                 // Terminal Root must resize above the software keyboard so the
                 // command field and run button remain visible while typing.
@@ -625,6 +636,41 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
 }
 
 private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_LIBRARY, GAME_PROFILE, GAME_MONITOR, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
+
+/**
+ * Panel drawer Liquid Glass: blur backdrop + lens (pembiasan di tepi) + chromatic aberration.
+ * Menggantikan blur Haze pada drawer; tint tetap mengikuti Liquid Glass Level & Blur Intensity.
+ */
+@Composable
+private fun Modifier.drawerLensPanel(
+    shape: androidx.compose.ui.graphics.Shape,
+    backdrop: Backdrop,
+): Modifier {
+    val p = LocalAetherPalette.current
+    val style = LocalAetherStyle.current
+    val levelAlpha = liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f))
+    val blurDp = (blurRadiusFor(style.blur.coerceIn(0f, 1f)) * 2.15f).coerceIn(14f, 38f)
+    val tint = androidx.compose.ui.graphics.Brush.verticalGradient(
+        listOf(
+            p.surface.copy(alpha = (levelAlpha * 0.62f).coerceIn(0.06f, 0.94f)),
+            p.surface.copy(alpha = (levelAlpha * 0.62f * 0.82f).coerceIn(0.05f, 0.90f)),
+        ),
+    )
+    return this.drawBackdrop(
+        backdrop = backdrop,
+        shape = { shape },
+        effects = {
+            blur(blurDp.dp.toPx())
+            lens(
+                16f.dp.toPx(),
+                26f.dp.toPx(),
+                chromaticAberration = true,
+            )
+        },
+        highlight = { Highlight.Default.copy(alpha = 0.5f) },
+        onDrawSurface = { drawRect(tint) },
+    )
+}
 
 @Composable
 private fun TweakDrawerContent(
