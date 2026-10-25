@@ -5,7 +5,6 @@
 package com.aether.x.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
@@ -78,7 +77,7 @@ internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
 // Keep optical strength stable across Clear/Thin/Balanced/Dense/Solid.
 // Liquid Glass Level only changes tint/opacity.
-private const val NAVBAR_LENS_STRENGTH = 0.82f
+private const val NAVBAR_LENS_STRENGTH = 0.62f
 
 /** Blur minimum kaca navbar (dp). Elemen di belakang navbar selalu ter-blur, tidak pernah tajam. */
 internal const val NAV_MIN_BLUR_DP = 18f
@@ -177,7 +176,7 @@ fun LiquidBottomTabs(
                     val changed = targetIndex != currentIndex
                     currentIndex = targetIndex
                     animateToValue(targetIndex.toFloat())
-                    animationScope.launch { offsetAnimation.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = 260f)) }
+                    animationScope.launch { offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f)) }
                     // Tap pada tab yang sama tetap diteruskan (mis. Dashboard mereset sub-tab).
                     if (changed || isTap) onTabSelectedState.value(targetIndex)
                 },
@@ -203,18 +202,6 @@ fun LiquidBottomTabs(
             }
         }
 
-        // Animate press scale in composable scope; graphicsLayer's layerBlock is not composable.
-        val pressProgress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-        val targetPressScale = lerp(1f, 1.20f, pressProgress)
-        val springPressScale by animateFloatAsState(
-            targetValue = targetPressScale,
-            animationSpec = spring(
-                dampingRatio = 0.62f,
-                stiffness = 520f,
-            ),
-            label = "liquidCapsulePressSpring",
-        )
-
         // Track the capsule position continuously; tab icon/label colors use this progress.
         val selectionProgress: (Int) -> Float = { index ->
             (1f - abs(dampedDragAnimation.value - index.toFloat())).coerceIn(0f, 1f)
@@ -227,7 +214,7 @@ fun LiquidBottomTabs(
 
         // Base row: navbar kaca. Ikon di luar kapsul TIDAK ikut membesar saat ditahan.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { 1.08f },
+            LocalLiquidBottomTabScale provides { 1f },
             LocalLiquidBottomTabSelectionProgress provides baseSelectionProgress,
         ) {
             Row(
@@ -255,7 +242,7 @@ fun LiquidBottomTabs(
         // + ikon/label membesar 1.2x dan SEMUA berwarna accent. Tidak terlihat langsung (alpha 0);
         // hanya tampak lewat lensa kapsul, jadi ikon/label yang dilewati kapsul ikut berwarna.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { lerp(1.08f, 1.24f, dampedDragAnimation.pressProgress) },
+            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
             LocalLiquidBottomTabSelectionProgress provides { 1f },
         ) {
             Row(
@@ -273,9 +260,8 @@ fun LiquidBottomTabs(
                             blur(navBlurDp.dp.toPx())
                             if (progress > 0.001f) {
                                 lens(
-                                    20f.dp.toPx() * progress * sizeFactor,
-                                    18f.dp.toPx() * progress * sizeFactor,
-                                    chromaticAberration = true,
+                                    14f.dp.toPx() * progress * sizeFactor,
+                                    14f.dp.toPx() * progress * sizeFactor,
                                 )
                             }
                         },
@@ -314,8 +300,8 @@ fun LiquidBottomTabs(
                         // Pembesaran ikon berasal dari skala 1.2x pada pita, bukan dari lensa.
                         if (progress > 0.001f) {
                             lens(
-                                16f.dp.toPx() * progress * sizeFactor,
-                                12f.dp.toPx() * progress * sizeFactor,
+                                8f.dp.toPx() * progress * sizeFactor,
+                                6f.dp.toPx() * progress * sizeFactor,
                                 chromaticAberration = true,
                             )
                         }
@@ -333,15 +319,13 @@ fun LiquidBottomTabs(
                         )
                     },
                     layerBlock = {
-                        // Selalu gunakan satu skala uniform. Perbedaan scaleX/scaleY yang
-                        // sebelumnya dipengaruhi velocity dapat membuat kapsul sesaat gepeng.
-                        val dragScale = ((dampedDragAnimation.scaleX + dampedDragAnimation.scaleY) * 0.5f)
-                            .fastCoerceIn(0.985f, 1.16f)
-                        // Overshoot yang lebih jelas: saat hold/slide kapsul boleh sedikit
-                        // keluar dari tinggi navbar, lalu memantul kembali dengan spring.
-                        val uniformScale = (dragScale * springPressScale).fastCoerceIn(0.985f, 1.20f)
-                        scaleX = uniformScale
-                        scaleY = uniformScale
+                        // Skala pegas penuh (underdamped, overshoot) seragam di X/Y supaya lengkung
+                        // kapsul tetap sebangun dengan navbar. Idle = 1f (inset 4dp rata).
+                        scaleX = dampedDragAnimation.scaleX
+                        scaleY = dampedDragAnimation.scaleY
+                        val velocity = dampedDragAnimation.velocity / 10f
+                        scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
+                        scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
@@ -355,35 +339,6 @@ fun LiquidBottomTabs(
                         }
                     },
                 )
-                // Frosted hairline rim: lebih terlihat saat kapsul ditekan/di-slide,
-                // tetapi tetap lembut agar terasa seperti kaca, bukan border solid.
-                .drawWithContent {
-                    drawContent()
-                    val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                    val rimAlpha = 0.10f + 0.16f * progress
-                    drawRoundRect(
-                        color = palette.textPrimary.copy(alpha = rimAlpha),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 1.15f.dp.toPx()
-                        ),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                            x = size.height * 0.5f,
-                            y = size.height * 0.5f
-                        )
-                    )
-                    if (progress > 0.01f) {
-                        drawRoundRect(
-                            color = palette.accent.copy(alpha = 0.045f * progress),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 2.4f.dp.toPx()
-                            ),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                                x = size.height * 0.5f,
-                                y = size.height * 0.5f
-                            )
-                        )
-                    }
-                }
                 .height(capsuleHeight)
                 .fillMaxWidth(1f / tabsCount),
         )
