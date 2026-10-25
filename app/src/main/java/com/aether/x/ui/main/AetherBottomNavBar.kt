@@ -81,10 +81,13 @@ fun AetherBottomNavBar(
                 items.forEachIndexed { index, item ->
                     LiquidBottomTab(onClick = { onSelect(index) }) {
                         val selectionProgress = LocalLiquidBottomTabSelectionProgress.current
+                        val progress = selectionProgress(index).coerceIn(0f, 1f)
+                        // Keep the active tab at full accent opacity; color follows the capsule
+                        // position continuously so the old tab cannot retain a stale accent.
                         val tint = lerp(
-                            palette.textSecondary,
-                            palette.accent,
-                            selectionProgress(index).coerceIn(0f, 1f),
+                            palette.textSecondary.copy(alpha = 1f),
+                            palette.accent.copy(alpha = 1f),
+                            progress,
                         )
                         Icon(
                             imageVector = item.icon,
