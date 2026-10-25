@@ -1,6 +1,8 @@
 package com.aether.x.ui.main
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,12 +18,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.components.LiquidBottomTab
-import com.aether.x.ui.components.LocalLiquidBottomTabSelectionProgress
 import com.aether.x.ui.components.LiquidBottomTabs
+import com.aether.x.ui.components.liquidTabTint
 import com.aether.x.ui.components.rememberAetherLiquidBackdrop
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
@@ -80,30 +81,28 @@ fun AetherBottomNavBar(
             ) {
                 items.forEachIndexed { index, item ->
                     LiquidBottomTab(onClick = { onSelect(index) }) {
-                        val selectionProgress = LocalLiquidBottomTabSelectionProgress.current
-                        val progress = selectionProgress(index).coerceIn(0f, 1f)
-                        // Keep the active tab at full accent opacity; color follows the capsule
-                        // position continuously so the old tab cannot retain a stale accent.
-                        val tint = lerp(
-                            palette.textSecondary.copy(alpha = 1f),
-                            palette.accent.copy(alpha = 1f),
-                            progress,
-                        )
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = item.label,
-                            tint = tint,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Text(
-                            text = item.label,
-                            color = tint,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                        )
+                        // Warna dasar textSecondary; crossfade ke accent mengikuti kapsul di fase draw.
+                        Column(
+                            modifier = Modifier.liquidTabTint(index, palette.accent.copy(alpha = 1f)),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                tint = palette.textSecondary.copy(alpha = 1f),
+                                modifier = Modifier.size(22.dp),
+                            )
+                            Text(
+                                text = item.label,
+                                color = palette.textSecondary.copy(alpha = 1f),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
