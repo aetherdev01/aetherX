@@ -59,7 +59,9 @@ fun StaticAetherSlider(
     val changeProxy = remember {
         { next: Float -> latestOnValueChange.value(quantize(next)) }
     }
-    val finishProxy = remember {
+    val finishProxy: (() -> Unit)? = if (onValueChangeFinished == null) {
+        null
+    } else {
         { latestOnValueChangeFinished.value?.invoke() }
     }
 

@@ -350,13 +350,13 @@ private fun LiquidActionButton(
     val backdrop = rememberAetherLiquidBackdrop()
     val animationScope = rememberCoroutineScope()
     val interactiveHighlight = remember(animationScope) { InteractiveHighlight(animationScope = animationScope) }
-    val containerColor by colors.containerColor(enabled)
-    val requestedContentColor by colors.contentColor(enabled)
-    val resolvedContentColor = if (outlined) palette.textPrimary else requestedContentColor
+    // ButtonColors.containerColor/contentColor are internal in Material3 and cannot be read here.
+    // Resolve the liquid surface from the Aether palette instead.
+    val resolvedContentColor = if (outlined) palette.textPrimary else LocalContentColor.current
     val surfaceColor = if (outlined) {
         palette.surface.copy(alpha = 0.07f + 0.14f * glass)
     } else {
-        containerColor.copy(alpha = 0.12f + 0.20f * glass)
+        palette.surface.copy(alpha = 0.12f + 0.20f * glass)
     }
     val resolvedBorder = border ?: if (outlined) {
         androidx.compose.foundation.BorderStroke(1.dp, palette.stroke.copy(alpha = 0.78f))
