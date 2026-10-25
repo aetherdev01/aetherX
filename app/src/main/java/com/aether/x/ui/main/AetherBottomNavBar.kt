@@ -659,7 +659,7 @@ fun AetherBottomNavBar(
                         val l0 = lensRectOf(barSize, this, growBy)
                         val lr = LensRect(l0.left, l0.top + extra, l0.width, l0.height, l0.speed)
                         val active = (1f - pillSolidness.value).coerceIn(0f, 1f)
-                        val path = mergedBarPath(size.width, extra, barSize.height, lr, 10.dp.toPx() * active)
+                        val path = mergedBarPath(size.width, extra, barSize.height, lr, 3.dp.toPx() * active)
                         clipPath(path) { this@drawWithContent.drawContent() }
                         // Garis tepi bar mengikuti bentuk gabungan, kecuali di dalam lensa
                         // (lensa punya rim sendiri) supaya tidak ada garis dobel.
@@ -805,30 +805,55 @@ fun AetherBottomNavBar(
                         cornerRadius = corner,
                     )
 
-                    // Bar tampak MENGECIL di dalam lensa: tepinya tertarik ke dalam (80% tinggi),
-                    // menyisakan pita bening di atas/bawah di dalam lensa. Blur bar tetap utuh.
+                    // Tepi bar MASUK ke dalam lensa (ala iOS): di luar lensa tepi bar lurus; begitu
+                    // menyentuh lensa ia melengkung ke dalam lalu berjalan lebih dekat ke tengah
+                    // (bar tampak mengecil di dalam lensa), dan melengkung keluar lagi di sisi
+                    // seberang. Blur bar tetap utuh; pita di antara tepi bar dan tepi lensa dibuat
+                    // sedikit lebih bening.
                     if (lens > 0.01f) {
-                        val bh = size.height * (1f - lensBarShrink * lens)
-                        val mini = Path().apply {
-                            addRoundRect(
-                                RoundRect(
-                                    left = 0f,
-                                    top = (size.height - bh) / 2f,
-                                    right = size.width,
-                                    bottom = (size.height + bh) / 2f,
-                                    cornerRadius = CornerRadius(bh / 2f, bh / 2f),
-                                ),
-                            )
+                        val cy = size.height / 2f
+                        val barHalf = size.height / 2f
+                        val miniHalf = barHalf * (1f - lensBarShrink * lens)
+                        val lensR = r.height / 2f
+                        // Jarak dari ujung lensa sampai tepi bar menyentuh lengkung lensa.
+                        val d0 = lensR - sqrt((lensR * lensR - barHalf * barHalf).coerceAtLeast(0f))
+                        val xL = r.left + d0
+                        val xR = r.left + r.width - d0
+                        val tw = ((xR - xL) * 0.45f).coerceAtMost(26.dp.toPx()).coerceAtLeast(1f)
+                        fun half(x: Float): Float {
+                            val u = (min(x - xL, xR - x) / tw).coerceIn(0f, 1f)
+                            return barHalf + (miniHalf - barHalf) * (u * u * (3f - 2f * u))
                         }
-                        clipPath(lensPath(r)) {
-                            clipPath(mini, clipOp = ClipOp.Difference) {
-                                drawRect(Color.White.copy(alpha = (if (isDark) 0.10f else 0.20f) * lens))
+                        val steps = 48
+                        val top = Path()
+                        val bottom = Path()
+                        val fill = Path()
+                        for (i in 0..steps) {
+                            val x = r.left + r.width * i / steps
+                            if (i == 0) {
+                                top.moveTo(x, cy - half(x))
+                                bottom.moveTo(x, cy + half(x))
+                            } else {
+                                top.lineTo(x, cy - half(x))
+                                bottom.lineTo(x, cy + half(x))
                             }
-                            drawPath(
-                                mini,
-                                color = Color.White.copy(alpha = (if (isDark) 0.20f else 0.45f) * lens),
-                                style = Stroke(width = 1.dp.toPx()),
-                            )
+                        }
+                        for (i in 0..steps) {
+                            val x = r.left + r.width * i / steps
+                            if (i == 0) fill.moveTo(x, cy - half(x)) else fill.lineTo(x, cy - half(x))
+                        }
+                        for (i in steps downTo 0) {
+                            val x = r.left + r.width * i / steps
+                            fill.lineTo(x, cy + half(x))
+                        }
+                        fill.close()
+                        clipPath(lensPath(r)) {
+                            clipPath(fill, clipOp = ClipOp.Difference) {
+                                drawRect(Color.White.copy(alpha = (if (isDark) 0.08f else 0.18f) * lens))
+                            }
+                            val edge = Color.White.copy(alpha = (if (isDark) 0.26f else 0.50f) * lens)
+                            drawPath(top, color = edge, style = Stroke(width = 1.dp.toPx()))
+                            drawPath(bottom, color = edge, style = Stroke(width = 1.dp.toPx()))
                         }
                     }
                 },
