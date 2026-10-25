@@ -16,9 +16,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.components.LiquidBottomTab
+import com.aether.x.ui.components.LocalLiquidBottomTabSelectionProgress
 import com.aether.x.ui.components.LiquidBottomTabs
 import com.aether.x.ui.components.rememberAetherLiquidBackdrop
 import com.aether.x.ui.theme.LocalAetherPalette
@@ -78,8 +80,12 @@ fun AetherBottomNavBar(
             ) {
                 items.forEachIndexed { index, item ->
                     LiquidBottomTab(onClick = { onSelect(index) }) {
-                        val isSelected = index == selectedState.value
-                        val tint = if (isSelected) palette.accent else palette.textSecondary
+                        val selectionProgress = LocalLiquidBottomTabSelectionProgress.current
+                        val tint = lerp(
+                            palette.textSecondary,
+                            palette.accent,
+                            selectionProgress(index).coerceIn(0f, 1f),
+                        )
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.label,

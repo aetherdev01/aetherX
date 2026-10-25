@@ -36,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -69,6 +68,10 @@ import kotlin.math.sign
 
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
+/** Continuous selection progress driven by the moving capsule, avoiding stale tab colors. */
+internal val LocalLiquidBottomTabSelectionProgress =
+    staticCompositionLocalOf<(Int) -> Float> { { 0f } }
+
 /** Liquid BottomTabs copied from the library's capsule/pill interaction pattern. */
 @Composable
 fun LiquidBottomTabs(
@@ -85,7 +88,6 @@ fun LiquidBottomTabs(
     val glass = style.glassLevel.coerceIn(0f, 1f)
     // Level 0 is the clearest glass; as the tint gets more solid, refraction fades.
     val lensScale = (1f - glass).coerceIn(0f, 1f)
-    val accentColor = palette.accent
     val containerAlpha = liquidGlassTintAlpha(glass)
     val containerColor = palette.surface.copy(alpha = containerAlpha)
     val tabsBackdrop = rememberLayerBackdrop()
@@ -161,38 +163,56 @@ fun LiquidBottomTabs(
             )
         }
 
-        Row(
-            Modifier
-                .graphicsLayer { translationX = panelOffset }
-                .drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { Capsule() },
-                    effects = {
-                        vibrancy()
-                        if (style.blur > 0.01f) {
-                            blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
-                        }
-                        if (lensScale > 0.001f) {
-                            lens(24f.dp.toPx() * lensScale, 24f.dp.toPx() * lensScale)
-                        }
-                    },
-                    layerBlock = {
-                        val progress = dampedDragAnimation.pressProgress
-                        val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
-                        scaleX = scale
-                        scaleY = scale
-                    },
-                    onDrawSurface = { drawRect(containerColor) },
-                )
-                .then(interactiveHighlight.modifier)
-                .height(64f.dp)
-                .fillMaxWidth()
-                .padding(4f.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            content = content,
-        )
+        // Track the capsule position continuously; tab icon/label colors use this progress.
+        // That keeps color transitions synchronized with sliding instead of waiting for drag end.
+        val selectionProgress: (Int) -> Float = { index ->
+            (1f - abs(dampedDragAnimation.value - index.toFloat())).coerceIn(0f, 1f)
+        }
 
-        CompositionLocalProvider(LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) }) {
+        CompositionLocalProvider(
+            LocalLiquidBottomTabSelectionProgress provides selectionProgress,
+        ) {
+            Row(
+                Modifier
+                    .graphicsLayer { translationX = panelOffset }
+                    .drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { Capsule() },
+                        effects = {
+                            vibrancy()
+                            if (style.blur > 0.01f) {
+                                blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
+                            }
+                            // The navbar panel stays stable; the capsule owns the active lens.
+                            val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                            if (lensScale > 0.001f && progress > 0.001f) {
+                                lens(
+                                    24f.dp.toPx() * lensScale * progress,
+                                    24f.dp.toPx() * lensScale * progress,
+                                )
+                            }
+                        },
+                        layerBlock = {
+                            val progress = dampedDragAnimation.pressProgress
+                            val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
+                            scaleX = scale
+                            scaleY = scale
+                        },
+                        onDrawSurface = { drawRect(containerColor) },
+                    )
+                    .then(interactiveHighlight.modifier)
+                    .height(64f.dp)
+                    .fillMaxWidth()
+                    .padding(4f.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = content,
+            )
+        }
+
+        CompositionLocalProvider(
+            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
+            LocalLiquidBottomTabSelectionProgress provides selectionProgress,
+        ) {
             Row(
                 Modifier
                     .clearAndSetSemantics {}
@@ -203,16 +223,15 @@ fun LiquidBottomTabs(
                         backdrop = backdrop,
                         shape = { Capsule() },
                         effects = {
-                            val progress = dampedDragAnimation.pressProgress
+                            val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
                             vibrancy()
                             if (style.blur > 0.01f) {
                                 blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
                             }
-                            // Keep the duplicate backdrop in sync with settings, while
-                            // preserving some refraction at rest (not only while pressed).
-                            if (lensScale > 0.001f) {
-                                val lensWidth = (18f + 6f * progress) * lensScale
-                                val lensHeight = (20f + 8f * progress) * lensScale
+                            // The sampled tab row has no lens while idle.
+                            if (lensScale > 0.001f && progress > 0.001f) {
+                                val lensWidth = (24f + 8f * progress) * lensScale * progress
+                                val lensHeight = (26f + 10f * progress) * lensScale * progress
                                 lens(lensWidth.dp.toPx(), lensHeight.dp.toPx())
                             }
                         },
@@ -222,8 +241,7 @@ fun LiquidBottomTabs(
                     .then(interactiveHighlight.modifier)
                     .height(56f.dp)
                     .fillMaxWidth()
-                    .padding(horizontal = 4f.dp)
-                    .graphicsLayer(colorFilter = ColorFilter.tint(accentColor)),
+                    .padding(horizontal = 4f.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
             )
@@ -242,13 +260,11 @@ fun LiquidBottomTabs(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
                     shape = { Capsule() },
                     effects = {
-                        val progress = dampedDragAnimation.pressProgress
-                        // Refractive colour fringe remains visible while idle, not only
-                        // during a press. More-solid glass reduces this effect via settings.
-                        if (lensScale > 0.001f) {
-                            // Refraction grows while the capsule is held or sliding.
-                            val lensWidth = (18f + 10f * progress) * lensScale
-                            val lensHeight = (22f + 14f * progress) * lensScale
+                        val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                        // No refraction/fringe at rest; fade it in only during press or sliding.
+                        if (lensScale > 0.001f && progress > 0.001f) {
+                            val lensWidth = (24f + 8f * progress) * lensScale * progress
+                            val lensHeight = (28f + 10f * progress) * lensScale * progress
                             lens(
                                 lensWidth.dp.toPx(),
                                 lensHeight.dp.toPx(),
@@ -257,18 +273,17 @@ fun LiquidBottomTabs(
                         }
                     },
                     highlight = {
-                        val strength = (0.26f + 0.42f * lensScale + 0.20f * dampedDragAnimation.pressProgress)
-                            .coerceIn(0.18f, 0.90f)
-                        Highlight.Default.copy(alpha = strength)
+                        val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                        Highlight.Default.copy(alpha = 0.12f + 0.68f * progress)
                     },
                     shadow = {
-                        Shadow(alpha = 0.12f + 0.48f * dampedDragAnimation.pressProgress)
+                        Shadow(alpha = 0.10f + 0.48f * dampedDragAnimation.pressProgress)
                     },
                     innerShadow = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
                         InnerShadow(
-                            radius = (4f + 5f * progress).dp * lensScale,
-                            alpha = (0.12f + 0.24f * lensScale + 0.48f * progress).coerceIn(0f, 0.9f),
+                            radius = 8f.dp * progress,
+                            alpha = progress,
                         )
                     },
                     layerBlock = {
@@ -282,10 +297,16 @@ fun LiquidBottomTabs(
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
                     onDrawSurface = {
-                        val progress = dampedDragAnimation.pressProgress
-                        val idleTint = palette.surface.copy(alpha = 0.07f + 0.12f * glass)
+                        val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                        // Solid at rest. During interaction the fill fades, revealing the real
+                        // icon/label backdrop sampled from the navbar below the lens.
+                        val idleTint = palette.surface.copy(
+                            alpha = (0.68f + 0.28f * glass).coerceIn(0.68f, 0.96f),
+                        )
                         drawRect(idleTint, alpha = 1f - progress)
-                        drawRect(palette.accent.copy(alpha = 0.035f * lensScale * progress))
+                        if (progress > 0f) {
+                            drawRect(palette.accent.copy(alpha = 0.035f * lensScale * progress))
+                        }
                     },
                 )
                 .height(56f.dp)
