@@ -174,4 +174,6 @@ dependencies {
     // ── Reorder kartu dashboard dengan long-press + drag ─────────────────────
     implementation(libs.reorderable)
     implementation(libs.haze)
+    // Kyant0 AndroidLiquidGlass (Backdrop engine) used by LiquidToggle/Button/Slider/BottomTabs.
+    implementation("io.github.kyant0:backdrop:1.0.6")
 }

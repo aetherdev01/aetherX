@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidOutlinedButton
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.BuildConfig
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.AetherXPreferences
@@ -181,7 +183,7 @@ fun V310ControlCenterScreen(
             CompatibilityRow("CPU frequency interface", if (cpuFreqPath.exists()) str(R.string.v310_control_center_terdeteksi) else str(R.string.v310_control_center_belum_terbaca))
             CompatibilityRow("GPU devfreq node", gpuNodes.firstOrNull() ?: str(R.string.v310_control_center_tidak_terdeteksi_akses_dibatasi))
             Text(str(R.string.v310_control_center_status_interface_dibaca_dari_file), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Button(onClick = onOpenMonitor, modifier = Modifier.fillMaxWidth(), enabled = privilege.rootGranted) {
+            LiquidButton(onClick = onOpenMonitor, modifier = Modifier.fillMaxWidth(), enabled = privilege.rootGranted) {
                 Text(if (privilege.rootGranted) str(R.string.v310_control_center_buka_monitor_hardware_lanjutan) else str(R.string.v310_control_center_monitor_memerlukan_izin_root))
             }
         }
@@ -206,7 +208,7 @@ fun V310ControlCenterScreen(
         SectionCard(title = str(R.string.v310_control_center_cadangan_profil_game), watermarkIcon = Icons.Outlined.Backup) {
             Text(str(R.string.v310_control_center_cadangkan_atau_pindahkan_profil_game), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
+                LiquidOutlinedButton(
                     onClick = { exportProfiles.launch("AetherX_game_profiles.json") },
                     modifier = Modifier.weight(1f),
                 ) {
@@ -214,7 +216,7 @@ fun V310ControlCenterScreen(
                     Spacer(Modifier.size(6.dp))
                     Text(str(R.string.v310_control_center_ekspor))
                 }
-                Button(
+                LiquidButton(
                     onClick = { importProfiles.launch(arrayOf("application/json", "text/plain")) },
                     modifier = Modifier.weight(1f),
                 ) {

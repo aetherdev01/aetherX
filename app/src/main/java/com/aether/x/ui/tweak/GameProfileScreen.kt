@@ -57,6 +57,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidOutlinedButton
 import com.aether.x.R
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.permission.PrivilegeManager
@@ -562,7 +563,7 @@ private fun GameProfileDetailPane(
             )
         }
 
-        OutlinedButton(
+        LiquidOutlinedButton(
             onClick = { viewModel.resetSelectedProfile(activity) },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,

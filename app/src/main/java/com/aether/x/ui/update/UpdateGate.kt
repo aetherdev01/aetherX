@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.R
 import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.ui.components.PopupDialog
@@ -93,7 +94,7 @@ fun UpdateGate(viewModel: UpdateViewModel = viewModel()) {
                 )
             }
 
-            Button(
+            LiquidButton(
                 onClick = {
                     if (state.info.downloadUrl.isNotBlank()) {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.info.downloadUrl))

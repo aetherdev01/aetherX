@@ -6,17 +6,33 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import com.aether.x.ui.theme.LocalAetherStyle
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -29,9 +45,9 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Slider statis AetherX. Thumb dan track digambar langsung tanpa animate*AsState,
- * spring, efek scale, atau animasi tekan/lepas. Gesture tetap mendukung drag,
- * tap, touch target yang besar, dan aksesibilitas progress slider.
+ * Slider AetherX mempertahankan gesture, throttling, nilai/steps, dan aksesibilitas
+ * semula. Track tetap ringan digambar pada Canvas, sedangkan thumb memakai Backdrop
+ * untuk blur/refraction dengan intensitas yang mengikuti pengaturan Tampilan.
  */
 @Composable
 fun StaticAetherSlider(
@@ -66,7 +82,15 @@ fun StaticAetherSlider(
         latestOnValueChange(quantize(minValue + fraction * span))
     }
 
-    Box(
+    val style = LocalAetherStyle.current
+    val liquidBackdrop = rememberAetherLiquidBackdrop()
+    val trackBackdrop = rememberLayerBackdrop()
+    val thumbBackdrop = rememberCombinedBackdrop(
+        liquidBackdrop,
+        rememberBackdrop(trackBackdrop) { drawBackdrop -> drawBackdrop() },
+    )
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
@@ -128,7 +152,14 @@ fun StaticAetherSlider(
                     }
                 }
             },
+        contentAlignment = Alignment.CenterStart,
     ) {
+        val progress = ((value.coerceIn(minValue, maxValue) - minValue) / span).coerceIn(0f, 1f)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(trackBackdrop),
+        ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val inset = 12.dp.toPx()
             val left = inset
@@ -159,14 +190,39 @@ fun StaticAetherSlider(
                 radius = 3.5.dp.toPx(),
                 center = Offset(right, centerY),
             )
-            val thumbWidth = 7.dp.toPx()
-            val thumbHeight = 34.dp.toPx().coerceAtMost(size.height - 2.dp.toPx())
-            drawRoundRect(
-                color = activeColor,
-                topLeft = Offset(thumbX - thumbWidth / 2f, centerY - thumbHeight / 2f),
-                size = Size(thumbWidth, thumbHeight),
-                cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f),
-            )
         }
+        }
+        // The moving thumb uses Backdrop's refraction/blur engine; slider range,
+        // gesture throttling and accessibility remain controlled by the original slider.
+        Box(
+            modifier = Modifier
+                .offset(x = ((maxWidth - 24.dp).coerceAtLeast(0.dp) * progress))
+                .size(width = 24.dp, height = 34.dp)
+                .drawBackdrop(
+                    backdrop = thumbBackdrop,
+                    shape = { RoundedCornerShape(50) },
+                    effects = {
+                        vibrancy()
+                        if (style.blur > 0.01f) {
+                            blur((blurRadiusFor(style.blur) * 0.30f).dp.toPx())
+                        }
+                        val level = style.glassLevel.coerceIn(0f, 1f)
+                        lens(
+                            (5f + 10f * level).dp.toPx(),
+                            (8f + 16f * level).dp.toPx(),
+                            chromaticAberration = level > 0.6f,
+                        )
+                    },
+                    highlight = { Highlight.Ambient.copy(alpha = 0.18f + 0.30f * style.glassLevel) },
+                    onDrawSurface = {
+                        drawRect(Color.White.copy(alpha = 0.16f + 0.20f * style.glassLevel))
+                    },
+                )
+                .border(
+                    width = 0.8.dp,
+                    color = Color.White.copy(alpha = 0.45f + 0.30f * style.glassLevel),
+                    shape = RoundedCornerShape(50),
+                ),
+        )
     }
 }

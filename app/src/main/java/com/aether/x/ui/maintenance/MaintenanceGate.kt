@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.R
 import com.aether.x.core.notification.AetherXNotifier
 import com.aether.x.ui.components.PopupDialog
@@ -68,7 +69,7 @@ fun MaintenanceGate(viewModel: MaintenanceViewModel = viewModel()) {
         title = status.title.ifBlank { stringResource(R.string.maintenance_default_title) },
         message = status.message.ifBlank { stringResource(R.string.maintenance_default_message) },
     ) {
-        Button(
+        LiquidButton(
             onClick = {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
                 try {

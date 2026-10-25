@@ -90,6 +90,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aether.x.ui.components.LiquidOutlinedButton
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.glassPanel
@@ -591,7 +592,7 @@ fun TweakScreen(
                     }
                 }
 
-                OutlinedButton(
+                LiquidOutlinedButton(
                     onClick = { viewModel.resetTweaks(activity) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,

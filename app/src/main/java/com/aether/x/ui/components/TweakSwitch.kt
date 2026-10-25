@@ -1,7 +1,5 @@
 package com.aether.x.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,10 +33,6 @@ fun TweakSwitch(
 ) {
     val haptic = LocalHapticFeedback.current
     val hapticEnabled = LocalHapticEnabled.current
-    val tint by animateColorAsState(
-        if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        tween(220), label = "switchTint"
-    )
     Row(
         modifier = modifier.fillMaxWidth()
             .aetherCardSurface(shape = RoundedCornerShape(16.dp))
@@ -61,21 +53,13 @@ fun TweakSwitch(
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else .4f))
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Switch(
+        LiquidToggle(
             checked = checked,
             enabled = enabled,
             onCheckedChange = {
                 haptic.performIfEnabled(hapticEnabled, HapticFeedbackType.LongPress)
                 onCheckedChange(it)
             },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = tint,
-                checkedBorderColor = tint,
-                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surface,
-                uncheckedBorderColor = MaterialTheme.colorScheme.outline,
-            ),
         )
     }
 }

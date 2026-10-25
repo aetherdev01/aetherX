@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.AetherMonoFamily
@@ -121,7 +122,7 @@ fun RamCleanerCard(modifier: Modifier = Modifier, viewModel: RamCleanerViewModel
             }
         }
 
-        Button(
+        LiquidButton(
             onClick = viewModel::boostRam,
             enabled = !state.boosting,
             modifier = Modifier.fillMaxWidth(),

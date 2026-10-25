@@ -57,6 +57,8 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * HazeState latar ([AetherBackground]) untuk card. Sumbernya adalah lapisan
@@ -454,6 +456,8 @@ fun AetherBackground(
     val bg = p.bg
     val cardHaze = rememberHazeState(blurEnabled = true)
     val backdropHaze = rememberHazeState(blurEnabled = true)
+    // One recorded backdrop source is shared by all Backdrop-based liquid controls.
+    val liquidBackdrop = rememberLayerBackdrop()
 
     // Low-RAM phones keep the same aurora colors and shapes but stop repainting
     // the entire background continuously. Regular devices retain the slow motion.
@@ -485,6 +489,7 @@ fun AetherBackground(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .layerBackdrop(liquidBackdrop)
                 .hazeSource(cardHaze)
                 .hazeSource(backdropHaze, zIndex = 0f)
                 .background(bg)
@@ -495,6 +500,7 @@ fun AetherBackground(
                 LocalCardHaze provides cardHaze,
                 LocalBackdropHaze provides backdropHaze,
                 LocalAuroraBackdrop provides auroraBackdrop,
+                LocalAetherLiquidBackdrop provides liquidBackdrop,
             ) {
                 content()
             }

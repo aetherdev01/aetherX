@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.core.ads.DailyBonusManager
 import com.aether.x.ui.components.SectionCard
 import com.aether.x.ui.theme.AetherGreen
@@ -102,7 +103,7 @@ fun DailyBonusCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Button(
+            LiquidButton(
                 onClick = { viewModel.claim(activity) },
                 enabled = !state.claimedToday && !state.claiming && !state.loading,
                 modifier = Modifier.height(40.dp),

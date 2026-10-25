@@ -8,8 +8,9 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.aether.x.ui.components.LiquidButton
+import com.aether.x.ui.components.LiquidToggle
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.BuildConfig
 import com.aether.x.data.AetherXPreferences
@@ -152,7 +153,7 @@ fun SettingsScreen(
                     Text(str(R.string.settings_getaran_sentuhan), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Text(str(R.string.settings_respons_haptik_pada_kontrol_yang), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(
+                LiquidToggle(
                     checked = prefs.hapticsEnabled,
                     onCheckedChange = { enabled -> scope.launch { preferences.setHapticsEnabled(enabled) } },
                 )
@@ -163,7 +164,7 @@ fun SettingsScreen(
                     Text(str(R.string.settings_kurangi_animasi), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Text(str(R.string.settings_kurangi_pergerakan_transisi_dan_animasi), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(
+                LiquidToggle(
                     checked = prefs.reduceMotionEnabled,
                     onCheckedChange = { enabled -> scope.launch { preferences.setReduceMotionEnabled(enabled) } },
                 )
@@ -187,7 +188,7 @@ fun SettingsScreen(
                 )
                 update.latestVersionCode > updateState.currentVersionCode -> {
                     SettingsInfoRow(str(R.string.settings_versi_tersedia), update.latestVersionName.ifBlank { str(R.string.settings_build, update.latestVersionCode) })
-                    Button(
+                    LiquidButton(
                         onClick = {
                             runCatching {
                                 val uri = Uri.parse(update.downloadUrl)

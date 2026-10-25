@@ -116,7 +116,7 @@ fun PermissionMethodCard(
                             contentColor = TextSecondary,
                             dotColor = null,
                         )
-                        Button(
+                        LiquidButton(
                             onClick = onAction,
                             enabled = !isRequesting,
                             shape = RoundedCornerShape(17.dp),

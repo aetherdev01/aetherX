@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.R
 import com.aether.x.core.locale.AppLanguage
 import com.aether.x.core.locale.LocaleManager
@@ -520,7 +521,7 @@ private fun RootAccessCard(
         }
 
         if (!rootGranted) {
-            Button(
+            LiquidButton(
                 onClick = onRequestRoot,
                 enabled = !checkingRoot,
                 modifier = Modifier.fillMaxWidth().height(49.dp),
@@ -899,7 +900,7 @@ private fun SetupBottomBar(
                 color = colors.onSurfaceVariant,
             )
         }
-        Button(
+        LiquidButton(
             onClick = onContinue,
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(16.dp),

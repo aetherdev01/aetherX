@@ -33,8 +33,6 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.aether.x.ui.components.LiquidToggle
 import com.aether.x.R
 import com.aether.x.data.CrosshairStyle
 import com.aether.x.ui.components.aetherCardSurface
@@ -167,7 +166,7 @@ fun CrosshairSettingsSection(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
-                Switch(
+                LiquidToggle(
                     checked = enabled,
                     onCheckedChange = { checked ->
                         if (checked && !overlayPermissionGranted) {

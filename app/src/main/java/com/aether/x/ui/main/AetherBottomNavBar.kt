@@ -71,18 +71,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.aether.x.ui.components.AuroraBlurLayer
-import com.aether.x.ui.components.LocalAuroraBackdrop
 import com.aether.x.ui.components.NativeBlurWindow
 import com.aether.x.ui.components.NativeBlurWindowState
 import com.aether.x.ui.components.blurRadiusFor
 import com.aether.x.ui.components.liquidGlassTintAlpha
+import com.aether.x.ui.components.rememberAetherLiquidBackdrop
 import com.aether.x.ui.components.rememberCrossWindowBlurEnabled
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur as backdropBlur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -207,15 +210,15 @@ data class AetherNavItem(
     val accent: Color,
 )
 
-/** true = coba window blur native OS (dialog); default menggunakan blur Haze inline. */
+/** true = coba window blur native OS (dialog); default memakai Backdrop inline. */
 private const val USE_NATIVE_NAV_BLUR = false
 
 /**
  * Tab bar capsule v3.14 — Liquid Glass dengan motion iOS-inspired.
  *
- *  - Jalur utama memakai Haze untuk memburamkan konten aktual di belakang navbar.
- *    Gaya iOS 27: tanpa drop shadow, border lebih tegas, kaca sedikit lebih solid.
- *  - AuroraBlurLayer hanya menjadi fallback ketika HazeState tidak tersedia.
+ *  - Jalur utama memakai Backdrop dari Kyant0/AndroidLiquidGlass untuk memburamkan
+ *    dan membiaskan latar aktual di belakang navbar. Border tegas, tanpa drop shadow.
+ *  - Pill aktif dan shader lensa custom dipertahankan agar motion/gesture lama tetap sama.
  *  - Opsional: USE_NATIVE_NAV_BLUR memindahkan navbar ke window dialog dengan blur
  *    native OS. Blur hanya berlaku pada latar capsule; floating pill tidak di-blur.
  *  - Pill digambar di fase DRAW dan semua nilai animasinya dibaca dari lambda
@@ -248,11 +251,7 @@ fun AetherBottomNavBar(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    /**
-     * State Haze bersama dari AetherBackground. Dashboard sudah mendaftarkan
-     * kontennya pada state ini; tab lain menambahkan sumber konten sendiri.
-     * null = fallback ke blur latar aurora.
-     */
+    /** Legacy parameter retained for existing call sites; inline liquid glass uses the shared Backdrop. */
     hazeState: HazeState? = null,
 ) {
     if (items.isEmpty()) return
@@ -268,6 +267,7 @@ fun AetherBottomNavBar(
     val surface = palette.surface
     val isDark = palette.isDark
     val scope = rememberCoroutineScope()
+    val liquidBackdrop = rememberAetherLiquidBackdrop()
 
     // Posisi pill dalam satuan "indeks slot" (0f..lastIndex). Dibaca HANYA di
     // lambda draw / graphicsLayer -> tidak memicu recomposition.
@@ -433,11 +433,11 @@ fun AetherBottomNavBar(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) LensShader.create() else null
     }
 
-    val blurOn = blur > 0.01f && (hazeState != null || LocalAuroraBackdrop.current != null)
+    val blurOn = blur > 0.01f
     // Radius lebih rendah menekan biaya blur off-screen, terutama saat scroll/transisi.
     val barBlurRadius = blurRadiusFor(blur).coerceAtMost(14f).dp
-    // Blur NATIVE sistem (window blur Android 12+). Bila OS mematikannya (hemat
-    // baterai dll.) atau slider = 0, jatuh ke blur sendiri (AuroraBlurLayer) di bawah.
+    // Blur native adalah jalur opsional. Pada jalur inline, Backdrop menangani blur
+    // sesuai slider dan tetap punya fallback aman ketika blur disetel ke 0.
     val crossWindowBlur = rememberCrossWindowBlurEnabled()
     val useNative = USE_NATIVE_NAV_BLUR && crossWindowBlur && blur > 0.01f
     val density = LocalDensity.current
@@ -597,67 +597,46 @@ fun AetherBottomNavBar(
                     .border(width = 1.dp, brush = rimBrush, shape = barShape),
             )
         } else {
-            // Fallback saja: bila HazeState tidak tersedia, buramkan salinan aurora.
-            // Tanpa drop shadow (iOS 27 menghilangkan bayangan pada Liquid Glass).
-            // Bar tetap pill biasa. Lensa (lebih tinggi sedikit dari bar) hanya menumpang di
-            // atasnya dan bening, jadi tepi bar tampak menerus di dalam lensa — di antara tepi
-            // bar dan tepi lensa terlihat pita gelap meruncing, persis seperti iOS. Di tab
-            // paling kiri/kanan ujung bar juga terlihat di dalam lensa.
+            // The base capsule now uses Kyant0/AndroidLiquidGlass Backdrop. The
+            // separately animated selected pill and custom lens overlay below are retained.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(barShape),
-            ) {
-                if (blurOn) {
-                    if (hazeState != null) {
-                        // Pakai satu backend blur saja. Haze memburamkan konten di
-                        // belakang kapsul; jangan menumpuknya dengan RenderEffect Aurora.
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .hazeEffect(state = hazeState) {
-                                    // Radius navbar dibatasi untuk menjaga beban GPU tetap wajar.
-                                    blurRadius = barBlurRadius
-                                    noiseFactor = 0.015f
-                                    backgroundColor = surface.copy(alpha = 0.035f)
-                                },
-                        )
-                    } else {
-                        AuroraBlurLayer(
-                            blurRadius = barBlurRadius,
-                            shape = barShape,
-                            modifier = Modifier.fillMaxSize(),
-                            alpha = 0.94f,
-                        )
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                // Pakai warna surface tema yang sama dengan kartu AetherX,
-                                // bukan tint putih khusus navbar. Dengan begitu Dark/Light dan
-                                // level Jernih, Tipis, Seimbang, Pekat, Solid konsisten.
-                                if (blurOn) {
-                                    listOf(
-                                        surface.copy(alpha = (glassTintAlpha * 0.92f).coerceIn(0f, 0.88f)),
-                                        surface.copy(alpha = (glassTintAlpha * 0.76f).coerceIn(0f, 0.82f)),
-                                    )
-                                } else {
-                                    // Samakan fallback tanpa blur dengan baseSurface pada
-                                    // aetherCardSurface agar tiap level tetap punya hasil serupa.
-                                    listOf(
-                                        surface.copy(alpha = 0.40f + 0.48f * glassLevel),
-                                        surface.copy(alpha = 0.34f + 0.42f * glassLevel),
-                                    )
-                                },
-                            ),
-                        )
-                        .border(width = 1.dp, brush = rimBrush, shape = barShape),
-                )
-            }
+                    .drawBackdrop(
+                        backdrop = liquidBackdrop,
+                        shape = { barShape },
+                        effects = {
+                            vibrancy()
+                            if (blurOn) backdropBlur(barBlurRadius.toPx())
+                            val level = glassLevel.coerceIn(0f, 1f)
+                            lens(
+                                (12f + 12f * level).dp.toPx(),
+                                (14f + 18f * level).dp.toPx(),
+                                chromaticAberration = level > 0.62f,
+                            )
+                        },
+                        highlight = {
+                            Highlight.Ambient.copy(alpha = 0.10f + 0.18f * glassLevel)
+                        },
+                        onDrawSurface = {
+                            val tintStops = if (blurOn) {
+                                listOf(
+                                    surface.copy(alpha = (glassTintAlpha * 0.92f).coerceIn(0f, 0.88f)),
+                                    surface.copy(alpha = (glassTintAlpha * 0.76f).coerceIn(0f, 0.82f)),
+                                )
+                            } else {
+                                listOf(
+                                    surface.copy(alpha = 0.40f + 0.48f * glassLevel),
+                                    surface.copy(alpha = 0.34f + 0.42f * glassLevel),
+                                )
+                            }
+                            drawRect(Brush.verticalGradient(tintStops))
+                        },
+                    )
+                    .border(width = 1.dp, brush = rimBrush, shape = barShape),
+            )
         }
+
 
         // ── Pill dasar (draw phase, TIDAK di-blur) ───────────────────────
         // Isi pill: solid abu-abu saat diam, kaca tipis saat ditahan/digeser. Garis tepi

@@ -29,8 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidToggle
 import com.aether.x.R
 import com.aether.x.core.appmanager.AppOrigin
 import com.aether.x.core.appmanager.InstalledAppEntry
@@ -410,11 +409,10 @@ private fun AppManagerRow(
             }
         }
 
-        Switch(
+        LiquidToggle(
             checked = !entry.isFrozen,
             onCheckedChange = { onToggle() },
             enabled = !isPending,
-            colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue),
         )
     }
 }

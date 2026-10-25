@@ -154,7 +154,7 @@ fun PopupDialog(
             }
 
             if (confirmLabel != null && onConfirm != null) {
-                Button(
+                LiquidButton(
                     onClick = onConfirm,
                     modifier = Modifier
                         .fillMaxWidth()

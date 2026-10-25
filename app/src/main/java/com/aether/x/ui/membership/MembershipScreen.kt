@@ -64,6 +64,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aether.x.ui.components.LiquidButton
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.R
 import com.aether.x.ui.components.PopupDialog
@@ -202,7 +203,7 @@ fun MembershipScreen(
                     )
                 }
 
-                Button(
+                LiquidButton(
                     onClick = viewModel::activate,
                     enabled = !isSubmitting,
                     modifier = Modifier
@@ -295,7 +296,7 @@ private fun MembershipProCard(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Button(
+        LiquidButton(
             onClick = {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(purchaseUrl))
                 try {
@@ -436,7 +437,7 @@ private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: 
                 }
             }
 
-            Button(
+            LiquidButton(
                 onClick = { showLogoutConfirm = true },
                 modifier = Modifier
                     .fillMaxWidth()
