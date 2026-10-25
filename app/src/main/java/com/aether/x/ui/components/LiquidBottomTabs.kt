@@ -203,6 +203,18 @@ fun LiquidBottomTabs(
             }
         }
 
+        // Animate press scale in composable scope; graphicsLayer's layerBlock is not composable.
+        val pressProgress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+        val targetPressScale = lerp(1f, 1.20f, pressProgress)
+        val springPressScale by animateFloatAsState(
+            targetValue = targetPressScale,
+            animationSpec = spring(
+                dampingRatio = 0.62f,
+                stiffness = 520f,
+            ),
+            label = "liquidCapsulePressSpring",
+        )
+
         // Track the capsule position continuously; tab icon/label colors use this progress.
         val selectionProgress: (Int) -> Float = { index ->
             (1f - abs(dampedDragAnimation.value - index.toFloat())).coerceIn(0f, 1f)
@@ -327,16 +339,6 @@ fun LiquidBottomTabs(
                             .fastCoerceIn(0.985f, 1.16f)
                         // Overshoot yang lebih jelas: saat hold/slide kapsul boleh sedikit
                         // keluar dari tinggi navbar, lalu memantul kembali dengan spring.
-                        val pressProgress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        val targetPressScale = lerp(1f, 1.20f, pressProgress)
-                        val springPressScale by animateFloatAsState(
-                            targetValue = targetPressScale,
-                            animationSpec = spring(
-                                dampingRatio = 0.62f,
-                                stiffness = 520f,
-                            ),
-                            label = "liquidCapsulePressSpring",
-                        )
                         val uniformScale = (dragScale * springPressScale).fastCoerceIn(0.985f, 1.20f)
                         scaleX = uniformScale
                         scaleY = uniformScale
