@@ -246,8 +246,9 @@ fun LiquidBottomTabs(
                         // Refractive colour fringe remains visible while idle, not only
                         // during a press. More-solid glass reduces this effect via settings.
                         if (lensScale > 0.001f) {
-                            val lensWidth = (16f + 8f * progress) * lensScale
-                            val lensHeight = (20f + 10f * progress) * lensScale
+                            // Refraction grows while the capsule is held or sliding.
+                            val lensWidth = (18f + 10f * progress) * lensScale
+                            val lensHeight = (22f + 14f * progress) * lensScale
                             lens(
                                 lensWidth.dp.toPx(),
                                 lensHeight.dp.toPx(),
@@ -271,10 +272,11 @@ fun LiquidBottomTabs(
                         )
                     },
                     layerBlock = {
-                        // Raised capsule with a restrained resting size; the original spring
-                        // animation still provides additional expansion and drag deformation.
-                        scaleX = 1.12f + (dampedDragAnimation.scaleX - 1f) * 0.48f
-                        scaleY = 1.20f + (dampedDragAnimation.scaleY - 1f) * 0.25f
+                        // Idle: capsule stays within the navbar height. While held/sliding,
+                        // it grows past the navbar edges like a raised liquid lens.
+                        val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
+                        scaleX = 1.06f + 0.17f * progress + (dampedDragAnimation.scaleX - 1f) * 0.10f
+                        scaleY = 0.96f + 0.38f * progress + (dampedDragAnimation.scaleY - 1f) * 0.06f
                         val velocity = dampedDragAnimation.velocity / 10f
                         scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
