@@ -138,7 +138,6 @@ fun LiquidBottomTabs(
         }
 
         val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
-        val panelOffsetState = rememberUpdatedState(panelOffset)
         val animationScope = rememberCoroutineScope()
         var currentIndex by remember(selectedTabReader) { mutableIntStateOf(selectedTabReader()) }
         val drag = remember { TabDragState() }
@@ -191,28 +190,20 @@ fun LiquidBottomTabs(
             }
         }
 
-        val interactiveHighlight = remember(animationScope, tabWidth) {
-            InteractiveHighlight(
-                animationScope = animationScope,
-                position = { size, _ ->
-                    Offset(
-                        if (isLtr) (dampedDragAnimation.value + 0.5f) * tabWidth + panelOffsetState.value
-                        else size.width - (dampedDragAnimation.value + 0.5f) * tabWidth + panelOffsetState.value,
-                        size.height / 2f,
-                    )
-                },
-            )
-        }
-
         // Track the capsule position continuously; tab icon/label colors use this progress.
         val selectionProgress: (Int) -> Float = { index ->
             (1f - abs(dampedDragAnimation.value - index.toFloat())).coerceIn(0f, 1f)
         }
 
+        // Warna base row mengikuti tab yang sedang di bawah kapsul saja (tanpa pewarnaan setengah).
+        val baseSelectionProgress: (Int) -> Float = { index ->
+            if (dampedDragAnimation.value.fastRoundToInt() == index) 1f else 0f
+        }
+
         // Base row: navbar kaca. Ikon di luar kapsul TIDAK ikut membesar saat ditahan.
         CompositionLocalProvider(
             LocalLiquidBottomTabScale provides { 1f },
-            LocalLiquidBottomTabSelectionProgress provides selectionProgress,
+            LocalLiquidBottomTabSelectionProgress provides baseSelectionProgress,
         ) {
             Row(
                 Modifier
@@ -228,7 +219,6 @@ fun LiquidBottomTabs(
                         },
                         onDrawSurface = { drawRect(containerColor) },
                     )
-                    .then(interactiveHighlight.modifier)
                     .height(barHeight)
                     .fillMaxWidth()
                     .padding(4f.dp)
@@ -238,12 +228,12 @@ fun LiquidBottomTabs(
             )
         }
 
-        // Layer "pita" navbar untuk lensa: salinan navbar (kaca + blur + highlight tepi) beserta ikon
-        // yang membesar 1.2x. Tidak terlihat langsung (alpha 0); hanya tampak lewat lensa kapsul,
-        // sehingga di dalam kapsul terlihat pita navbar yang dibiaskan.
+        // Layer "pita" navbar untuk lensa: salinan navbar yang LEBIH KECIL (setinggi kapsul idle)
+        // + ikon/label membesar 1.2x dan SEMUA berwarna accent. Tidak terlihat langsung (alpha 0);
+        // hanya tampak lewat lensa kapsul, jadi ikon/label yang dilewati kapsul ikut berwarna.
         CompositionLocalProvider(
             LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
-            LocalLiquidBottomTabSelectionProgress provides selectionProgress,
+            LocalLiquidBottomTabSelectionProgress provides { 1f },
         ) {
             Row(
                 Modifier
@@ -267,13 +257,16 @@ fun LiquidBottomTabs(
                                 )
                             }
                         },
-                        highlight = { Highlight.Default.copy(alpha = dampedDragAnimation.pressProgress) },
-                        onDrawSurface = { drawRect(containerColor) },
+                        highlight = { Highlight.Default.copy(alpha = 0f) },
+                        onDrawSurface = {
+                            drawRect(containerColor)
+                            // Kontras tambahan supaya pita kecil ini terbaca di dalam kapsul.
+                            drawRect(palette.textPrimary.copy(alpha = 0.10f))
+                        },
                     )
-                    .then(interactiveHighlight.modifier)
-                    .height(barHeight)
+                    .height(capsuleHeight)
                     .fillMaxWidth()
-                    .padding(4f.dp),
+                    .padding(horizontal = 4f.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
             )
@@ -302,10 +295,8 @@ fun LiquidBottomTabs(
                             )
                         }
                     },
-                    highlight = {
-                        val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        Highlight.Default.copy(alpha = 0.30f + 0.50f * progress)
-                    },
+                    // Tanpa highlight/glow putih di tepi kapsul.
+                    highlight = { Highlight.Default.copy(alpha = 0f) },
                     shadow = {
                         Shadow(alpha = 0.10f + 0.48f * dampedDragAnimation.pressProgress)
                     },
@@ -357,10 +348,7 @@ fun LiquidBottomTabs(
                     .height(barHeight)
                     .fillMaxWidth()
                     .padding(4f.dp)
-                    // highlight di dalam (memproses event lebih dulu) supaya tidak ikut ter-cancel
-                    // saat drag meng-consume gerakan.
-                    .then(dampedDragAnimation.modifier)
-                    .then(interactiveHighlight.gestureModifier),
+                    .then(dampedDragAnimation.modifier),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content,
             )
