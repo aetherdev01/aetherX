@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -78,6 +79,9 @@ internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 // Liquid Glass Level only changes tint/opacity.
 private const val NAVBAR_LENS_STRENGTH = 0.62f
 
+/** Blur minimum kaca navbar (dp). Elemen di belakang navbar selalu ter-blur, tidak pernah tajam. */
+internal const val NAV_MIN_BLUR_DP = 18f
+
 /** Continuous selection progress driven by the moving capsule, avoiding stale tab colors. */
 internal val LocalLiquidBottomTabSelectionProgress =
     staticCompositionLocalOf<(Int) -> Float> { { 0f } }
@@ -118,6 +122,14 @@ fun LiquidBottomTabs(
     val idleCapsuleFill = palette.textPrimary.copy(alpha = 0.10f + 0.06f * glass)
     val idleCapsuleAccent = palette.accent.copy(alpha = 0.12f)
     val containerColor = palette.surface.copy(alpha = liquidGlassTintAlpha(glass))
+    val navBlurDp = maxOf(blurRadiusFor(style.blur.coerceIn(0f, 1f)), NAV_MIN_BLUR_DP)
+    // Gradient tint vertikal: atas lebih bening, bawah lebih pekat.
+    val containerBrush = Brush.verticalGradient(
+        listOf(
+            containerColor.copy(alpha = (containerColor.alpha * 0.70f).coerceIn(0f, 1f)),
+            containerColor.copy(alpha = (containerColor.alpha * 1.15f).coerceIn(0f, 1f)),
+        ),
+    )
     val tabsBackdrop = rememberLayerBackdrop()
     val selectedTabReaderState = rememberUpdatedState(selectedTabIndex)
     val onTabSelectedState = rememberUpdatedState(onTabSelected)
@@ -213,11 +225,9 @@ fun LiquidBottomTabs(
                         shape = { Capsule() },
                         effects = {
                             vibrancy()
-                            if (style.blur > 0.01f) {
-                                blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
-                            }
+                            blur(navBlurDp.dp.toPx())
                         },
-                        onDrawSurface = { drawRect(containerColor) },
+                        onDrawSurface = { drawRect(containerBrush) },
                     )
                     .height(barHeight)
                     .fillMaxWidth()
@@ -247,21 +257,21 @@ fun LiquidBottomTabs(
                         effects = {
                             val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
                             vibrancy()
-                            if (style.blur > 0.01f) {
-                                blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
-                            }
+                            blur(navBlurDp.dp.toPx())
                             if (progress > 0.001f) {
                                 lens(
-                                    24f.dp.toPx() * progress * sizeFactor,
-                                    24f.dp.toPx() * progress * sizeFactor,
+                                    14f.dp.toPx() * progress * sizeFactor,
+                                    14f.dp.toPx() * progress * sizeFactor,
                                 )
                             }
                         },
-                        highlight = { Highlight.Default.copy(alpha = 0f) },
+                        // Rim tipis seperti navbar asli supaya bentuk pita terbaca di dalam kapsul.
+                        highlight = { Highlight.Default.copy(alpha = 0.55f) },
                         onDrawSurface = {
-                            drawRect(containerColor)
-                            // Kontras tambahan supaya pita kecil ini terbaca di dalam kapsul.
-                            drawRect(palette.textPrimary.copy(alpha = 0.10f))
+                            drawRect(containerBrush)
+                            // Kontras KUAT (terang di tema gelap, gelap di tema terang) agar pita
+                            // kecil ini jelas berbeda dari latar di dalam kapsul.
+                            drawRect(palette.textPrimary.copy(alpha = 0.22f))
                         },
                     )
                     .height(capsuleHeight)

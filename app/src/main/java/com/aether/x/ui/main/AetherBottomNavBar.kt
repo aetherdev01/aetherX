@@ -18,6 +18,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,10 +32,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aether.x.ui.components.LiquidBottomTab
 import com.aether.x.ui.components.LiquidBottomTabs
+import com.aether.x.ui.components.NAV_MIN_BLUR_DP
+import com.aether.x.ui.components.blurRadiusFor
 import com.aether.x.ui.components.liquidTabTint
 import com.aether.x.ui.components.rememberAetherLiquidBackdrop
 import com.aether.x.ui.theme.LocalAetherPalette
+import com.aether.x.ui.theme.LocalAetherStyle
 import com.aether.x.ui.theme.Spacing
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import dev.chrisbanes.haze.HazeState
 
 /** Tinggi navbar. Kapsul = tinggi ini - 8dp (inset 4dp). */
@@ -53,15 +66,55 @@ fun AetherBottomNavBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     @Suppress("UNUSED_PARAMETER") hazeState: HazeState? = null,
+    contentBackdrop: Backdrop? = null,
 ) {
     if (items.isEmpty()) return
 
     val palette = LocalAetherPalette.current
     val selectedState = rememberUpdatedState(selectedIndex.coerceIn(0, items.lastIndex))
     val selectedReader = remember { { selectedState.value } }
-    val backdrop = rememberAetherLiquidBackdrop()
+    val style = LocalAetherStyle.current
+    val baseBackdrop = rememberAetherLiquidBackdrop()
+    // Latar + konten layar yang scroll di belakang navbar -> kaca navbar mem-blur warna/bentuk
+    // elemen di belakangnya (selalu ter-blur, tidak tajam).
+    val backdrop = if (contentBackdrop != null) {
+        rememberCombinedBackdrop(baseBackdrop, contentBackdrop)
+    } else {
+        baseBackdrop
+    }
+    val stripBlurDp = maxOf(blurRadiusFor(style.blur.coerceIn(0f, 1f)) * 0.8f, NAV_MIN_BLUR_DP * 0.8f)
 
     Box(modifier = modifier.fillMaxWidth()) {
+        // Gradient blur di belakang navbar: blur + warna latar makin pekat ke bawah, memudar ke
+        // atas tanpa tepi keras.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.6f to Color.Black,
+                        ),
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { RectangleShape },
+                    effects = { blur(stripBlurDp.dp.toPx()) },
+                    onDrawSurface = {
+                        drawRect(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, palette.bg.copy(alpha = 0.45f)),
+                            ),
+                        )
+                    },
+                ),
+        )
+
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
