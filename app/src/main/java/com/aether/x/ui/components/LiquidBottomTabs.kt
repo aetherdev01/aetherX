@@ -37,11 +37,11 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -75,6 +75,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
+import kotlin.math.tanh
 
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
@@ -171,7 +172,8 @@ fun LiquidBottomTabs(
                     val index = if (isLtr) column else tabsCount - 1 - column
                     drag.target = index.toFloat()
                     drag.travelled = 0f
-                    updateValue(drag.target)
+                    // Lompat jauh: biarkan kapsul meluncur dengan spring, bukan snap instan.
+                    if (abs(value - drag.target) > 0.6f) animateToValue(drag.target) else updateValue(drag.target)
                 },
                 onDragStopped = {
                     val targetIndex = drag.target.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
@@ -188,8 +190,11 @@ fun LiquidBottomTabs(
                     drag.travelled += abs(dragAmount.x)
                     drag.target = (drag.target + dragAmount.x / w * if (isLtr) 1f else -1f)
                         .fastCoerceIn(0f, (tabsCount - 1).toFloat())
-                    updateValue(drag.target)
-                    animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
+                    // Jitter kecil saat tap tidak boleh membatalkan spring; baru ikut jari setelah benar-benar menggeser.
+                    if (drag.travelled >= tapSlopPx) {
+                        updateValue(drag.target)
+                        animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
+                    }
                 },
             )
         }
@@ -263,8 +268,8 @@ fun LiquidBottomTabs(
                             blur(navBlurDp.dp.toPx())
                             if (progress > 0.001f) {
                                 lens(
-                                    14f.dp.toPx() * progress * sizeFactor,
-                                    14f.dp.toPx() * progress * sizeFactor,
+                                    18f.dp.toPx() * progress * sizeFactor,
+                                    18f.dp.toPx() * progress * sizeFactor,
                                 )
                             }
                         },
@@ -277,9 +282,7 @@ fun LiquidBottomTabs(
                             drawRect(palette.textPrimary.copy(alpha = 0.05f))
                         },
                     )
-                    // Sedikit lebih rendah dari kapsul idle -> celah antara tepi kapsul dan pita
-                    // lebih lebar, jadi lensa yang lebih kuat tidak menutupi tepi pita.
-                    .height(capsuleHeight - 6f.dp)
+                    .height(capsuleHeight)
                     .fillMaxWidth()
                     .padding(horizontal = 4f.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -299,9 +302,9 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Chromatic lens hanya saat interaksi. Pembiasan dijaga < celah antara tepi
-                        // kapsul dan pita navbar (~12dp): lebih besar dari itu, isi pita ditarik
-                        // sampai menutupi celah dan pita terlihat memenuhi kapsul.
+                        // Chromatic lens hanya saat interaksi. Pembiasan sengaja TIPIS (< celah antara
+                        // tepi kapsul dan pita navbar ~9dp): lensa yang kuat menarik isi pita dari
+                        // dalam sampai menutupi celah, sehingga pita terlihat memenuhi kapsul.
                         // Pembesaran ikon berasal dari skala 1.2x pada pita, bukan dari lensa.
                         if (progress > 0.001f) {
                             lens(
@@ -311,7 +314,7 @@ fun LiquidBottomTabs(
                             )
                         }
                     },
-                    // Highlight bawaan dimatikan; pinggiran kapsul digambar sendiri (stroke) di onDrawSurface.
+                    // Tanpa highlight/glow putih di tepi kapsul.
                     highlight = { Highlight.Default.copy(alpha = 0f) },
                     shadow = {
                         Shadow(alpha = 0.10f + 0.48f * dampedDragAnimation.pressProgress)
@@ -326,11 +329,12 @@ fun LiquidBottomTabs(
                     layerBlock = {
                         // Skala pegas penuh (underdamped, overshoot) seragam di X/Y supaya lengkung
                         // kapsul tetap sebangun dengan navbar. Idle = 1f (inset 4dp rata).
-                        scaleX = dampedDragAnimation.scaleX
-                        scaleY = dampedDragAnimation.scaleY
+                        // Stretch searah gerak (simetris kiri/kanan), dibatasi halus dengan tanh agar
+                        // lompatan jauh / lonjakan velocity tidak membuat kapsul gepeng mendadak.
                         val velocity = dampedDragAnimation.velocity / 10f
-                        scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
-                        scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
+                        val stretch = 0.10f * tanh(abs(velocity) * 0.75f / 0.10f)
+                        scaleX = (dampedDragAnimation.scaleX * (1f + stretch)).fastCoerceIn(0.9f, 1.6f)
+                        scaleY = (dampedDragAnimation.scaleY * (1f - stretch * 0.5f)).fastCoerceIn(0.9f, 1.6f)
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
@@ -341,19 +345,23 @@ fun LiquidBottomTabs(
                         drawRect(idleCapsuleAccent, alpha = idle)
                         if (progress > 0f) {
                             drawRect(palette.accent.copy(alpha = 0.025f * progress))
-                            // Pinggiran (stroke) kapsul saat ditahan: terang di atas, memudar ke bawah.
-                            val sw = 2.2f.dp.toPx()
-                            val rimTop = Color.White.copy(alpha = 0.95f * progress)
-                            val rimBottom =
-                                if (palette.isDark) Color.White.copy(alpha = 0.40f * progress)
-                                else palette.stroke.copy(alpha = 0.80f * progress)
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(listOf(rimTop, rimBottom)),
-                                topLeft = Offset(sw / 2f, sw / 2f),
-                                size = Size(size.width - sw, size.height - sw),
-                                cornerRadius = CornerRadius((size.height - sw) / 2f),
-                                style = Stroke(width = sw),
-                            )
+                            // Pinggiran agak buram seperti stroke tipis: beberapa stroke lebar -> tipis,
+                            // alpha makin kecil ke luar, hanya muncul saat ditahan / digeser.
+                            val r = size.height / 2f
+                            fun ring(widthDp: Float, a: Float) {
+                                val w = widthDp.dp.toPx()
+                                val inset = w / 2f + 0.5f.dp.toPx()
+                                drawRoundRect(
+                                    color = Color.White.copy(alpha = a * progress),
+                                    topLeft = Offset(inset, inset),
+                                    size = Size(size.width - inset * 2f, size.height - inset * 2f),
+                                    cornerRadius = CornerRadius(r - inset, r - inset),
+                                    style = Stroke(width = w),
+                                )
+                            }
+                            ring(4.5f, 0.05f)
+                            ring(3f, 0.09f)
+                            ring(1.6f, 0.20f)
                         }
                     },
                 )

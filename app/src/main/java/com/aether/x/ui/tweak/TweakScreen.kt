@@ -649,13 +649,11 @@ private fun Modifier.drawerLensPanel(
     val p = LocalAetherPalette.current
     val style = LocalAetherStyle.current
     val levelAlpha = liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f))
-    // Blur dibuat tipis: lens/chromatic dihitung SETELAH blur, jadi isi yang terlalu kabur
-    // tidak punya detail untuk dibiaskan dan efeknya tidak terlihat.
-    val blurDp = (blurRadiusFor(style.blur.coerceIn(0f, 1f)) * 0.55f).coerceIn(5f, 12f)
+    val blurDp = (blurRadiusFor(style.blur.coerceIn(0f, 1f)) * 2.15f).coerceIn(14f, 38f)
     val tint = androidx.compose.ui.graphics.Brush.verticalGradient(
         listOf(
-            p.surface.copy(alpha = (levelAlpha * 0.75f).coerceIn(0.08f, 0.94f)),
-            p.surface.copy(alpha = (levelAlpha * 0.75f * 0.82f).coerceIn(0.06f, 0.90f)),
+            p.surface.copy(alpha = (levelAlpha * 0.62f).coerceIn(0.06f, 0.94f)),
+            p.surface.copy(alpha = (levelAlpha * 0.62f * 0.82f).coerceIn(0.05f, 0.90f)),
         ),
     )
     return this.drawBackdrop(
@@ -664,8 +662,8 @@ private fun Modifier.drawerLensPanel(
         effects = {
             blur(blurDp.dp.toPx())
             lens(
-                36f.dp.toPx(),
-                56f.dp.toPx(),
+                16f.dp.toPx(),
+                26f.dp.toPx(),
                 chromaticAberration = true,
             )
         },
