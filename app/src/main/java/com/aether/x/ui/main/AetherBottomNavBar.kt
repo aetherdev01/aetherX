@@ -79,7 +79,7 @@ fun AetherBottomNavBar(
                 items.forEachIndexed { index, item ->
                     LiquidBottomTab(onClick = { onSelect(index) }) {
                         val isSelected = index == selectedState.value
-                        val tint = if (isSelected) item.accent else palette.textSecondary
+                        val tint = if (isSelected) palette.accent else palette.textSecondary
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.label,

@@ -8,7 +8,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -50,6 +48,7 @@ import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
 import com.aether.x.ui.theme.LocalAetherStyle
+import com.aether.x.ui.theme.LocalAetherPalette
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
@@ -81,13 +80,14 @@ fun LiquidBottomTabs(
     content: @Composable RowScope.() -> Unit,
 ) {
     if (tabsCount <= 0) return
-    val isLightTheme = !isSystemInDarkTheme()
     val style = LocalAetherStyle.current
+    val palette = LocalAetherPalette.current
     val glass = style.glassLevel.coerceIn(0f, 1f)
-    val lensScale = glass
-    val accentColor = if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF)
-    val containerAlpha = 0.24f + 0.40f * glass
-    val containerColor = if (isLightTheme) Color(0xFFFAFAFA).copy(containerAlpha) else Color(0xFF121212).copy(containerAlpha)
+    // Level 0 is the clearest glass; as the tint gets more solid, refraction fades.
+    val lensScale = (1f - glass).coerceIn(0f, 1f)
+    val accentColor = palette.accent
+    val containerAlpha = liquidGlassTintAlpha(glass)
+    val containerColor = palette.surface.copy(alpha = containerAlpha)
     val tabsBackdrop = rememberLayerBackdrop()
     val selectedTabReaderState = rememberUpdatedState(selectedTabIndex)
     val onTabSelectedState = rememberUpdatedState(onTabSelected)
@@ -169,8 +169,12 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         vibrancy()
-                        if (style.blur > 0.01f) blur((2f + 10f * style.blur.coerceIn(0f, 1f)).dp.toPx())
-                        lens(24f.dp.toPx() * lensScale, 24f.dp.toPx() * lensScale)
+                        if (style.blur > 0.01f) {
+                            blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
+                        }
+                        if (lensScale > 0.001f) {
+                            lens(24f.dp.toPx() * lensScale, 24f.dp.toPx() * lensScale)
+                        }
                     },
                     layerBlock = {
                         val progress = dampedDragAnimation.pressProgress
@@ -201,8 +205,16 @@ fun LiquidBottomTabs(
                         effects = {
                             val progress = dampedDragAnimation.pressProgress
                             vibrancy()
-                            if (style.blur > 0.01f) blur((2f + 10f * style.blur.coerceIn(0f, 1f)).dp.toPx())
-                            lens(24f.dp.toPx() * lensScale * progress, 24f.dp.toPx() * lensScale * progress)
+                            if (style.blur > 0.01f) {
+                                blur(blurRadiusFor(style.blur.coerceIn(0f, 1f)).dp.toPx())
+                            }
+                            // Keep the duplicate backdrop in sync with settings, while
+                            // preserving some refraction at rest (not only while pressed).
+                            if (lensScale > 0.001f) {
+                                val lensWidth = (18f + 6f * progress) * lensScale
+                                val lensHeight = (20f + 8f * progress) * lensScale
+                                lens(lensWidth.dp.toPx(), lensHeight.dp.toPx())
+                            }
                         },
                         highlight = { Highlight.Default.copy(alpha = dampedDragAnimation.pressProgress) },
                         onDrawSurface = { drawRect(containerColor) },
@@ -231,25 +243,47 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
-                        lens(10f.dp.toPx() * lensScale * progress, 14f.dp.toPx() * lensScale * progress, chromaticAberration = true)
+                        // Refractive colour fringe remains visible while idle, not only
+                        // during a press. More-solid glass reduces this effect via settings.
+                        if (lensScale > 0.001f) {
+                            val lensWidth = (16f + 8f * progress) * lensScale
+                            val lensHeight = (20f + 10f * progress) * lensScale
+                            lens(
+                                lensWidth.dp.toPx(),
+                                lensHeight.dp.toPx(),
+                                chromaticAberration = true,
+                            )
+                        }
                     },
-                    highlight = { Highlight.Default.copy(alpha = dampedDragAnimation.pressProgress) },
-                    shadow = { Shadow(alpha = dampedDragAnimation.pressProgress) },
+                    highlight = {
+                        val strength = (0.26f + 0.42f * lensScale + 0.20f * dampedDragAnimation.pressProgress)
+                            .coerceIn(0.18f, 0.90f)
+                        Highlight.Default.copy(alpha = strength)
+                    },
+                    shadow = {
+                        Shadow(alpha = 0.12f + 0.48f * dampedDragAnimation.pressProgress)
+                    },
                     innerShadow = {
                         val progress = dampedDragAnimation.pressProgress
-                        InnerShadow(radius = 8f.dp * progress, alpha = progress)
+                        InnerShadow(
+                            radius = (4f + 5f * progress).dp * lensScale,
+                            alpha = (0.12f + 0.24f * lensScale + 0.48f * progress).coerceIn(0f, 0.9f),
+                        )
                     },
                     layerBlock = {
-                        scaleX = dampedDragAnimation.scaleX
-                        scaleY = dampedDragAnimation.scaleY
+                        // Raised capsule with a restrained resting size; the original spring
+                        // animation still provides additional expansion and drag deformation.
+                        scaleX = 1.12f + (dampedDragAnimation.scaleX - 1f) * 0.48f
+                        scaleY = 1.20f + (dampedDragAnimation.scaleY - 1f) * 0.25f
                         val velocity = dampedDragAnimation.velocity / 10f
                         scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress
-                        drawRect(if (isLightTheme) Color.Black.copy(0.1f) else Color.White.copy(0.1f), alpha = 1f - progress)
-                        drawRect(Color.Black.copy(alpha = 0.03f * progress))
+                        val idleTint = palette.surface.copy(alpha = 0.07f + 0.12f * glass)
+                        drawRect(idleTint, alpha = 1f - progress)
+                        drawRect(palette.accent.copy(alpha = 0.035f * lensScale * progress))
                     },
                 )
                 .height(56f.dp)
