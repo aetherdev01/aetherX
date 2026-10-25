@@ -200,69 +200,6 @@ private fun lensPath(r: LensRect): Path = Path().apply {
     )
 }
 
-/**
- * Bentuk bar yang "menyatu" dengan lensa (gooey): profil setengah-tinggi bar digabung dengan
- * profil lensa lewat smooth-max, sehingga di dekat lensa tepi bar menekuk/menonjol halus
- * mengikuti lensa. [k] = radius penghalusan (0 = tanpa penyatuan, hanya bar biasa).
- * Koordinat: lebar [w]; bar setinggi [barH] berpusat vertikal di [extra] + barH/2.
- */
-private fun mergedBarPath(
-    canvasW: Float,
-    ox: Float,
-    w: Float,
-    oy: Float,
-    barH: Float,
-    lens: LensRect,
-    k: Float,
-    dip: Float,
-    fall: Float,
-): Path {
-    val br = barH / 2f
-    val cy = oy + br
-    val cx = ox + w / 2f
-    val lr = lens.height / 2f
-    val flat = (lens.width / 2f - lr).coerceAtLeast(0f)
-    val ll = lens.left
-    val lrr = lens.left + lens.width
-    // Tepi bar menukik ke arah tengah saat mendekati sisi kiri/kanan lensa (leher yang
-    // menyatu seperti cairan), sedalam [dip] dan dimulai [fall] px sebelum lensa.
-    fun dive(x: Float): Float {
-        if (dip <= 0f) return br
-        val sd = max(max(ll - x, x - lrr), 0f)
-        val u = (1f - sd / fall).coerceIn(0f, 1f)
-        return br - dip * (u * u * (3f - 2f * u))
-    }
-    fun barE(x: Float): Float {
-        val dx = (kotlin.math.abs(x - cx) - (w / 2f - br)).coerceAtLeast(0f)
-        return min(sqrt((br * br - dx * dx).coerceAtLeast(0f)), dive(x))
-    }
-    fun lensE(x: Float): Float {
-        val dx = kotlin.math.abs(x - lens.centerX) - flat
-        if (dx <= 0f) return lr
-        if (dx >= lr) return 0f
-        return sqrt(lr * lr - dx * dx)
-    }
-    fun e(x: Float): Float {
-        val a = barE(x)
-        val b = lensE(x)
-        if (k <= 0f || b <= 0.01f) return max(a, b)
-        val h = (k - kotlin.math.abs(a - b)).coerceAtLeast(0f) / k
-        return max(a, b) + h * h * k * 0.25f
-    }
-    // Rentang x diperluas bila lensa menonjol melewati ujung bar.
-    val xs = max(0f, min(ox, lens.left))
-    val xe = min(canvasW, max(ox + w, lens.left + lens.width))
-    val n = 200
-    // Jarak cosine: sampel rapat di kedua ujung agar tutup bulat tetap mulus.
-    fun xAt(i: Int): Float = xs + (1f - kotlin.math.cos(Math.PI.toFloat() * i / n)) / 2f * (xe - xs)
-    return Path().apply {
-        moveTo(xs, cy - e(xs))
-        for (i in 1..n) lineTo(xAt(i), cy - e(xAt(i)))
-        for (i in n downTo 0) lineTo(xAt(i), cy + e(xAt(i)))
-        close()
-    }
-}
-
 data class AetherNavItem(
     val icon: ImageVector,
     val label: String,
@@ -641,14 +578,6 @@ fun AetherBottomNavBar(
         val growBy = if (nat) 4.dp else 14.dp
         // Tambahan pembesaran salinan ikon di dalam lensa (di atas skala ikon bawaan).
         val lensMagnify = 0.18f
-        // Tinggi bar yang tampak di dalam lensa mengecil: 0.20 = jadi 80% tinggi bar.
-        val lensBarShrink = 0.18f
-        // Jarak (sebelum sisi lensa) tempat tepi bar mulai menukik ke arah lensa.
-        val barDive = 36.dp
-        // Kanvas kaca bar dibuat lebih tinggi sebesar ini (atas & bawah) agar tonjolan tak terpotong.
-        val glassExtra = 10.dp
-        val glassExtraX = 24.dp
-
         // Border gaya iOS 27: lebih tegas dan jelas, bukan lagi mengandalkan bayangan.
         val rimBrush = Brush.verticalGradient(
             listOf(
@@ -670,38 +599,14 @@ fun AetherBottomNavBar(
         } else {
             // Fallback saja: bila HazeState tidak tersedia, buramkan salinan aurora.
             // Tanpa drop shadow (iOS 27 menghilangkan bayangan pada Liquid Glass).
+            // Bar tetap pill biasa. Lensa (lebih tinggi sedikit dari bar) hanya menumpang di
+            // atasnya dan bening, jadi tepi bar tampak menerus di dalam lensa — di antara tepi
+            // bar dan tepi lensa terlihat pita gelap meruncing, persis seperti iOS. Di tab
+            // paling kiri/kanan ujung bar juga terlihat di dalam lensa.
             Box(
                 modifier = Modifier
-                    .layout { measurable, constraints ->
-                        val extra = glassExtra.roundToPx()
-                        val extraX = glassExtraX.roundToPx()
-                        val p = measurable.measure(
-                            constraints.copy(
-                                minWidth = constraints.maxWidth + extraX * 2,
-                                maxWidth = constraints.maxWidth + extraX * 2,
-                                minHeight = constraints.maxHeight + extra * 2,
-                                maxHeight = constraints.maxHeight + extra * 2,
-                            ),
-                        )
-                        layout(constraints.maxWidth, constraints.maxHeight) { p.place(-extraX, -extra) }
-                    }
-                    .drawWithContent {
-                        // Bentuk kaca = bar yang menyatu halus dengan lensa (lihat mergedBarPath).
-                        val extra = glassExtra.toPx()
-                        val extraX = glassExtraX.toPx()
-                        val barSize = Size(size.width - extraX * 2f, size.height - extra * 2f)
-                        val l0 = lensRectOf(barSize, this, growBy)
-                        val lr = LensRect(l0.left + extraX, l0.top + extra, l0.width, l0.height, l0.speed)
-                        val active = (1f - pillSolidness.value).coerceIn(0f, 1f)
-                        val path = mergedBarPath(size.width, extraX, barSize.width, extra, barSize.height, lr, 8.dp.toPx() * active,
-                            dip = barSize.height / 2f * lensBarShrink * active, fall = barDive.toPx())
-                        clipPath(path) { this@drawWithContent.drawContent() }
-                        // Garis tepi bar mengikuti bentuk gabungan, kecuali di dalam lensa
-                        // (lensa punya rim sendiri) supaya tidak ada garis dobel.
-                        clipPath(lensPath(lr), clipOp = ClipOp.Difference) {
-                            drawPath(path, brush = rimBrush, style = Stroke(width = 1.dp.toPx()))
-                        }
-                    },
+                    .fillMaxSize()
+                    .clip(barShape),
             ) {
                 if (blurOn) {
                     if (hazeState != null) {
@@ -720,7 +625,7 @@ fun AetherBottomNavBar(
                     } else {
                         AuroraBlurLayer(
                             blurRadius = barBlurRadius,
-                            shape = RectangleShape,
+                            shape = barShape,
                             modifier = Modifier.fillMaxSize(),
                             alpha = 0.94f,
                         )
@@ -748,7 +653,8 @@ fun AetherBottomNavBar(
                                     )
                                 },
                             ),
-                        ),
+                        )
+                        .border(width = 1.dp, brush = rimBrush, shape = barShape),
                 )
             }
         }
@@ -839,62 +745,6 @@ fun AetherBottomNavBar(
                         size = Size((w - 4.dp.toPx()).coerceAtLeast(0f), h * 0.55f),
                         cornerRadius = corner,
                     )
-
-                    // Tepi bar MASUK ke dalam lensa (ala iOS): di luar lensa tepi bar lurus; begitu
-                    // menyentuh lensa ia melengkung landai ke dalam (bar tampak sedikit mengecil),
-                    // lalu keluar lagi di sisi seberang. Di tab paling kiri/kanan lensa menonjol
-                    // melewati ujung bar, dan tutup bulat bar tampak di dalam lensa. Blur bar tetap
-                    // utuh; area lensa di luar bar mini dibuat sedikit lebih bening.
-                    if (lens > 0.01f) {
-                        val cy = size.height / 2f
-                        val barHalf = size.height / 2f
-                        val miniHalf = barHalf * (1f - lensBarShrink * lens)
-                        val fall = barDive.toPx()
-                        fun half(x: Float): Float {
-                            // Kelanjutan kurva tepi bar dari luar lensa (lihat mergedBarPath).
-                            val sd = max(max(r.left - x, x - (r.left + r.width)), 0f)
-                            val u = (1f - sd / fall).coerceIn(0f, 1f)
-                            val t = barHalf + (miniHalf - barHalf) * (u * u * (3f - 2f * u))
-                            // Tutup bulat di ujung bar (0 di luar bar).
-                            val dx = (abs(x - size.width / 2f) - (size.width / 2f - miniHalf)).coerceAtLeast(0f)
-                            val cap = sqrt((miniHalf * miniHalf - dx * dx).coerceAtLeast(0f))
-                            return min(t, cap)
-                        }
-                        val xa = max(r.left, 0f)
-                        val xb = min(r.left + r.width, size.width)
-                        val tint = Color.White.copy(alpha = (if (isDark) 0.08f else 0.18f) * lens)
-                        clipPath(lensPath(r)) {
-                            if (xb > xa) {
-                                val steps = 80
-                                val top = Path()
-                                val bottom = Path()
-                                val fill = Path()
-                                for (i in 0..steps) {
-                                    val x = xa + (xb - xa) * i / steps
-                                    if (i == 0) {
-                                        top.moveTo(x, cy - half(x))
-                                        bottom.moveTo(x, cy + half(x))
-                                        fill.moveTo(x, cy - half(x))
-                                    } else {
-                                        top.lineTo(x, cy - half(x))
-                                        bottom.lineTo(x, cy + half(x))
-                                        fill.lineTo(x, cy - half(x))
-                                    }
-                                }
-                                for (i in steps downTo 0) {
-                                    val x = xa + (xb - xa) * i / steps
-                                    fill.lineTo(x, cy + half(x))
-                                }
-                                fill.close()
-                                clipPath(fill, clipOp = ClipOp.Difference) { drawRect(tint) }
-                                val edge = Color.White.copy(alpha = (if (isDark) 0.26f else 0.50f) * lens)
-                                drawPath(top, color = edge, style = Stroke(width = 1.dp.toPx()))
-                                drawPath(bottom, color = edge, style = Stroke(width = 1.dp.toPx()))
-                            } else {
-                                drawRect(tint)
-                            }
-                        }
-                    }
                 },
         )
 
@@ -999,8 +849,8 @@ fun AetherBottomNavBar(
 
                     // 1) Pita gelap tipis di tepi atas & bawah: isi lensa menekuk di tepi,
                     //    seperti yang tampak pada lensa iOS.
-                    val bandH = 5.dp.toPx().coerceAtMost(h * 0.18f)
-                    val bandAlpha = (if (isDark) 0.16f else 0.08f) * lens
+                    val bandH = 4.dp.toPx().coerceAtMost(h * 0.20f)
+                    val bandAlpha = (if (isDark) 0.50f else 0.24f) * lens
                     clipPath(lensPath(r)) {
                         drawRect(
                             brush = Brush.verticalGradient(
