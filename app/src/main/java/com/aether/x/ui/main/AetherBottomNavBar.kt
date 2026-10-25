@@ -1,11 +1,14 @@
 package com.aether.x.ui.main
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -16,19 +19,21 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.aether.x.ui.components.LiquidBottomTab
-import com.aether.x.ui.components.LocalLiquidBottomTabSelectionProgress
 import com.aether.x.ui.components.LiquidBottomTabs
+import com.aether.x.ui.components.liquidTabTint
 import com.aether.x.ui.components.rememberAetherLiquidBackdrop
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.Spacing
 import dev.chrisbanes.haze.HazeState
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.size
+
+/** Tinggi navbar. Kapsul = tinggi ini - 8dp (inset 4dp). */
+private val NavBarHeight: Dp = 56.dp
 
 /** Navigation item model retained for all existing call sites. */
 data class AetherNavItem(
@@ -39,8 +44,7 @@ data class AetherNavItem(
 
 /**
  * AetherX bottom navigation rendered with the LiquidBottomTabs implementation from
- * Kyant0/AndroidLiquidGlass. The Haze argument is retained for source compatibility; the
- * backdrop engine samples the shared AetherBackground layer instead.
+ * Kyant0/AndroidLiquidGlass. The Haze argument is retained for source compatibility.
  */
 @Composable
 fun AetherBottomNavBar(
@@ -57,53 +61,55 @@ fun AetherBottomNavBar(
     val selectedReader = remember { { selectedState.value } }
     val backdrop = rememberAetherLiquidBackdrop()
 
-    Box(
-        modifier = modifier
-            .navigationBarsPadding()
-            .fillMaxWidth()
-            .padding(vertical = Spacing.md),
-        contentAlignment = Alignment.Center,
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
-                .padding(horizontal = Spacing.xxl + Spacing.sm)
-                .widthIn(max = 440.dp)
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .fillMaxWidth()
-                .height(60.dp),
+                .padding(vertical = Spacing.sm),
+            contentAlignment = Alignment.Center,
         ) {
-            LiquidBottomTabs(
-                selectedTabIndex = selectedReader,
-                onTabSelected = onSelect,
-                backdrop = backdrop,
-                tabsCount = items.size,
-                modifier = Modifier.fillMaxSize(),
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = Spacing.xxl + Spacing.md)
+                    .widthIn(max = 380.dp)
+                    .fillMaxWidth()
+                    .height(NavBarHeight),
             ) {
-                items.forEachIndexed { index, item ->
-                    LiquidBottomTab(onClick = { onSelect(index) }, index = index) {
-                        val selectionProgress = LocalLiquidBottomTabSelectionProgress.current
-                        val progress = selectionProgress(index).coerceIn(0f, 1f)
-                        // Keep the active tab at full accent opacity; color follows the capsule
-                        // position continuously so the old tab cannot retain a stale accent.
-                        val tint = lerp(
-                            palette.textSecondary.copy(alpha = 1f),
-                            palette.accent.copy(alpha = 1f),
-                            progress,
-                        )
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = item.label,
-                            tint = tint,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Text(
-                            text = item.label,
-                            color = tint,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                        )
+                LiquidBottomTabs(
+                    selectedTabIndex = selectedReader,
+                    onTabSelected = onSelect,
+                    backdrop = backdrop,
+                    tabsCount = items.size,
+                    modifier = Modifier.fillMaxSize(),
+                    barHeight = NavBarHeight,
+                ) {
+                    items.forEachIndexed { index, item ->
+                        LiquidBottomTab(onClick = { onSelect(index) }) {
+                            // Warna dasar textSecondary; crossfade ke accent mengikuti kapsul (fase draw).
+                            Column(
+                                modifier = Modifier.liquidTabTint(index, palette.accent.copy(alpha = 1f)),
+                                verticalArrangement = Arrangement.spacedBy(1.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(
+                                    imageVector = item.icon,
+                                    contentDescription = item.label,
+                                    tint = palette.textSecondary.copy(alpha = 1f),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    text = item.label,
+                                    color = palette.textSecondary.copy(alpha = 1f),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 9.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
                     }
                 }
             }
