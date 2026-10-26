@@ -548,7 +548,6 @@ private fun LiveSystemMonitorCard(
     }
 }
 
-@Composable
 /** Single-line text that shrinks (down to [minScale]) instead of being cut off with an ellipsis. */
 @Composable
 private fun FitText(
