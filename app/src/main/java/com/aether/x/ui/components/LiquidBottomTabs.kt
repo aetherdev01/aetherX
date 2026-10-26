@@ -34,15 +34,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -79,15 +74,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.sign
 import kotlin.math.tanh
 
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
-
-// Keep optical strength stable across Clear/Thin/Balanced/Dense/Solid.
-// Liquid Glass Level only changes tint/opacity.
-private const val NAVBAR_LENS_STRENGTH = 0.62f
 
 /** Blur minimum kaca navbar (dp). Elemen di belakang navbar selalu ter-blur, tidak pernah tajam. */
 internal const val NAV_MIN_BLUR_DP = 18f
@@ -110,19 +100,14 @@ private const val CAPSULE_MAGNIFY = 1.2f
 private const val CAPSULE_PRESSED_SCALE = 78f / 56f
 
 /**
- * Lensa kapsul. Tinggi dijaga ~sama dengan celah kapsul-pita (~9dp setelah skala) supaya pita tidak
- * "memenuhi" kapsul; kekuatan pembiasan ([CAPSULE_LENS_AMOUNT_DP]) yang dinaikkan agar fringe
- * chromatic aberration (merah/biru di tepi) terlihat jelas. Naikkan ke 12-14 bila masih kurang.
+ * Lensa kapsul: amount lebih besar menghasilkan fringe merah/biru yang lebih jelas. Tinggi tetap
+ * dijaga supaya efek refraksi tidak memenuhi seluruh kapsul.
  */
-private const val CAPSULE_LENS_HEIGHT_DP = 8f
-private const val CAPSULE_LENS_AMOUNT_DP = 10f
+private const val CAPSULE_LENS_HEIGHT_DP = 8.5f
+private const val CAPSULE_LENS_AMOUNT_DP = 17f
 
-/**
- * Stroke tipis ber-blur di tepi kapsul saat ditahan/digeser: [CAPSULE_RIM_LAYER_ALPHA] per lapis,
- * ditumpuk dari lapis tipis (terang di tepi) sampai lapis lebar (memudar ke dalam) = efek blur.
- */
-private const val CAPSULE_RIM_LAYER_ALPHA = 0.085f
-private val CAPSULE_RIM_LAYER_WIDTHS_DP = floatArrayOf(1.0f, 2.0f, 3.4f, 5.0f)
+/** Aberasi tipis tetap aktif saat idle; interaksi menaikkannya sampai kekuatan penuh. */
+private const val CAPSULE_LENS_IDLE_PROGRESS = 0.28f
 
 /**
  * Squash & stretch kapsul saat bergerak. Simetris kiri/kanan, jenuh halus (tanh) dan kecil, jadi
@@ -198,26 +183,6 @@ private class CapsuleTravel(private val scope: CoroutineScope) {
 }
 
 /**
- * Stroke tipis ber-blur di tepi kapsul: beberapa stroke inset dengan lebar bertingkat dan alpha
- * rendah ditumpuk, sehingga paling terang tepat di tepi lalu memudar ke dalam (mirip blur tipis).
- * Digambar di dalam clip kapsul. [scale] = skala layer kapsul agar lebar visual tetap konstan.
- */
-private fun DrawScope.drawSoftCapsuleRim(color: Color, progress: Float, scale: Float) {
-    val layerColor = color.copy(alpha = color.alpha * CAPSULE_RIM_LAYER_ALPHA * progress)
-    for (widthDp in CAPSULE_RIM_LAYER_WIDTHS_DP) {
-        val strokeWidth = widthDp.dp.toPx() / scale
-        val half = strokeWidth / 2f
-        drawRoundRect(
-            color = layerColor,
-            topLeft = Offset(half, half),
-            size = Size(max(0f, size.width - strokeWidth), max(0f, size.height - strokeWidth)),
-            cornerRadius = CornerRadius(max(0f, (size.height - strokeWidth) / 2f)),
-            style = Stroke(width = strokeWidth),
-        )
-    }
-}
-
-/**
  * Liquid BottomTabs (pola capsule/pill Kyant0/AndroidLiquidGlass).
  *
  * Interaksi:
@@ -243,9 +208,9 @@ fun LiquidBottomTabs(
     val glass = style.glassLevel.coerceIn(0f, 1f)
     val capsuleHeight = barHeight - 8f.dp
     val sizeFactor = capsuleHeight.value / 56f
-    // Idle capsule: warna KONTRAS + wash accent supaya selalu terlihat di semua Glass Level.
-    val idleCapsuleFill = palette.textPrimary.copy(alpha = 0.10f + 0.06f * glass)
-    val idleCapsuleAccent = palette.accent.copy(alpha = 0.12f)
+    // Kapsul idle memakai tint aksen yang bening, bukan abu-abu dari textPrimary.
+    val idleCapsuleFill = palette.accent.copy(alpha = 0.075f + 0.025f * glass)
+    val idleCapsuleAccent = palette.accent.copy(alpha = 0.035f)
     val containerColor = palette.surface.copy(alpha = liquidGlassTintAlpha(glass))
     val navBlurDp = maxOf(blurRadiusFor(style.blur.coerceIn(0f, 1f)), NAV_MIN_BLUR_DP)
     // Gradient tint vertikal: atas lebih bening, bawah lebih pekat.
@@ -362,6 +327,7 @@ fun LiquidBottomTabs(
                             vibrancy()
                             blur(navBlurDp.dp.toPx())
                         },
+                        highlight = { Highlight.Default.copy(alpha = 0.14f) },
                         onDrawSurface = { drawRect(containerBrush) },
                     )
                     .height(barHeight)
@@ -400,13 +366,12 @@ fun LiquidBottomTabs(
                                 )
                             }
                         },
-                        // Rim tipis seperti navbar asli supaya bentuk pita terbaca di dalam kapsul.
-                        highlight = { Highlight.Default.copy(alpha = 0.55f) },
+                        // Rim highlight sangat halus agar tidak membentuk garis putih/abu-abu.
+                        highlight = { Highlight.Default.copy(alpha = 0.10f) },
                         onDrawSurface = {
-                            // Tint yang sama dengan navbar asli (bening), cukup dibedakan dari latar
-                            // di dalam kapsul lewat rim highlight + sedikit angkat warna.
+                            // Pertahankan tint kaca transparan dengan sedikit aksen, tanpa wash putih/abu.
                             drawRect(containerBrush)
-                            drawRect(palette.textPrimary.copy(alpha = 0.05f))
+                            drawRect(palette.accent.copy(alpha = 0.025f))
                         },
                     )
                     .height(capsuleHeight)
@@ -429,29 +394,27 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
-                        // Chromatic lens hanya saat interaksi. TINGGI lensa dijaga <= celah antara
-                        // tepi kapsul dan pita navbar (~9dp): lensa yang terlalu lebar menarik isi pita
-                        // sampai menutupi celah, sehingga pita terlihat memenuhi kapsul. Yang dinaikkan
-                        // hanya kekuatan pembiasan (amount) -> fringe chromatic lebih tegas.
-                        // Pembesaran ikon berasal dari skala [CAPSULE_MAGNIFY] pada pita, bukan dari lensa.
-                        if (progress > 0.001f) {
-                            lens(
-                                CAPSULE_LENS_HEIGHT_DP.dp.toPx() * progress * sizeFactor,
-                                CAPSULE_LENS_AMOUNT_DP.dp.toPx() * progress * sizeFactor,
-                                chromaticAberration = true,
-                            )
-                        }
+                        // Chromatic aberration tetap tampak tipis ketika kapsul diam, lalu menguat
+                        // saat disentuh/ditarik. Amount lebih besar memperjelas fringe pelangi merah-biru
+                        // tanpa menambah garis rim putih. Tinggi lensa tetap kecil agar isi tidak penuh.
+                        val opticalProgress = lerp(CAPSULE_LENS_IDLE_PROGRESS, 1f, progress)
+                        lens(
+                            CAPSULE_LENS_HEIGHT_DP.dp.toPx() * opticalProgress * sizeFactor,
+                            CAPSULE_LENS_AMOUNT_DP.dp.toPx() * opticalProgress * sizeFactor,
+                            chromaticAberration = true,
+                        )
                     },
                     // Tanpa highlight/glow putih di tepi kapsul.
                     highlight = { Highlight.Default.copy(alpha = 0f) },
                     shadow = {
-                        Shadow(alpha = 0.10f + 0.48f * dampedDragAnimation.pressProgress)
+                        // Bayangan dijaga lembut agar tepi kapsul tidak tampak abu-abu gelap.
+                        Shadow(alpha = 0.045f + 0.16f * dampedDragAnimation.pressProgress)
                     },
                     innerShadow = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
                         InnerShadow(
-                            radius = 8f.dp * progress,
-                            alpha = progress,
+                            radius = 5f.dp * progress,
+                            alpha = 0.12f * progress,
                         )
                     },
                     layerBlock = {
@@ -483,20 +446,12 @@ fun LiquidBottomTabs(
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
                         val idle = 1f - progress
-                        // Idle: warna kontras agar kapsul terlihat. Ditahan: memudar -> pita navbar
-                        // yang dibiaskan lensa terlihat di dalam kapsul.
+                        // Idle: tint aksen bening. Ditahan: fill memudar agar refraksi pita navbar
+                        // terlihat jelas di dalam kapsul.
                         drawRect(idleCapsuleFill, alpha = idle)
                         drawRect(idleCapsuleAccent, alpha = idle)
                         if (progress > 0f) {
                             drawRect(palette.accent.copy(alpha = 0.025f * progress))
-                        }
-                        // Ditahan/digeser: stroke tipis ber-blur di tepi kapsul (bukan glow putih).
-                        if (progress > 0.001f) {
-                            drawSoftCapsuleRim(
-                                color = palette.textPrimary,
-                                progress = progress,
-                                scale = lerp(1f, CAPSULE_PRESSED_SCALE, progress),
-                            )
                         }
                     },
                 )
