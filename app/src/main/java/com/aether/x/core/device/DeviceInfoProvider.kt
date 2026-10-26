@@ -8,8 +8,10 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.SystemClock
 import android.os.StatFs
+import com.aether.x.core.monitor.SystemStatsProvider
 import java.io.File
 import java.util.Locale
+import kotlin.math.abs
 
 data class DeviceInfoSnapshot(
     val manufacturer: String,
@@ -30,11 +32,17 @@ data class DeviceInfoSnapshot(
     /** 0..100, atau -1 kalau tidak terbaca. */
     val batteryPercent: Int = -1,
     val batteryTempC: Float? = null,
+    /** Best-effort readable thermal-zone temperature; null when unavailable. */
+    val systemTempC: Float? = null,
     val isCharging: Boolean = false,
+    /** Fuel-gauge current while actively charging, in microamps; null if unsupported. */
+    val batteryChargeCurrentMicroAmps: Long? = null,
+    /** Battery terminal voltage from ACTION_BATTERY_CHANGED, in millivolts. */
+    val batteryVoltageMilliVolts: Int? = null,
+    /** Estimated power delivered to the battery (current × battery voltage), not USB input power. */
+    val batteryChargePowerWatts: Float? = null,
     val uptimeMillis: Long = 0L,
     val refreshRateHz: Float = 0f,
-    /** CPU/SoC thermal sensor when the ROM exposes a readable thermal zone. */
-    val systemTempC: Float? = null,
 ) {
     val usedRamBytes: Long get() = (totalRamBytes - availableRamBytes).coerceAtLeast(0L)
     val usedStorageBytes: Long get() = (totalStorageBytes - availableStorageBytes).coerceAtLeast(0L)
@@ -66,8 +74,32 @@ object DeviceInfoProvider {
         val batteryPercent = if (level >= 0 && scale > 0) (level * 100f / scale).toInt() else -1
         val tempTenths = battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE) ?: Int.MIN_VALUE
         val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-            status == BatteryManager.BATTERY_STATUS_FULL
+        // FULL means the battery is full, not necessarily that current is still flowing.
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING
+        val batteryVoltageMv = battery?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)
+            ?.takeIf { it > 0 }
+        val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        val chargeCurrentUa = if (charging) {
+            runCatching {
+                batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+            }.getOrNull()
+                ?.takeIf { it != null && it != Int.MIN_VALUE && it != 0 }
+                ?.toLong()
+                ?.let { abs(it) }
+                ?.takeIf { it > 0L }
+        } else {
+            null
+        }
+        // This is battery-side power estimated from the fuel-gauge current and
+        // battery voltage. It is not the charger/USB input power, which Android
+        // does not expose consistently across OEMs.
+        val chargePowerW = if (chargeCurrentUa != null && batteryVoltageMv != null) {
+            (chargeCurrentUa.toDouble() * batteryVoltageMv.toDouble() / 1_000_000_000.0)
+                .toFloat()
+                .takeIf { it.isFinite() && it > 0f }
+        } else {
+            null
+        }
 
         val refreshRate = runCatching {
             (context.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager)
@@ -91,32 +123,16 @@ object DeviceInfoProvider {
             kernelVersion = System.getProperty("os.version").orEmpty(),
             cpuCores = Runtime.getRuntime().availableProcessors(),
             batteryPercent = batteryPercent,
-            batteryTempC = if (tempTenths >= 0) tempTenths / 10f else null,
+            batteryTempC = if (tempTenths != Int.MIN_VALUE) tempTenths / 10f else null,
+            systemTempC = runCatching { SystemStatsProvider().readThermalZoneTemperatureCelsius() }.getOrNull(),
             isCharging = charging,
+            batteryChargeCurrentMicroAmps = chargeCurrentUa,
+            batteryVoltageMilliVolts = batteryVoltageMv,
+            batteryChargePowerWatts = chargePowerW,
             uptimeMillis = SystemClock.elapsedRealtime(),
             refreshRateHz = refreshRate,
-            systemTempC = readSystemThermalTemperature(),
         )
     }
-
-    /** Best-effort SoC/CPU/GPU temperature. Restricted thermal zones simply return null. */
-    private fun readSystemThermalTemperature(): Float? = runCatching {
-        val thermalDir = File("/sys/class/thermal")
-        val zones = thermalDir.listFiles { file -> file.name.startsWith("thermal_zone") } ?: return null
-        val readings = zones.mapNotNull { zone ->
-            val raw = File(zone, "temp").takeIf { it.canRead() }?.readText()?.trim()?.toLongOrNull()
-                ?: return@mapNotNull null
-            val celsius = if (raw > 1_000L) raw / 1_000f else raw.toFloat()
-            if (celsius !in 10f..110f) return@mapNotNull null
-            val type = File(zone, "type").takeIf { it.canRead() }?.readText()?.trim()?.lowercase(Locale.ROOT).orEmpty()
-            type to celsius
-        }
-        val nonBattery = readings.filterNot { (type, _) -> type.contains("battery") }
-        val candidates = nonBattery.ifEmpty { readings }
-        candidates.firstOrNull { (type, _) ->
-            type.contains("cpu") || type.contains("soc") || type.contains("gpu") || type.contains("ap")
-        }?.second ?: candidates.maxByOrNull { it.second }?.second
-    }.getOrNull()
 }
 
 fun Long.toGbLabel(): String {

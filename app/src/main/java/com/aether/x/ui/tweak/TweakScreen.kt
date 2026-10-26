@@ -16,15 +16,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -94,7 +95,6 @@ import com.aether.x.ui.components.LiquidOutlinedButton
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.ui.components.LocalBackdropHaze
 import com.aether.x.ui.components.glassPanel
-import com.aether.x.ui.components.blurRadiusFor
 import com.aether.x.ui.components.liquidGlassTintAlpha
 import com.aether.x.ui.components.rememberAetherLiquidBackdrop
 import com.aether.x.ui.theme.LocalAetherPalette
@@ -104,7 +104,6 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
 import dev.chrisbanes.haze.hazeSource
@@ -130,15 +129,28 @@ import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.DashboardGameMonitorSection
 import com.aether.x.ui.dashboard.RecentlyPlayedGamesSection
 import com.aether.x.ui.dashboard.DashboardViewModel
-import com.aether.x.ui.dashboard.DashboardOverviewSection
+import com.aether.x.ui.dashboard.DashboardOverviewCardContent
+import com.aether.x.ui.dashboard.rememberDashboardOverviewMotion
 import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.monitor.GameMonitorScreen
 import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.longPressDraggableHandle
+import sh.calvin.reorderable.rememberReorderableLazyGridState
 import com.aether.x.core.locale.str
+
+private val DASHBOARD_FULL_SPAN_CARD_IDS = setOf(
+    "live_monitor",
+    "temperature",
+    "charging",
+    "storage",
+    "system_details",
+    "recent_games",
+    "game_monitor",
+)
 
 @Composable
 fun TweakScreen(
@@ -158,7 +170,7 @@ fun TweakScreen(
     val backdropHaze = LocalBackdropHaze.current
     val ownHaze = rememberHazeState(blurEnabled = true)
     val drawerHaze = backdropHaze ?: ownHaze
-    // Backdrop Liquid Glass drawer: latar aurora + isi layar Tweak (SIBLING sheet, bukan induknya).
+    // Drawer memakai backdrop hanya untuk efek lens/warna; blur sengaja tidak diterapkan.
     val drawerContentBackdrop = rememberLayerBackdrop()
     val drawerBackdrop = rememberCombinedBackdrop(rememberAetherLiquidBackdrop(), drawerContentBackdrop)
     val coroutineScope = rememberCoroutineScope()
@@ -208,6 +220,15 @@ fun TweakScreen(
         }
     }
 
+    LaunchedEffect(selectedSubTab) {
+        if (selectedSubTab == TweakSubTab.DASHBOARD) {
+            while (true) {
+                dashboardViewModel.refreshDeviceInfo()
+                delay(12_000L)
+            }
+        }
+    }
+
     LaunchedEffect(privilegeStatus.rootGranted) {
         val needsRoot = selectedSubTab == TweakSubTab.KERNEL_MANAGER ||
             selectedSubTab == TweakSubTab.BUILD_PROP ||
@@ -230,9 +251,7 @@ fun TweakScreen(
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                // Keep the blur panel stretched over the complete drawer height.
-                // Without an explicit height, some nested screens (Game Profile,
-                // App Manager and Build.prop) can leave the lower part unblurred.
+                // Keep the lens panel stretched over the complete drawer height.
                 modifier = Modifier
                     .fillMaxHeight()
                     .drawerLensPanel(
@@ -270,7 +289,8 @@ fun TweakScreen(
                     .weight(1f)
                     .then(
 
-                        if (selectedSubTab == TweakSubTab.GAME_PROFILE ||
+                        if (selectedSubTab == TweakSubTab.DASHBOARD ||
+                            selectedSubTab == TweakSubTab.GAME_PROFILE ||
                             selectedSubTab == TweakSubTab.GAME_MONITOR ||
                             selectedSubTab == TweakSubTab.GAME_LIBRARY ||
                             selectedSubTab == TweakSubTab.APP_MANAGER ||
@@ -303,8 +323,16 @@ fun TweakScreen(
                 )
 
                 if (selectedSubTab == TweakSubTab.DASHBOARD) {
+                    val dashboardMotion = rememberDashboardOverviewMotion()
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        // Occupy the remaining viewport below the app header so the
+                        // LazyVerticalGrid has bounded height and can own scrolling.
+                        // Without this weight, grid reordering/drag hit-testing can
+                        // break on some screen sizes because the parent wraps content.
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(horizontal = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
@@ -318,44 +346,52 @@ fun TweakScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Text(
+                            text = str(R.string.dashboard_overview_reorder_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                        )
                     }
 
-                    // Long-press sebuah card lalu geser untuk mengubah urutan —
+                    // Each overview tile is an independent reorderable item. Keep the
+                    // outer parent non-scrollable so drag gestures aren't intercepted.
+                    // Long-press a card, drag it, and save the order on release.
                     // tidak ada lagi tombol "Atur urutan" terpisah maupun panah
                     // naik/turun. reorderable menahan scroll induk selama drag
                     // aktif sehingga geser tidak konflik dengan verticalScroll
                     // di Column pembungkus.
-                    val listState = rememberLazyListState()
-                    val reorderState = rememberReorderableLazyListState(
-                        lazyListState = listState,
+                    val gridState = rememberLazyGridState()
+                    val reorderState = rememberReorderableLazyGridState(
+                        lazyGridState = gridState,
                     ) { from, to ->
                         dashboardViewModel.swapCards(from.index, to.index)
                     }
 
-                    LazyColumn(
-                        state = listState,
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        state = gridState,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 4000.dp),
+                            .weight(1f),
                         verticalArrangement = Arrangement.spacedBy(Spacing.section),
-                        userScrollEnabled = false,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.section),
                     ) {
-                        itemsIndexed(dashboardState.cardOrder, key = { _, cardId -> cardId }) { index, cardId ->
+                        itemsIndexed(
+                            items = dashboardState.cardOrder,
+                            key = { _, cardId -> cardId },
+                            span = { _, cardId ->
+                                GridItemSpan(if (cardId in DASHBOARD_FULL_SPAN_CARD_IDS) maxLineSpan else 1)
+                            },
+                        ) { index, cardId ->
                             ReorderableItem(reorderState, key = cardId) { isDragging ->
-                                // Elevation/shadow pakai spring (bukan tween) supaya
-                                // card terasa terangkat saat ditahan dan kembali elastis
-                                // ke tempatnya saat dilepas.
                                 val elevation by animateDpAsState(
                                     targetValue = if (isDragging) 20.dp else 0.dp,
                                     animationSpec = spring(
-                                        dampingRatio = if (isDragging) {
-                                            Spring.DampingRatioLowBouncy
-                                        } else {
-                                            Spring.DampingRatioMediumBouncy
-                                        },
+                                        dampingRatio = if (isDragging) Spring.DampingRatioLowBouncy
+                                        else Spring.DampingRatioMediumBouncy,
                                         stiffness = Spring.StiffnessMediumLow,
                                     ),
-                                    label = "cardDragElevation",
+                                    label = "dashboardCardDragElevation",
                                 )
                                 Box(
                                     modifier = Modifier
@@ -364,15 +400,18 @@ fun TweakScreen(
                                         .dragPopEffect(isDragging = isDragging)
                                         .shadow(elevation, MaterialTheme.shapes.medium)
                                         .longPressDraggableHandle(
-                                            onDragStopped = {
-                                                dashboardViewModel.saveCardOrder()
-                                            },
+                                            onDragStopped = { dashboardViewModel.saveCardOrder() },
                                         ),
                                 ) {
                                     when (cardId) {
-                                        "overview" -> DashboardOverviewSection(
-                                            info = dashboardState.deviceInfo,
-                                        )
+                                        "live_monitor", "temperature", "battery_temperature", "charging",
+                                        "battery", "ram", "storage", "system_details", "android", "hardware", "root_access" ->
+                                            DashboardOverviewCardContent(
+                                                cardId = cardId,
+                                                info = dashboardState.deviceInfo,
+                                                rootGranted = privilegeStatus.rootGranted,
+                                                motion = dashboardMotion,
+                                            )
                                         "recent_games" -> RecentlyPlayedGamesSection(
                                             games = dashboardState.recentPlayedGames,
                                             loading = dashboardState.loadingGames,
@@ -637,8 +676,7 @@ private fun cpuGovernorLabel(governor: CpuGovernor): String = when (governor) {
 private enum class TweakSubTab { DASHBOARD, TWEAK, GAME_LIBRARY, GAME_PROFILE, GAME_MONITOR, V310_CENTER, KERNEL_MANAGER, APP_MANAGER, BUILD_PROP, ROOT_MONITOR, POWER, KERNEL_TOOLS, TERMINAL }
 
 /**
- * Panel drawer Liquid Glass: blur backdrop + lens (pembiasan di tepi) + chromatic aberration.
- * Menggantikan blur Haze pada drawer; tint tetap mengikuti Liquid Glass Level & Blur Intensity.
+ * Drawer panel: no blur. Only edge lens/refraction and chromatic aberration are applied.
  */
 @Composable
 private fun Modifier.drawerLensPanel(
@@ -647,8 +685,8 @@ private fun Modifier.drawerLensPanel(
 ): Modifier {
     val p = LocalAetherPalette.current
     val style = LocalAetherStyle.current
+    // Glass tint still follows the user's Glass Level; Blur Intensity is not used here.
     val levelAlpha = liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f))
-    val blurDp = (blurRadiusFor(style.blur.coerceIn(0f, 1f)) * 2.15f).coerceIn(14f, 38f)
     val tint = androidx.compose.ui.graphics.Brush.verticalGradient(
         listOf(
             p.surface.copy(alpha = (levelAlpha * 0.62f).coerceIn(0.06f, 0.94f)),
@@ -659,7 +697,6 @@ private fun Modifier.drawerLensPanel(
         backdrop = backdrop,
         shape = { shape },
         effects = {
-            blur(blurDp.dp.toPx())
             lens(
                 16f.dp.toPx(),
                 26f.dp.toPx(),

@@ -31,7 +31,10 @@ data class DashboardUiState(
     val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
 
-private val DEFAULT_CARD_ORDER = listOf("overview", "recent_games", "game_monitor")
+private val DEFAULT_CARD_ORDER = listOf(
+    "live_monitor", "temperature", "battery_temperature", "battery", "charging", "ram",
+    "root_access", "storage", "system_details", "android", "hardware", "recent_games", "game_monitor",
+)
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -47,11 +50,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private var cardOrderDirty = false
 
     init {
-        // Device/thermal sensor reads can touch several sysfs files; keep them off the main thread.
-        viewModelScope.launch {
-            val info = withContext(Dispatchers.IO) { DeviceInfoProvider.read(application) }
-            _state.update { it.copy(deviceInfo = info) }
-        }
+        _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(application)) }
         GameSessionRepository.initialize(application.applicationContext)
         loadGames()
         observeLastPlayed()

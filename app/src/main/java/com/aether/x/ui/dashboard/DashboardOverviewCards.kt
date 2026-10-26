@@ -48,8 +48,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +90,169 @@ import kotlin.math.sin
 private val MetricGreen = Color(0xFF29B765)
 private val MetricAmber = Color(0xFFFFB74D)
 private val MetricRed = Color(0xFFFF6868)
+
+/** Shared animation clock: list items animate independently without creating an animation clock per card. */
+data class DashboardOverviewMotion internal constructor(
+    val glow: State<Float>,
+    val phase: State<Float>,
+)
+
+@Composable
+fun rememberDashboardOverviewMotion(): DashboardOverviewMotion {
+    val transition = rememberInfiniteTransition(label = "dashboard-card-motion")
+    val glow = transition.animateFloat(
+        initialValue = 0.035f,
+        targetValue = 0.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2_600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "dashboard-card-glow",
+    )
+    val phase = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 5_500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "dashboard-card-phase",
+    )
+    return remember(transition, glow, phase) { DashboardOverviewMotion(glow, phase) }
+}
+
+/** A single independently reorderable Dashboard card. */
+@Composable
+fun DashboardOverviewCardContent(
+    cardId: String,
+    info: DeviceInfoSnapshot?,
+    rootGranted: Boolean,
+    motion: DashboardOverviewMotion,
+) {
+    val glow by motion.glow
+    val phase by motion.phase
+    val palette = LocalAetherPalette.current
+    val battery = info?.batteryPercent?.takeIf { it in 0..100 }
+    val ramFraction = info?.ramUsedFraction?.coerceIn(0f, 1f)
+    val storageFraction = info?.storageUsedFraction?.coerceIn(0f, 1f)
+    val systemTemperature = info?.systemTempC
+    val batteryTemperature = info?.batteryTempC
+
+    when (cardId) {
+        "live_monitor" -> LiveSystemMonitorCard(
+            info = info,
+            temperature = systemTemperature,
+            batteryPercent = battery,
+            ramPercent = ramFraction?.let { (it * 100f).toInt() },
+            glow = glow,
+            phase = phase,
+        )
+        "temperature" -> MetricCard(
+            title = str(R.string.dashboard_overview_temperature),
+            value = systemTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
+                ?: str(R.string.dashboard_overview_unavailable),
+            detail = if (info != null) str(R.string.dashboard_overview_soc_temperature_detail)
+                else str(R.string.dashboard_overview_temperature_fallback_detail),
+            icon = Icons.Outlined.DeviceThermostat,
+            accent = when {
+                systemTemperature == null -> palette.accent
+                systemTemperature >= 60f -> MetricRed
+                systemTemperature >= 45f -> MetricAmber
+                else -> MetricGreen
+            },
+            progress = systemTemperature?.div(85f)?.coerceIn(0f, 1f),
+            glow = glow,
+            wide = true,
+            cardHeight = 92.dp,
+        )
+        "battery_temperature" -> MetricCard(
+            title = str(R.string.dashboard_overview_battery_temperature),
+            value = batteryTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
+                ?: str(R.string.dashboard_overview_unavailable),
+            detail = str(R.string.dashboard_overview_battery_temperature_detail),
+            icon = Icons.Outlined.BatteryChargingFull,
+            accent = if (batteryTemperature != null && batteryTemperature >= 42f) MetricAmber else palette.accent,
+            progress = batteryTemperature?.div(60f)?.coerceIn(0f, 1f),
+            glow = glow,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "charging" -> ChargingPowerCard(info = info, glow = glow, phase = phase)
+        "battery" -> MetricCard(
+            title = str(R.string.dashboard_overview_battery),
+            value = battery?.let { "$it%" } ?: str(R.string.dashboard_overview_unavailable),
+            detail = battery?.let { str(R.string.dashboard_overview_battery_remaining_format, it) }
+                ?: str(R.string.dashboard_overview_battery_unknown_detail),
+            icon = Icons.Outlined.BatteryFull,
+            accent = when {
+                battery == null -> palette.accent
+                battery <= 15 -> MetricRed
+                battery <= 35 -> MetricAmber
+                else -> MetricGreen
+            },
+            progress = battery?.div(100f),
+            invertProgress = true,
+            glow = glow,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "ram" -> MetricCard(
+            title = str(R.string.dashboard_overview_ram),
+            value = ramFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
+            detail = info?.let { "${it.usedRamBytes.toGbLabel()} / ${it.totalRamBytes.toGbLabel()}" }
+                ?: str(R.string.dashboard_overview_usage_unavailable),
+            icon = Icons.Outlined.Memory,
+            accent = when {
+                ramFraction == null -> palette.accent
+                ramFraction >= 0.88f -> MetricRed
+                ramFraction >= 0.72f -> MetricAmber
+                else -> palette.accent
+            },
+            progress = ramFraction,
+            glow = glow,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "storage" -> MetricCard(
+            title = str(R.string.dashboard_overview_storage),
+            value = storageFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
+            detail = info?.let { "${it.usedStorageBytes.toGbLabel()} / ${it.totalStorageBytes.toGbLabel()}" }
+                ?: str(R.string.dashboard_overview_usage_unavailable),
+            icon = Icons.Outlined.SdStorage,
+            accent = when {
+                storageFraction == null -> palette.accent
+                storageFraction >= 0.90f -> MetricRed
+                storageFraction >= 0.75f -> MetricAmber
+                else -> palette.accent
+            },
+            progress = storageFraction,
+            glow = glow,
+            wide = true,
+            cardHeight = 92.dp,
+        )
+        "system_details" -> SystemDetailsCard(
+            nowElapsed = SystemClock.elapsedRealtime(),
+            glow = glow,
+        )
+        "android" -> AndroidVersionCard(
+            info = info,
+            glow = glow,
+            phase = phase,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "hardware" -> DeviceHardwareCard(
+            info = info,
+            glow = glow,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "root_access" -> MetricCard(
+            title = str(R.string.dashboard_overview_root_access),
+            value = str(if (rootGranted) R.string.dashboard_monitor_cards_root_on else R.string.dashboard_monitor_cards_root_off),
+            detail = str(R.string.dashboard_overview_root_access_detail),
+            icon = Icons.Outlined.Settings,
+            accent = if (rootGranted) MetricGreen else MetricAmber,
+            glow = glow,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
 /** Live device cards. Sensor and usage values are refreshed only while this section is composed. */
 @Composable
@@ -394,6 +559,152 @@ private fun MiniTelemetryValue(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
+private fun ChargingPowerCard(
+    info: DeviceInfoSnapshot?,
+    glow: Float,
+    phase: Float,
+) {
+    val palette = LocalAetherPalette.current
+    val charging = info?.isCharging == true
+    val accent = if (charging) MetricGreen else palette.accent
+    val currentMa = info?.batteryChargeCurrentMicroAmps?.div(1000f)
+    val powerW = info?.batteryChargePowerWatts
+    val shape = RoundedCornerShape(24.dp)
+    val status = str(if (charging) R.string.dashboard_overview_charging_active else R.string.dashboard_overview_charging_inactive)
+    val powerText = powerW?.let { String.format(Locale.getDefault(), "%.2f W", it) }
+        ?: str(R.string.dashboard_overview_charging_power_unavailable)
+    val currentText = currentMa?.let { String.format(Locale.getDefault(), "%.0f mA", it) }
+        ?: str(R.string.dashboard_overview_charging_current_unavailable)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(122.dp)
+            .aetherCardSurface(shape = shape, accent = accent)
+            .drawBehind {
+                drawRoundRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            accent.copy(alpha = if (charging) 0.10f + glow * 0.48f else 0.035f + glow * 0.10f),
+                            palette.accentSoft.copy(alpha = 0.04f + if (charging) glow * 0.14f else 0f),
+                            Color.Transparent,
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(size.width, size.height),
+                    ),
+                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx()),
+                )
+                if (charging) {
+                    drawRoundRect(
+                        color = accent.copy(alpha = 0.24f + glow * 0.55f),
+                        topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                        size = Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
+                        cornerRadius = CornerRadius(23.dp.toPx(), 23.dp.toPx()),
+                        style = Stroke(width = (1f + glow * 5f) * density),
+                    )
+                    // Small travelling highlight makes charging state visible without a heavy shimmer layer.
+                    val travelX = ((phase / (2f * PI.toFloat())).mod(1f)) * size.width
+                    drawCircle(
+                        color = accent.copy(alpha = 0.32f + glow * 0.56f),
+                        radius = (2.0f + glow * 4f) * density,
+                        center = Offset(travelX.coerceIn(8.dp.toPx(), size.width - 8.dp.toPx()), 2.dp.toPx()),
+                    )
+                }
+            }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(37.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = if (charging) 0.20f + glow * 0.32f else 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.BatteryChargingFull,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(21.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = str(R.string.dashboard_overview_charging_monitor_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = powerText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+                Text(
+                    text = str(R.string.dashboard_overview_charging_power_label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "${str(R.string.dashboard_overview_charging_current_label)}: $currentText",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = str(R.string.dashboard_overview_charging_estimate),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.86f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Canvas(modifier = Modifier.fillMaxWidth().height(7.dp)) {
+            val count = 44
+            val step = size.width / count
+            val barWidth = step * 0.50f
+            repeat(count) { index ->
+                val wave = (sin((index * 0.38f + phase * 1.8f).toDouble()).toFloat() + 1f) * 0.5f
+                val height = if (charging) size.height * (0.22f + wave * 0.78f) else size.height * 0.22f
+                drawRoundRect(
+                    color = accent.copy(alpha = if (charging) 0.22f + wave * (0.40f + glow) else 0.12f),
+                    topLeft = Offset(index * step + (step - barWidth) * 0.5f, size.height - height),
+                    size = Size(barWidth, height),
+                    cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+                )
+            }
+        }
     }
 }
 

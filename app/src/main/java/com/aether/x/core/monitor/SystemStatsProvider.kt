@@ -53,10 +53,11 @@ class SystemStatsProvider {
             if (tenthsOfCelsius > 0) tenthsOfCelsius / 10f else null
         }.getOrNull()
 
-        return fromBattery ?: readThermalZoneCelsius()
+        return fromBattery ?: readThermalZoneTemperatureCelsius()
     }
 
-    private fun readThermalZoneCelsius(): Float? = runCatching {
+    /** Read a kernel thermal zone directly; null means the ROM does not expose a usable zone. */
+    fun readThermalZoneTemperatureCelsius(): Float? = runCatching {
         val thermalDir = File("/sys/class/thermal")
         val zones = thermalDir.listFiles { f -> f.name.startsWith("thermal_zone") } ?: return null
 

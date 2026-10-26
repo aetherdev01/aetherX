@@ -18,7 +18,10 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * Daftar ID card Dashboard yang valid. Kartu baru otomatis disisipkan pada
  * posisi default-nya untuk tetap mempertahankan urutan custom milik pengguna.
  */
-private val DEFAULT_DASHBOARD_CARD_ORDER = listOf("overview", "recent_games", "game_monitor")
+private val DEFAULT_DASHBOARD_CARD_ORDER = listOf(
+    "live_monitor", "temperature", "battery_temperature", "battery", "charging", "ram",
+    "root_access", "storage", "system_details", "android", "hardware", "recent_games", "game_monitor",
+)
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
 
