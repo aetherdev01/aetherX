@@ -518,7 +518,8 @@ fun LiquidSlider(
             )
         }
 
-        val glassScale = effectStrength(style.glassLevel)
+        // Slider lens is intentionally independent from app-wide Liquid Glass intensity.
+        val glassScale = 1f
         Box(
             Modifier
                 .graphicsLayer {
