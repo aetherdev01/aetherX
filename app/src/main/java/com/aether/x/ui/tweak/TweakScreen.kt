@@ -330,7 +330,6 @@ fun TweakScreen(
                         // break on some screen sizes because the parent wraps content.
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
                             .padding(horizontal = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
