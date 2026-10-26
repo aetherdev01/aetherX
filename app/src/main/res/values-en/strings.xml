@@ -966,6 +966,11 @@
     <string name="dashboard_overview_charging_current_unavailable">— mA</string>
     <string name="dashboard_overview_charging_estimate">Battery-side estimate</string>
     <string name="dashboard_overview_reorder_hint">Long-press a card and drag it to rearrange the Dashboard.</string>
+    <string name="dashboard_root_status_no_access">No root access</string>
+    <string name="dashboard_root_status_granted">Root detected</string>
+    <string name="dashboard_root_status_not_detected">Superuser access not detected</string>
+    <string name="dashboard_root_status_manager_detected">Root manager detected</string>
+    <string name="dashboard_root_status_manager_unknown">Access granted, manager unknown</string>
     <string name="dashboard_overview_root_access">Root access</string>
     <string name="dashboard_overview_root_access_detail">Superuser permission status</string>
     <string name="dashboard_overview_edit_hint">Long-press the empty area below to arrange Dashboard cards.</string>

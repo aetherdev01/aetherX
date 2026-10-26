@@ -8,12 +8,14 @@ import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import android.graphics.Paint as AndroidPaint
 import android.graphics.Typeface
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -56,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -220,15 +223,7 @@ fun DashboardOverviewCardContent(
             glow = glow,
             modifier = Modifier.fillMaxWidth(),
         )
-        "root_access" -> MetricCard(
-            title = str(R.string.dashboard_overview_root_access),
-            value = str(if (rootGranted) R.string.dashboard_monitor_cards_root_on else R.string.dashboard_monitor_cards_root_off),
-            detail = str(R.string.dashboard_overview_root_access_detail),
-            icon = Icons.Outlined.Settings,
-            accent = if (rootGranted) MetricGreen else MetricAmber,
-            glow = glow,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        "root_access" -> RootAccessCard(rootGranted = rootGranted, glow = glow)
     }
 }
 
@@ -564,11 +559,18 @@ private fun BatteryChargingCard(
     val currentText = currentMa?.let { String.format(Locale.getDefault(), "%.0f mA", it) }
         ?: str(R.string.dashboard_overview_charging_current_unavailable)
     val batteryText = battery?.let { "$it%" } ?: str(R.string.dashboard_overview_unavailable)
+    val jellyScale by animateFloatAsState(
+        targetValue = if (charging) 1.025f else 1f,
+        animationSpec = spring(dampingRatio = if (charging) 0.42f else 0.78f, stiffness = 260f),
+        label = "batteryChargingJelly",
+    )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(132.dp)
+            .animateContentSize(animationSpec = spring(dampingRatio = 0.72f, stiffness = 320f))
+            .graphicsLayer { scaleX = jellyScale; scaleY = jellyScale }
+            .height(if (charging) 132.dp else 96.dp)
             .aetherCardSurface(shape = shape, accent = accent)
             .drawBehind {
                 drawRoundRect(
@@ -647,6 +649,7 @@ private fun BatteryChargingCard(
                 maxLines = 1,
             )
         }
+        if (charging) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -690,7 +693,43 @@ private fun BatteryChargingCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        }
     }
+}
+
+@Composable
+private fun RootAccessCard(rootGranted: Boolean, glow: Float) {
+    val context = LocalContext.current
+    val manager = remember(rootGranted) {
+        if (!rootGranted) null else {
+            val candidates = listOf(
+                "com.topjohnwu.magisk" to "Magisk",
+                "me.weishu.kernelsu" to "KernelSU",
+                "com.android.kernelsu" to "KernelSU",
+                "me.bmax.apatch" to "APatch",
+            )
+            candidates.firstNotNullOfOrNull { (pkg, name) ->
+                runCatching { context.packageManager.getApplicationInfo(pkg, 0) }.getOrNull()?.let { name }
+            }
+        }
+    }
+    MetricCard(
+        title = str(R.string.dashboard_overview_root_access),
+        value = when {
+            !rootGranted -> str(R.string.dashboard_root_status_no_access)
+            manager != null -> manager
+            else -> str(R.string.dashboard_root_status_granted)
+        },
+        detail = when {
+            !rootGranted -> str(R.string.dashboard_root_status_not_detected)
+            manager != null -> str(R.string.dashboard_root_status_manager_detected)
+            else -> str(R.string.dashboard_root_status_manager_unknown)
+        },
+        icon = Icons.Outlined.Settings,
+        accent = if (rootGranted) MetricGreen else MetricAmber,
+        glow = glow,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

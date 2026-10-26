@@ -1130,6 +1130,11 @@
     <string name="dashboard_overview_charging_current_unavailable">— mA</string>
     <string name="dashboard_overview_charging_estimate">Estimasi sisi baterai</string>
     <string name="dashboard_overview_reorder_hint">Tahan kartu lalu geser untuk mengubah urutan.</string>
+    <string name="dashboard_root_status_no_access">Tidak ada akses root</string>
+    <string name="dashboard_root_status_granted">Root terdeteksi</string>
+    <string name="dashboard_root_status_not_detected">Akses superuser tidak terdeteksi</string>
+    <string name="dashboard_root_status_manager_detected">Manajer root terdeteksi</string>
+    <string name="dashboard_root_status_manager_unknown">Akses ada, manajer tidak dikenali</string>
     <string name="dashboard_overview_root_access">Akses root</string>
     <string name="dashboard_overview_root_access_detail">Status izin superuser</string>
     <string name="dashboard_overview_edit_hint">Tahan area kosong di bawah untuk mengatur kartu Dashboard.</string>
