@@ -189,6 +189,7 @@ fun DashboardOverviewSection(
                 icon = Icons.Outlined.BatteryChargingFull,
                 accent = if (liveInfo?.isCharging == true) MetricGreen else LocalAetherPalette.current.accent,
                 glow = glow,
+                pulse = if (liveInfo?.isCharging == true) (sin(phase.toDouble()).toFloat() + 1f) * 0.5f else 0f,
                 modifier = Modifier.weight(0.88f),
             )
         }
@@ -400,6 +401,7 @@ private fun MetricCard(
     progress: Float? = null,
     invertProgress: Boolean = false,
     glow: Float,
+    pulse: Float = 0f,
     modifier: Modifier = Modifier,
     wide: Boolean = false,
     cardHeight: androidx.compose.ui.unit.Dp = 132.dp,
@@ -420,8 +422,8 @@ private fun MetricCard(
             drawRoundRect(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        accent.copy(alpha = 0.045f + glow * 0.20f),
-                        palette.accentSoft.copy(alpha = 0.025f),
+                        accent.copy(alpha = 0.045f + glow * 0.20f + pulse * 0.10f),
+                        palette.accentSoft.copy(alpha = 0.025f + pulse * 0.025f),
                         Color.Transparent,
                     ),
                     start = Offset(0f, 0f),
@@ -429,8 +431,8 @@ private fun MetricCard(
                 ),
             )
             drawCircle(
-                color = accent.copy(alpha = glow * 0.45f),
-                radius = size.minDimension * 0.46f,
+                color = accent.copy(alpha = glow * 0.45f + pulse * 0.22f),
+                radius = size.minDimension * (0.40f + pulse * 0.08f),
                 center = Offset(size.width * 1.02f, size.height * 0.03f),
             )
         }
@@ -454,7 +456,7 @@ private fun MetricCard(
                         modifier = Modifier
                             .size(31.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(accent.copy(alpha = 0.14f + glow * 0.22f)),
+                            .background(accent.copy(alpha = 0.14f + glow * 0.22f + pulse * 0.12f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
