@@ -1101,6 +1101,7 @@ private fun DrawScope.drawVersionEggArtwork(
                 cubicTo(w * 0.78f, h * 0.70f, w * 0.22f, h * 0.70f, w * 0.32f, h * 0.43f); close()
             }
             drawPath(cat, Color(0xFFE9C59D))
+            val ink = Color(0xFF343748)
             drawCircle(ink, short * 0.022f, Offset(w * 0.43f, h * 0.48f))
             drawCircle(ink, short * 0.022f, Offset(w * 0.57f, h * 0.48f))
             drawLine(ink, Offset(w * 0.47f, h * 0.56f), Offset(cx, h * 0.59f), short * 0.012f, StrokeCap.Round)
