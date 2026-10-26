@@ -68,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -102,6 +103,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 
 private val MetricGreen = Color(0xFF29B765)
@@ -616,30 +618,44 @@ private fun BatteryChargingCard(
         animationSpec = tween(if (reduceMotion) 0 else 650, easing = FastOutSlowInEasing),
         label = "batteryChargeBlend",
     )
+    // Liquid level follows a soft spring: tiny overshoot, so the surface "settles" like real liquid.
     val level by animateFloatAsState(
         targetValue = (battery ?: 0) / 100f,
-        animationSpec = tween(if (reduceMotion) 0 else 900, easing = FastOutSlowInEasing),
+        animationSpec = if (reduceMotion) tween<Float>(0) else spring<Float>(dampingRatio = 0.8f, stiffness = 110f),
         label = "batteryLevel",
     )
-    // Jelly (squash & stretch) on plug / unplug. Skipped on first composition.
-    val jellyX = remember { Animatable(1f) }
-    val jellyY = remember { Animatable(1f) }
+
+    // Jelly on plug / unplug. Every value animates from where it currently is (no snapTo on the card
+    // itself), so there are no jumps and a quick plug -> unplug -> plug re-targets smoothly.
+    // jelly: > 0 = stretched tall & thin, < 0 = squashed flat & wide.
+    val jelly = remember { Animatable(0f) }
+    val wobble = remember { Animatable(0f) }   // small sideways tilt (degrees)
+    val lift = remember { Animatable(0f) }     // vertical hop (dp)
+    val iconPop = remember { Animatable(1f) }  // icon pops in when it swaps
     var initialized by remember { mutableStateOf(false) }
     LaunchedEffect(charging) {
         if (!initialized) {
-            initialized = true
+            initialized = true // skip the very first composition
             return@LaunchedEffect
         }
         if (reduceMotion) return@LaunchedEffect
-        // Plug in: squashed flat, then springs up and wobbles. Unplug: stretched, then settles calmly.
-        val startX = if (charging) 1.04f else 0.97f
-        val startY = if (charging) 0.88f else 1.07f
-        val damping = if (charging) 0.22f else 0.34f
+        val plug = charging
         coroutineScope {
-            jellyX.snapTo(startX)
-            jellyY.snapTo(startY)
-            launch { jellyX.animateTo(1f, spring(dampingRatio = damping, stiffness = 380f)) }
-            launch { jellyY.animateTo(1f, spring(dampingRatio = damping, stiffness = 380f)) }
+            // 1) Anticipation (quick press / pull) -> 2) release with a bouncy, low-damping spring.
+            launch {
+                jelly.animateTo(if (plug) -0.12f else 0.09f, tween(120, easing = FastOutSlowInEasing))
+                jelly.animateTo(0f, spring(dampingRatio = if (plug) 0.26f else 0.36f, stiffness = 300f))
+            }
+            launch {
+                wobble.animateTo(0f, spring(dampingRatio = 0.28f, stiffness = 140f), initialVelocity = if (plug) -22f else 16f)
+            }
+            launch {
+                lift.animateTo(0f, spring(dampingRatio = 0.38f, stiffness = 260f), initialVelocity = if (plug) -80f else 34f)
+            }
+            launch {
+                iconPop.snapTo(if (plug) 0.45f else 0.7f)
+                iconPop.animateTo(1f, spring(dampingRatio = 0.32f, stiffness = 380f))
+            }
         }
     }
 
@@ -647,7 +663,15 @@ private fun BatteryChargingCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(132.dp) // same as the neighbouring MetricCards so grid rows stay aligned
-            .graphicsLayer { scaleX = jellyX.value; scaleY = jellyY.value }
+            .graphicsLayer {
+                val d = jelly.value
+                // Pivot at the bottom-centre so the card squashes "onto the ground".
+                transformOrigin = TransformOrigin(0.5f, 1f)
+                scaleY = 1f + d
+                scaleX = 1f - d * 0.55f // roughly volume-preserving
+                translationY = lift.value * density
+                rotationZ = wobble.value
+            }
             .aetherCardSurface(shape = shape, accent = accent)
             .clip(shape)
             .drawBehind {
@@ -664,8 +688,10 @@ private fun BatteryChargingCard(
                     ),
                 )
                 // Liquid fill that rises to the battery level; waves get livelier while charging.
-                val fillTop = h * (1f - (0.10f + 0.80f * level))
-                val amp = (1.2f + 3.2f * chargeBlend) * density
+                val fillTop = h * (1f - (0.10f + 0.80f * level.coerceIn(0f, 1.08f)))
+                // The liquid sloshes harder while the card is wobbling.
+                val slosh = 1f + (abs(jelly.value) * 9f + abs(wobble.value) * 0.25f).coerceAtMost(1.6f)
+                val amp = (1.2f + 3.2f * chargeBlend) * slosh * density
                 drawWave(
                     top = fillTop,
                     amp = amp * 0.8f,
@@ -741,7 +767,7 @@ private fun BatteryChargingCard(
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer {
-                            val pulse = 1f + 0.14f * chargeBlend * ((sin(phase * 2.0).toFloat() + 1f) * 0.5f)
+                            val pulse = (1f + 0.14f * chargeBlend * ((sin(phase * 2.0).toFloat() + 1f) * 0.5f)) * iconPop.value
                             scaleX = pulse
                             scaleY = pulse
                         },
@@ -769,8 +795,8 @@ private fun BatteryChargingCard(
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             AnimatedVisibility(
                 visible = charging,
-                enter = fadeIn(tween(300)) + expandVertically(spring(dampingRatio = 0.6f, stiffness = 300f)),
-                exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
+                enter = fadeIn(tween(320, easing = FastOutSlowInEasing)) + expandVertically(spring(dampingRatio = 0.75f, stiffness = 260f)),
+                exit = fadeOut(tween(180)) + shrinkVertically(spring(dampingRatio = 1f, stiffness = 320f)),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

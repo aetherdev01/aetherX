@@ -577,7 +577,8 @@ class AetherXPreferences(private val context: Context) {
 
     /**
      * One-time layout migration for the dashboard redesign. Existing layouts are
-     * promoted to Android + Device Hardware first exactly once; subsequent user
+     * promoted to Android + Device Hardware first exactly once, and (v3) Recently
+     * Played + Game Monitor are moved to the bottom; subsequent user
      * drag-and-drop orders are preserved.
      */
     suspend fun promoteAndroidHardwareCardsOnce() {
@@ -603,6 +604,21 @@ class AetherXPreferences(private val context: Context) {
                 ordered.add(if (ramIndex >= 0) ramIndex else ordered.size, "root_access")
                 prefs[Keys.DASHBOARD_CARD_ORDER] = ordered.joinToString(",")
                 prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] = 2
+            }
+            if (layoutVersion < 3) {
+                // v3: Recently Played + Game Monitor dipindah ke paling bawah sekali saja.
+                // Setelah ini urutan hasil drag-and-drop user tetap dipertahankan.
+                val saved = prefs[Keys.DASHBOARD_CARD_ORDER]
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it in DEFAULT_DASHBOARD_CARD_ORDER }
+                    ?.distinct()
+                    .orEmpty()
+                val bottom = listOf("recent_games", "game_monitor")
+                val ordered = (saved + DEFAULT_DASHBOARD_CARD_ORDER).distinct()
+                    .filterNot { it in bottom } + bottom
+                prefs[Keys.DASHBOARD_CARD_ORDER] = ordered.joinToString(",")
+                prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] = 3
             }
         }
     }
