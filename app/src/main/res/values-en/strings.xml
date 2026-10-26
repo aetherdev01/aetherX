@@ -968,4 +968,6 @@
     <string name="dashboard_overview_reorder_hint">Long-press a card and drag it to rearrange the Dashboard.</string>
     <string name="dashboard_overview_root_access">Root access</string>
     <string name="dashboard_overview_root_access_detail">Superuser permission status</string>
+    <string name="dashboard_overview_edit_hint">Long-press the empty area below to arrange Dashboard cards.</string>
+    <string name="dashboard_overview_edit_active_hint">Drag cards to reorder them. Tap Done to restore their normal sizes.</string>
 </resources>

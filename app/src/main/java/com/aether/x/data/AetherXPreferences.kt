@@ -19,8 +19,8 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * posisi default-nya untuk tetap mempertahankan urutan custom milik pengguna.
  */
 private val DEFAULT_DASHBOARD_CARD_ORDER = listOf(
-    "live_monitor", "temperature", "battery_temperature", "battery", "charging", "ram",
-    "root_access", "storage", "system_details", "android", "hardware", "recent_games", "game_monitor",
+    "temperature", "battery", "battery_temperature", "ram", "root_access",
+    "storage", "system_details", "android", "hardware", "recent_games", "game_monitor",
 )
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }

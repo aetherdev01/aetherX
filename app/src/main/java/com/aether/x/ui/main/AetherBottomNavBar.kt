@@ -71,9 +71,6 @@ fun AetherBottomNavBar(
         baseBackdrop
     }
     Box(modifier = modifier.fillMaxWidth()) {
-        // Blur hanya dirender di permukaan kapsul di LiquidBottomTabs. Jangan gambar
-        // lapisan blur/gradient persegi panjang di belakang navbar: itu yang membuat
-        // area layar di atas kapsul tampak berkabut.
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)

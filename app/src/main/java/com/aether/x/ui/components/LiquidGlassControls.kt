@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -492,16 +494,6 @@ fun LiquidSlider(
                 Modifier
                     .clip(Capsule())
                     .background(trackColor)
-                    .pointerInput(animationScope, valueRange, steps, isLtr) {
-                        detectTapGestures { position ->
-                            val delta = (valueRange.endInclusive - valueRange.start) * (position.x / trackWidth)
-                            val target = (if (isLtr) valueRange.start + delta else valueRange.endInclusive - delta).coerceIn(valueRange)
-                            val snapped = quantize(target)
-                            dampedDragAnimation.animateToValue(snapped)
-                            latestOnValueChange.value(snapped)
-                            latestOnValueChangeFinished.value?.invoke()
-                        }
-                    }
                     .height(6.dp)
                     .fillMaxWidth(),
             )
@@ -517,6 +509,63 @@ fun LiquidSlider(
                     },
             )
         }
+
+        // A full-height transparent hit target makes the slider easy to grab even when
+        // the thumb is small or the slider is placed in a half-width card (e.g. Crosshair).
+        // Horizontal drags update continuously; vertical gestures are left to the parent scroll.
+        val targetAtX: (Float) -> Float = { x ->
+            val fraction = (x / trackWidth).coerceIn(0f, 1f)
+            val span = valueRange.endInclusive - valueRange.start
+            quantize(if (isLtr) valueRange.start + span * fraction else valueRange.endInclusive - span * fraction)
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .pointerInput(valueRange, steps, isLtr, trackWidth) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var movedHorizontally = false
+                        var cancelledForVerticalScroll = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) {
+                                if (!cancelledForVerticalScroll) {
+                                    if (movedHorizontally) {
+                                        dampedDragAnimation.release()
+                                        latestOnValueChangeFinished.value?.invoke()
+                                    } else if (!change.isConsumed) {
+                                        val target = targetAtX(change.position.x)
+                                        dampedDragAnimation.animateToValue(target)
+                                        latestOnValueChange.value(target)
+                                        latestOnValueChangeFinished.value?.invoke()
+                                    }
+                                }
+                                break
+                            }
+                            if (!movedHorizontally) {
+                                val dx = change.position.x - down.position.x
+                                val dy = change.position.y - down.position.y
+                                val slop = viewConfiguration.touchSlop
+                                if (kotlin.math.abs(dy) > slop && kotlin.math.abs(dy) > kotlin.math.abs(dx)) {
+                                    cancelledForVerticalScroll = true
+                                    break
+                                }
+                                if (kotlin.math.abs(dx) > slop) {
+                                    movedHorizontally = true
+                                    dampedDragAnimation.press()
+                                }
+                            }
+                            if (movedHorizontally) {
+                                change.consume()
+                                latestOnValueChange.value(targetAtX(change.position.x))
+                            }
+                        }
+                        if (movedHorizontally) dampedDragAnimation.release()
+                    }
+                },
+        )
 
         // Slider lens is intentionally independent from app-wide Liquid Glass intensity.
         val glassScale = 1f

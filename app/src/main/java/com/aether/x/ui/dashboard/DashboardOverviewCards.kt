@@ -128,6 +128,7 @@ fun DashboardOverviewCardContent(
     info: DeviceInfoSnapshot?,
     rootGranted: Boolean,
     motion: DashboardOverviewMotion,
+    editMode: Boolean = false,
 ) {
     val glow by motion.glow
     val phase by motion.phase
@@ -139,14 +140,6 @@ fun DashboardOverviewCardContent(
     val batteryTemperature = info?.batteryTempC
 
     when (cardId) {
-        "live_monitor" -> LiveSystemMonitorCard(
-            info = info,
-            temperature = systemTemperature,
-            batteryPercent = battery,
-            ramPercent = ramFraction?.let { (it * 100f).toInt() },
-            glow = glow,
-            phase = phase,
-        )
         "temperature" -> MetricCard(
             title = str(R.string.dashboard_overview_temperature),
             value = systemTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
@@ -162,8 +155,9 @@ fun DashboardOverviewCardContent(
             },
             progress = systemTemperature?.div(85f)?.coerceIn(0f, 1f),
             glow = glow,
-            wide = true,
-            cardHeight = 92.dp,
+            modifier = Modifier.fillMaxWidth(),
+            wide = !editMode,
+            cardHeight = if (editMode) 132.dp else 92.dp,
         )
         "battery_temperature" -> MetricCard(
             title = str(R.string.dashboard_overview_battery_temperature),
@@ -176,24 +170,7 @@ fun DashboardOverviewCardContent(
             glow = glow,
             modifier = Modifier.fillMaxWidth(),
         )
-        "charging" -> ChargingPowerCard(info = info, glow = glow, phase = phase)
-        "battery" -> MetricCard(
-            title = str(R.string.dashboard_overview_battery),
-            value = battery?.let { "$it%" } ?: str(R.string.dashboard_overview_unavailable),
-            detail = battery?.let { str(R.string.dashboard_overview_battery_remaining_format, it) }
-                ?: str(R.string.dashboard_overview_battery_unknown_detail),
-            icon = Icons.Outlined.BatteryFull,
-            accent = when {
-                battery == null -> palette.accent
-                battery <= 15 -> MetricRed
-                battery <= 35 -> MetricAmber
-                else -> MetricGreen
-            },
-            progress = battery?.div(100f),
-            invertProgress = true,
-            glow = glow,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        "battery" -> BatteryChargingCard(info = info, glow = glow, phase = phase)
         "ram" -> MetricCard(
             title = str(R.string.dashboard_overview_ram),
             value = ramFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
@@ -224,8 +201,9 @@ fun DashboardOverviewCardContent(
             },
             progress = storageFraction,
             glow = glow,
-            wide = true,
-            cardHeight = 92.dp,
+            modifier = Modifier.fillMaxWidth(),
+            wide = !editMode,
+            cardHeight = if (editMode) 132.dp else 92.dp,
         )
         "system_details" -> SystemDetailsCard(
             nowElapsed = SystemClock.elapsedRealtime(),
@@ -563,14 +541,20 @@ private fun MiniTelemetryValue(label: String, value: String) {
 }
 
 @Composable
-private fun ChargingPowerCard(
+private fun BatteryChargingCard(
     info: DeviceInfoSnapshot?,
     glow: Float,
     phase: Float,
 ) {
     val palette = LocalAetherPalette.current
     val charging = info?.isCharging == true
-    val accent = if (charging) MetricGreen else palette.accent
+    val battery = info?.batteryPercent?.takeIf { it in 0..100 }
+    val accent = if (charging) MetricGreen else when {
+        battery == null -> palette.accent
+        battery <= 15 -> MetricRed
+        battery <= 35 -> MetricAmber
+        else -> palette.accent
+    }
     val currentMa = info?.batteryChargeCurrentMicroAmps?.div(1000f)
     val powerW = info?.batteryChargePowerWatts
     val shape = RoundedCornerShape(24.dp)
@@ -579,11 +563,12 @@ private fun ChargingPowerCard(
         ?: str(R.string.dashboard_overview_charging_power_unavailable)
     val currentText = currentMa?.let { String.format(Locale.getDefault(), "%.0f mA", it) }
         ?: str(R.string.dashboard_overview_charging_current_unavailable)
+    val batteryText = battery?.let { "$it%" } ?: str(R.string.dashboard_overview_unavailable)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(122.dp)
+            .height(132.dp)
             .aetherCardSurface(shape = shape, accent = accent)
             .drawBehind {
                 drawRoundRect(
@@ -606,7 +591,6 @@ private fun ChargingPowerCard(
                         cornerRadius = CornerRadius(23.dp.toPx(), 23.dp.toPx()),
                         style = Stroke(width = (1f + glow * 5f) * density),
                     )
-                    // Small travelling highlight makes charging state visible without a heavy shimmer layer.
                     val travelX = ((phase / (2f * PI.toFloat())).mod(1f)) * size.width
                     drawCircle(
                         color = accent.copy(alpha = 0.32f + glow * 0.56f),
@@ -615,17 +599,17 @@ private fun ChargingPowerCard(
                     )
                 }
             }
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 13.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(37.dp)
+                    .size(36.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(accent.copy(alpha = if (charging) 0.20f + glow * 0.32f else 0.12f)),
                 contentAlignment = Alignment.Center,
@@ -639,7 +623,7 @@ private fun ChargingPowerCard(
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
-                    text = str(R.string.dashboard_overview_charging_monitor_title),
+                    text = str(R.string.dashboard_overview_battery),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -652,22 +636,16 @@ private fun ChargingPowerCard(
                     color = accent,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = powerText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-                Text(
-                    text = str(R.string.dashboard_overview_charging_power_label),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                text = batteryText,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -675,7 +653,7 @@ private fun ChargingPowerCard(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "${str(R.string.dashboard_overview_charging_current_label)}: $currentText",
+                text = currentText,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -683,15 +661,15 @@ private fun ChargingPowerCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = str(R.string.dashboard_overview_charging_estimate),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.86f),
+                text = powerText,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (charging) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
-        Canvas(modifier = Modifier.fillMaxWidth().height(7.dp)) {
-            val count = 44
+        Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
+            val count = 40
             val step = size.width / count
             val barWidth = step * 0.50f
             repeat(count) { index ->
@@ -705,6 +683,13 @@ private fun ChargingPowerCard(
                 )
             }
         }
+        Text(
+            text = str(R.string.dashboard_overview_charging_estimate),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

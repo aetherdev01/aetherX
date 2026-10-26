@@ -1132,4 +1132,6 @@
     <string name="dashboard_overview_reorder_hint">Tahan kartu lalu geser untuk mengubah urutan.</string>
     <string name="dashboard_overview_root_access">Akses root</string>
     <string name="dashboard_overview_root_access_detail">Status izin superuser</string>
+    <string name="dashboard_overview_edit_hint">Tahan area kosong di bawah untuk mengatur kartu Dashboard.</string>
+    <string name="dashboard_overview_edit_active_hint">Seret kartu untuk mengubah urutan. Tekan Selesai untuk kembali ke ukuran normal.</string>
 </resources>

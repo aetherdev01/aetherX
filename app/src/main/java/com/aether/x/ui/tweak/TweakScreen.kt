@@ -1,12 +1,14 @@
 package com.aether.x.ui.tweak
 
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -68,6 +70,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -85,12 +88,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import com.aether.x.ui.components.LiquidOutlinedButton
 import com.aether.x.ui.components.withoutBottom
 import com.aether.x.ui.components.LocalBackdropHaze
@@ -105,6 +112,7 @@ import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.highlight.Highlight
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -142,9 +150,7 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
 import com.aether.x.core.locale.str
 
 private val DASHBOARD_FULL_SPAN_CARD_IDS = setOf(
-    "live_monitor",
     "temperature",
-    "charging",
     "storage",
     "system_details",
     "recent_games",
@@ -169,7 +175,8 @@ fun TweakScreen(
     val backdropHaze = LocalBackdropHaze.current
     val ownHaze = rememberHazeState(blurEnabled = true)
     val drawerHaze = backdropHaze ?: ownHaze
-    // Drawer memakai backdrop hanya untuk efek lens/warna; blur sengaja tidak diterapkan.
+    // The drawer samples both the app background and current content. Its blur and glass tint
+    // are driven independently by the user's Blur Intensity and Liquid Glass Level settings.
     val drawerContentBackdrop = rememberLayerBackdrop()
     val drawerBackdrop = rememberCombinedBackdrop(rememberAetherLiquidBackdrop(), drawerContentBackdrop)
     val coroutineScope = rememberCoroutineScope()
@@ -182,6 +189,7 @@ fun TweakScreen(
     val activity = context as? Activity
 
     var selectedSubTab by remember { mutableStateOf(TweakSubTab.DASHBOARD) }
+    var dashboardEditMode by remember { mutableStateOf(false) }
 
     // Bottom tab Dashboard adalah perintah untuk kembali ke HOME/Dashboard,
     // bukan sekadar memilih MainTab.TWEAK. Saat user sedang berada di
@@ -220,6 +228,10 @@ fun TweakScreen(
     }
 
     LaunchedEffect(selectedSubTab) {
+        if (selectedSubTab != TweakSubTab.DASHBOARD && dashboardEditMode) {
+            dashboardViewModel.saveCardOrder()
+            dashboardEditMode = false
+        }
         if (selectedSubTab == TweakSubTab.DASHBOARD) {
             while (true) {
                 dashboardViewModel.refreshDeviceInfo()
@@ -333,31 +345,60 @@ fun TweakScreen(
                             .padding(horizontal = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Text(
-                            text = "Dashboard",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "Dashboard",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            if (dashboardEditMode) {
+                                TextButton(
+                                    onClick = {
+                                        dashboardViewModel.saveCardOrder()
+                                        dashboardEditMode = false
+                                    },
+                                ) {
+                                    Text(text = str(R.string.dashboard_order_done))
+                                }
+                            }
+                        }
                         Text(
                             text = str(R.string.tweak_ringkasan_perangkat_game_dan_alat),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = str(R.string.dashboard_overview_reorder_hint),
+                            text = str(
+                                if (dashboardEditMode) R.string.dashboard_overview_edit_active_hint
+                                else R.string.dashboard_overview_edit_hint,
+                            ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
                         )
+                        // This intentionally empty touch target lets the user enter layout mode
+                        // without accidentally starting a drag on one of the cards.
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(22.dp)
+                                .pointerInput(dashboardEditMode) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            if (!dashboardEditMode) dashboardEditMode = true
+                                        },
+                                    )
+                                },
+                        )
                     }
 
-                    // Each overview tile is an independent reorderable item. Keep the
-                    // outer parent non-scrollable so drag gestures aren't intercepted.
-                    // Long-press a card, drag it, and save the order on release.
-                    // tidak ada lagi tombol "Atur urutan" terpisah maupun panah
-                    // naik/turun. reorderable menahan scroll induk selama drag
-                    // aktif sehingga geser tidak konflik dengan verticalScroll
-                    // di Column pembungkus.
+                    // Cards become draggable only after the user long-presses the empty edit strip.
+                    // While editing, compact spans help the grid occupy otherwise-unused space;
+                    // Done restores the cards' normal spans and sizes.
                     val gridState = rememberLazyGridState()
                     val reorderState = rememberReorderableLazyGridState(
                         lazyGridState = gridState,
@@ -378,7 +419,12 @@ fun TweakScreen(
                             items = dashboardState.cardOrder,
                             key = { _, cardId -> cardId },
                             span = { _, cardId ->
-                                GridItemSpan(if (cardId in DASHBOARD_FULL_SPAN_CARD_IDS) maxLineSpan else 1)
+                                val spanFullWidth = if (dashboardEditMode) {
+                                    cardId in setOf("system_details", "recent_games", "game_monitor")
+                                } else {
+                                    cardId in DASHBOARD_FULL_SPAN_CARD_IDS
+                                }
+                                GridItemSpan(if (spanFullWidth) maxLineSpan else 1)
                             },
                         ) { index, cardId ->
                             ReorderableItem(reorderState, key = cardId) { isDragging ->
@@ -391,24 +437,49 @@ fun TweakScreen(
                                     ),
                                     label = "dashboardCardDragElevation",
                                 )
+                                val editScale by animateFloatAsState(
+                                    targetValue = when {
+                                        isDragging -> 1.055f
+                                        dashboardEditMode -> 1.025f
+                                        else -> 1f
+                                    },
+                                    animationSpec = spring(
+                                        dampingRatio = if (isDragging) Spring.DampingRatioLowBouncy else Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMediumLow,
+                                    ),
+                                    label = "dashboardEditCardScale",
+                                )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .animateContentSize(spring(stiffness = Spring.StiffnessMediumLow))
                                         .cardEnterAnimation(index = index)
-                                        .dragPopEffect(isDragging = isDragging)
-                                        .shadow(elevation, MaterialTheme.shapes.medium)
-                                        .draggableHandle(
-                                            onDragStopped = { dashboardViewModel.saveCardOrder() },
+                                        .dragPopEffect(isDragging = isDragging || dashboardEditMode)
+                                        .graphicsLayer {
+                                            scaleX = editScale
+                                            scaleY = editScale
+                                            rotationZ = if (dashboardEditMode && !isDragging && index % 2 == 0) 0.25f else 0f
+                                        }
+                                        .shadow(if (dashboardEditMode) elevation.coerceAtLeast(8.dp) else elevation, MaterialTheme.shapes.medium)
+                                        .then(
+                                            if (dashboardEditMode) {
+                                                Modifier
+                                                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.42f), MaterialTheme.shapes.medium)
+                                                    .draggableHandle(
+                                                        onDragStopped = { dashboardViewModel.saveCardOrder() },
+                                                    )
+                                            } else Modifier
                                         ),
                                 ) {
                                     when (cardId) {
-                                        "live_monitor", "temperature", "battery_temperature", "charging",
-                                        "battery", "ram", "storage", "system_details", "android", "hardware", "root_access" ->
+                                        "temperature", "battery_temperature", "battery", "ram",
+                                        "storage", "system_details", "android", "hardware", "root_access" ->
                                             DashboardOverviewCardContent(
                                                 cardId = cardId,
                                                 info = dashboardState.deviceInfo,
                                                 rootGranted = privilegeStatus.rootGranted,
                                                 motion = dashboardMotion,
+                                                editMode = dashboardEditMode,
                                             )
                                         "recent_games" -> RecentlyPlayedGamesSection(
                                             games = dashboardState.recentPlayedGames,
@@ -683,8 +754,10 @@ private fun Modifier.drawerLensPanel(
 ): Modifier {
     val p = LocalAetherPalette.current
     val style = LocalAetherStyle.current
-    // Glass tint still follows the user's Glass Level; Blur Intensity is not used here.
+    // Blur Intensity controls backdrop blur; Liquid Glass Level independently controls tint.
     val levelAlpha = liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f))
+    val blurStrength = style.blur.coerceIn(0f, 1f)
+    val blurRadiusPx = with(LocalDensity.current) { (blurStrength * 30f).dp.toPx() }
     val tint = androidx.compose.ui.graphics.Brush.verticalGradient(
         listOf(
             p.surface.copy(alpha = (levelAlpha * 0.62f).coerceIn(0.06f, 0.94f)),
@@ -695,6 +768,7 @@ private fun Modifier.drawerLensPanel(
         backdrop = backdrop,
         shape = { shape },
         effects = {
+            if (blurRadiusPx > 0f) blur(blurRadiusPx)
             lens(
                 16f.dp.toPx(),
                 26f.dp.toPx(),
