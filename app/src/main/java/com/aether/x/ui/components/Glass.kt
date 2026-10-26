@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
@@ -62,12 +61,12 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * HazeState latar ([AetherBackground]) untuk card. Sumbernya adalah lapisan
- * latar (aurora + orb) yang menjadi SIBLING konten, jadi card boleh mem-blur-nya.
+ * latar grid ambient yang menjadi SIBLING konten, jadi card boleh mem-blur-nya.
  */
 val LocalCardHaze = staticCompositionLocalOf<HazeState?> { null }
 
 /**
- * HazeState tambahan yang juga bersumber dari lapisan latar aurora. Layar yang
+ * HazeState tambahan yang juga bersumber dari lapisan latar grid ambient. Layar yang
  * punya panel blur sendiri (mis. drawer Tweak) menambahkan kontennya sebagai
  * sumber kedua (zIndex lebih tinggi) pada state ini, sehingga area kosong pun
  * ikut terblur — bukan hanya area yang ada kontennya.
@@ -246,11 +245,10 @@ fun Modifier.glassPanel(
 }
 
 /**
- * Gambar pita aurora (tanpa warna dasar). Dipakai oleh [AetherBackground] dan
- * oleh [AuroraBlurLayer] (salinan yang di-blur untuk latar navbar), sehingga
- * keduanya selalu identik.
+ * Ambient grid background (tanpa warna dasar). Dipakai oleh [AetherBackground] dan
+ * [AmbientGridBlurLayer], sehingga backdrop yang dibaca elemen Liquid Glass selalu identik.
  */
-fun DrawScope.drawAuroraLayers(
+fun DrawScope.drawAetherGridLayers(
     w: Float,
     h: Float,
     phase: Float,
@@ -259,144 +257,125 @@ fun DrawScope.drawAuroraLayers(
     accentMid: Color,
     dark: Boolean,
 ) {
-                    // Gerak campuran menggeser pita sekaligus mengubah kurva dan
-                    // ketebalannya; efeknya lebih mirip jelly yang meregang/memantul.
-                    val flex = kotlin.math.sin(phase.toDouble() * Math.PI).toFloat()
-                    val sway = kotlin.math.sin(phase.toDouble() * Math.PI * 2.0).toFloat()
-                    val shift = (phase - 0.5f) * w * 0.30f + sway * w * 0.055f
-                    val glowAlpha = if (dark) 0.23f else 0.16f
+    if (w <= 0f || h <= 0f) return
 
-                    // Diffuse color fields are linear/diagonal, not circular blobs.
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                accent.copy(alpha = glowAlpha),
-                                Color.Transparent,
-                                soft.copy(alpha = glowAlpha * 0.65f),
-                                Color.Transparent,
-                            ),
-                            start = Offset(-w * 0.25f + shift, 0f),
-                            end = Offset(w * 0.9f + shift, h),
-                        ),
-                    )
+    // Quiet, premium grid: the base itself remains pure theme black/white-ish;
+    // the motion lives in the grid offset and an extremely soft moving glow.
+    val p = phase.coerceIn(0f, 1f)
+    val angle = p.toDouble() * Math.PI * 2.0
+    val cell = 42.dp.toPx()
+    val halfCell = cell / 2f
+    val shiftX = (kotlin.math.sin(angle).toFloat() * cell * 0.12f) + (p - 0.5f) * cell * 0.10f
+    val shiftY = kotlin.math.cos(angle * 0.62).toFloat() * cell * 0.07f
+    val minorColor = (if (dark) Color.White else Color(0xFF343746)).copy(alpha = if (dark) 0.032f else 0.040f)
+    val majorColor = (if (dark) Color.White else Color(0xFF343746)).copy(alpha = if (dark) 0.058f else 0.060f)
+    val minorStroke = 0.65.dp.toPx()
+    val majorStroke = 0.95.dp.toPx()
 
-                    fun flowingBand(
-                        y: Float,
-                        amplitude: Float,
-                        colorA: Color,
-                        colorB: Color,
-                        alpha: Float,
-                        phaseShift: Float,
-                    ) {
-                        val dx = shift * phaseShift
-                        val dynamicAmplitude = amplitude * (0.82f + 0.24f * flex)
-                        val cy = y + sway * amplitude * 0.34f * phaseShift
-                        val a = dynamicAmplitude
-                        val path = Path().apply {
-                            moveTo(-w * 0.18f + dx, cy - a * 0.15f)
-                            cubicTo(
-                                w * 0.16f + dx, cy - a * (1.10f + 0.25f * flex),
-                                w * 0.40f + dx, cy + a * (1.02f + 0.22f * sway),
-                                w * 0.70f + dx, cy + a * 0.12f,
-                            )
-                            cubicTo(
-                                w * 0.91f + dx, cy - a * (0.48f + 0.14f * sway),
-                                w * 1.04f + dx, cy + a * 0.30f,
-                                w * 1.18f + dx, cy + a * 0.04f,
-                            )
-                            lineTo(w * 1.18f + dx, cy + a * 1.8f)
-                            cubicTo(
-                                w * 0.82f + dx, cy + a * (1.12f + 0.12f * flex),
-                                w * 0.48f + dx, cy + a * 2.05f,
-                                w * 0.15f + dx, cy + a * 1.22f,
-                            )
-                            cubicTo(
-                                -w * 0.02f + dx, cy + a * 0.78f,
-                                -w * 0.08f + dx, cy + a * 1.0f,
-                                -w * 0.18f + dx, cy + a * 1.1f,
-                            )
-                            close()
-                        }
-                        drawPath(
-                            path = path,
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    colorA.copy(alpha = alpha),
-                                    colorB.copy(alpha = alpha * 0.72f),
-                                    Color.Transparent,
-                                ),
-                                start = Offset(0f + dx, cy - a),
-                                end = Offset(w + dx, cy + a * 1.8f),
-                            ),
-                        )
-                    }
+    // A restrained glow drifts behind the grid, never becoming an opaque blob.
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                accent.copy(alpha = if (dark) 0.075f else 0.060f),
+                soft.copy(alpha = if (dark) 0.025f else 0.018f),
+                Color.Transparent,
+            ),
+            center = Offset(
+                x = w * (0.16f + 0.68f * p),
+                y = h * (0.22f + 0.13f * kotlin.math.sin(angle).toFloat()),
+            ),
+            radius = maxOf(w, h) * 0.72f,
+        ),
+    )
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(Color.Transparent, accentMid.copy(alpha = if (dark) 0.018f else 0.012f), Color.Transparent),
+            center = Offset(w * (0.82f - 0.50f * p), h * 0.82f),
+            radius = maxOf(w, h) * 0.48f,
+        ),
+    )
 
-                    flowingBand(
-                        y = h * 0.19f,
-                        amplitude = h * 0.075f,
-                        colorA = accent,
-                        colorB = soft,
-                        alpha = if (dark) 0.28f else 0.22f,
-                        phaseShift = 1f,
-                    )
-                    flowingBand(
-                        y = h * 0.54f,
-                        amplitude = h * 0.060f,
-                        colorA = accentMid,
-                        colorB = accent,
-                        alpha = if (dark) 0.17f else 0.13f,
-                        phaseShift = -0.72f,
-                    )
-                    flowingBand(
-                        y = h * 0.84f,
-                        amplitude = h * 0.050f,
-                        colorA = accentMid,
-                        colorB = soft,
-                        alpha = if (dark) 0.13f else 0.095f,
-                        phaseShift = 0.48f,
-                    )
+    val startXIndex = kotlin.math.floor((-shiftX) / halfCell).toInt()
+    var gx = startXIndex
+    while (true) {
+        val x = gx * halfCell + shiftX
+        if (x > w + halfCell) break
+        val isMajor = gx % 2 == 0
+        drawLine(
+            color = if (isMajor) majorColor else minorColor,
+            start = Offset(x, 0f),
+            end = Offset(x, h),
+            strokeWidth = if (isMajor) majorStroke else minorStroke,
+        )
+        gx++
+    }
 
-                    // A few subtle flowing contour lines make motion perceptible
-                    // without using circles, particles, or high-contrast decoration.
-                    repeat(3) { index ->
-                        val y = h * (0.28f + index * 0.22f) + shift * (0.025f + index * 0.008f)
-                        val line = Path().apply {
-                            moveTo(-w * 0.1f, y)
-                            cubicTo(w * 0.22f, y - h * 0.035f, w * 0.48f, y + h * 0.045f, w * 0.72f, y - h * 0.005f)
-                            cubicTo(w * 0.88f, y - h * 0.025f, w * 1.02f, y + h * 0.018f, w * 1.1f, y)
-                        }
-                        drawPath(
-                            path = line,
-                            color = (if (index % 2 == 0) accent else soft).copy(alpha = if (dark) 0.10f else 0.075f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 1.dp.toPx(),
-                                cap = StrokeCap.Round,
-                                pathEffect = PathEffect.cornerPathEffect(18.dp.toPx()),
-                            ),
-                        )
-                    }
+    val startYIndex = kotlin.math.floor((-shiftY) / halfCell).toInt()
+    var gy = startYIndex
+    while (true) {
+        val y = gy * halfCell + shiftY
+        if (y > h + halfCell) break
+        val isMajor = gy % 2 == 0
+        drawLine(
+            color = if (isMajor) majorColor else minorColor,
+            start = Offset(0f, y),
+            end = Offset(w, y),
+            strokeWidth = if (isMajor) majorStroke else minorStroke,
+        )
+        gy++
+    }
+
+    // Sparse intersection points create depth without turning the background into a pattern-heavy wallpaper.
+    val dotStep = cell * 2f
+    val firstDotX = kotlin.math.floor((-shiftX) / dotStep).toInt()
+    val firstDotY = kotlin.math.floor((-shiftY) / dotStep).toInt()
+    for (ix in firstDotX..(kotlin.math.ceil((w - shiftX) / dotStep).toInt())) {
+        for (iy in firstDotY..(kotlin.math.ceil((h - shiftY) / dotStep).toInt())) {
+            if ((ix + iy) % 4 != 0) continue
+            val x = ix * dotStep + shiftX
+            val y = iy * dotStep + shiftY
+            val pulse = (kotlin.math.sin(angle + ix * 0.73 + iy * 0.51).toFloat() + 1f) * 0.5f
+            drawCircle(
+                color = accent.copy(alpha = (0.045f + pulse * 0.055f) * (if (dark) 1f else 0.82f)),
+                radius = (0.8f + pulse * 0.65f).dp.toPx(),
+                center = Offset(x, y),
+            )
+        }
+    }
+
+    // A low-contrast scan line glides slowly across the grid and gives the background life.
+    val scanX = w * (0.12f + 0.76f * p)
+    drawLine(
+        brush = Brush.horizontalGradient(
+            colors = listOf(Color.Transparent, accent.copy(alpha = if (dark) 0.055f else 0.040f), Color.Transparent),
+            startX = scanX - 26.dp.toPx(),
+            endX = scanX + 26.dp.toPx(),
+        ),
+        start = Offset(scanX, 0f),
+        end = Offset(scanX, h),
+        strokeWidth = 1.dp.toPx(),
+    )
 }
 
-/** Fase animasi aurora (0f..1f, bolak-balik). Dibaca di fase draw saja -> tanpa recomposition. */
-class AuroraBackdrop(val motion: State<Float>)
+/** Fase animasi grid ambient (0f..1f, bolak-balik). Dibaca saat menggambar latar. */
+class AmbientGridBackdrop(val motion: State<Float>)
 
-val LocalAuroraBackdrop = staticCompositionLocalOf<AuroraBackdrop?> { null }
+val LocalAmbientGridBackdrop = staticCompositionLocalOf<AmbientGridBackdrop?> { null }
 
 /**
- * Salinan latar aurora yang di-BLUR sungguhan (RenderEffect bawaan Compose, API 31+),
- * tanpa Haze dan tanpa bergantung pada flag blur OS. Aurora digambar ulang persis
+ * Salinan lapisan grid ambient yang di-BLUR sungguhan (RenderEffect bawaan Compose, API 31+),
+ * tanpa Haze dan tanpa bergantung pada flag blur OS. Grid ambient digambar ulang persis
  * pada posisi layar yang sama dengan latar asli, lalu di-blur dan dipotong ke [shape].
  * Pakai sebagai latar kaca (mis. navbar); beri tint tipis di atasnya.
  */
 @Composable
-fun AuroraBlurLayer(
+fun AmbientGridBlurLayer(
     blurRadius: Dp,
     shape: Shape,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
 ) {
-    val backdrop = LocalAuroraBackdrop.current
+    val backdrop = LocalAmbientGridBackdrop.current
     val p = LocalAetherPalette.current
     val accent = p.accent
     val soft = p.accentSoft
@@ -423,7 +402,7 @@ fun AuroraBlurLayer(
                 if (rs.width > 0f && rs.height > 0f) {
                     val o = origin
                     withTransform({ translate(-o.x, -o.y) }) {
-                        drawAuroraLayers(
+                        drawAetherGridLayers(
                             rs.width, rs.height,
                             backdrop?.motion?.value ?: 0.5f,
                             accent, soft, accentMid, dark,
@@ -435,11 +414,10 @@ fun AuroraBlurLayer(
 }
 
 /**
- * Latar app: pita jelly/aurora yang mengalir dan berubah bentuk perlahan.
- * Intensitas mode terang sengaja dinaikkan agar warna aksen tetap terlihat di atas
- * permukaan putih; seluruh pita memakai palet aksen aktif dan otomatis berubah saat
- * preset aksen atau mode tema diganti. Tidak memakai orb/lingkaran dekoratif.
- * Lapisan ini juga menjadi sumber blur card (LocalCardHaze).
+ * Latar app minimal dengan grid kotak halus, offset animasi lambat, titik persimpangan
+ * yang sangat redup, dan cahaya aksen yang bergerak pelan. Warna dasar tetap mengikuti
+ * tema terang/gelap, tanpa pita aurora tebal atau blur tambahan. Lapisan ini tetap menjadi
+ * sumber backdrop Haze dan Liquid Glass untuk kartu, drawer, serta navbar.
  */
 @Composable
 fun AetherBackground(
@@ -459,8 +437,8 @@ fun AetherBackground(
     // One recorded backdrop source is shared by all Backdrop-based liquid controls.
     val liquidBackdrop = rememberLayerBackdrop()
 
-    // Low-RAM phones keep the same aurora colors and shapes but stop repainting
-    // the entire background continuously. Regular devices retain the slow motion.
+    // Low-RAM phones keep the same quiet grid but stop repainting the background
+    // continuously. Regular devices retain slow ambient motion.
     val context = LocalContext.current.applicationContext
     val lowRamDevice = remember(context) {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
@@ -483,7 +461,7 @@ fun AetherBackground(
         )
     }
     val motion by motionState
-    val auroraBackdrop = remember(motionState) { AuroraBackdrop(motionState) }
+    val ambientGridBackdrop = remember(motionState) { AmbientGridBackdrop(motionState) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -493,13 +471,13 @@ fun AetherBackground(
                 .hazeSource(cardHaze)
                 .hazeSource(backdropHaze, zIndex = 0f)
                 .background(bg)
-                .drawBehind { drawAuroraLayers(size.width, size.height, motion, accent, soft, accentMid, dark) },
+                .drawBehind { drawAetherGridLayers(size.width, size.height, motion, accent, soft, accentMid, dark) },
         )
         Box(modifier = Modifier.fillMaxSize()) {
             CompositionLocalProvider(
                 LocalCardHaze provides cardHaze,
                 LocalBackdropHaze provides backdropHaze,
-                LocalAuroraBackdrop provides auroraBackdrop,
+                LocalAmbientGridBackdrop provides ambientGridBackdrop,
                 LocalAetherLiquidBackdrop provides liquidBackdrop,
             ) {
                 content()

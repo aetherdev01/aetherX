@@ -1,6 +1,9 @@
 package com.aether.x.ui.dashboard
 
+import android.os.Build
 import android.os.SystemClock
+import android.graphics.Paint as AndroidPaint
+import android.graphics.Typeface
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -52,6 +55,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +79,6 @@ import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.sin
 
-private val AndroidRobotGreen = Color(0xFF3DDC84)
 private val MetricGreen = Color(0xFF29B765)
 private val MetricAmber = Color(0xFFFFB74D)
 private val MetricRed = Color(0xFFFF6868)
@@ -640,14 +646,17 @@ private fun AndroidVersionCard(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalAetherPalette.current
-    val versionAccent = when (info?.sdkInt) {
-        37 -> Color(0xFF3DDC84) // Android 17
-        36 -> Color(0xFF8C9EFF) // Android 16
-        35 -> Color(0xFF64B5F6) // Android 15
-        34 -> Color(0xFFFFB74D) // Android 14
+    val api = info?.sdkInt
+    val versionAccent = when (api) {
+        37 -> Color(0xFFE546A7) // Android 17 — cinnamon-bun planet / star field
+        36 -> Color(0xFF78A6FF) // Android 16 — blue space badge
+        35 -> Color(0xFF43B76C) // Android 15 — green triangular launch badge
+        34 -> Color(0xFFFF794E) // Android 14 — orange circular mission patch
+        33 -> Color(0xFFE15A62) // Android 13 — red and teal clock hands
+        31, 32 -> Color(0xFF8C83F6) // Android 12 — Material You clock
+        30 -> Color(0xFFFFB74D) // Android 11 — cat easter egg
         else -> palette.accent
     }
-    val api = info?.sdkInt
     val shape = RoundedCornerShape(25.dp)
     Column(
         modifier = modifier
@@ -685,56 +694,13 @@ private fun AndroidVersionCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Box(
-            modifier = Modifier
-                .size(94.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            versionAccent.copy(alpha = 0.16f + glow * 0.4f),
-                            versionAccent.copy(alpha = 0.05f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val radius = size.minDimension * 0.40f
-                drawCircle(
-                    color = versionAccent.copy(alpha = 0.16f + glow * 0.6f),
-                    radius = radius,
-                    style = Stroke(width = 1.2.dp.toPx()),
-                )
-                drawArc(
-                    color = versionAccent.copy(alpha = 0.8f),
-                    startAngle = phase * 57.2958f,
-                    sweepAngle = 82f,
-                    useCenter = false,
-                    topLeft = Offset(size.width * 0.10f, size.height * 0.10f),
-                    size = Size(size.width * 0.80f, size.height * 0.80f),
-                    style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round),
-                )
-            }
-            AndroidRobot(modifier = Modifier.size(width = 80.dp, height = 47.dp))
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 2.dp, bottom = 2.dp)
-                    .clip(CircleShape)
-                    .background(versionAccent)
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
-            ) {
-                Text(
-                    text = info?.let { device -> device.androidVersion.ifBlank { device.sdkInt.toString() } } ?: "—",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF111820),
-                    maxLines = 1,
-                )
-            }
-        }
+        AndroidVersionArtwork(
+            sdkInt = api ?: Build.VERSION.SDK_INT,
+            phase = phase,
+            accent = versionAccent,
+            dark = palette.isDark,
+            modifier = Modifier.size(width = 112.dp, height = 104.dp),
+        )
         Text(
             text = info?.let { str(R.string.dashboard_overview_android_version_format, it.androidVersion) }
                 ?: str(R.string.dashboard_overview_android_unknown),
@@ -898,63 +864,262 @@ private fun HardwareInfoValue(
 }
 
 /**
- * Android robot head mark used in the current Android visual identity (2023+).
- * Simplified from Google's Android Robot Head asset; the full-body legacy mascot
- * is intentionally not used here. Brand asset reference: developer.android.com/distribute/marketing-tools/brand-guidelines.
+ * Version-specific Android Settings Easter-egg artwork. These are compact vector
+ * illustrations of the actual per-release motifs, not a generic Bugdroid logo.
+ * The artwork switches from the Android 12/13 clock to the space badges for 14–17.
  */
 @Composable
-private fun AndroidRobot(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val green = AndroidRobotGreen
-        val antennaWidth = h * 0.115f
-        // Two short outward-leaning antennae, rounded like the current Bugdroid head.
-        drawLine(
-            color = green,
-            start = Offset(w * 0.34f, h * 0.46f),
-            end = Offset(w * 0.43f, h * 0.065f),
-            strokeWidth = antennaWidth,
-            cap = StrokeCap.Round,
+private fun AndroidVersionArtwork(
+    sdkInt: Int,
+    phase: Float,
+    accent: Color,
+    dark: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier.clip(RoundedCornerShape(17.dp))) {
+        drawVersionEggArtwork(
+            sdkInt = sdkInt,
+            phase = phase,
+            accent = accent,
+            dark = dark,
         )
-        drawLine(
-            color = green,
-            start = Offset(w * 0.66f, h * 0.46f),
-            end = Offset(w * 0.77f, h * 0.065f),
-            strokeWidth = antennaWidth,
-            cap = StrokeCap.Round,
+    }
+}
+
+private fun DrawScope.drawVersionEggArtwork(
+    sdkInt: Int,
+    phase: Float,
+    accent: Color,
+    dark: Boolean,
+) {
+    val w = size.width
+    val h = size.height
+    val cx = w * 0.5f
+    val cy = h * 0.51f
+    val short = minOf(w, h)
+    val progress = phase.coerceIn(0f, 1f)
+    val space = Color(0xFF070B17)
+
+    fun text(value: String, x: Float, y: Float, px: Float, color: Color, bold: Boolean = false) {
+        val paint = AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
+            this.color = color.toArgb()
+            textSize = px
+            textAlign = AndroidPaint.Align.CENTER
+            typeface = Typeface.create("sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL)
+        }
+        drawContext.canvas.nativeCanvas.drawText(value, x, y, paint)
+    }
+
+    fun drawStars(count: Int, color: Color = Color.White) {
+        // Deterministic star locations; avoids random allocations during every animation frame.
+        val points = arrayOf(
+            0.12f to 0.20f, 0.24f to 0.11f, 0.38f to 0.19f, 0.67f to 0.13f,
+            0.84f to 0.22f, 0.16f to 0.41f, 0.79f to 0.42f, 0.29f to 0.56f,
+            0.72f to 0.58f, 0.13f to 0.73f, 0.35f to 0.83f, 0.79f to 0.78f,
+            0.62f to 0.88f, 0.91f to 0.59f, 0.52f to 0.27f, 0.91f to 0.35f,
         )
-        // Wide horizontal dome with a flat lower edge.
-        val left = w * 0.025f
-        val top = h * 0.29f
-        val headWidth = w * 0.95f
-        val headHeight = h * 0.70f
-        drawArc(
-            color = green,
-            startAngle = 180f,
-            sweepAngle = 180f,
-            useCenter = true,
-            topLeft = Offset(left, top),
-            size = Size(headWidth, headHeight),
-        )
-        val baseY = top + headHeight * 0.5f
-        drawRect(
-            color = green,
-            topLeft = Offset(left, baseY),
-            size = Size(headWidth, h - baseY),
-        )
-        // The current head mark uses dark oval eyes, not the white eyes of the old mascot.
-        val eyeColor = Color(0xFF202124)
-        drawOval(
-            color = eyeColor,
-            topLeft = Offset(w * 0.34f, h * 0.52f),
-            size = Size(w * 0.095f, h * 0.16f),
-        )
-        drawOval(
-            color = eyeColor,
-            topLeft = Offset(w * 0.57f, h * 0.52f),
-            size = Size(w * 0.095f, h * 0.16f),
-        )
+        repeat(count.coerceAtMost(points.size)) { i ->
+            val (xf, yf) = points[i]
+            val twinkle = 0.48f + 0.45f * (kotlin.math.sin((progress * 6.28318f + i * 1.31f).toDouble()).toFloat() + 1f) * 0.5f
+            val radius = if (i % 4 == 0) 1.35f else 0.80f
+            drawCircle(
+                color = color.copy(alpha = twinkle * (if (dark) 0.86f else 0.72f)),
+                radius = radius.dp.toPx(),
+                center = Offset(w * xf, h * yf),
+            )
+        }
+    }
+
+    when (sdkInt) {
+        37 -> {
+            // Android 17: magenta rosette, green cinnamon-bun planet and star points.
+            drawRect(color = space)
+            drawStars(16)
+            val center = Offset(cx, h * 0.52f)
+            val outerR = short * 0.395f
+            val rosette = Path().apply {
+                val points = 40
+                for (i in 0 until points) {
+                    val a = ((i.toDouble() / points.toDouble() * 360.0) - 90.0) * (Math.PI / 180.0)
+                    val r = outerR * if (i % 2 == 0) 1f else 0.87f
+                    val x = center.x + kotlin.math.cos(a).toFloat() * r
+                    val y = center.y + kotlin.math.sin(a).toFloat() * r
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                close()
+            }
+            drawPath(rosette, Color(0xFFB8208E))
+            drawCircle(Color(0xFF253C49), radius = outerR * 0.70f, center = center)
+            drawCircle(Color(0xFF49D09B), radius = outerR * 0.48f, center = center)
+            // Cinnamon-bun / planet swirl, animated very subtly to echo the live system.
+            val swirl = Path().apply {
+                moveTo(center.x - outerR * 0.34f, center.y + outerR * 0.16f)
+                cubicTo(center.x - outerR * 0.51f, center.y - outerR * 0.25f,
+                    center.x + outerR * 0.05f, center.y - outerR * 0.42f,
+                    center.x + outerR * 0.27f, center.y - outerR * 0.13f)
+                cubicTo(center.x + outerR * 0.48f, center.y + outerR * 0.17f,
+                    center.x + outerR * 0.01f, center.y + outerR * 0.31f,
+                    center.x - outerR * 0.12f, center.y + outerR * 0.08f)
+                cubicTo(center.x - outerR * 0.23f, center.y - outerR * 0.12f,
+                    center.x + outerR * 0.17f, center.y - outerR * 0.24f,
+                    center.x + outerR * 0.18f, center.y + outerR * 0.01f)
+            }
+            drawPath(swirl, Color(0xFF123D36), style = Stroke(width = short * 0.055f, cap = StrokeCap.Round))
+            text("A N D R O I D", cx, h * 0.105f, short * 0.087f, Color.White, true)
+            text("17", cx, h * 0.965f, short * 0.18f, Color.White, true)
+        }
+        36 -> {
+            // Android 16: blue rounded badge, emerald faceted planet and lime orbit.
+            drawRect(color = space)
+            drawStars(15)
+            drawRoundRect(
+                color = Color(0xFF4285F4),
+                topLeft = Offset(w * 0.055f, h * 0.035f),
+                size = Size(w * 0.89f, h * 0.93f),
+                cornerRadius = CornerRadius(short * 0.14f),
+            )
+            drawRoundRect(
+                color = Color(0xFF141C28),
+                topLeft = Offset(w * 0.13f, h * 0.20f),
+                size = Size(w * 0.74f, h * 0.64f),
+                cornerRadius = CornerRadius(short * 0.08f),
+            )
+            val diamond = Path().apply {
+                moveTo(cx, h * 0.31f)
+                lineTo(w * 0.76f, h * 0.52f)
+                lineTo(cx, h * 0.73f)
+                lineTo(w * 0.24f, h * 0.52f)
+                close()
+            }
+            drawPath(diamond, Color(0xFF239A55))
+            drawPath(Path().apply { moveTo(cx, h * 0.31f); lineTo(w * 0.76f, h * 0.52f); lineTo(cx, h * 0.52f); close() }, Color(0xFF52D273))
+            drawPath(Path().apply { moveTo(cx, h * 0.31f); lineTo(cx, h * 0.52f); lineTo(w * 0.24f, h * 0.52f); close() }, Color(0xFF35B964))
+            drawPath(Path().apply { moveTo(w * 0.24f, h * 0.52f); lineTo(cx, h * 0.52f); lineTo(cx, h * 0.73f); close() }, Color(0xFF168348))
+            val orbit = Path().apply {
+                moveTo(w * 0.21f, h * 0.72f)
+                cubicTo(w * 0.32f, h * 0.88f, w * 0.60f, h * 0.85f, w * 0.79f, h * 0.33f)
+            }
+            drawPath(orbit, Color(0xFFB4F52B), style = Stroke(width = short * 0.045f, cap = StrokeCap.Round))
+            text("ANDROID", cx, h * 0.145f, short * 0.105f, Color.White, true)
+            text("16", w * 0.75f, h * 0.80f, short * 0.18f, Color.White, true)
+        }
+        35 -> {
+            // Android 15: green, rounded triangle mission patch and descending launch trail.
+            drawRect(color = space)
+            drawStars(15)
+            val outer = Path().apply {
+                moveTo(w * 0.15f, h * 0.17f)
+                quadraticTo(w * 0.50f, h * 0.105f, w * 0.85f, h * 0.17f)
+                lineTo(w * 0.58f, h * 0.88f)
+                quadraticTo(w * 0.50f, h * 0.98f, w * 0.42f, h * 0.88f)
+                close()
+            }
+            drawPath(outer, Color(0xFF34A853))
+            val inner = Path().apply {
+                moveTo(w * 0.22f, h * 0.23f)
+                lineTo(w * 0.78f, h * 0.23f)
+                lineTo(w * 0.56f, h * 0.79f)
+                quadraticTo(w * 0.50f, h * 0.86f, w * 0.44f, h * 0.79f)
+                close()
+            }
+            drawPath(inner, Color(0xFF07121B))
+            drawCircle(Color.White.copy(alpha = 0.94f), short * 0.11f, Offset(cx, h * 0.34f))
+            drawPath(Path().apply { moveTo(cx, h * 0.27f); lineTo(w * 0.58f, h * 0.65f); lineTo(cx, h * 0.75f); lineTo(w * 0.42f, h * 0.65f); close() }, Color(0xFF9EF52D))
+            drawRoundRect(Color(0xFF747B86), Offset(w * 0.37f, h * 0.62f), Size(w * 0.26f, h * 0.19f), CornerRadius(short * 0.05f))
+            text("ANDROID", cx, h * 0.205f, short * 0.087f, Color.White, true)
+            text("15", cx, h * 0.755f, short * 0.16f, Color.White, true)
+        }
+        34 -> {
+            // Android 14: orange Apollo-style circular mission patch.
+            drawRect(color = space)
+            drawStars(15)
+            drawCircle(Color(0xFFFF7547), radius = short * 0.445f, center = Offset(cx, cy), style = Stroke(width = short * 0.12f))
+            drawCircle(Color(0xFF071321), radius = short * 0.385f, center = Offset(cx, cy))
+            drawArc(Color.White, 180f, 180f, true, Offset(w * 0.31f, h * 0.24f), Size(w * 0.38f, h * 0.22f))
+            drawLine(Color.White, Offset(w * 0.39f, h * 0.36f), Offset(w * 0.45f, h * 0.59f), short * 0.025f, StrokeCap.Round)
+            drawLine(Color.White, Offset(w * 0.61f, h * 0.36f), Offset(w * 0.55f, h * 0.59f), short * 0.025f, StrokeCap.Round)
+            val rocket = Path().apply {
+                moveTo(cx, h * 0.30f)
+                cubicTo(w * 0.56f, h * 0.40f, w * 0.55f, h * 0.54f, cx, h * 0.70f)
+                cubicTo(w * 0.45f, h * 0.54f, w * 0.44f, h * 0.40f, cx, h * 0.30f)
+                close()
+            }
+            drawPath(rocket, Color(0xFF52D273))
+            drawCircle(Color(0xFFB4F52B), short * 0.035f, Offset(cx, h * 0.48f))
+            text("ANDROID 14", cx, h * 0.155f, short * 0.078f, Color.White, true)
+        }
+        33 -> {
+            // Android 13's Settings Easter egg is a clock, with a scalloped pale dial and red/teal hands.
+            drawRect(color = if (dark) Color(0xFF151923) else Color(0xFFEBEDF2))
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0xFF424957).copy(alpha = 0.34f), Color.Transparent)),
+                radius = short * 0.62f,
+                center = Offset(cx, cy),
+            )
+            val dial = Path().apply {
+                val points = 48
+                val r = short * 0.365f
+                for (i in 0 until points) {
+                    val a = ((i.toDouble() / points.toDouble() * 360.0) - 90.0) * (Math.PI / 180.0)
+                    val factor = if (i % 2 == 0) 1f else 0.94f
+                    val x = cx + kotlin.math.cos(a).toFloat() * r * factor
+                    val y = cy + kotlin.math.sin(a).toFloat() * r * factor
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                close()
+            }
+            drawPath(dial, Color(0xFFD2D5DC))
+            drawCircle(Color(0xFFE6E8ED), short * 0.305f, Offset(cx, cy))
+            drawLine(Color(0xFFE54850), Offset(cx, cy), Offset(cx, h * 0.225f), short * 0.045f, StrokeCap.Round)
+            drawLine(Color(0xFF547C91), Offset(cx, cy), Offset(w * 0.69f, h * 0.40f), short * 0.040f, StrokeCap.Round)
+            drawArc(Color(0xFFE54850), -90f, 48f, false, Offset(w * 0.31f, h * 0.30f), Size(w * 0.38f, h * 0.38f), style = Stroke(width = short * 0.024f, cap = StrokeCap.Round))
+            drawCircle(Color(0xFFE54850), short * 0.04f, Offset(cx, cy))
+        }
+        31, 32 -> {
+            // Android 12 / 12L: Material You clock surrounded by a lively ring of colored circles.
+            drawRect(color = Color(0xFF17152A))
+            val colors = listOf(Color(0xFF8E80E8), Color(0xFFFFC857), Color(0xFF68D7D0), Color(0xFFF58EAE), Color(0xFFB4E66E), Color(0xFF7EA9FF))
+            val orbitR = short * 0.38f
+            repeat(12) { i ->
+                val a = ((i.toDouble() / 12.0 * 360.0) - 90.0) * (Math.PI / 180.0)
+                val pos = Offset(cx + kotlin.math.cos(a).toFloat() * orbitR, cy + kotlin.math.sin(a).toFloat() * orbitR)
+                drawCircle(colors[i % colors.size].copy(alpha = 0.92f), short * if (i % 3 == 0) 0.075f else 0.060f, pos)
+            }
+            drawCircle(Color(0xFFB8B4D4), short * 0.265f, Offset(cx, cy))
+            drawLine(Color(0xFF5D5B73), Offset(cx, cy), Offset(cx, h * 0.28f), short * 0.045f, StrokeCap.Round)
+            drawLine(Color(0xFF5D5B73), Offset(cx, cy), Offset(w * 0.68f, h * 0.51f), short * 0.045f, StrokeCap.Round)
+            drawCircle(Color(0xFF5D5B73), short * 0.036f, Offset(cx, cy))
+        }
+        30 -> {
+            // Android 11: minimal cat-themed dish / head motif from the Neko easter egg.
+            drawRect(color = Color(0xFF181923))
+            drawCircle(Color(0xFF343748), short * 0.39f, Offset(cx, cy))
+            drawArc(Color(0xFFFFB74D), 180f, 180f, false, Offset(w * 0.25f, h * 0.27f), Size(w * 0.50f, h * 0.50f), style = Stroke(width = short * 0.035f, cap = StrokeCap.Round))
+            val cat = Path().apply {
+                moveTo(w * 0.32f, h * 0.43f); lineTo(w * 0.34f, h * 0.26f); lineTo(w * 0.46f, h * 0.36f)
+                quadraticTo(cx, h * 0.31f, w * 0.56f, h * 0.36f); lineTo(w * 0.68f, h * 0.26f); lineTo(w * 0.70f, h * 0.43f)
+                cubicTo(w * 0.78f, h * 0.70f, w * 0.22f, h * 0.70f, w * 0.32f, h * 0.43f); close()
+            }
+            drawPath(cat, Color(0xFFE9C59D))
+            drawCircle(ink, short * 0.022f, Offset(w * 0.43f, h * 0.48f))
+            drawCircle(ink, short * 0.022f, Offset(w * 0.57f, h * 0.48f))
+            drawLine(ink, Offset(w * 0.47f, h * 0.56f), Offset(cx, h * 0.59f), short * 0.012f, StrokeCap.Round)
+            drawLine(ink, Offset(cx, h * 0.59f), Offset(w * 0.53f, h * 0.56f), short * 0.012f, StrokeCap.Round)
+            text("11", cx, h * 0.94f, short * 0.13f, Color.White, true)
+        }
+        else -> {
+            // Older Android releases get a restrained version badge rather than a generic robot.
+            val hue = when (sdkInt) {
+                in 26..29 -> Color(0xFF5B8DEF)
+                in 23..25 -> Color(0xFF73C9B8)
+                else -> accent
+            }
+            drawRect(color = if (dark) Color(0xFF111520) else Color(0xFFE9EDF5))
+            drawCircle(hue.copy(alpha = 0.18f), short * 0.47f, Offset(cx, cy))
+            drawCircle(hue, short * 0.36f, Offset(cx, cy), style = Stroke(width = short * 0.06f))
+            text(sdkInt.toString(), cx, cy + short * 0.11f, short * 0.30f, if (dark) Color.White else Color(0xFF202434), true)
+            text("ANDROID", cx, h * 0.91f, short * 0.09f, hue, true)
+        }
     }
 }
 
