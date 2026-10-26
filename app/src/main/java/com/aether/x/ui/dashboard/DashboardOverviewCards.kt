@@ -1335,9 +1335,9 @@ private fun AndroidVersionArtwork(
     val context = LocalContext.current
     // AOSP keeps the version Easter Egg in the separate com.android.egg package
     // on many builds; it is not the framework package literally named "android".
-    val systemEggIcon: Drawable? = androidx.compose.runtime.remember(context) {
-        runCatching { context.packageManager.getApplicationIcon("com.android.egg") }.getOrNull()
-    }
+    // Needs <queries><package android:name="com.android.egg"/></queries> in the manifest
+    // (package visibility, API 30+), otherwise every lookup below fails.
+    val systemEggIcon: Drawable? = androidx.compose.runtime.remember(context) { loadSystemEggIcon(context) }
     if (systemEggIcon != null) {
         AndroidView(
             modifier = modifier.clip(RoundedCornerShape(17.dp)),
@@ -1367,23 +1367,36 @@ private fun AndroidVersionArtwork(
     }
 }
 
-private fun launchSystemAndroidEasterEgg(context: android.content.Context) {
-    // Prefer the official Easter Egg activity where the ROM exposes it.
-    // Android releases/OEMs use different activity names, so try known AOSP variants.
-    val candidates = listOf(
-        ComponentName("com.android.egg", "com.android.egg.EasterEgg"),
-        ComponentName("com.android.egg", "com.android.egg.NekoActivity"),
-    )
-    for (component in candidates) {
-        val intent = Intent(Intent.ACTION_MAIN).setComponent(component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (runCatching { context.packageManager.resolveActivity(intent, 0) != null }.getOrDefault(false)) {
-            if (runCatching { context.startActivity(intent); true }.getOrDefault(false)) return
-        }
+private val EGG_ACTIVITIES = listOf(
+    "com.android.egg.EasterEgg",
+    "com.android.egg.PlatLogoActivity",
+    "com.android.egg.landroid.MainActivity",
+    "com.android.egg.neko.NekoActivationActivity",
+    "com.android.egg.neko.NekoActivity",
+)
+
+/** Official Easter-egg icon of the installed Android version; null if the ROM has no com.android.egg. */
+private fun loadSystemEggIcon(context: android.content.Context): Drawable? {
+    val pm = context.packageManager
+    runCatching { pm.getApplicationIcon("com.android.egg") }.getOrNull()?.let { return it }
+    for (name in EGG_ACTIVITIES) {
+        runCatching { pm.getActivityIcon(ComponentName("com.android.egg", name)) }.getOrNull()?.let { return it }
     }
-    runCatching { context.packageManager.getLaunchIntentForPackage("com.android.egg") }
-        .getOrNull()?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)?.let { intent ->
-            runCatching { context.startActivity(intent) }
-        }
+    return null
+}
+
+private fun launchSystemAndroidEasterEgg(context: android.content.Context) {
+    // Explicit-component starts do not need package visibility, so no resolveActivity() pre-check
+    // (it returns null on API 30+ without <queries> and used to block the launch).
+    val launcher = runCatching { context.packageManager.getLaunchIntentForPackage("com.android.egg") }.getOrNull()
+    val intents = buildList {
+        launcher?.let { add(it) }
+        EGG_ACTIVITIES.forEach { add(Intent(Intent.ACTION_MAIN).setComponent(ComponentName("com.android.egg", it))) }
+    }
+    for (intent in intents) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { context.startActivity(intent) }.isSuccess) return
+    }
 }
 
 
