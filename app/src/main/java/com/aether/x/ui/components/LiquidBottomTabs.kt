@@ -312,18 +312,31 @@ fun LiquidBottomTabs(
             if (dampedDragAnimation.value.fastRoundToInt() == index) 1f else 0f
         }
 
-        // Base row: navbar kaca. Ikon di luar kapsul TIDAK ikut membesar saat ditahan.
+        // Base row: kapsul Liquid Glass utama. Bentuknya CAPSULE (bukan kotak/strip),
+        // mengambil konten aktual di belakang navbar, lalu memburamkannya sesuai Blur Intensity.
+        // Tint permukaan tetap mengikuti Liquid Glass Level, sehingga konten belakang terlihat
+        // melalui kaca yang blur—bukan menutupinya dengan bidang putih solid atau menjadi transparan.
         CompositionLocalProvider(
             LocalLiquidBottomTabScale provides { 1f },
             LocalLiquidBottomTabSelectionProgress provides baseSelectionProgress,
         ) {
             Row(
-                // Keep the tab hit-area and layout, but do not draw a second
-                // full-width frosted capsule behind every tab. Only the moving
-                // selected capsule below remains glass, so content behind the
-                // navbar is not covered by a broad white/blurred panel.
                 Modifier
                     .graphicsLayer { translationX = panelOffset }
+                    .drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { Capsule() },
+                        effects = {
+                            vibrancy()
+                            blur(navBlurDp.dp.toPx())
+                        },
+                        highlight = { Highlight.Default.copy(alpha = 0.12f) },
+                        onDrawSurface = {
+                            // Gradient tipis + aksen sangat halus untuk tekstur kaca.
+                            drawRect(containerBrush)
+                            drawRect(palette.accent.copy(alpha = 0.018f))
+                        },
+                    )
                     .height(barHeight)
                     .fillMaxWidth()
                     .padding(4f.dp)
