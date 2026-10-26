@@ -208,10 +208,12 @@ fun LiquidBottomTabs(
     val glass = style.glassLevel.coerceIn(0f, 1f)
     val capsuleHeight = barHeight - 8f.dp
     val sizeFactor = capsuleHeight.value / 56f
-    // Kapsul idle memakai tint aksen yang bening, bukan abu-abu dari textPrimary.
-    val idleCapsuleFill = palette.accent.copy(alpha = 0.075f + 0.025f * glass)
-    val idleCapsuleAccent = palette.accent.copy(alpha = 0.035f)
-    val containerColor = palette.surface.copy(alpha = liquidGlassTintAlpha(glass))
+    // Satu kurva level Liquid Glass dipakai pada dasar navbar dan kapsul terpilih,
+    // supaya slider Glass terasa konsisten pada seluruh permukaan.
+    val glassTintAlpha = liquidGlassTintAlpha(glass)
+    val idleCapsuleFill = palette.accent.copy(alpha = (0.055f + glassTintAlpha * 0.11f).coerceIn(0f, 0.18f))
+    val idleCapsuleAccent = palette.accent.copy(alpha = (0.015f + glassTintAlpha * 0.035f).coerceIn(0f, 0.06f))
+    val containerColor = palette.surface.copy(alpha = glassTintAlpha)
     val navBlurDp = maxOf(blurRadiusFor(style.blur.coerceIn(0f, 1f)), NAV_MIN_BLUR_DP)
     // Gradient tint vertikal: atas lebih bening, bawah lebih pekat.
     val containerBrush = Brush.verticalGradient(

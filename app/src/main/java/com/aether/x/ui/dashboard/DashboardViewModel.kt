@@ -31,7 +31,7 @@ data class DashboardUiState(
     val cardOrder: List<String> = DEFAULT_CARD_ORDER,
 )
 
-private val DEFAULT_CARD_ORDER = listOf("status", "recent_games", "game_monitor")
+private val DEFAULT_CARD_ORDER = listOf("overview", "recent_games", "game_monitor")
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -47,7 +47,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private var cardOrderDirty = false
 
     init {
-        _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(application)) }
+        // Device/thermal sensor reads can touch several sysfs files; keep them off the main thread.
+        viewModelScope.launch {
+            val info = withContext(Dispatchers.IO) { DeviceInfoProvider.read(application) }
+            _state.update { it.copy(deviceInfo = info) }
+        }
         GameSessionRepository.initialize(application.applicationContext)
         loadGames()
         observeLastPlayed()

@@ -921,4 +921,44 @@
     <string name="kernel_history_cpu">Kernel CPU</string>
     <string name="kernel_history_gpu">Kernel GPU</string>
     <string name="kernel_history_preset">Kernel preset</string>
+
+    <!-- Dashboard system-monitor cards: bilingual labels and formatted values. -->
+    <string name="dashboard_overview_live_title">System Monitor</string>
+    <string name="dashboard_overview_live_subtitle">Device metrics refresh periodically</string>
+    <string name="dashboard_overview_temperature">Temperature</string>
+    <string name="dashboard_overview_temperature_short">Temp</string>
+    <string name="dashboard_overview_battery_temperature">Battery Temp</string>
+    <string name="dashboard_overview_battery_temperature_detail">Battery temperature sensor</string>
+    <string name="dashboard_overview_soc_temperature_detail">CPU / SoC thermal sensor</string>
+    <string name="dashboard_overview_temperature_fallback_detail">Device temperature sensor unavailable</string>
+    <string name="dashboard_overview_charging">Charging</string>
+    <string name="dashboard_overview_charging_active">Charging</string>
+    <string name="dashboard_overview_charging_inactive">Not charging</string>
+    <string name="dashboard_overview_charging_detail">Power source status</string>
+    <string name="dashboard_overview_battery">Battery</string>
+    <string name="dashboard_overview_battery_remaining_format">%1$d%% remaining</string>
+    <string name="dashboard_overview_battery_unknown_detail">Battery percentage unavailable</string>
+    <string name="dashboard_overview_ram">RAM</string>
+    <string name="dashboard_overview_storage">Storage</string>
+    <string name="dashboard_overview_uptime">Uptime</string>
+    <string name="dashboard_overview_deep_sleep">Deep sleep</string>
+    <string name="dashboard_overview_uptime_detail">Awake time since boot</string>
+    <string name="dashboard_overview_deep_sleep_detail">Estimated time in system sleep</string>
+    <string name="dashboard_overview_android_eyebrow">OPERATING SYSTEM</string>
+    <string name="dashboard_overview_android_version_format">Android %1$s</string>
+    <string name="dashboard_overview_android_unknown">Unknown Android version</string>
+    <string name="dashboard_overview_device_name_unknown">Unknown device</string>
+    <string name="dashboard_overview_api_core_format">API %1$d · %2$d cores</string>
+    <string name="dashboard_overview_android_api_unknown">API version unavailable</string>
+    <string name="dashboard_overview_unavailable">—</string>
+    <string name="dashboard_overview_usage_unavailable">Usage data unavailable</string>
+    <string name="dashboard_overview_duration_days_hours">%1$d d %2$d h</string>
+    <string name="dashboard_overview_duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="dashboard_overview_duration_minutes">%1$d min</string>
+    <string name="dashboard_overview_hardware_title">Device Hardware</string>
+    <string name="dashboard_overview_hardware_soc">Chipset / SoC</string>
+    <string name="dashboard_overview_hardware_cores">CPU cores</string>
+    <string name="dashboard_overview_hardware_refresh_rate">Refresh rate</string>
+    <string name="dashboard_overview_hardware_abi">ABI architecture</string>
+    <string name="dashboard_overview_hardware_kernel">Kernel version</string>
 </resources>

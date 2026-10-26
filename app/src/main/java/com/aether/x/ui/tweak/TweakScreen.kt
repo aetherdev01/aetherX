@@ -130,7 +130,7 @@ import com.aether.x.ui.components.dragPopEffect
 import com.aether.x.ui.dashboard.DashboardGameMonitorSection
 import com.aether.x.ui.dashboard.RecentlyPlayedGamesSection
 import com.aether.x.ui.dashboard.DashboardViewModel
-import com.aether.x.ui.dashboard.DeviceStatusSection
+import com.aether.x.ui.dashboard.DashboardOverviewSection
 import com.aether.x.ui.dashboard.RamCleanerCard
 import com.aether.x.ui.monitor.RootMonitorSection
 import com.aether.x.ui.monitor.GameMonitorScreen
@@ -370,9 +370,8 @@ fun TweakScreen(
                                         ),
                                 ) {
                                     when (cardId) {
-                                        "status" -> DeviceStatusSection(
+                                        "overview" -> DashboardOverviewSection(
                                             info = dashboardState.deviceInfo,
-                                            rootGranted = privilegeStatus.rootGranted,
                                         )
                                         "recent_games" -> RecentlyPlayedGamesSection(
                                             games = dashboardState.recentPlayedGames,

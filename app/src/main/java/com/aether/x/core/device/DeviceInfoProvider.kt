@@ -33,6 +33,8 @@ data class DeviceInfoSnapshot(
     val isCharging: Boolean = false,
     val uptimeMillis: Long = 0L,
     val refreshRateHz: Float = 0f,
+    /** CPU/SoC thermal sensor when the ROM exposes a readable thermal zone. */
+    val systemTempC: Float? = null,
 ) {
     val usedRamBytes: Long get() = (totalRamBytes - availableRamBytes).coerceAtLeast(0L)
     val usedStorageBytes: Long get() = (totalStorageBytes - availableStorageBytes).coerceAtLeast(0L)
@@ -89,12 +91,32 @@ object DeviceInfoProvider {
             kernelVersion = System.getProperty("os.version").orEmpty(),
             cpuCores = Runtime.getRuntime().availableProcessors(),
             batteryPercent = batteryPercent,
-            batteryTempC = if (tempTenths != Int.MIN_VALUE) tempTenths / 10f else null,
+            batteryTempC = if (tempTenths >= 0) tempTenths / 10f else null,
             isCharging = charging,
             uptimeMillis = SystemClock.elapsedRealtime(),
             refreshRateHz = refreshRate,
+            systemTempC = readSystemThermalTemperature(),
         )
     }
+
+    /** Best-effort SoC/CPU/GPU temperature. Restricted thermal zones simply return null. */
+    private fun readSystemThermalTemperature(): Float? = runCatching {
+        val thermalDir = File("/sys/class/thermal")
+        val zones = thermalDir.listFiles { file -> file.name.startsWith("thermal_zone") } ?: return null
+        val readings = zones.mapNotNull { zone ->
+            val raw = File(zone, "temp").takeIf { it.canRead() }?.readText()?.trim()?.toLongOrNull()
+                ?: return@mapNotNull null
+            val celsius = if (raw > 1_000L) raw / 1_000f else raw.toFloat()
+            if (celsius !in 10f..110f) return@mapNotNull null
+            val type = File(zone, "type").takeIf { it.canRead() }?.readText()?.trim()?.lowercase(Locale.ROOT).orEmpty()
+            type to celsius
+        }
+        val nonBattery = readings.filterNot { (type, _) -> type.contains("battery") }
+        val candidates = nonBattery.ifEmpty { readings }
+        candidates.firstOrNull { (type, _) ->
+            type.contains("cpu") || type.contains("soc") || type.contains("gpu") || type.contains("ap")
+        }?.second ?: candidates.maxByOrNull { it.second }?.second
+    }.getOrNull()
 }
 
 fun Long.toGbLabel(): String {

@@ -1085,4 +1085,44 @@
     <string name="kernel_history_cpu">Kernel CPU</string>
     <string name="kernel_history_gpu">Kernel GPU</string>
     <string name="kernel_history_preset">Preset Kernel</string>
+
+    <!-- Dashboard system-monitor cards: bilingual labels and formatted values. -->
+    <string name="dashboard_overview_live_title">Pemantauan Sistem</string>
+    <string name="dashboard_overview_live_subtitle">Data perangkat diperbarui secara berkala</string>
+    <string name="dashboard_overview_temperature">Suhu Perangkat</string>
+    <string name="dashboard_overview_temperature_short">Suhu</string>
+    <string name="dashboard_overview_battery_temperature">Suhu Baterai</string>
+    <string name="dashboard_overview_battery_temperature_detail">Sensor suhu baterai</string>
+    <string name="dashboard_overview_soc_temperature_detail">Sensor termal CPU / SoC</string>
+    <string name="dashboard_overview_temperature_fallback_detail">Sensor suhu perangkat tidak tersedia</string>
+    <string name="dashboard_overview_charging">Pengisian Daya</string>
+    <string name="dashboard_overview_charging_active">Mengisi daya</string>
+    <string name="dashboard_overview_charging_inactive">Tidak mengisi</string>
+    <string name="dashboard_overview_charging_detail">Status sumber daya</string>
+    <string name="dashboard_overview_battery">Baterai</string>
+    <string name="dashboard_overview_battery_remaining_format">%1$d%% tersisa</string>
+    <string name="dashboard_overview_battery_unknown_detail">Persentase baterai tidak tersedia</string>
+    <string name="dashboard_overview_ram">RAM</string>
+    <string name="dashboard_overview_storage">Penyimpanan</string>
+    <string name="dashboard_overview_uptime">Uptime</string>
+    <string name="dashboard_overview_deep_sleep">Deep sleep</string>
+    <string name="dashboard_overview_uptime_detail">Waktu aktif sejak boot</string>
+    <string name="dashboard_overview_deep_sleep_detail">Perkiraan waktu tidur sistem</string>
+    <string name="dashboard_overview_android_eyebrow">SISTEM OPERASI</string>
+    <string name="dashboard_overview_android_version_format">Android %1$s</string>
+    <string name="dashboard_overview_android_unknown">Android tidak diketahui</string>
+    <string name="dashboard_overview_device_name_unknown">Perangkat tidak diketahui</string>
+    <string name="dashboard_overview_api_core_format">API %1$d · %2$d core</string>
+    <string name="dashboard_overview_android_api_unknown">Versi API tidak tersedia</string>
+    <string name="dashboard_overview_unavailable">—</string>
+    <string name="dashboard_overview_usage_unavailable">Data penggunaan tidak tersedia</string>
+    <string name="dashboard_overview_duration_days_hours">%1$d hari %2$d jam</string>
+    <string name="dashboard_overview_duration_hours_minutes">%1$d jam %2$d mnt</string>
+    <string name="dashboard_overview_duration_minutes">%1$d mnt</string>
+    <string name="dashboard_overview_hardware_title">Perangkat</string>
+    <string name="dashboard_overview_hardware_soc">Chipset / SoC</string>
+    <string name="dashboard_overview_hardware_cores">Inti CPU</string>
+    <string name="dashboard_overview_hardware_refresh_rate">Refresh rate</string>
+    <string name="dashboard_overview_hardware_abi">Arsitektur ABI</string>
+    <string name="dashboard_overview_hardware_kernel">Versi Kernel</string>
 </resources>
