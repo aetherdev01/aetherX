@@ -8,13 +8,22 @@ import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import android.graphics.Paint as AndroidPaint
 import android.graphics.Typeface
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -50,6 +59,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -81,10 +93,13 @@ import com.aether.x.core.device.DeviceInfoProvider
 import com.aether.x.core.device.DeviceInfoSnapshot
 import com.aether.x.core.device.toGbLabel
 import com.aether.x.core.locale.str
+import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.theme.LocalAetherPalette
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.PI
@@ -542,6 +557,7 @@ private fun BatteryChargingCard(
     phase: Float,
 ) {
     val palette = LocalAetherPalette.current
+    val reduceMotion = LocalReduceMotionEnabled.current
     val charging = info?.isCharging == true
     val battery = info?.batteryPercent?.takeIf { it in 0..100 }
     val accent = if (charging) MetricGreen else when {
@@ -559,51 +575,126 @@ private fun BatteryChargingCard(
     val currentText = currentMa?.let { String.format(Locale.getDefault(), "%.0f mA", it) }
         ?: str(R.string.dashboard_overview_charging_current_unavailable)
     val batteryText = battery?.let { "$it%" } ?: str(R.string.dashboard_overview_unavailable)
-    val jellyScale by animateFloatAsState(
-        targetValue = if (charging) 1.025f else 1f,
-        animationSpec = spring(dampingRatio = if (charging) 0.42f else 0.78f, stiffness = 260f),
-        label = "batteryChargingJelly",
+
+    // 0 = idle, 1 = charging. Drives every visual so plug / unplug cross-fades smoothly.
+    val chargeBlend by animateFloatAsState(
+        targetValue = if (charging) 1f else 0f,
+        animationSpec = tween(if (reduceMotion) 0 else 650, easing = FastOutSlowInEasing),
+        label = "batteryChargeBlend",
     )
+    val level by animateFloatAsState(
+        targetValue = (battery ?: 0) / 100f,
+        animationSpec = tween(if (reduceMotion) 0 else 900, easing = FastOutSlowInEasing),
+        label = "batteryLevel",
+    )
+    // Card "pops" taller when plugged in and settles back (with a soft bounce) when unplugged.
+    val cardHeight by animateDpAsState(
+        targetValue = if (charging) 150.dp else 132.dp,
+        animationSpec = if (reduceMotion) snap() else spring(dampingRatio = 0.5f, stiffness = 260f),
+        label = "batteryCardHeight",
+    )
+
+    // Jelly (squash & stretch) on plug / unplug. Skipped on first composition.
+    val jellyX = remember { Animatable(1f) }
+    val jellyY = remember { Animatable(1f) }
+    var initialized by remember { mutableStateOf(false) }
+    LaunchedEffect(charging) {
+        if (!initialized) {
+            initialized = true
+            return@LaunchedEffect
+        }
+        if (reduceMotion) return@LaunchedEffect
+        // Plug in: squashed flat, then springs up and wobbles. Unplug: stretched, then settles calmly.
+        val startX = if (charging) 1.04f else 0.97f
+        val startY = if (charging) 0.88f else 1.07f
+        val damping = if (charging) 0.22f else 0.34f
+        coroutineScope {
+            jellyX.snapTo(startX)
+            jellyY.snapTo(startY)
+            launch { jellyX.animateTo(1f, spring(dampingRatio = damping, stiffness = 380f)) }
+            launch { jellyY.animateTo(1f, spring(dampingRatio = damping, stiffness = 380f)) }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = spring(dampingRatio = 0.72f, stiffness = 320f))
-            .graphicsLayer { scaleX = jellyScale; scaleY = jellyScale }
-            .height(if (charging) 132.dp else 96.dp)
+            .height(cardHeight)
+            .graphicsLayer { scaleX = jellyX.value; scaleY = jellyY.value }
             .aetherCardSurface(shape = shape, accent = accent)
+            .clip(shape)
             .drawBehind {
-                drawRoundRect(
+                val w = size.width
+                val h = size.height
+                drawRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            accent.copy(alpha = if (charging) 0.10f + glow * 0.48f else 0.035f + glow * 0.10f),
-                            palette.accentSoft.copy(alpha = 0.04f + if (charging) glow * 0.14f else 0f),
+                            accent.copy(alpha = 0.05f + glow * 0.25f * chargeBlend),
                             Color.Transparent,
                         ),
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width, size.height),
+                        start = Offset.Zero,
+                        end = Offset(w, h),
                     ),
-                    cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx()),
                 )
-                if (charging) {
-                    drawRoundRect(
-                        color = accent.copy(alpha = 0.24f + glow * 0.55f),
-                        topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-                        size = Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
-                        cornerRadius = CornerRadius(23.dp.toPx(), 23.dp.toPx()),
-                        style = Stroke(width = (1f + glow * 5f) * density),
+                // Liquid fill that rises to the battery level; waves get livelier while charging.
+                val fillTop = h * (1f - (0.10f + 0.80f * level))
+                val amp = (1.2f + 3.2f * chargeBlend) * density
+                drawWave(
+                    top = fillTop,
+                    amp = amp * 0.8f,
+                    wavePhase = -phase + 1.3f,
+                    color = accent.copy(alpha = 0.12f + 0.10f * chargeBlend),
+                )
+                drawWave(
+                    top = fillTop + 2f * density,
+                    amp = amp,
+                    wavePhase = phase * 2f,
+                    color = accent.copy(alpha = 0.18f + 0.14f * chargeBlend + glow * 0.4f * chargeBlend),
+                )
+                if (chargeBlend > 0.01f) {
+                    // Bubbles rising through the liquid.
+                    val bubbleCount = 7
+                    val liquidHeight = (h - fillTop).coerceAtLeast(1f)
+                    repeat(bubbleCount) { i ->
+                        val p = ((phase / (2f * PI.toFloat())) + i / bubbleCount.toFloat()).mod(1f)
+                        val bx = w * (0.10f + 0.80f * ((i * 0.381f) % 1f)) +
+                            sin((phase * 3f + i * 1.7f).toDouble()).toFloat() * 4f * density
+                        val by = h - p * liquidHeight
+                        drawCircle(
+                            color = Color.White.copy(alpha = (1f - p) * 0.38f * chargeBlend),
+                            radius = (1.6f + (i % 3) * 0.9f) * density,
+                            center = Offset(bx, by),
+                        )
+                    }
+                    // Soft diagonal sheen sweeping across the card.
+                    val sweep = (phase / (2f * PI.toFloat())).mod(1f)
+                    val sx = -0.5f * w + sweep * 2f * w
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.13f * chargeBlend),
+                                Color.Transparent,
+                            ),
+                            start = Offset(sx - 0.35f * w, 0f),
+                            end = Offset(sx + 0.35f * w, h * 0.6f),
+                        ),
                     )
-                    val travelX = ((phase / (2f * PI.toFloat())).mod(1f)) * size.width
-                    drawCircle(
-                        color = accent.copy(alpha = 0.32f + glow * 0.56f),
-                        radius = (2.0f + glow * 4f) * density,
-                        center = Offset(travelX.coerceIn(8.dp.toPx(), size.width - 8.dp.toPx()), 2.dp.toPx()),
+                    // Pulsing neon rim.
+                    val strokeW = (1f + 1.2f * chargeBlend + glow * 6f * chargeBlend) * density
+                    drawRoundRect(
+                        color = accent.copy(alpha = (0.18f + glow * 1.8f) * chargeBlend),
+                        topLeft = Offset(strokeW / 2f, strokeW / 2f),
+                        size = Size(w - strokeW, h - strokeW),
+                        cornerRadius = CornerRadius(24.dp.toPx() - strokeW / 2f),
+                        style = Stroke(width = strokeW),
                     )
                 }
             }
-            .padding(horizontal = 13.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
+        // Header: icon + title/status only (percentage moved below so nothing gets squeezed / clipped).
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -611,16 +702,22 @@ private fun BatteryChargingCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accent.copy(alpha = if (charging) 0.20f + glow * 0.32f else 0.12f)),
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(accent.copy(alpha = 0.12f + 0.20f * chargeBlend + glow * 0.3f * chargeBlend)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.BatteryChargingFull,
+                    imageVector = if (charging) Icons.Outlined.BatteryChargingFull else Icons.Outlined.BatteryFull,
                     contentDescription = null,
                     tint = accent,
-                    modifier = Modifier.size(21.dp),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer {
+                            val pulse = 1f + 0.14f * chargeBlend * ((sin(phase * 2.0).toFloat() + 1f) * 0.5f)
+                            scaleX = pulse
+                            scaleY = pulse
+                        },
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -641,60 +738,65 @@ private fun BatteryChargingCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            AnimatedVisibility(
+                visible = charging,
+                enter = fadeIn(tween(300)) + expandVertically(spring(dampingRatio = 0.6f, stiffness = 300f)),
+                exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = currentText,
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = powerText,
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Text(
                 text = batteryText,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
         }
-        if (charging) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = currentText,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = powerText,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (charging) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
-            val count = 40
-            val step = size.width / count
-            val barWidth = step * 0.50f
-            repeat(count) { index ->
-                val wave = (sin((index * 0.38f + phase * 1.8f).toDouble()).toFloat() + 1f) * 0.5f
-                val height = if (charging) size.height * (0.22f + wave * 0.78f) else size.height * 0.22f
-                drawRoundRect(
-                    color = accent.copy(alpha = if (charging) 0.22f + wave * (0.40f + glow) else 0.12f),
-                    topLeft = Offset(index * step + (step - barWidth) * 0.5f, size.height - height),
-                    size = Size(barWidth, height),
-                    cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
-                )
-            }
-        }
-        Text(
-            text = str(R.string.dashboard_overview_charging_estimate),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        }
     }
+}
+
+private fun DrawScope.drawWave(top: Float, amp: Float, wavePhase: Float, color: Color) {
+    val w = size.width
+    val h = size.height
+    val twoPi = (2.0 * PI).toFloat()
+    val path = Path()
+    path.moveTo(0f, h)
+    val step = (8f * density).coerceAtLeast(2f)
+    var x = 0f
+    while (x < w) {
+        path.lineTo(x, top + sin((x / w * twoPi * 1.4f + wavePhase).toDouble()).toFloat() * amp)
+        x += step
+    }
+    path.lineTo(w, top + sin((twoPi * 1.4f + wavePhase).toDouble()).toFloat() * amp)
+    path.lineTo(w, h)
+    path.close()
+    drawPath(path, color)
 }
 
 @Composable

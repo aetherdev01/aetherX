@@ -321,7 +321,10 @@ fun TweakScreen(
                         start = Spacing.screen,
                         end = Spacing.screen,
                         top = Spacing.lg,
-                        bottom = Spacing.lg + contentPadding.calculateBottomPadding(),
+                        // Dashboard: the grid has its own bottom contentPadding, so no outer
+                        // padding here — otherwise the grid is cut flat above the navbar.
+                        bottom = if (selectedSubTab == TweakSubTab.DASHBOARD) 0.dp
+                        else Spacing.lg + contentPadding.calculateBottomPadding(),
                     ),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
@@ -466,7 +469,12 @@ fun TweakScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .animateContentSize(spring(stiffness = Spring.StiffnessMediumLow))
+                                        // animateContentSize clips its content; the battery card animates its own
+                                        // height and "pops" beyond its bounds, so it must not be clipped.
+                                        .then(
+                                            if (cardId == "battery") Modifier
+                                            else Modifier.animateContentSize(spring(stiffness = Spring.StiffnessMediumLow))
+                                        )
                                         .cardEnterAnimation(index = index)
                                         .dragPopEffect(isDragging = isDragging || dashboardEditMode)
                                         .graphicsLayer {
