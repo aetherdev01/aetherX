@@ -46,7 +46,11 @@ fun WhatsNewDialog(viewModel: WhatsNewViewModel = viewModel()) {
         scrollableContent = true,
     ) {
         val items = listOf(
+            R.string.whatsnew_item_liquid_slider,
+            R.string.whatsnew_item_liquid_bottom,
             R.string.whatsnew_item_appearance,
+            R.string.whatsnew_item_dashboard_card,
+            R.string.whatsnew_item_ui_tweaks,
         )
         Column(
             modifier = Modifier.fillMaxWidth(),

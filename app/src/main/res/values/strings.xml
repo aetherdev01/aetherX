@@ -107,7 +107,11 @@
     <string name="dashboard_order_move_down_cd">Pindah ke bawah</string>
     <string name="whatsnew_title">Apa yang Baru di v%1$s</string>
     <string name="whatsnew_confirm">Mengerti</string>
-    <string name="whatsnew_item_appearance">Navbar Liquid Glass ditingkatkan dengan efek lensa baru dan penyesuaian animasi yang lebih halus.</string>
+    <string name="whatsnew_item_liquid_slider">Liquid Slider: slider baru dengan efek cairan yang halus dan responsif.</string>
+    <string name="whatsnew_item_liquid_bottom">Liquid Bottom: bar bawah baru dengan gaya cairan.</string>
+    <string name="whatsnew_item_appearance">Navbar Liquid diperbarui dengan efek lensa dan chromatic aberration.</string>
+    <string name="whatsnew_item_dashboard_card">Card baru di Dashboard.</string>
+    <string name="whatsnew_item_ui_tweaks">Penyesuaian UI agar tampilan lebih rapi dan konsisten.</string>
     <!-- nav_tweak TETAP "Tweak" (TIDAK diubah untuk rilis v2.0) string ini
          DIPAKAI ULANG sebagai label item drawer KEDUA di TweakScreen (sub-tab
          kontrol tweak, beda dari nav_dashboard di atas), jadi mengubah

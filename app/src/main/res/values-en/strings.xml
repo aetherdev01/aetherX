@@ -55,7 +55,11 @@
     <string name="dashboard_order_move_down_cd">Move down</string>
     <string name="whatsnew_title">What\'s New in v%1$s</string>
     <string name="whatsnew_confirm">Got it</string>
-    <string name="whatsnew_item_appearance">Navbar Liquid Glass effect improved with a new lens effect and refined animation tuning.</string>
+    <string name="whatsnew_item_liquid_slider">Liquid Slider: a new slider with a smooth, responsive liquid effect.</string>
+    <string name="whatsnew_item_liquid_bottom">Liquid Bottom: a new bottom bar with a liquid style.</string>
+    <string name="whatsnew_item_appearance">Liquid Navbar updated with a lens and chromatic aberration effect.</string>
+    <string name="whatsnew_item_dashboard_card">New card on the Dashboard.</string>
+    <string name="whatsnew_item_ui_tweaks">UI adjustments for a cleaner, more consistent look.</string>
     <string name="nav_tweak">Tweak</string>
     <string name="nav_bottom_dashboard">Dashboard</string>
     <string name="nav_membership">Membership</string>
