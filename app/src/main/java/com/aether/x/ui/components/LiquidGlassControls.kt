@@ -15,6 +15,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -255,7 +257,7 @@ private fun ToggleFromBackdrop(
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
                         if (style.blur > 0.01f) {
-                            blur((2f + 15f * style.blur.coerceIn(0f, 1f)).dp.toPx() * (1f - progress))
+                            blur((2f + 15f * style.blur.coerceIn(0f, 1f)).dp.toPx() * (1f - 0.18f * progress))
                         }
                         val lensScale = effectStrength(glass)
                         lens(5f.dp.toPx() * progress * lensScale, 10f.dp.toPx() * progress * lensScale, chromaticAberration = true)
@@ -453,6 +455,16 @@ fun LiquidSlider(
     val latestOnValueChange = rememberUpdatedState(onValueChange)
     val latestOnValueChangeFinished = rememberUpdatedState(onValueChangeFinished)
     val valueReader = remember { { latestValueFunction.value() } }
+    val sliderInteractionSource = remember { MutableInteractionSource() }
+    val isDragged by sliderInteractionSource.collectIsDraggedAsState()
+    val pressProgress by animateFloatAsState(
+        targetValue = if (isDragged) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "liquidSliderPressProgress",
+    )
 
     fun quantize(raw: Float): Float {
         val min = valueRange.start
@@ -509,20 +521,34 @@ fun LiquidSlider(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .offset(x = (maxWidth - 40.dp).coerceAtLeast(0.dp) * animatedFraction)
+                .graphicsLayer {
+                    scaleX = lerp(1f, 1.10f, pressProgress)
+                    scaleY = lerp(1f, 0.90f, pressProgress)
+                }
                 .size(40.dp, 24.dp)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(
                         backdrop,
-                        rememberBackdrop(trackBackdrop) { drawBackdrop -> drawBackdrop() },
+                        rememberBackdrop(trackBackdrop) { drawBackdrop ->
+                            // Keep a visible sample of the track even at rest; a 0f
+                            // vertical scale collapses the recorded backdrop completely.
+                            val scaleX = lerp(0.76f, 0.94f, pressProgress)
+                            val scaleY = lerp(0.72f, 0.94f, pressProgress)
+                            scale(scaleX, scaleY) { drawBackdrop() }
+                        },
                     ),
                     shape = { Capsule() },
                     effects = {
+                        val progress = pressProgress
                         if (style.blur > 0.01f) {
-                            blur((2f + 15f * style.blur.coerceIn(0f, 1f)).dp.toPx())
+                            blur((2f + 15f * style.blur.coerceIn(0f, 1f)).dp.toPx() * (1f - 0.18f * progress))
                         }
+                        // Preserve the characteristic glass lens at rest, with a subtle
+                        // extra refraction while the thumb is being dragged.
+                        val lensStrength = glassScale * (0.82f + 0.18f * progress)
                         lens(
-                            10f.dp.toPx() * glassScale,
-                            14f.dp.toPx() * glassScale,
+                            10f.dp.toPx() * lensStrength,
+                            14f.dp.toPx() * lensStrength,
                             chromaticAberration = true,
                         )
                     },
@@ -530,12 +556,14 @@ fun LiquidSlider(
                         Highlight.Ambient.copy(
                             width = Highlight.Ambient.width / 1.5f,
                             blurRadius = Highlight.Ambient.blurRadius / 1.5f,
-                            alpha = 0.52f,
+                            alpha = 0.42f + 0.16f * pressProgress,
                         )
                     },
                     shadow = { Shadow(radius = 4f.dp, color = Color.Black.copy(alpha = 0.05f)) },
-                    innerShadow = { InnerShadow(radius = 2f.dp, alpha = 0.16f) },
-                    onDrawSurface = { drawRect(Color.White.copy(alpha = 0.22f)) },
+                    innerShadow = {
+                        InnerShadow(radius = 2f.dp + 2f.dp * pressProgress, alpha = 0.12f + 0.08f * pressProgress)
+                    },
+                    onDrawSurface = { drawRect(Color.White.copy(alpha = 0.22f + 0.05f * pressProgress)) },
                 ),
         )
 
@@ -547,6 +575,7 @@ fun LiquidSlider(
             modifier = Modifier.fillMaxSize(),
             valueRange = valueRange,
             steps = steps,
+            interactionSource = sliderInteractionSource,
             onValueChangeFinished = { latestOnValueChangeFinished.value?.invoke() },
             colors = SliderDefaults.colors(
                 thumbColor = Color.Transparent,

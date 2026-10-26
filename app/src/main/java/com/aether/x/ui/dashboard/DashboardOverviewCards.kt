@@ -144,20 +144,27 @@ fun DashboardOverviewSection(
             phase = phase,
         )
 
-        // The six live metric tiles use a stable two-column 2x2 card rhythm.
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            MetricCard(
-                title = str(R.string.dashboard_overview_temperature),
-                value = systemTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
-                    ?: str(R.string.dashboard_overview_unavailable),
-                detail = if (liveInfo?.systemTempC != null) str(R.string.dashboard_overview_soc_temperature_detail)
-                    else str(R.string.dashboard_overview_temperature_fallback_detail),
-                icon = Icons.Outlined.DeviceThermostat,
-                accent = temperatureAccent,
-                progress = systemTemperature?.div(85f)?.coerceIn(0f, 1f),
-                glow = glow,
-                modifier = Modifier.weight(1f),
-            )
+        // Mixed dashboard rhythm: wide telemetry cards are interleaved with
+        // uneven two-column rows instead of repeating identical 2x2 tiles.
+        MetricCard(
+            title = str(R.string.dashboard_overview_temperature),
+            value = systemTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
+                ?: str(R.string.dashboard_overview_unavailable),
+            detail = if (liveInfo?.systemTempC != null) str(R.string.dashboard_overview_soc_temperature_detail)
+                else str(R.string.dashboard_overview_temperature_fallback_detail),
+            icon = Icons.Outlined.DeviceThermostat,
+            accent = temperatureAccent,
+            progress = systemTemperature?.div(85f)?.coerceIn(0f, 1f),
+            glow = glow,
+            wide = true,
+            cardHeight = 92.dp,
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
             MetricCard(
                 title = str(R.string.dashboard_overview_battery_temperature),
                 value = batteryTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
@@ -167,11 +174,8 @@ fun DashboardOverviewSection(
                 accent = if (batteryTemperature != null && batteryTemperature >= 42f) MetricAmber else LocalAetherPalette.current.accent,
                 progress = batteryTemperature?.div(60f)?.coerceIn(0f, 1f),
                 glow = glow,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1.12f),
             )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             MetricCard(
                 title = str(R.string.dashboard_overview_charging),
                 value = str(if (liveInfo?.isCharging == true) R.string.dashboard_overview_charging_active else R.string.dashboard_overview_charging_inactive),
@@ -179,8 +183,15 @@ fun DashboardOverviewSection(
                 icon = Icons.Outlined.BatteryChargingFull,
                 accent = if (liveInfo?.isCharging == true) MetricGreen else LocalAetherPalette.current.accent,
                 glow = glow,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(0.88f),
             )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
             MetricCard(
                 title = str(R.string.dashboard_overview_battery),
                 value = battery?.let { "$it%" } ?: str(R.string.dashboard_overview_unavailable),
@@ -196,45 +207,45 @@ fun DashboardOverviewSection(
                 progress = battery?.div(100f),
                 invertProgress = true,
                 glow = glow,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(0.9f),
             )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            val ramCardFraction = ramFraction
             MetricCard(
                 title = str(R.string.dashboard_overview_ram),
-                value = ramFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
+                value = ramCardFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
                 detail = liveInfo?.let { "${it.usedRamBytes.toGbLabel()} / ${it.totalRamBytes.toGbLabel()}" }
                     ?: str(R.string.dashboard_overview_usage_unavailable),
                 icon = Icons.Outlined.Memory,
                 accent = when {
-                    ramFraction == null -> LocalAetherPalette.current.accent
-                    ramFraction >= 0.88f -> MetricRed
-                    ramFraction >= 0.72f -> MetricAmber
+                    ramCardFraction == null -> LocalAetherPalette.current.accent
+                    ramCardFraction >= 0.88f -> MetricRed
+                    ramCardFraction >= 0.72f -> MetricAmber
                     else -> LocalAetherPalette.current.accent
                 },
-                progress = ramFraction,
+                progress = ramCardFraction,
                 glow = glow,
-                modifier = Modifier.weight(1f),
-            )
-            val storageFraction = liveInfo?.storageUsedFraction?.coerceIn(0f, 1f)
-            MetricCard(
-                title = str(R.string.dashboard_overview_storage),
-                value = storageFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
-                detail = liveInfo?.let { "${it.usedStorageBytes.toGbLabel()} / ${it.totalStorageBytes.toGbLabel()}" }
-                    ?: str(R.string.dashboard_overview_usage_unavailable),
-                icon = Icons.Outlined.SdStorage,
-                accent = when {
-                    storageFraction == null -> LocalAetherPalette.current.accent
-                    storageFraction >= 0.90f -> MetricRed
-                    storageFraction >= 0.75f -> MetricAmber
-                    else -> LocalAetherPalette.current.accent
-                },
-                progress = storageFraction,
-                glow = glow,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1.1f),
             )
         }
+
+        val storageFraction = liveInfo?.storageUsedFraction?.coerceIn(0f, 1f)
+        MetricCard(
+            title = str(R.string.dashboard_overview_storage),
+            value = storageFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
+            detail = liveInfo?.let { "${it.usedStorageBytes.toGbLabel()} / ${it.totalStorageBytes.toGbLabel()}" }
+                ?: str(R.string.dashboard_overview_usage_unavailable),
+            icon = Icons.Outlined.SdStorage,
+            accent = when {
+                storageFraction == null -> LocalAetherPalette.current.accent
+                storageFraction >= 0.90f -> MetricRed
+                storageFraction >= 0.75f -> MetricAmber
+                else -> LocalAetherPalette.current.accent
+            },
+            progress = storageFraction,
+            glow = glow,
+            wide = true,
+            cardHeight = 92.dp,
+        )
 
         SystemDetailsCard(
             nowElapsed = maxOf(clockNow, SystemClock.elapsedRealtime()),
@@ -384,90 +395,154 @@ private fun MetricCard(
     invertProgress: Boolean = false,
     glow: Float,
     modifier: Modifier = Modifier,
+    wide: Boolean = false,
+    cardHeight: androidx.compose.ui.unit.Dp = 132.dp,
 ) {
     val palette = LocalAetherPalette.current
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(if (wide) 24.dp else 22.dp)
     val clampedProgress = progress?.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue = clampedProgress ?: 0f,
         animationSpec = tween(durationMillis = 650),
         label = "dashboardMetricProgress",
     )
-    Column(
-        modifier = modifier
-            .height(132.dp)
-            .aetherCardSurface(shape = shape, accent = accent)
-            .drawBehind {
-                drawRoundRect(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            accent.copy(alpha = 0.045f + glow * 0.20f),
-                            palette.accentSoft.copy(alpha = 0.025f),
-                            Color.Transparent,
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width, size.height),
+    val barColor = if (invertProgress && (clampedProgress ?: 1f) <= 0.15f) MetricRed else accent
+    val surfaceModifier = modifier
+        .height(cardHeight)
+        .aetherCardSurface(shape = shape, accent = accent)
+        .drawBehind {
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.045f + glow * 0.20f),
+                        palette.accentSoft.copy(alpha = 0.025f),
+                        Color.Transparent,
                     ),
-                )
-                drawCircle(
-                    color = accent.copy(alpha = glow * 0.45f),
-                    radius = size.minDimension * 0.46f,
-                    center = Offset(size.width * 1.02f, size.height * 0.03f),
-                )
-            }
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, size.height),
+                ),
+            )
+            drawCircle(
+                color = accent.copy(alpha = glow * 0.45f),
+                radius = size.minDimension * 0.46f,
+                center = Offset(size.width * 1.02f, size.height * 0.03f),
+            )
+        }
+
+    if (wide) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = surfaceModifier.padding(horizontal = 15.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(29.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accent.copy(alpha = 0.14f + glow * 0.22f)),
-                contentAlignment = Alignment.Center,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(17.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(31.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(accent.copy(alpha = 0.14f + glow * 0.22f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                    }
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (clampedProgress != null) {
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth().height(4.dp),
+                        color = barColor,
+                        trackColor = accent.copy(alpha = 0.13f),
+                        strokeCap = StrokeCap.Round,
+                    )
+                }
             }
             Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
             )
         }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = detail,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (clampedProgress != null) {
-            val barColor = if (invertProgress && clampedProgress <= 0.15f) MetricRed else accent
-            LinearProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier.fillMaxWidth().height(4.dp),
-                color = barColor,
-                trackColor = accent.copy(alpha = 0.13f),
-                strokeCap = StrokeCap.Round,
+    } else {
+        Column(
+            modifier = surfaceModifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(29.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accent.copy(alpha = 0.14f + glow * 0.22f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(17.dp))
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-        } else {
-            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (clampedProgress != null) {
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = barColor,
+                    trackColor = accent.copy(alpha = 0.13f),
+                    strokeCap = StrokeCap.Round,
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
         }
     }
 }
@@ -577,7 +652,7 @@ private fun AndroidVersionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(246.dp)
+            .height(290.dp)
             .aetherCardSurface(shape = shape, accent = versionAccent)
             .drawBehind {
                 drawRoundRect(
@@ -642,7 +717,7 @@ private fun AndroidVersionCard(
                     style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round),
                 )
             }
-            AndroidRobot(modifier = Modifier.size(62.dp))
+            AndroidRobot(modifier = Modifier.size(width = 80.dp, height = 47.dp))
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -822,49 +897,64 @@ private fun HardwareInfoValue(
     }
 }
 
-/** Android's recognizable green robot mark, drawn locally so the dashboard needs no image download. */
+/**
+ * Android robot head mark used in the current Android visual identity (2023+).
+ * Simplified from Google's Android Robot Head asset; the full-body legacy mascot
+ * is intentionally not used here. Brand asset reference: developer.android.com/distribute/marketing-tools/brand-guidelines.
+ */
 @Composable
 private fun AndroidRobot(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
-        val unit = size.minDimension
+        val w = size.width
+        val h = size.height
         val green = AndroidRobotGreen
-        val stroke = unit * 0.055f
-        val centerX = size.width / 2f
-        // Antennae
-        drawLine(green, Offset(centerX - unit * 0.18f, unit * 0.19f), Offset(centerX - unit * 0.30f, unit * 0.035f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(green, Offset(centerX + unit * 0.18f, unit * 0.19f), Offset(centerX + unit * 0.30f, unit * 0.035f), strokeWidth = stroke, cap = StrokeCap.Round)
-        // Dome head, flattened at the bottom like the official robot wordmark.
-        val headLeft = centerX - unit * 0.34f
-        val headTop = unit * 0.13f
-        val headWidth = unit * 0.68f
-        val headHeight = unit * 0.34f
+        val antennaWidth = h * 0.115f
+        // Two short outward-leaning antennae, rounded like the current Bugdroid head.
+        drawLine(
+            color = green,
+            start = Offset(w * 0.34f, h * 0.46f),
+            end = Offset(w * 0.43f, h * 0.065f),
+            strokeWidth = antennaWidth,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = green,
+            start = Offset(w * 0.66f, h * 0.46f),
+            end = Offset(w * 0.77f, h * 0.065f),
+            strokeWidth = antennaWidth,
+            cap = StrokeCap.Round,
+        )
+        // Wide horizontal dome with a flat lower edge.
+        val left = w * 0.025f
+        val top = h * 0.29f
+        val headWidth = w * 0.95f
+        val headHeight = h * 0.70f
         drawArc(
             color = green,
             startAngle = 180f,
             sweepAngle = 180f,
             useCenter = true,
-            topLeft = Offset(headLeft, headTop),
+            topLeft = Offset(left, top),
             size = Size(headWidth, headHeight),
         )
+        val baseY = top + headHeight * 0.5f
         drawRect(
             color = green,
-            topLeft = Offset(headLeft, headTop + headHeight * 0.49f),
-            size = Size(headWidth, headHeight * 0.51f),
+            topLeft = Offset(left, baseY),
+            size = Size(headWidth, h - baseY),
         )
-        // Eyes
-        drawCircle(Color.White, radius = unit * 0.035f, center = Offset(centerX - unit * 0.16f, unit * 0.31f))
-        drawCircle(Color.White, radius = unit * 0.035f, center = Offset(centerX + unit * 0.16f, unit * 0.31f))
-        // Body, arms and legs
-        drawRoundRect(
-            color = green,
-            topLeft = Offset(centerX - unit * 0.29f, unit * 0.49f),
-            size = Size(unit * 0.58f, unit * 0.27f),
-            cornerRadius = CornerRadius(unit * 0.055f, unit * 0.055f),
+        // The current head mark uses dark oval eyes, not the white eyes of the old mascot.
+        val eyeColor = Color(0xFF202124)
+        drawOval(
+            color = eyeColor,
+            topLeft = Offset(w * 0.34f, h * 0.52f),
+            size = Size(w * 0.095f, h * 0.16f),
         )
-        drawLine(green, Offset(centerX - unit * 0.38f, unit * 0.53f), Offset(centerX - unit * 0.38f, unit * 0.70f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(green, Offset(centerX + unit * 0.38f, unit * 0.53f), Offset(centerX + unit * 0.38f, unit * 0.70f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(green, Offset(centerX - unit * 0.15f, unit * 0.77f), Offset(centerX - unit * 0.15f, unit * 0.94f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(green, Offset(centerX + unit * 0.15f, unit * 0.77f), Offset(centerX + unit * 0.15f, unit * 0.94f), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawOval(
+            color = eyeColor,
+            topLeft = Offset(w * 0.57f, h * 0.52f),
+            size = Size(w * 0.095f, h * 0.16f),
+        )
     }
 }
 
