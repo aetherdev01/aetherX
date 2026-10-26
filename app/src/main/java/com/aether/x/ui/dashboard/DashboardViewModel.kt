@@ -33,7 +33,7 @@ data class DashboardUiState(
 
 private val DEFAULT_CARD_ORDER = listOf(
     "android", "hardware", "temperature", "battery", "battery_temperature",
-    "ram", "storage", "system_details", "root_access", "recent_games", "game_monitor",
+    "root_access", "ram", "storage", "system_details", "recent_games", "game_monitor",
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {

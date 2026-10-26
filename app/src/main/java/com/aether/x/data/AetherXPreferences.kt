@@ -20,7 +20,7 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  */
 private val DEFAULT_DASHBOARD_CARD_ORDER = listOf(
     "android", "hardware", "temperature", "battery", "battery_temperature",
-    "ram", "storage", "system_details", "root_access", "recent_games", "game_monitor",
+    "root_access", "ram", "storage", "system_details", "recent_games", "game_monitor",
 )
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
@@ -583,18 +583,26 @@ class AetherXPreferences(private val context: Context) {
     suspend fun promoteAndroidHardwareCardsOnce() {
         context.dataStore.edit { prefs ->
             val layoutVersion = prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] ?: 0
-            if (layoutVersion < 1) {
+            if (layoutVersion < 2) {
                 val saved = prefs[Keys.DASHBOARD_CARD_ORDER]
                     ?.split(",")
                     ?.map { it.trim() }
                     ?.filter { it in DEFAULT_DASHBOARD_CARD_ORDER }
                     ?.distinct()
                     .orEmpty()
-                val merged = (saved + DEFAULT_DASHBOARD_CARD_ORDER).distinct()
-                val promoted = listOf("android", "hardware") +
-                    merged.filterNot { it == "android" || it == "hardware" }
-                prefs[Keys.DASHBOARD_CARD_ORDER] = promoted.joinToString(",")
-                prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] = 1
+                var merged = (saved + DEFAULT_DASHBOARD_CARD_ORDER).distinct()
+                if (layoutVersion < 1) {
+                    merged = listOf("android", "hardware") +
+                        merged.filterNot { it == "android" || it == "hardware" }
+                }
+                // v2: Root Access pairs with RAM on one row instead of sitting alone
+                // below the full-width Uptime & Deep Sleep card.
+                val ordered = merged.toMutableList()
+                ordered.remove("root_access")
+                val ramIndex = ordered.indexOf("ram")
+                ordered.add(if (ramIndex >= 0) ramIndex else ordered.size, "root_access")
+                prefs[Keys.DASHBOARD_CARD_ORDER] = ordered.joinToString(",")
+                prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] = 2
             }
         }
     }
