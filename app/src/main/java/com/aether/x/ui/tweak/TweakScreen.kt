@@ -138,8 +138,6 @@ import com.aether.x.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.DragGestureDetector
-import sh.calvin.reorderable.draggableHandle
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 import com.aether.x.core.locale.str
 
@@ -401,7 +399,6 @@ fun TweakScreen(
                                         .dragPopEffect(isDragging = isDragging)
                                         .shadow(elevation, MaterialTheme.shapes.medium)
                                         .draggableHandle(
-                                            dragGestureDetector = DragGestureDetector.LongPress,
                                             onDragStopped = { dashboardViewModel.saveCardOrder() },
                                         ),
                                 ) {
