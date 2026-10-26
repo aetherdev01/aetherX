@@ -96,6 +96,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -372,6 +373,8 @@ fun TweakScreen(
                             text = str(R.string.tweak_ringkasan_perangkat_game_dan_alat),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3,
+                            overflow = TextOverflow.Clip,
                         )
                         Text(
                             text = str(
@@ -380,6 +383,8 @@ fun TweakScreen(
                             ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                            maxLines = 3,
+                            overflow = TextOverflow.Clip,
                         )
                         // This intentionally empty touch target lets the user enter layout mode
                         // without accidentally starting a drag on one of the cards.
@@ -401,6 +406,11 @@ fun TweakScreen(
                     // While editing, compact spans help the grid occupy otherwise-unused space;
                     // Done restores the cards' normal spans and sizes.
                     val gridState = rememberLazyGridState()
+                    LaunchedEffect(selectedSubTab, dashboardRequest) {
+                        if (selectedSubTab == TweakSubTab.DASHBOARD) {
+                            gridState.scrollToItem(0)
+                        }
+                    }
                     val reorderState = rememberReorderableLazyGridState(
                         lazyGridState = gridState,
                     ) { from, to ->
@@ -410,6 +420,9 @@ fun TweakScreen(
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         state = gridState,
+                        contentPadding = PaddingValues(
+                            bottom = maxOf(contentPadding.calculateBottomPadding() + 16.dp, 88.dp),
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),

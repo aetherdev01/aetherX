@@ -937,7 +937,13 @@ private fun SystemDetailValue(
         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
+            )
         }
     }
 }
@@ -966,7 +972,7 @@ private fun AndroidVersionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(290.dp)
+            .height(320.dp)
             .aetherCardSurface(shape = shape, accent = versionAccent)
             .drawBehind {
                 drawRoundRect(
@@ -1024,7 +1030,7 @@ private fun AndroidVersionCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Clip,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Text(
@@ -1063,7 +1069,7 @@ private fun DeviceHardwareCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(290.dp)
+            .height(320.dp)
             .aetherCardSurface(shape = shape, accent = accent)
             .drawBehind {
                 drawRoundRect(
@@ -1097,10 +1103,13 @@ private fun DeviceHardwareCard(
             Text(
                 text = str(R.string.dashboard_overview_hardware_title),
                 style = MaterialTheme.typography.titleSmall,
+                fontSize = 13.sp,
+                lineHeight = 15.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.weight(1f),
             )
         }
         HardwareInfoValue(
@@ -1154,15 +1163,15 @@ private fun HardwareInfoValue(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }

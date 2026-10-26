@@ -19,8 +19,8 @@ private val Context.dataStore by preferencesDataStore(name = "aetherx_prefs")
  * posisi default-nya untuk tetap mempertahankan urutan custom milik pengguna.
  */
 private val DEFAULT_DASHBOARD_CARD_ORDER = listOf(
-    "temperature", "battery", "battery_temperature", "ram", "root_access",
-    "storage", "system_details", "android", "hardware", "recent_games", "game_monitor",
+    "android", "hardware", "temperature", "battery", "battery_temperature",
+    "ram", "storage", "system_details", "root_access", "recent_games", "game_monitor",
 )
 
 enum class DarkModePref { SYSTEM, LIGHT, DARK }
@@ -212,6 +212,7 @@ class AetherXPreferences(private val context: Context) {
         val RECENT_GAME_PACKAGES = stringPreferencesKey("recent_game_packages")
 
         val DASHBOARD_CARD_ORDER = stringPreferencesKey("dashboard_card_order")
+        val DASHBOARD_CARD_ORDER_LAYOUT_VERSION = intPreferencesKey("dashboard_card_order_layout_version")
 
         val LAST_SEEN_CHANGELOG_VERSION_CODE = intPreferencesKey("last_seen_changelog_version_code")
 
@@ -572,6 +573,30 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setDashboardCardOrder(order: List<String>) {
         context.dataStore.edit { prefs -> prefs[Keys.DASHBOARD_CARD_ORDER] = order.joinToString(",") }
+    }
+
+    /**
+     * One-time layout migration for the dashboard redesign. Existing layouts are
+     * promoted to Android + Device Hardware first exactly once; subsequent user
+     * drag-and-drop orders are preserved.
+     */
+    suspend fun promoteAndroidHardwareCardsOnce() {
+        context.dataStore.edit { prefs ->
+            val layoutVersion = prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] ?: 0
+            if (layoutVersion < 1) {
+                val saved = prefs[Keys.DASHBOARD_CARD_ORDER]
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it in DEFAULT_DASHBOARD_CARD_ORDER }
+                    ?.distinct()
+                    .orEmpty()
+                val merged = (saved + DEFAULT_DASHBOARD_CARD_ORDER).distinct()
+                val promoted = listOf("android", "hardware") +
+                    merged.filterNot { it == "android" || it == "hardware" }
+                prefs[Keys.DASHBOARD_CARD_ORDER] = promoted.joinToString(",")
+                prefs[Keys.DASHBOARD_CARD_ORDER_LAYOUT_VERSION] = 1
+            }
+        }
     }
 
     suspend fun setLastSeenChangelogVersionCode(versionCode: Int) {

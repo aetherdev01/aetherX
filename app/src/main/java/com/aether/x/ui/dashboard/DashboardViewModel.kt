@@ -32,8 +32,8 @@ data class DashboardUiState(
 )
 
 private val DEFAULT_CARD_ORDER = listOf(
-    "temperature", "battery", "battery_temperature", "ram", "root_access",
-    "storage", "system_details", "android", "hardware", "recent_games", "game_monitor",
+    "android", "hardware", "temperature", "battery", "battery_temperature",
+    "ram", "storage", "system_details", "root_access", "recent_games", "game_monitor",
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -53,7 +53,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(deviceInfo = DeviceInfoProvider.read(application)) }
         GameSessionRepository.initialize(application.applicationContext)
         loadGames()
-        observeLastPlayed()
+        // One-time layout migration: bring OS + device hardware to the top while
+        // preserving the user's ability to reorder every card after migration.
+        viewModelScope.launch {
+            runCatching { preferences.promoteAndroidHardwareCardsOnce() }
+            observeLastPlayed()
+        }
         observeRecentSessions()
     }
 
