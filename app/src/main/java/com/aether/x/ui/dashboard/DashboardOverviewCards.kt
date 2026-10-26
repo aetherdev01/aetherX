@@ -2,6 +2,10 @@ package com.aether.x.ui.dashboard
 
 import android.os.Build
 import android.os.SystemClock
+import android.content.ComponentName
+import android.content.Intent
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
 import android.graphics.Paint as AndroidPaint
 import android.graphics.Typeface
 import androidx.compose.animation.core.LinearEasing
@@ -12,6 +16,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +66,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -648,6 +654,7 @@ private fun AndroidVersionCard(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalAetherPalette.current
+    val context = LocalContext.current.applicationContext
     val api = info?.sdkInt
     val versionAccent = when (api) {
         37 -> Color(0xFFE546A7) // Android 17 — cinnamon-bun planet / star field
@@ -683,6 +690,7 @@ private fun AndroidVersionCard(
                     center = Offset(size.width * 1.02f, size.height * 0.08f),
                 )
             }
+            .clickable { launchSystemAndroidEasterEgg(context) }
             .padding(horizontal = 11.dp, vertical = 13.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -878,15 +886,60 @@ private fun AndroidVersionArtwork(
     dark: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Canvas(modifier = modifier.clip(RoundedCornerShape(17.dp))) {
-        drawVersionEggArtwork(
-            sdkInt = sdkInt,
-            phase = phase,
-            accent = accent,
-            dark = dark,
+    val context = LocalContext.current
+    // AOSP keeps the version Easter Egg in the separate com.android.egg package
+    // on many builds; it is not the framework package literally named "android".
+    val systemEggIcon: Drawable? = androidx.compose.runtime.remember(context) {
+        runCatching { context.packageManager.getApplicationIcon("com.android.egg") }.getOrNull()
+    }
+    if (systemEggIcon != null) {
+        AndroidView(
+            modifier = modifier.clip(RoundedCornerShape(17.dp)),
+            factory = { viewContext ->
+                ImageView(viewContext).apply {
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    setPadding(8, 8, 8, 8)
+                    setImageDrawable(systemEggIcon.constantState?.newDrawable()?.mutate() ?: systemEggIcon)
+                    contentDescription = "Android ${Build.VERSION.RELEASE} Easter Egg"
+                }
+            },
+            update = { imageView ->
+                imageView.setImageDrawable(systemEggIcon.constantState?.newDrawable()?.mutate() ?: systemEggIcon)
+            },
         )
+    } else {
+        // OEMs may embed the Easter Egg inside Settings or omit the package icon;
+        // retain a version-specific fallback rather than showing a generic robot.
+        Canvas(modifier = modifier.clip(RoundedCornerShape(17.dp))) {
+            drawVersionEggArtwork(
+                sdkInt = sdkInt,
+                phase = phase,
+                accent = accent,
+                dark = dark,
+            )
+        }
     }
 }
+
+private fun launchSystemAndroidEasterEgg(context: android.content.Context) {
+    // Prefer the official Easter Egg activity where the ROM exposes it.
+    // Android releases/OEMs use different activity names, so try known AOSP variants.
+    val candidates = listOf(
+        ComponentName("com.android.egg", "com.android.egg.EasterEgg"),
+        ComponentName("com.android.egg", "com.android.egg.NekoActivity"),
+    )
+    for (component in candidates) {
+        val intent = Intent(Intent.ACTION_MAIN).setComponent(component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { context.packageManager.resolveActivity(intent, 0) != null }.getOrDefault(false)) {
+            if (runCatching { context.startActivity(intent); true }.getOrDefault(false)) return
+        }
+    }
+    runCatching { context.packageManager.getLaunchIntentForPackage("com.android.egg") }
+        .getOrNull()?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)?.let { intent ->
+            runCatching { context.startActivity(intent) }
+        }
+}
+
 
 private fun DrawScope.drawVersionEggArtwork(
     sdkInt: Int,
