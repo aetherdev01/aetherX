@@ -18,12 +18,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -84,6 +82,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -177,18 +176,25 @@ fun DashboardOverviewCardContent(
             wide = !editMode,
             cardHeight = if (editMode) 132.dp else 92.dp,
         )
-        "battery_temperature" -> MetricCard(
+        "battery_temperature" -> {
+            val live by rememberLiveBattery()
+            val batteryTemp = live?.tempC ?: batteryTemperature
+            MetricCard(
             title = str(R.string.dashboard_overview_battery_temperature),
-            value = batteryTemperature?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
+            value = batteryTemp?.let { String.format(Locale.getDefault(), "%.1f°C", it) }
                 ?: str(R.string.dashboard_overview_unavailable),
             detail = str(R.string.dashboard_overview_battery_temperature_detail),
             icon = Icons.Outlined.BatteryChargingFull,
-            accent = if (batteryTemperature != null && batteryTemperature >= 42f) MetricAmber else palette.accent,
-            progress = batteryTemperature?.div(60f)?.coerceIn(0f, 1f),
+            accent = if (batteryTemp != null && batteryTemp >= 42f) MetricAmber else palette.accent,
+            progress = batteryTemp?.div(60f)?.coerceIn(0f, 1f),
             glow = glow,
             modifier = Modifier.fillMaxWidth(),
         )
-        "battery" -> BatteryChargingCard(info = info, glow = glow, phase = phase)
+        }
+        "battery" -> {
+            val live by rememberLiveBattery()
+            BatteryChargingCard(info = info, live = live, glow = glow, phase = phase)
+        }
         "ram" -> MetricCard(
             title = str(R.string.dashboard_overview_ram),
             value = ramFraction?.let { "${(it * 100f).toInt()}%" } ?: str(R.string.dashboard_overview_unavailable),
@@ -543,6 +549,33 @@ private fun LiveSystemMonitorCard(
 }
 
 @Composable
+/** Single-line text that shrinks (down to [minScale]) instead of being cut off with an ellipsis. */
+@Composable
+private fun FitText(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontWeight: FontWeight? = null,
+    minScale: Float = 0.72f,
+) {
+    var scale by remember(text) { mutableStateOf(1f) }
+    Text(
+        text = text,
+        modifier = modifier,
+        color = color,
+        fontWeight = fontWeight,
+        style = style.copy(fontSize = style.fontSize * scale),
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+        onTextLayout = { r ->
+            if (r.hasVisualOverflow && scale > minScale) scale = (scale * 0.92f).coerceAtLeast(minScale)
+        },
+    )
+}
+
+@Composable
 private fun MiniTelemetryValue(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -553,21 +586,23 @@ private fun MiniTelemetryValue(label: String, value: String) {
 @Composable
 private fun BatteryChargingCard(
     info: DeviceInfoSnapshot?,
+    live: LiveBattery?,
     glow: Float,
     phase: Float,
 ) {
     val palette = LocalAetherPalette.current
     val reduceMotion = LocalReduceMotionEnabled.current
-    val charging = info?.isCharging == true
-    val battery = info?.batteryPercent?.takeIf { it in 0..100 }
+    // Live (broadcast-driven) values win over the slower polled snapshot.
+    val charging = live?.charging ?: (info?.isCharging == true)
+    val battery = (live?.percent ?: info?.batteryPercent)?.takeIf { it in 0..100 }
     val accent = if (charging) MetricGreen else when {
         battery == null -> palette.accent
         battery <= 15 -> MetricRed
         battery <= 35 -> MetricAmber
         else -> palette.accent
     }
-    val currentMa = info?.batteryChargeCurrentMicroAmps?.div(1000f)
-    val powerW = info?.batteryChargePowerWatts
+    val currentMa = (if (live != null) live.currentUa else info?.batteryChargeCurrentMicroAmps)?.div(1000f)
+    val powerW = if (live != null) live.powerW else info?.batteryChargePowerWatts
     val shape = RoundedCornerShape(24.dp)
     val status = str(if (charging) R.string.dashboard_overview_charging_active else R.string.dashboard_overview_charging_inactive)
     val powerText = powerW?.let { String.format(Locale.getDefault(), "%.2f W", it) }
@@ -587,13 +622,6 @@ private fun BatteryChargingCard(
         animationSpec = tween(if (reduceMotion) 0 else 900, easing = FastOutSlowInEasing),
         label = "batteryLevel",
     )
-    // Card "pops" taller when plugged in and settles back (with a soft bounce) when unplugged.
-    val cardHeight by animateDpAsState(
-        targetValue = if (charging) 150.dp else 132.dp,
-        animationSpec = if (reduceMotion) snap() else spring(dampingRatio = 0.5f, stiffness = 260f),
-        label = "batteryCardHeight",
-    )
-
     // Jelly (squash & stretch) on plug / unplug. Skipped on first composition.
     val jellyX = remember { Animatable(1f) }
     val jellyY = remember { Animatable(1f) }
@@ -619,7 +647,7 @@ private fun BatteryChargingCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(cardHeight)
+            .height(132.dp) // same as the neighbouring MetricCards so grid rows stay aligned
             .graphicsLayer { scaleX = jellyX.value; scaleY = jellyY.value }
             .aetherCardSurface(shape = shape, accent = accent)
             .clip(shape)
@@ -958,30 +986,26 @@ private fun MetricCard(
                 ) {
                     Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(17.dp))
                 }
-                Text(
+                FitText(
                     text = title,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
             }
-            Text(
+            FitText(
                 text = value,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                minScale = 0.7f,
             )
-            Text(
+            FitText(
                 text = detail,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                minScale = 0.78f,
             )
             if (clampedProgress != null) {
                 LinearProgressIndicator(
