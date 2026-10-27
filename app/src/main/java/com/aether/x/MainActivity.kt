@@ -22,7 +22,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -43,12 +42,12 @@ import com.aether.x.data.DarkModePref
 import com.aether.x.ui.main.MainScreen
 import com.aether.x.ui.maintenance.MaintenanceGate
 import com.aether.x.ui.navigation.AetherXRoutes
+import com.aether.x.ui.onboarding.OnboardingFlow
 import com.aether.x.ui.onboarding.PermissionSetupScreen
 import com.aether.x.ui.onboarding.SplashScreen
 import com.aether.x.ui.theme.AetherXTheme
 import com.aether.x.ui.update.UpdateGate
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import com.aether.x.core.locale.LocaleManager
 import android.content.Context
 
@@ -125,7 +124,6 @@ private fun AetherXRoot(
     appPrefs: AppPreferences,
 ) {
     val navController = rememberNavController()
-    val scope = rememberCoroutineScope()
 
     val startDestination = AetherXRoutes.SPLASH_MAIN
 
@@ -177,21 +175,23 @@ private fun AetherXRoot(
             )
         }
         composable(AetherXRoutes.PERMISSION_ONBOARDING) {
-            PermissionSetupScreen(
-                onContinue = {
-                    scope.launch {
-                        preferences.setOnboardingCompleted(true)
-                        // Onboarding baru = instalasi baru, bukan update dari versi lama —
-                        // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
-                        // pakai versi sebelumnya (lihat WhatsNewViewModel).
-                        preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
-                    }
-
-                    navController.navigate(AetherXRoutes.MAIN) {
-                        popUpTo(AetherXRoutes.PERMISSION_ONBOARDING) { inclusive = true }
-                    }
+            // Halaman 1 = Setup izin, halaman 2 = layer geser-ke-atas (chromatic aberration)
+            // dengan Dashboard di belakangnya. Dashboard dikomposisi di dalam alur ini supaya
+            // tidak ada kedipan saat layer terbuka — jadi tidak perlu navigate ke MAIN lagi.
+            OnboardingFlow(
+                onSetupDone = {
+                    preferences.setOnboardingCompleted(true)
+                    // Onboarding baru = instalasi baru, bukan update dari versi lama —
+                    // jangan tampilkan sheet "Apa yang Baru" ke user yang belum pernah
+                    // pakai versi sebelumnya (lihat WhatsNewViewModel). Disimpan SEBELUM
+                    // Dashboard dikomposisi di belakang layer.
+                    preferences.setLastSeenChangelogVersionCode(BuildConfig.VERSION_CODE)
                 },
-                requireAccessToContinue = true,
+                dashboard = {
+                    MainScreen(
+                        onManageAccess = { navController.navigate(AetherXRoutes.MANAGE_ACCESS) },
+                    )
+                },
             )
         }
         composable(AetherXRoutes.MAIN) {

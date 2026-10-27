@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,17 +71,23 @@ import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.ui.components.AetherBackground
 import com.aether.x.ui.components.aetherCardSurface
+import kotlinx.coroutines.delay
 
 /**
  * Setup stays non-blocking: users can enter AetherX without root, while root-only
  * controls remain unavailable until the permission manager grants access.
  * Surfaces intentionally use the shared Liquid Glass implementation so blur,
  * tint and glass strength follow AetherXTheme settings.
+ *
+ * [onAllComplete] (opsional): dipanggil otomatis ±0,9 dtk setelah SEMUA pemeriksaan
+ * (root + 3 izin pendukung) selesai — dipakai onboarding untuk langsung pindah ke
+ * halaman 2. Dibiarkan null di layar Kelola Akses supaya tidak menutup sendiri.
  */
 @Composable
 fun PermissionSetupScreen(
     onContinue: () -> Unit,
     requireAccessToContinue: Boolean = true,
+    onAllComplete: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
@@ -140,6 +147,17 @@ fun PermissionSetupScreen(
         status.notificationsGranted,
     ).count { it }
     val completedItems = supportingGranted + if (status.rootGranted) 1 else 0
+
+    // Semua pemeriksaan selesai → jeda singkat agar user sempat melihat 100%, lalu
+    // otomatis pindah ke halaman 2. Efek dibatalkan sendiri bila status berbalik.
+    val allComplete = status.rootGranted && supportingGranted == 3
+    val latestOnAllComplete by rememberUpdatedState(onAllComplete)
+    LaunchedEffect(allComplete) {
+        if (allComplete && latestOnAllComplete != null) {
+            delay(900)
+            latestOnAllComplete?.invoke()
+        }
+    }
 
     AetherBackground(modifier = Modifier.fillMaxSize()) {
         Scaffold(
