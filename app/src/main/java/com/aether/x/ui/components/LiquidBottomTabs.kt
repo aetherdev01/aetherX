@@ -110,14 +110,22 @@ private const val CAPSULE_LENS_AMOUNT_DP = 17f
 private const val CAPSULE_LENS_IDLE_PROGRESS = 0.28f
 
 /**
- * Squash & stretch kapsul saat bergerak. Simetris kiri/kanan, jenuh halus (tanh) dan kecil, jadi
- * kapsul tidak pernah memipih. [CAPSULE_STRETCH_MAX] = lebar maks +9%; tinggi menyusut
- * [CAPSULE_SQUASH_RATIO] kalinya. [CAPSULE_STRETCH_SPEED_REF] = kecepatan (tab/detik) di mana
- * efek mencapai ~76% dari maksimum.
+ * Jelly (squash & stretch) kapsul ala iOS. Kapsul MEMANJANG ke arah geser (sisi belakang tetap
+ * "menempel", sisi depan melar), tingginya menyusut, lalu bergoyang saat berhenti karena spring
+ * kecepatan & posisi sengaja kurang teredam. [CAPSULE_STRETCH_MAX] = lebar maks +22%; tinggi menyusut
+ * [CAPSULE_SQUASH_RATIO] kalinya. [CAPSULE_STRETCH_SPEED_REF] = kecepatan (tab/detik) di mana efek
+ * mencapai ~76% maksimum (makin kecil = makin cepat melar). [CAPSULE_JELLY_ANISOTROPY] = seberapa
+ * besar goyangan skala X/Y yang berbeda (0 = sebangun seperti dulu, 1 = penuh).
  */
-private const val CAPSULE_STRETCH_MAX = 0.09f
-private const val CAPSULE_SQUASH_RATIO = 0.55f
-private const val CAPSULE_STRETCH_SPEED_REF = 14f
+private const val CAPSULE_STRETCH_MAX = 0.22f
+private const val CAPSULE_SQUASH_RATIO = 0.75f
+private const val CAPSULE_STRETCH_SPEED_REF = 9f
+private const val CAPSULE_JELLY_ANISOTROPY = 0.7f
+
+/** Tarikan pegas panel navbar saat digeser, dan pegas kembalinya (kurang teredam = bergoyang). */
+private const val PANEL_PULL_DP = 6f
+private const val PANEL_RETURN_DAMPING = 0.5f
+private const val PANEL_RETURN_STIFFNESS = 280f
 
 /**
  * Perpindahan tab jauh. Spring posisi bawaan kaku (1000) dan tidak peduli jarak, jadi lompat 4 tab
@@ -235,7 +243,7 @@ fun LiquidBottomTabs(
             derivedStateOf {
                 val width = constraints.maxWidth.toFloat().coerceAtLeast(1f)
                 val fraction = (offsetAnimation.value / width).fastCoerceIn(-1f, 1f)
-                with(density) { 4f.dp.toPx() * fraction.sign * EaseOut.transform(abs(fraction)) }
+                with(density) { PANEL_PULL_DP.dp.toPx() * fraction.sign * EaseOut.transform(abs(fraction)) }
             }
         }
 
@@ -268,7 +276,9 @@ fun LiquidBottomTabs(
                     val changed = targetIndex != currentIndex
                     currentIndex = targetIndex
                     capsuleTravel.travel(this, targetIndex.toFloat(), settle = true)
-                    animationScope.launch { offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f)) }
+                    animationScope.launch {
+                        offsetAnimation.animateTo(0f, spring(PANEL_RETURN_DAMPING, PANEL_RETURN_STIFFNESS, 0.5f))
+                    }
                     // Tap pada tab yang sama tetap diteruskan (mis. Dashboard mereset sub-tab).
                     if (changed || isTap) onTabSelectedState.value(targetIndex)
                 },
@@ -310,6 +320,31 @@ fun LiquidBottomTabs(
         // Warna base row mengikuti tab yang sedang di bawah kapsul saja (tanpa pewarnaan setengah).
         val baseSelectionProgress: (Int) -> Float = { index ->
             if (dampedDragAnimation.value.fastRoundToInt() == index) 1f else 0f
+        }
+
+        // ── Jelly ──────────────────────────────────────────────────────────────────────────────
+        // Kecepatan kapsul BERTANDA di arah layar (tab/detik; + = ke kanan). velocity bawaan
+        // dinormalisasi lebar range (tabsCount - 1); nilai tak-finite diabaikan.
+        val jellySpeedTabs: () -> Float = {
+            val v = dampedDragAnimation.velocity
+            if (v.isFinite()) v * (tabsCount - 1).coerceAtLeast(1) * (if (isLtr) 1f else -1f) else 0f
+        }
+        // Peregangan 0..CAPSULE_STRETCH_MAX, jenuh halus (tanh).
+        val jellyStretch: () -> Float = {
+            CAPSULE_STRETCH_MAX * tanh(abs(jellySpeedTabs()) / CAPSULE_STRETCH_SPEED_REF)
+        }
+        // Arah halus -1..1 (bukan sign() keras) supaya jangkar tidak melompat saat kecepatan
+        // melewati nol (mis. saat goyangan balik).
+        val jellyDirection: () -> Float = { tanh(jellySpeedTabs() / CAPSULE_STRETCH_SPEED_REF) }
+        // Skala dasar pegas (rata-rata X/Y) yang tetap berpusat di tengah kapsul.
+        val capsuleBaseScale: () -> Float = {
+            val sx = dampedDragAnimation.scaleX
+            val sy = dampedDragAnimation.scaleY
+            if (sx.isFinite() && sy.isFinite()) {
+                ((sx + sy) * 0.5f).fastCoerceIn(0.85f, CAPSULE_PRESSED_SCALE * 1.12f)
+            } else {
+                1f
+            }
         }
 
         // Base row: kapsul Liquid Glass utama. Bentuknya CAPSULE (bukan kotak/strip),
@@ -393,8 +428,11 @@ fun LiquidBottomTabs(
             Modifier
                 .padding(horizontal = 4f.dp)
                 .graphicsLayer {
-                    translationX = if (isLtr) dampedDragAnimation.value * tabWidth + panelOffset
-                    else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset
+                    // Skala stretch berpusat di tengah; geser pusat setengah pertambahan lebar ke arah
+                    // gerak supaya sisi belakang kapsul "menempel" dan sisi depan yang melar.
+                    val jellyShift = jellyDirection() * jellyStretch() * capsuleBaseScale() * tabWidth * 0.5f
+                    translationX = if (isLtr) dampedDragAnimation.value * tabWidth + panelOffset + jellyShift
+                    else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset + jellyShift
                 }
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
@@ -425,30 +463,25 @@ fun LiquidBottomTabs(
                         )
                     },
                     layerBlock = {
-                        // Skala dasar pegas (overshoot) dibuat SERAGAM di X/Y (rata-rata keduanya;
-                        // spring X dan Y bawaan beda redaman) supaya lengkung kapsul tetap sebangun
-                        // dengan navbar. Idle = 1f (inset 4dp rata).
+                        // Jelly: skala X/Y boleh berbeda (spring X lebih bergoyang dari Y) sebesar
+                        // CAPSULE_JELLY_ANISOTROPY, ditambah squash & stretch dari kecepatan gerak.
                         val sx = dampedDragAnimation.scaleX
                         val sy = dampedDragAnimation.scaleY
-                        val base = if (sx.isFinite() && sy.isFinite()) {
-                            ((sx + sy) * 0.5f).fastCoerceIn(0.85f, CAPSULE_PRESSED_SCALE * 1.12f)
+                        val base = capsuleBaseScale()
+                        val maxScale = CAPSULE_PRESSED_SCALE * 1.12f
+                        val jx = if (sx.isFinite()) {
+                            (base + (sx - base) * CAPSULE_JELLY_ANISOTROPY).fastCoerceIn(0.85f, maxScale)
                         } else {
-                            1f
+                            base
                         }
-                        // Squash & stretch dari kecepatan gerak. Sebelumnya velocity yang di-clamp keras
-                        // di +-0.2 hampir selalu jenuh saat pindah tab (lebar +25%, tinggi -20% mendadak =
-                        // kapsul "gepeng", dan miring ke arah sebaliknya saat ke kiri). Kini simetris,
-                        // jenuh halus (tanh), dan kecil. velocity bawaan dinormalisasi lebar range
-                        // (tabsCount - 1), dikembalikan ke satuan tab/detik; nilai tak-finite diabaikan.
-                        val rawVelocity = dampedDragAnimation.velocity
-                        val speedTabs = if (rawVelocity.isFinite()) {
-                            abs(rawVelocity) * (tabsCount - 1).coerceAtLeast(1)
+                        val jy = if (sy.isFinite()) {
+                            (base + (sy - base) * CAPSULE_JELLY_ANISOTROPY).fastCoerceIn(0.85f, maxScale)
                         } else {
-                            0f
+                            base
                         }
-                        val stretch = CAPSULE_STRETCH_MAX * tanh(speedTabs / CAPSULE_STRETCH_SPEED_REF)
-                        scaleX = base * (1f + stretch)
-                        scaleY = base * (1f - CAPSULE_SQUASH_RATIO * stretch)
+                        val stretch = jellyStretch()
+                        scaleX = jx * (1f + stretch)
+                        scaleY = jy * (1f - CAPSULE_SQUASH_RATIO * stretch)
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress.fastCoerceIn(0f, 1f)
