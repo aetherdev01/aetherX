@@ -4,11 +4,11 @@ import com.github.megatronking.stringfog.plugin.StringFogMode
 buildscript {
     repositories {
         mavenCentral()
-        maven("https://jitpack.io")
     }
     dependencies {
-        // StringFog's Gradle plugin has no plugin-portal marker (JitPack-hosted),
-        // so it must be applied the legacy way instead of via the plugins{} DSL.
+        // StringFog is published on Maven Central but has no plugin-portal
+        // marker, so it has to be applied the legacy way (buildscript +
+        // apply(plugin=...)) instead of via the plugins{} DSL.
         classpath("com.github.megatronking.stringfog:gradle-plugin:5.2.0")
     }
 }
