@@ -1,10 +1,23 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+    dependencies {
+        // StringFog's Gradle plugin has no plugin-portal marker (JitPack-hosted),
+        // so it must be applied the legacy way instead of via the plugins{} DSL.
+        classpath("com.github.megatronking.stringfog:gradle-plugin:5.2.0")
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
-    alias(libs.plugins.stringfog)
 }
+
+apply(plugin = "stringfog")
 
 // ── Signing config dari local.properties ─────────────────────────────────────
 val localProperties = rootProject.file("local.properties")

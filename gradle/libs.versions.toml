@@ -1,7 +1,8 @@
 [versions]
 agp                     = "8.13.0"
 kotlin                  = "2.3.0"
-stringfog               = "5.0.0"
+stringfogPlugin         = "5.2.0"
+stringfogXor            = "5.0.0"
 
 coreKtx                 = "1.16.0"
 lifecycleRuntimeKtx     = "2.9.0"
@@ -35,7 +36,6 @@ android-application     = { id = "com.android.application",             version.
 kotlin-android          = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
 kotlin-compose          = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-services         = { id = "com.google.gms.google-services",      version.ref = "googleServices" }
-stringfog               = { id = "com.github.megatronking.stringfog",   version.ref = "stringfog" }
 
 [libraries]
 androidx-core-ktx                       = { group = "androidx.core",             name = "core-ktx",                    version.ref = "coreKtx"             }
@@ -75,4 +75,5 @@ reorderable                             = { group = "sh.calvin.reorderable",    
 
 haze                                    = { group = "dev.chrisbanes.haze",        name = "haze",                        version.ref = "haze"                }
 
-stringfog-xor                           = { group = "com.github.megatronking.stringfog", name = "xor",                   version.ref = "stringfog"            }
+stringfog-gradle-plugin                 = { group = "com.github.megatronking.stringfog", name = "gradle-plugin",        version.ref = "stringfogPlugin"      }
+stringfog-xor                           = { group = "com.github.megatronking.stringfog", name = "xor",                   version.ref = "stringfogXor"         }
