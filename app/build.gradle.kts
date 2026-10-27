@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.stringfog)
 }
 
 // ── Signing config dari local.properties ─────────────────────────────────────
@@ -129,6 +130,14 @@ kotlin {
     }
 }
 
+// ── StringFog: XOR-encrypts string literals at build time (release only) ──
+stringfog {
+    implementation = "com.github.megatronking.stringfog.xor.StringFogImpl"
+    fogPackages = arrayOf("com.aether.x")
+    enable = true
+    mode = com.github.megatronking.stringfog.plugin.StringFogMode.random
+}
+
 dependencies {
     // ── Core ─────────────────────────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)
@@ -177,4 +186,7 @@ dependencies {
     // Kyant0 AndroidLiquidGlass (Backdrop engine) used by LiquidToggle/Button/Slider/BottomTabs.
     implementation("io.github.kyant0:backdrop:1.0.6")
     implementation("io.github.kyant0:shapes:1.2.0")
+
+    // ── StringFog runtime decryptor ──────────────────────────────────────────
+    implementation(libs.stringfog.xor)
 }

@@ -1,19 +1,31 @@
 # AetherX - standard R8/ProGuard rules
 # No signing-certificate, signature, integrity, or App Check rules.
 
-# Nama class/method/field TIDAK diacak R8 (tetap com.aether.x.xxx, bukan a/a0/a1).
-# Shrinking (penghapusan kode tak terpakai) & optimasi tetap berjalan seperti biasa.
-# Proteksi terhadap reverse-engineering jadi tanggung jawab di luar R8 (mis. custom
-# native protection), karena baris ini justru MENGHILANGKAN satu lapis proteksi bawaan.
--dontobfuscate
+# ─────────────────────────────────────────────────────────────────────────
+# Obfuscation AKTIF: nama class/method/field diacak R8 jadi nama pendek
+# (a, b, c, d, ...). Shrinking & optimasi tetap berjalan seperti biasa.
+# -dontobfuscate yang lama DIHAPUS supaya reverse-engineering lebih sulit.
+# -repackageclasses "" meratakan semua class hasil obfuscate ke satu
+# package tanpa nama (bukan lagi com.aether.x.xxx), -allowaccessmodification
+# & -overloadaggressively bikin R8 lebih agresif memendekkan & menggabungkan
+# nama. -useuniqueclassmembernames bikin nama member konsisten lintas class.
+-repackageclasses ""
+-allowaccessmodification
+-overloadaggressively
+-useuniqueclassmembernames
+-flattenpackagehierarchy
 
-# Keep JNI bridge classes/methods that are called from native code.
--keep class com.aether.x.core.monitor.RootSystemMonitor { *; }
--keep class com.aether.x.core.security.DeviceFingerprint { *; }
--keep class com.aether.x.core.monitor.RamMonitor { *; }
+# Keep JNI bridge classes themselves findable by FQCN from native code, but
+# still let R8 obfuscate their method/field names — hanya nama CLASS yang
+# dikunci (via -keepnames), bukan isinya, karena native code resolve class
+# ini lewat FindClass(com/aether/x/...) pada classname, bukan method name.
+-keepnames class com.aether.x.core.monitor.RootSystemMonitor
+-keepnames class com.aether.x.core.security.DeviceFingerprint
+-keepnames class com.aether.x.core.monitor.RamMonitor
 
-# Keep native method declarations so R8 does not remove/rename JNI entry points.
--keepclasseswithmembernames class * {
+# Keep native method declarations so R8 does not remove/rename JNI entry points
+# (native method symbol tetap harus cocok dengan simbol di .so).
+-keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
