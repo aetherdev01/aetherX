@@ -1,32 +1,9 @@
-import com.github.megatronking.stringfog.plugin.StringFogExtension
-import com.github.megatronking.stringfog.plugin.StringFogMode
-
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        // StringFog is published on Maven Central but has no plugin-portal
-        // marker, so it has to be applied the legacy way (buildscript +
-        // apply(plugin=...)) instead of via the plugins{} DSL.
-        classpath("com.github.megatronking.stringfog:gradle-plugin:5.2.0")
-        // The plugin loads `implementation` (below) via its OWN classloader
-        // at configure time to verify it exists, so the xor algorithm jar
-        // must be on the buildscript classpath too — the app-level
-        // `implementation(libs.stringfog.xor)` dependency further down is
-        // separate and is what the *compiled app* needs at runtime.
-        classpath("com.github.megatronking.stringfog:xor:5.0.0")
-    }
-}
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
 }
-
-apply(plugin = "stringfog")
 
 // ── Signing config dari local.properties ─────────────────────────────────────
 val localProperties = rootProject.file("local.properties")
@@ -152,16 +129,6 @@ kotlin {
     }
 }
 
-// ── StringFog: encrypts string literals at build time ─────────────────────
-configure<StringFogExtension> {
-    implementation = "com.github.megatronking.stringfog.xor.StringFogImpl"
-    fogPackages = arrayOf("com.aether.x")
-    enable = true
-    // base64 = smaller bytecode footprint; bytes = harder to spot statically
-    // but inflates the APK. base64 is the plugin's own default.
-    mode = StringFogMode.base64
-}
-
 dependencies {
     // ── Core ─────────────────────────────────────────────────────────────────
     implementation(libs.androidx.core.ktx)
@@ -210,7 +177,4 @@ dependencies {
     // Kyant0 AndroidLiquidGlass (Backdrop engine) used by LiquidToggle/Button/Slider/BottomTabs.
     implementation("io.github.kyant0:backdrop:1.0.6")
     implementation("io.github.kyant0:shapes:1.2.0")
-
-    // ── StringFog runtime decryptor ──────────────────────────────────────────
-    implementation(libs.stringfog.xor)
 }
