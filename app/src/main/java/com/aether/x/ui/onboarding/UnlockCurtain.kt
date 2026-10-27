@@ -13,6 +13,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,10 +60,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +74,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.LocalHapticEnabled
@@ -91,19 +96,21 @@ import kotlinx.coroutines.launch
 
 // ── Lensa: SAMA dengan kapsul navbar (LiquidBottomTabs) — lens(..., chromaticAberration = true) ──
 /** Tebal pita refraksi dari tepi bawah layer. Navbar: 8.5dp (kapsul kecil), layer besar butuh lebih tebal. */
-private const val LENS_HEIGHT_DP = 18f
+private const val LENS_HEIGHT_DP = 26f
 /** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
-private const val LENS_AMOUNT_DP = 36f
+private const val LENS_AMOUNT_DP = 64f
 /** Kekuatan lensa saat diam (navbar: 0.28). Lensa menguat saat ditarik. */
-private const val LENS_IDLE = 0.15f
+private const val LENS_IDLE = 0.45f
 
 // ── Geometri host layer ──
 /** Host dibuat lebih besar dari layar di atas & samping supaya HANYA tepi bawah yang terkena lensa. */
 private const val BLEED_TOP_DP = 56f
-private const val BLEED_SIDE_DP = 24f
+private const val BLEED_SIDE_DP = 0f
 /** Jarak ekstra saat terangkat penuh supaya bayangan tepi bawah ikut keluar layar. */
 private const val EXIT_EXTRA_DP = 32f
-private const val CORNER_DP = 40f
+/** Radius sudut bawah: saat diam (sudah sedikit melengkung) dan saat ditarik. */
+private const val CORNER_REST_DP = 26f
+private const val CORNER_DP = 44f
 /** Tinggi zona bening di tepi bawah — tanpa ini tint layer (alpha ~0.8) menutupi fringe lensa. */
 private const val LIP_DP = 64f
 /** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
@@ -190,7 +197,7 @@ fun UnlockCurtain(
             val p = abs(lift.value).coerceIn(0f, 1f)
             val eased = p * (2f - p)
             (LENS_IDLE + (1f - LENS_IDLE) * eased + 0.5f * energy.value + 0.6f * pulse.value)
-                .coerceIn(0f, 1.4f)
+                .coerceIn(0f, 1.6f)
         }
     }
 
@@ -231,6 +238,7 @@ fun UnlockCurtain(
     val bleedSidePx = with(density) { BLEED_SIDE_DP.dp.roundToPx() }
     val exitExtraPx = with(density) { EXIT_EXTRA_DP.dp.toPx() }
     val cornerPx = with(density) { CORNER_DP.dp.toPx() }
+    val restCornerPx = with(density) { CORNER_REST_DP.dp.toPx() }
     val lipPx = with(density) { LIP_DP.dp.toPx() }
 
     // Box luar TIDAK bergerak: ia yang menerima drag dan memblokir sentuhan ke Dashboard.
@@ -265,7 +273,8 @@ fun UnlockCurtain(
     ) {
         Box(
             modifier = Modifier
-                // Host lebih besar dari layar: bleed atas/samping → lensa hanya terlihat di tepi bawah.
+                // Host lebih tinggi dari layar di atas (bleed atas): tepi atas tersembunyi, sisi kiri/kanan
+                // dan sudut bawah ikut kena lensa.
                 .layout { measurable, constraints ->
                     val w = constraints.maxWidth
                     val h = constraints.maxHeight
@@ -277,8 +286,9 @@ fun UnlockCurtain(
                 .drawBackdrop(
                     backdrop = backdrop,
                     shape = {
-                        // Sudut bawah membulat begitu layer bergerak; saat menutup penuh tetap persegi.
-                        val r = (abs(lift.value) * 14f).coerceIn(0f, 1f) * cornerPx
+                        // Sudut bawah selalu sedikit melengkung, makin bulat saat ditarik.
+                        val r = restCornerPx +
+                            (cornerPx - restCornerPx) * (abs(lift.value) * 14f).coerceIn(0f, 1f)
                         RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = r, bottomStart = r)
                     },
                     effects = {
@@ -291,7 +301,7 @@ fun UnlockCurtain(
                         )
                     },
                     highlight = {
-                        Highlight.Default.copy(alpha = 0.20f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
+                        Highlight.Default.copy(alpha = 0.28f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
                     },
                     shadow = {
                         Shadow(alpha = 0.30f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
@@ -318,7 +328,7 @@ fun UnlockCurtain(
                                 0.33f to lerp(palette.bg, accent, 0.20f).copy(alpha = 0.76f),
                                 0.66f to lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.82f),
                                 lipStart to tail,
-                                1f to tail.copy(alpha = 0.14f),
+                                1f to tail.copy(alpha = 0.08f),
                             ),
                         )
                     },
@@ -643,6 +653,16 @@ private fun AetherOrb(
             },
         contentAlignment = Alignment.Center,
     ) {
+        // Logo bawaan app (ikon launcher) — dimuat lewat PackageManager sehingga adaptive icon
+        // ikut terbaca tanpa perlu tahu nama resource-nya.
+        val context = LocalContext.current
+        val logo = remember(context) {
+            runCatching {
+                context.packageManager.getApplicationIcon(context.packageName)
+                    .toBitmap(width = 288, height = 288)
+                    .asImageBitmap()
+            }.getOrNull()
+        }
         Box(
             modifier = Modifier
                 .size(orbSize)
@@ -651,12 +671,27 @@ private fun AetherOrb(
                 .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Bolt,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(44.dp),
-            )
+            if (logo != null) {
+                Image(
+                    bitmap = logo,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    // Adaptive icon: konten ada di zona aman tengah (72/108), perbesar agar mengisi lingkaran.
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = 1.35f
+                            scaleY = 1.35f
+                        },
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Bolt,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
         }
     }
 }
