@@ -1,3 +1,6 @@
+import com.github.megatronking.stringfog.plugin.StringFogExtension
+import com.github.megatronking.stringfog.plugin.StringFogMode
+
 buildscript {
     repositories {
         mavenCentral()
@@ -143,12 +146,14 @@ kotlin {
     }
 }
 
-// ── StringFog: XOR-encrypts string literals at build time (release only) ──
-stringfog {
+// ── StringFog: encrypts string literals at build time ─────────────────────
+configure<StringFogExtension> {
     implementation = "com.github.megatronking.stringfog.xor.StringFogImpl"
     fogPackages = arrayOf("com.aether.x")
     enable = true
-    mode = com.github.megatronking.stringfog.plugin.StringFogMode.random
+    // base64 = smaller bytecode footprint; bytes = harder to spot statically
+    // but inflates the APK. base64 is the plugin's own default.
+    mode = StringFogMode.base64
 }
 
 dependencies {
