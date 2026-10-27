@@ -3,9 +3,11 @@ package com.aether.x.ui.onboarding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -24,7 +26,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -69,7 +70,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.LocalHapticEnabled
@@ -82,25 +82,49 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// ── Lensa: SAMA dengan kapsul navbar (LiquidBottomTabs) — lens(..., chromaticAberration = true) ──
+/** Tebal pita refraksi dari tepi bawah layer. Navbar: 8.5dp (kapsul kecil), layer besar butuh lebih tebal. */
+private const val LENS_HEIGHT_DP = 18f
+/** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
+private const val LENS_AMOUNT_DP = 36f
+/** Kekuatan lensa saat diam (navbar: 0.28). Lensa menguat saat ditarik. */
+private const val LENS_IDLE = 0.15f
+
+// ── Geometri host layer ──
+/** Host dibuat lebih besar dari layar di atas & samping supaya HANYA tepi bawah yang terkena lensa. */
+private const val BLEED_TOP_DP = 56f
+private const val BLEED_SIDE_DP = 24f
+/** Jarak ekstra saat terangkat penuh supaya bayangan tepi bawah ikut keluar layar. */
+private const val EXIT_EXTRA_DP = 32f
+private const val CORNER_DP = 40f
+/** Tinggi zona bening di tepi bawah — tanpa ini tint layer (alpha ~0.8) menutupi fringe lensa. */
+private const val LIP_DP = 64f
+/** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
+private const val RUBBER_BAND = 0.04f
+
+/** Rubber band ala iOS: makin jauh ditarik makin berat, dan berhenti di [limit]. */
+private fun rubberBand(x: Float, limit: Float): Float =
+    (1f - 1f / (x * 0.55f / limit + 1f)) * limit
+
 /**
- * Halaman ke-2 onboarding: "layer" bergaya lockscreen / panel notifikasi iPhone.
+ * Halaman ke-2 onboarding: layer bergaya lockscreen iPhone di atas Dashboard.
  *
- * Layer menutupi Dashboard (yang sudah tampil hidup di belakangnya). User menggesernya
- * ke atas — layer mengikuti jari, sementara bibir bawah memakai lens/chromatic aberration
- * LiquidBottomTabs agar refraksi tetap lokal dan isi layar tidak terpecah warna, lalu
- * terlepas dan menyingkap Dashboard. Lepas sebelum batas → layer kembali halus (spring).
+ * - Layer = kaca: [drawBackdrop] mengambil Dashboard di belakangnya ([backdrop]) lalu menerapkan
+ *   `lens(chromaticAberration = true)` — efek yang sama persis dengan kapsul LiquidBottomTabs —
+ *   sehingga tepi bawah membiaskan Dashboard dengan fringe pelangi, bukan bayangan ganda.
+ * - Ikut jari 1:1, ditarik ke bawah melewati posisi awal terasa karet (rubber band).
+ * - Dilepas: keputusan memakai proyeksi kecepatan (bukan cuma jarak), lalu spring yang
+ *   MELANJUTKAN kecepatan jari — tidak ada patahan antara drag dan animasi.
  *
- * Transisi memakai kecepatan jari (velocity hand-off) sehingga gerakan setelah dilepas
- * menyambung mulus dari gerakan drag, bukan mulai dari nol.
- *
- * @param lift 0f = layer menutupi penuh, 1f = layer sudah keluar layar. Di-hoist supaya
- *   Dashboard di belakang bisa ikut menajam (blur → jelas) seiring layer terangkat.
+ * @param lift 0f = menutup penuh, 1f = sudah keluar layar (sedikit negatif saat rubber band).
+ * @param backdrop layer Dashboard (`rememberLayerBackdrop()` + `Modifier.layerBackdrop(...)` di OnboardingFlow).
  */
 @Composable
 fun UnlockCurtain(
@@ -119,11 +143,23 @@ fun UnlockCurtain(
 
     var heightPx by remember { mutableFloatStateOf(0f) }
     var unlocking by remember { mutableStateOf(false) }
+    // Posisi jari tanpa batas (sebelum rubber band) — sumber kebenaran selama drag.
+    var rawLift by remember { mutableFloatStateOf(0f) }
 
     val accent = palette.accent
     val accent2 = remember(accent) { accent.shiftHue(42f) }
 
-    // Jam animasi ambient (blob cahaya) & riak orb. Mode kurangi gerakan → posisi diam.
+    // Denyut lensa sesaat saat layer pertama muncul ("fokus").
+    val pulse = remember { Animatable(0f) }
+    // Energi gerak: naik saat jari cepat, meluruh halus saat melambat.
+    val energy = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        if (reduceMotion) return@LaunchedEffect
+        pulse.snapTo(1f)
+        delay(200)
+        pulse.animateTo(0f, tween(durationMillis = 1500, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)))
+    }
+
     val infinite = rememberInfiniteTransition(label = "curtain-ambient")
     val ambientT: State<Float> = if (reduceMotion) {
         remember { mutableFloatStateOf(0.25f) }
@@ -146,19 +182,31 @@ fun UnlockCurtain(
         )
     }
 
+    // Kekuatan lensa 0..1.4 — dibaca di dalam `effects` (fase draw), jadi tidak memicu recomposition.
+    val lensStrength: () -> Float = {
+        if (reduceMotion) {
+            LENS_IDLE
+        } else {
+            val p = abs(lift.value).coerceIn(0f, 1f)
+            val eased = p * (2f - p)
+            (LENS_IDLE + (1f - LENS_IDLE) * eased + 0.5f * energy.value + 0.6f * pulse.value)
+                .coerceIn(0f, 1.4f)
+        }
+    }
+
     val unlock: (Float) -> Unit = { liftVel ->
         if (!unlocking) {
             unlocking = true
             scope.launch {
                 haptic.performIfEnabled(hapticsEnabled, HapticFeedbackType.LongPress)
-                // One continuous, gently damped spring: it inherits the swipe velocity instead
-                // of switching abruptly between a short fling and a separate fixed-duration tween.
-                val spec: AnimationSpec<Float> = if (reduceMotion) {
-                    tween(140)
-                } else {
-                    spring(dampingRatio = 0.94f, stiffness = 145f)
-                }
-                lift.animateTo(1f, spec, initialVelocity = liftVel.coerceIn(0f, 5.5f))
+                energy.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
+            }
+            scope.launch {
+                // Spring teredam kritis: mulai dari kecepatan jari, melambat halus di ujung, tanpa
+                // memantul. Ketukan (v = 0) mulai pelan lalu mempercepat — terasa seperti easing.
+                val spec: AnimationSpec<Float> =
+                    if (reduceMotion) tween(120) else spring(dampingRatio = 1f, stiffness = 260f)
+                lift.animateTo(1f, spec, initialVelocity = liftVel.coerceIn(0f, 10f))
                 onUnlocked()
             }
         }
@@ -166,16 +214,26 @@ fun UnlockCurtain(
 
     val dragState = rememberDraggableState { delta ->
         if (heightPx > 0f && !unlocking) {
-            val target = (lift.value - delta / heightPx).coerceIn(0f, 1f)
+            rawLift = (rawLift - delta / heightPx).coerceIn(-1f, 1f)
+            val target = if (rawLift >= 0f) rawLift else -rubberBand(-rawLift, RUBBER_BAND)
             scope.launch(start = CoroutineStart.UNDISPATCHED) { lift.snapTo(target) }
+            if (!reduceMotion) {
+                val kick = (abs(delta) / (heightPx * 0.012f)).coerceIn(0f, 1f)
+                scope.launch {
+                    energy.animateTo(kick, tween(90, easing = LinearEasing))
+                    energy.animateTo(0f, tween(650, easing = FastOutSlowInEasing))
+                }
+            }
         }
     }
 
-    val bleedDp = 14.dp
-    val bleedPx = with(density) { bleedDp.roundToPx() }
+    val bleedTopPx = with(density) { BLEED_TOP_DP.dp.roundToPx() }
+    val bleedSidePx = with(density) { BLEED_SIDE_DP.dp.roundToPx() }
+    val exitExtraPx = with(density) { EXIT_EXTRA_DP.dp.toPx() }
+    val cornerPx = with(density) { CORNER_DP.dp.toPx() }
+    val lipPx = with(density) { LIP_DP.dp.toPx() }
 
-    // Box luar TIDAK bergerak: ia yang menerima drag (menghindari jitter koordinat) dan
-    // sekaligus memblokir sentuhan ke Dashboard selama layer masih menutup.
+    // Box luar TIDAK bergerak: ia yang menerima drag dan memblokir sentuhan ke Dashboard.
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -184,69 +242,101 @@ fun UnlockCurtain(
                 state = dragState,
                 orientation = Orientation.Vertical,
                 enabled = !unlocking,
+                onDragStarted = { rawLift = lift.value.coerceAtLeast(0f) },
                 onDragStopped = { velocity ->
-                    // Kecepatan jari (px/s) → kecepatan "lift" (fraksi layar/s), positif = ke atas.
+                    // px/s (+ = jari ke bawah) → fraksi layar/s (+ = layer naik).
                     val liftVel = -velocity / heightPx.coerceAtLeast(1f)
-                    if (lift.value > 0.3f || velocity < -1100f) {
+                    // Proyeksi ~180 ms ke depan: flick pendek tapi cepat tetap membuka,
+                    // tarikan jauh tapi dibalik ke bawah kembali menutup.
+                    val projected = lift.value + liftVel * 0.18f
+                    if (projected > 0.42f) {
                         unlock(liftVel)
                     } else {
                         scope.launch {
                             lift.animateTo(
                                 targetValue = 0f,
-                                animationSpec = spring(
-                                    dampingRatio = 0.86f,
-                                    stiffness = 185f,
-                                ),
-                                initialVelocity = liftVel.coerceIn(-5.5f, 5.5f),
+                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
+                                initialVelocity = liftVel.coerceIn(-10f, 10f),
                             )
                         }
                     }
                 },
             ),
     ) {
-        // Host layer sedikit lebih tinggi dari layar agar tepi kaca bisa keluar tanpa celah.
         Box(
             modifier = Modifier
+                // Host lebih besar dari layar: bleed atas/samping → lensa hanya terlihat di tepi bawah.
                 .layout { measurable, constraints ->
+                    val w = constraints.maxWidth
                     val h = constraints.maxHeight
                     val placeable = measurable.measure(
-                        Constraints.fixed(constraints.maxWidth, h + bleedPx),
+                        Constraints.fixed(w + 2 * bleedSidePx, h + bleedTopPx),
                     )
-                    layout(constraints.maxWidth, h) { placeable.place(0, 0) }
+                    layout(w, h) { placeable.place(-bleedSidePx, -bleedTopPx) }
                 }
-                // Terangkat sejauh layar + bleed agar layer benar-benar keluar dari layar.
-                .graphicsLayer {
-                    translationY = -lift.value.coerceAtLeast(0f) * (size.height + bleedPx)
-                },
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = {
+                        // Sudut bawah membulat begitu layer bergerak; saat menutup penuh tetap persegi.
+                        val r = (abs(lift.value) * 14f).coerceIn(0f, 1f) * cornerPx
+                        RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = r, bottomStart = r)
+                    },
+                    effects = {
+                        val k = lensStrength()
+                        // Persis seperti kapsul navbar: refraksi + dispersi warna (chromatic aberration).
+                        lens(
+                            LENS_HEIGHT_DP.dp.toPx() * k,
+                            LENS_AMOUNT_DP.dp.toPx() * k,
+                            chromaticAberration = true,
+                        )
+                    },
+                    highlight = {
+                        Highlight.Default.copy(alpha = 0.20f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
+                    },
+                    shadow = {
+                        Shadow(alpha = 0.30f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
+                    },
+                    layerBlock = {
+                        val l = lift.value
+                        val screenH = size.height - bleedTopPx
+                        translationY = if (l >= 0f) {
+                            -l * (screenH + exitExtraPx)
+                        } else {
+                            // Rubber band: layer turun sedikit, tertutup oleh bleed atas.
+                            (-l * screenH).coerceAtMost(bleedTopPx * 0.9f)
+                        }
+                    },
+                    onDrawSurface = {
+                        // Tint layer. Dekat tepi bawah dibuat bening (LIP_DP) agar Dashboard yang
+                        // dibiaskan lensa + fringe-nya benar-benar terlihat.
+                        val h = size.height
+                        val lipStart = ((h - lipPx) / h).coerceIn(0.7f, 0.99f)
+                        val tail = palette.bg.copy(alpha = 0.90f)
+                        drawRect(
+                            Brush.verticalGradient(
+                                0f to palette.bg.copy(alpha = 0.78f),
+                                0.33f to lerp(palette.bg, accent, 0.20f).copy(alpha = 0.76f),
+                                0.66f to lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.82f),
+                                lipStart to tail,
+                                1f to tail.copy(alpha = 0.14f),
+                            ),
+                        )
+                    },
+                ),
         ) {
+            // Blob cahaya di layer sendiri (graphicsLayer {}) → animasinya TIDAK me-render ulang
+            // backdrop + shader lensa tiap frame.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = bleedDp)
-                    .graphicsLayer {
-                        // Sudut bawah membulat begitu layer mulai terangkat; saat menutup
-                        // penuh tetap persegi supaya tidak ada celah di sudut layar.
-                        val r = (lift.value * 14f).coerceIn(0f, 1f) * 40.dp.toPx()
-                        shape = RoundedCornerShape(bottomStart = r, bottomEnd = r)
-                        clip = true
-                    }
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                palette.bg.copy(alpha = 0.78f),
-                                lerp(palette.bg, accent, 0.20f).copy(alpha = 0.76f),
-                                lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.82f),
-                                palette.bg.copy(alpha = 0.90f),
-                            ),
-                        ),
-                    )
+                    .graphicsLayer { }
                     .drawBehind {
-                        // Dua blob cahaya yang melayang pelan — hidup tapi tidak mengganggu.
                         val ang = ambientT.value * 2f * PI.toFloat()
+                        val screenH = size.height - bleedTopPx
                         val r1 = size.width * 0.95f
                         val c1 = Offset(
                             size.width * (0.5f + 0.18f * cos(ang)),
-                            size.height * (0.34f + 0.05f * sin(ang)),
+                            bleedTopPx + screenH * (0.34f + 0.05f * sin(ang)),
                         )
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -260,7 +350,7 @@ fun UnlockCurtain(
                         val r2 = size.width * 0.8f
                         val c2 = Offset(
                             size.width * (0.5f - 0.28f * cos(ang)),
-                            size.height * (0.74f + 0.04f * sin(2f * ang)),
+                            bleedTopPx + screenH * (0.74f + 0.04f * sin(2f * ang)),
                         )
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -272,6 +362,12 @@ fun UnlockCurtain(
                             center = c2,
                         )
                     },
+            )
+            // Konten dikembalikan ke area layar (buang bleed atas & samping).
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = BLEED_SIDE_DP.dp, end = BLEED_SIDE_DP.dp, top = BLEED_TOP_DP.dp),
             ) {
                 CurtainContent(
                     lift = lift,
@@ -280,44 +376,6 @@ fun UnlockCurtain(
                     accent2 = accent2,
                     ripple = rippleT,
                     onHintClick = { unlock(0f) },
-                )
-                // Lensa tepi memakai effects.lens() yang sama dengan LiquidBottomTabs.
-                // Aberrasi terbatas pada bibir bawah, bukan seluruh teks/isi curtain.
-                val edgeCorner = (40f * lift.value.coerceIn(0f, 1f)).dp
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .drawBackdrop(
-                            backdrop = backdrop,
-                            shape = { RoundedCornerShape(bottomStart = edgeCorner, bottomEnd = edgeCorner) },
-                            effects = {
-                                val dragProgress = if (reduceMotion) 0f else {
-                                    val p = lift.value.coerceIn(0f, 1f)
-                                    p * (2f - p)
-                                }
-                                val opticalProgress = lerp(0.28f, 1f, dragProgress)
-                                lens(
-                                    8.5f.dp.toPx() * opticalProgress,
-                                    17f.dp.toPx() * opticalProgress,
-                                    chromaticAberration = true,
-                                )
-                            },
-                            highlight = { Highlight.Default.copy(alpha = 0f) },
-                            shadow = { Shadow(alpha = 0.035f + 0.045f * lift.value.coerceIn(0f, 1f)) },
-                            onDrawSurface = {
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            accent.copy(alpha = 0.035f),
-                                            accent2.copy(alpha = 0.045f),
-                                        ),
-                                    ),
-                                )
-                            },
-                        )
-                        .height(30.dp)
-                        .fillMaxWidth(),
                 )
             }
         }

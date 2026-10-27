@@ -59,9 +59,9 @@ fun OnboardingFlow(
     val isEnglish = remember(context) { LocaleManager.current(context) == AppLanguage.ENGLISH }
     val reduceMotion = LocalReduceMotionEnabled.current
     val scope = rememberCoroutineScope()
-    // Shared capture of the live dashboard; the curtain's lower lens refracts this layer,
-    // using the same Backdrop pipeline as the liquid navbar capsule.
-    val curtainBackdrop = rememberLayerBackdrop()
+
+    // Dashboard direkam sebagai backdrop: layer curtain membiaskannya lewat lens() seperti navbar.
+    val dashboardBackdrop = rememberLayerBackdrop()
 
     var stage by rememberSaveable { mutableIntStateOf(STAGE_SETUP) }
     // 0 = layer menutup penuh, 1 = layer sudah keluar layar.
@@ -85,13 +85,15 @@ fun OnboardingFlow(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .layerBackdrop(curtainBackdrop)
+                    // Di LUAR graphicsLayer: yang direkam sudah termasuk blur + skala Dashboard,
+                    // jadi isi di dalam kaca selaras dengan yang terlihat di bawah tepinya.
+                    .layerBackdrop(dashboardBackdrop)
                     .graphicsLayer {
                         if (!reduceMotion) {
                             // smoothstep: blur & zoom Dashboard berubah mulus di awal dan akhir tarikan.
                             val raw = lift.value.coerceIn(0f, 1f)
                             val p = raw * raw * (3f - 2f * raw)
-                            val radius = 22.dp.toPx() * (1f - p)
+                            val radius = 16.dp.toPx() * (1f - p)
                             renderEffect =
                                 if (radius > 0.5f) BlurEffect(radius, radius, TileMode.Decal) else null
                             val s = 0.93f + 0.07f * p
@@ -108,7 +110,7 @@ fun OnboardingFlow(
         if (stage == STAGE_CURTAIN) {
             UnlockCurtain(
                 lift = lift,
-                backdrop = curtainBackdrop,
+                backdrop = dashboardBackdrop,
                 isEnglish = isEnglish,
                 onUnlocked = { stage = STAGE_REVEALED },
             )
