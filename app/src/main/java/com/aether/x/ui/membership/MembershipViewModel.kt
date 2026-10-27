@@ -12,12 +12,14 @@ import com.aether.x.data.DeviceId
 import com.aether.x.data.LicenseRepository
 import com.aether.x.data.LicenseResult
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class MembershipUiStatus { CHECKING, INACTIVE, ACTIVE, EXPIRED }
@@ -38,6 +40,19 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _expiresAtMillis = MutableStateFlow<Long?>(null)
     val expiresAtMillis: StateFlow<Long?> = _expiresAtMillis.asStateFlow()
+
+    /**
+     * Kunci lisensi yang SUDAH DISAMARKAN untuk ditampilkan (4 awal + 4 akhir). Kunci utuh tidak
+     * pernah keluar dari ViewModel ke UI.
+     */
+    val maskedKey: StateFlow<String?> = preferences.preferences
+        .map { prefs -> prefs.licenseKey?.takeIf { it.isNotBlank() }?.let(::maskLicenseKey) }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** true = status ACTIVE saat ini berasal dari cache offline (server tidak terjangkau). */
+    private val _isOfflineCache = MutableStateFlow(false)
+    val isOfflineCache: StateFlow<Boolean> = _isOfflineCache.asStateFlow()
 
     private val _keyInput = MutableStateFlow("")
     val keyInput: StateFlow<String> = _keyInput.asStateFlow()
@@ -72,6 +87,9 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
         licenseRepository.observe(key).collectLatest { result ->
 
             val previousStatus = _status.value
+            if (result !is LicenseResult.RateLimited) {
+                _isOfflineCache.value = result == LicenseResult.NetworkError
+            }
             when (result) {
                 is LicenseResult.Valid -> {
                     preferences.setLicenseCache(key, result.expiresAtMillis)
@@ -171,6 +189,7 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     _activationStage.value = ActivationStage.VERIFYING
                     preferences.setLicenseCache(key, result.expiresAtMillis)
                     attemptGuard.recordSuccess()
+                    _isOfflineCache.value = false
                     _status.value = MembershipUiStatus.ACTIVE
                     _expiresAtMillis.value = result.expiresAtMillis
                     _keyInput.value = ""
@@ -220,4 +239,9 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun appString(resId: Int): String = getApplication<Application>().getString(resId)
+
+    private fun maskLicenseKey(key: String): String {
+        val k = key.trim()
+        return if (k.length <= 8) "\u2022\u2022\u2022\u2022" else k.take(4) + "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" + k.takeLast(4)
+    }
 }

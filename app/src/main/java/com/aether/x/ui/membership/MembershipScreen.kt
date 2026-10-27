@@ -45,7 +45,9 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -97,6 +99,25 @@ fun MembershipScreen(
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
     val activationStage by viewModel.activationStage.collectAsStateWithLifecycle()
+    val maskedKey by viewModel.maskedKey.collectAsStateWithLifecycle()
+    val isOfflineCache by viewModel.isOfflineCache.collectAsStateWithLifecycle()
+
+    // Tahan status ACTIVE selama pengecekan ulang singkat (ACTIVE -> CHECKING -> ACTIVE) supaya
+    // kartu & animasinya tidak hilang-muncul. Confetti hanya saat INACTIVE/EXPIRED -> ACTIVE.
+    var shown by remember { mutableStateOf(status) }
+    LaunchedEffect(status) {
+        if (!(status == MembershipUiStatus.CHECKING && shown == MembershipUiStatus.ACTIVE)) shown = status
+    }
+    var celebrate by remember { mutableIntStateOf(0) }
+    var previousShown by remember { mutableStateOf(shown) }
+    LaunchedEffect(shown) {
+        if (shown == MembershipUiStatus.ACTIVE &&
+            (previousShown == MembershipUiStatus.INACTIVE || previousShown == MembershipUiStatus.EXPIRED)
+        ) {
+            celebrate++
+        }
+        previousShown = shown
+    }
 
     Column(
         modifier = modifier
@@ -126,18 +147,40 @@ fun MembershipScreen(
             )
         }
 
-        MembershipHeroCard(
-            status = status,
+        MembershipPassCard(
+            status = shown,
             expiresAtMillis = expiresAtMillis,
+            maskedKey = maskedKey,
+            headline = statusHeadline(shown),
+            subtitle = statusSubtitle(shown, expiresAtMillis),
+            celebrate = celebrate,
             modifier = Modifier.cardEnterAnimation(index = 0),
         )
 
+        if (shown == MembershipUiStatus.ACTIVE) {
+            LicenseCountdownCard(
+                expiresAtMillis = expiresAtMillis,
+                modifier = Modifier.cardEnterAnimation(index = 1),
+            )
+            LicenseDetailsCard(
+                expiresAtMillis = expiresAtMillis,
+                maskedKey = maskedKey,
+                isOfflineCache = isOfflineCache,
+                modifier = Modifier.cardEnterAnimation(index = 2),
+            )
+            DeviceFingerprintCard(
+                deviceId = viewModel.deviceId,
+                onLogout = viewModel::logout,
+                modifier = Modifier.cardEnterAnimation(index = 3),
+            )
+        }
+
         // Tunggu status membership selesai diperiksa; bonus hanya untuk non-VIP.
-        if (status == MembershipUiStatus.INACTIVE || status == MembershipUiStatus.EXPIRED) {
+        if (shown == MembershipUiStatus.INACTIVE || shown == MembershipUiStatus.EXPIRED) {
             DailyBonusCard(modifier = Modifier.cardEnterAnimation(index = 1))
         }
 
-        if (status != MembershipUiStatus.ACTIVE) {
+        if (shown != MembershipUiStatus.ACTIVE) {
             SectionCard(
                 title = stringResource(R.string.membership_key_label),
                 watermarkIcon = Icons.Outlined.VpnKey,
@@ -262,13 +305,7 @@ fun MembershipScreen(
             }
         }
 
-        if (status == MembershipUiStatus.ACTIVE) {
-            DeviceAccountCard(
-                deviceId = viewModel.deviceId,
-                onLogout = viewModel::logout,
-                modifier = Modifier.cardEnterAnimation(index = 3),
-            )
-        } else {
+        if (shown != MembershipUiStatus.ACTIVE) {
             MembershipProCard(modifier = Modifier.cardEnterAnimation(index = 3))
         }
     }
@@ -386,148 +423,6 @@ private fun MembershipPlanCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DeviceAccountCard(deviceId: String, onLogout: () -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
-    var showLogoutConfirm by remember { mutableStateOf(false) }
-
-    SectionCard(
-        title = stringResource(R.string.membership_device_section_title),
-        watermarkIcon = Icons.Outlined.PhoneAndroid,
-        modifier = modifier,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.line)) {
-                Text(
-                    text = stringResource(R.string.membership_device_id_label),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aetherCardSurface(shape = MaterialTheme.shapes.medium)
-                        .padding(horizontal = Spacing.md, vertical = Spacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = deviceId,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(
-                        onClick = {
-                            clipboard.setText(AnnotatedString(deviceId))
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.membership_device_id_copied),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ContentCopy,
-                            contentDescription = stringResource(R.string.membership_device_id_copy_cd),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            }
-
-            LiquidButton(
-                onClick = { showLogoutConfirm = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = AccentRed,
-                ),
-            ) {
-                Text(
-                    text = stringResource(R.string.membership_logout_button),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-    }
-
-    if (showLogoutConfirm) {
-        PopupDialog(
-            onDismissRequest = { showLogoutConfirm = false },
-            icon = Icons.Outlined.Logout,
-            iconTint = AccentRed,
-            title = stringResource(R.string.membership_logout_confirm_title),
-            message = stringResource(R.string.membership_logout_confirm_message),
-            confirmLabel = stringResource(R.string.membership_logout_confirm_action),
-            onConfirm = {
-                showLogoutConfirm = false
-                onLogout()
-            },
-            confirmIsDestructive = true,
-            dismissLabel = stringResource(R.string.membership_logout_cancel),
-        )
-    }
-}
-
-@Composable
-private fun MembershipHeroCard(status: MembershipUiStatus, expiresAtMillis: Long?, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .aetherCardSurface(shape = MaterialTheme.shapes.medium)
-            .padding(Spacing.xl),
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            MembershipIcon(status)
-            StatusBadge(status)
-        }
-
-        Column {
-            Text(
-                text = statusHeadline(status),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = statusSubtitle(status, expiresAtMillis),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Spacing.line),
-            )
-        }
-    }
-}
-
-@Composable
-private fun MembershipIcon(status: MembershipUiStatus) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(iconContainerColor(status)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.WorkspacePremium,
-            contentDescription = null,
-            tint = iconTintColor(status),
-            modifier = Modifier.size(24.dp),
-        )
-    }
-}
-
-@Composable
 private fun BenefitRow(text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
         Icon(
@@ -545,44 +440,7 @@ private fun BenefitRow(text: String) {
 }
 
 @Composable
-private fun StatusBadge(status: MembershipUiStatus) {
-    when (status) {
-        MembershipUiStatus.CHECKING -> Spacer(modifier = Modifier.height(1.dp))
-        MembershipUiStatus.ACTIVE -> StatusPill(
-            text = stringResource(R.string.membership_badge_active),
-            containerColor = AccentGreenContainer,
-            contentColor = AccentGreen,
-            dotColor = AccentGreen,
-        )
-        MembershipUiStatus.INACTIVE -> StatusPill(
-            text = stringResource(R.string.membership_badge_inactive),
-            dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        MembershipUiStatus.EXPIRED -> StatusPill(
-            text = stringResource(R.string.membership_badge_expired),
-            containerColor = AccentAmberContainer,
-            contentColor = AccentAmber,
-            dotColor = AccentAmber,
-        )
-    }
-}
-
-@Composable
-private fun iconContainerColor(status: MembershipUiStatus) = when (status) {
-    MembershipUiStatus.ACTIVE -> AccentGreenContainer
-    MembershipUiStatus.EXPIRED -> AccentAmberContainer
-    else -> MaterialTheme.colorScheme.surfaceVariant
-}
-
-@Composable
-private fun iconTintColor(status: MembershipUiStatus) = when (status) {
-    MembershipUiStatus.ACTIVE -> AccentGreen
-    MembershipUiStatus.EXPIRED -> AccentAmber
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}
-
-@Composable
-private fun statusHeadline(status: MembershipUiStatus): String = when (status) {
+internal fun statusHeadline(status: MembershipUiStatus): String = when (status) {
     MembershipUiStatus.CHECKING -> stringResource(R.string.membership_status_checking)
     MembershipUiStatus.ACTIVE -> stringResource(R.string.membership_status_active)
     MembershipUiStatus.INACTIVE -> stringResource(R.string.membership_status_inactive)
@@ -590,7 +448,7 @@ private fun statusHeadline(status: MembershipUiStatus): String = when (status) {
 }
 
 @Composable
-private fun statusSubtitle(status: MembershipUiStatus, expiresAtMillis: Long?): String = when (status) {
+internal fun statusSubtitle(status: MembershipUiStatus, expiresAtMillis: Long?): String = when (status) {
     MembershipUiStatus.CHECKING -> stringResource(R.string.membership_status_checking_desc)
     MembershipUiStatus.ACTIVE -> expiresAtMillis?.let {
         stringResource(R.string.membership_status_active_desc, formatDate(it))
