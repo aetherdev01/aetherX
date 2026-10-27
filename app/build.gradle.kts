@@ -10,6 +10,12 @@ buildscript {
         // marker, so it has to be applied the legacy way (buildscript +
         // apply(plugin=...)) instead of via the plugins{} DSL.
         classpath("com.github.megatronking.stringfog:gradle-plugin:5.2.0")
+        // The plugin loads `implementation` (below) via its OWN classloader
+        // at configure time to verify it exists, so the xor algorithm jar
+        // must be on the buildscript classpath too — the app-level
+        // `implementation(libs.stringfog.xor)` dependency further down is
+        // separate and is what the *compiled app* needs at runtime.
+        classpath("com.github.megatronking.stringfog:xor:5.0.0")
     }
 }
 
