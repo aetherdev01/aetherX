@@ -31,15 +31,15 @@ class DampedDragAnimation(
     val onDragStopped: DampedDragAnimation.() -> Unit,
     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
 ) {
-    // Sedikit kurang teredam (0.8) = kapsul sedikit tertinggal dari jari & overshoot kecil saat
-    // berhenti (efek jelly). Sebelumnya spring(1f, 1000f) kaku tanpa goyangan.
-    private val valueAnimationSpec = spring(0.8f, 700f, visibilityThreshold)
-    // Kecepatan yang kurang teredam menggerakkan squash/stretch: melar saat bergerak, lalu
-    // bergoyang beberapa kali sebelum tenang.
-    private val velocityAnimationSpec = spring(0.38f, 260f, visibilityThreshold * 10f)
+    // Posisi hampir teredam kritis (0.86): kapsul tertinggal sedikit dari jari, nyaris tanpa
+    // overshoot. Goyangan jelly datang dari spring kecepatan & skala di bawah, bukan dari posisi.
+    private val valueAnimationSpec = spring(0.86f, 700f, visibilityThreshold)
+    // Rasio ~0.6: overshoot pertama ~9% lalu hanya ~1% di goyangan kedua, jadi terlihat SATU
+    // goyang halus lalu diam (sebelumnya 0.38 = bergetar beberapa kali).
+    private val velocityAnimationSpec = spring(0.6f, 300f, visibilityThreshold * 10f)
     private val pressProgressAnimationSpec = spring(1f, 1000f, 0.001f)
-    private val scaleXAnimationSpec = spring(0.6f, 250f, 0.001f)
-    private val scaleYAnimationSpec = spring(0.7f, 250f, 0.001f)
+    private val scaleXAnimationSpec = spring(0.62f, 250f, 0.001f)
+    private val scaleYAnimationSpec = spring(0.72f, 250f, 0.001f)
 
     private val valueAnimation = Animatable(initialValue, visibilityThreshold)
     private val velocityAnimation = Animatable(0f, 5f)

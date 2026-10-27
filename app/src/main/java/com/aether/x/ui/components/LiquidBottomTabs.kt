@@ -122,9 +122,15 @@ private const val CAPSULE_SQUASH_RATIO = 0.75f
 private const val CAPSULE_STRETCH_SPEED_REF = 9f
 private const val CAPSULE_JELLY_ANISOTROPY = 0.7f
 
+/**
+ * Zona mati kecepatan (tab/detik). Di bawah ini kapsul dianggap diam, jadi sisa noise kecepatan
+ * saat kapsul hampir berhenti tidak menimbulkan getaran squash/stretch kecil yang berulang.
+ */
+private const val CAPSULE_JELLY_DEADZONE = 0.45f
+
 /** Tarikan pegas panel navbar saat digeser, dan pegas kembalinya (kurang teredam = bergoyang). */
 private const val PANEL_PULL_DP = 6f
-private const val PANEL_RETURN_DAMPING = 0.5f
+private const val PANEL_RETURN_DAMPING = 0.66f
 private const val PANEL_RETURN_STIFFNESS = 280f
 
 /**
@@ -327,7 +333,9 @@ fun LiquidBottomTabs(
         // dinormalisasi lebar range (tabsCount - 1); nilai tak-finite diabaikan.
         val jellySpeedTabs: () -> Float = {
             val v = dampedDragAnimation.velocity
-            if (v.isFinite()) v * (tabsCount - 1).coerceAtLeast(1) * (if (isLtr) 1f else -1f) else 0f
+            val raw = if (v.isFinite()) v * (tabsCount - 1).coerceAtLeast(1) * (if (isLtr) 1f else -1f) else 0f
+            // Zona mati: kurangi noise kecepatan kecil supaya tidak ada getaran sisa.
+            sign(raw) * (abs(raw) - CAPSULE_JELLY_DEADZONE).coerceAtLeast(0f)
         }
         // Peregangan 0..CAPSULE_STRETCH_MAX, jenuh halus (tanh).
         val jellyStretch: () -> Float = {

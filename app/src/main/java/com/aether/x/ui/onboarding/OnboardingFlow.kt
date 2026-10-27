@@ -82,7 +82,9 @@ fun OnboardingFlow(
                     .fillMaxSize()
                     .graphicsLayer {
                         if (!reduceMotion) {
-                            val p = lift.value.coerceIn(0f, 1f)
+                            // smoothstep: blur & zoom Dashboard berubah mulus di awal dan akhir tarikan.
+                            val raw = lift.value.coerceIn(0f, 1f)
+                            val p = raw * raw * (3f - 2f * raw)
                             val radius = 22.dp.toPx() * (1f - p)
                             renderEffect =
                                 if (radius > 0.5f) BlurEffect(radius, radius, TileMode.Decal) else null
@@ -112,7 +114,9 @@ fun OnboardingFlow(
             exit = if (reduceMotion) {
                 fadeOut(tween(150))
             } else {
-                slideOutHorizontally(tween(480, easing = FastOutSlowInEasing)) { -it } +
+                // Keluar lebih pendek (sepertiga lebar) + memudar, jadi layer jam di bawahnya
+                // sudah terlihat & mulai masuk bertahap saat halaman setup menyingkir.
+                slideOutHorizontally(tween(560, easing = FastOutSlowInEasing)) { -it / 3 } +
                     fadeOut(tween(480))
             },
         ) {

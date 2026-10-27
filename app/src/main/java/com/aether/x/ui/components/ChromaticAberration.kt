@@ -96,20 +96,32 @@ private class ChromaticShader {
                 float2 center = size * 0.5;
                 float2 d = fc - center;
                 float len = length(d);
-                float rn = len / length(center);
+                float rn = clamp(len / length(center), 0.0, 1.0);
                 float2 dir = d / max(len, 0.001);
 
-                // Aberrasi lensa: lemah di tengah, membesar ke tepi.
-                float amt = strength * (0.35 + 1.25 * rn * rn);
+                // Aberrasi lensa: tipis di tengah, membesar mulus ke tepi (kurva halus, tanpa patahan).
+                float edge = rn * rn * (0.55 + 0.45 * rn);
+                float amt = strength * (0.22 + 1.45 * edge);
                 // Distorsi barrel sangat halus supaya terasa seperti kaca tebal.
                 float2 p = center + d * (1.0 - 0.0009 * strength * rn * rn);
 
-                half4 cr = content.eval(p + dir * amt);
-                half4 cg = content.eval(p);
-                half4 cb = content.eval(p - dir * amt);
-
-                half a = max(cr.a, max(cg.a, cb.a));
-                return half4(min(cr.r, a), min(cg.g, a), min(cb.b, a), a);
+                // 7 sampel spektrum (biru -> merah) sepanjang arah radial. Jauh lebih halus dari
+                // 3 salinan R/G/B: fringe menjadi gradasi pelangi, bukan bayangan ganda.
+                float sr = 0.0; float sg = 0.0; float sb = 0.0; float sa = 0.0;
+                float wR = 0.0; float wG = 0.0; float wB = 0.0;
+                for (int i = 0; i < 7; i++) {
+                    float t = float(i) / 3.0 - 1.0;            // -1 (biru) .. +1 (merah)
+                    half4 s = content.eval(p + dir * amt * t);
+                    float wr = smoothstep(-0.6, 1.0, t);
+                    float wb = smoothstep(0.6, -1.0, t);
+                    float wg = 1.0 - 0.6 * abs(t);
+                    sr += s.r * wr; wR += wr;
+                    sg += s.g * wg; wG += wg;
+                    sb += s.b * wb; wB += wb;
+                    sa += s.a;
+                }
+                float a = sa / 7.0;
+                return half4(half(min(sr / wR, a)), half(min(sg / wG, a)), half(min(sb / wB, a)), half(a));
             }
         """
     }
