@@ -1,26 +1,20 @@
 package com.aether.x.ui.onboarding
 
-import android.text.format.DateFormat
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -32,7 +26,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -49,11 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -62,53 +54,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.aether.x.core.locale.AppLanguage
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.LocalHapticEnabled
 import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.components.performIfEnabled
 import com.aether.x.ui.components.rememberChromaticAberration
 import com.aether.x.ui.theme.LocalAetherPalette
-import java.text.SimpleDateFormat
-import java.util.Date
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Easing masuk yang panjang & lembut (mirip easeOutQuint). */
-private val SoftOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
-
 /**
- * Halaman ke-2 onboarding: "layer" bergaya lockscreen iPhone.
+ * Halaman ke-2 onboarding: "layer" bergaya lockscreen / panel notifikasi iPhone.
  *
- * - Masuk bertahap (stagger): pil, jam, tanggal, sambutan, lalu petunjuk muncul satu per satu
- *   dengan fade + naik + sedikit zoom, sementara cahaya aksen di belakang jam mengembang pelan.
- * - Jam & tanggal hidup: tiap digit berganti dengan geser vertikal (bukan loncat), titik dua
- *   berdenyut halus. Format 12/24 jam mengikuti pengaturan sistem.
- * - Ditarik ke atas: layer mengikuti jari, isinya bergerak lebih lambat (parallax) dan memudar,
- *   tepinya berpendar RGB-split spektral (chromatic aberration lensa) yang makin kuat.
- * - Dilepas: kalau cukup jauh / cukup cepat, layer meluncur keluar dengan spring yang meneruskan
- *   kecepatan jari (tanpa patahan); kalau tidak, kembali dengan spring tanpa celah di atas.
+ * Layer menutupi Dashboard (yang sudah tampil hidup di belakangnya). User menggesernya
+ * ke atas — layer mengikuti jari, tepinya berpendar RGB-split ala lensa kaca
+ * (chromatic aberration) yang makin kuat saat ditarik DAN saat ditarik cepat, lalu
+ * terlepas dan menyingkap Dashboard. Lepas sebelum batas → layer kembali halus (spring).
+ *
+ * Transisi memakai kecepatan jari (velocity hand-off) sehingga gerakan setelah dilepas
+ * menyambung mulus dari gerakan drag, bukan mulai dari nol.
  *
  * @param lift 0f = layer menutupi penuh, 1f = layer sudah keluar layar. Di-hoist supaya
  *   Dashboard di belakang bisa ikut menajam (blur → jelas) seiring layer terangkat.
@@ -130,57 +118,72 @@ fun UnlockCurtain(
     var heightPx by remember { mutableFloatStateOf(0f) }
     var unlocking by remember { mutableStateOf(false) }
 
-    // Progres masuk 0..1 (menggerakkan stagger konten + cahaya latar).
-    val enter = remember { Animatable(if (reduceMotion) 1f else 0f) }
-    LaunchedEffect(Unit) {
-        if (!reduceMotion) enter.animateTo(1f, tween(durationMillis = 1250, easing = SoftOut))
-    }
+    val accent = palette.accent
+    val accent2 = remember(accent) { accent.shiftHue(42f) }
 
-    // Denyut aberrasi sesaat saat layer pertama kali muncul (lensa "fokus"), turun pelan.
+    // Denyut aberrasi sesaat saat layer pertama kali muncul (lensa "fokus").
     val pulse = remember { Animatable(0f) }
+    // Energi gerak: naik saat jari bergerak cepat, meluruh halus saat melambat / berhenti.
+    val energy = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         if (reduceMotion) return@LaunchedEffect
         pulse.snapTo(1f)
-        delay(180)
-        pulse.animateTo(0f, tween(durationMillis = 1400, easing = FastOutSlowInEasing))
+        delay(200)
+        pulse.animateTo(0f, tween(durationMillis = 1500, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)))
     }
 
-    // Cahaya latar bergeser sangat pelan (dibaca di fase draw, tanpa recomposition).
-    val drift = rememberInfiniteTransition(label = "curtain-drift").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 18000, easing = LinearEasing)),
-        label = "curtain-drift-value",
-    )
+    // Jam animasi ambient (blob cahaya) & riak orb. Mode kurangi gerakan → posisi diam.
+    val infinite = rememberInfiniteTransition(label = "curtain-ambient")
+    val ambientT: State<Float> = if (reduceMotion) {
+        remember { mutableFloatStateOf(0.25f) }
+    } else {
+        infinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(16_000, easing = LinearEasing)),
+            label = "curtain-ambient-t",
+        )
+    }
+    val rippleT: State<Float> = if (reduceMotion) {
+        remember { mutableFloatStateOf(0.2f) }
+    } else {
+        infinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(4_200, easing = LinearEasing)),
+            label = "curtain-ripple-t",
+        )
+    }
 
-    val idlePx = with(density) { 1.6.dp.toPx() }
-    val dragPx = with(density) { 16.dp.toPx() }
+    val idlePx = with(density) { 1.2.dp.toPx() }
+    val dragPx = with(density) { 14.dp.toPx() }
+    val energyPx = with(density) { 8.dp.toPx() }
     val pulsePx = with(density) { 9.dp.toPx() }
     val chroma = rememberChromaticAberration {
         if (reduceMotion) {
             0f
         } else {
             val p = lift.value.coerceIn(0f, 1f)
-            idlePx + dragPx * (p * (2f - p)) + pulsePx * pulse.value
+            idlePx + dragPx * (p * (2f - p)) + energyPx * energy.value + pulsePx * pulse.value
         }
     }
 
-    val unlock: (Float) -> Unit = { velocityPx ->
+    val unlock: (Float) -> Unit = { liftVel ->
         if (!unlocking) {
             unlocking = true
             scope.launch {
                 haptic.performIfEnabled(hapticsEnabled, HapticFeedbackType.LongPress)
-                if (reduceMotion) {
-                    lift.animateTo(1f, tween(durationMillis = 120))
-                } else {
-                    // Spring teredam kritis + kecepatan awal dari jari: lanjut mulus dari gesture.
-                    val v = if (heightPx > 0f) (-velocityPx / heightPx).coerceAtLeast(0f) else 0f
-                    lift.animateTo(
-                        targetValue = 1f,
-                        animationSpec = spring(dampingRatio = 1f, stiffness = 110f),
-                        initialVelocity = v,
-                    )
+                energy.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
+            }
+            scope.launch {
+                // Fling cepat → spring yang melanjutkan kecepatan jari. Ketukan → easing panjang
+                // yang lembut di ujung (easeOutQuint).
+                val spec: AnimationSpec<Float> = when {
+                    reduceMotion -> tween(120)
+                    liftVel > 0.8f -> spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f)
+                    else -> tween(640, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
                 }
+                lift.animateTo(1f, spec, initialVelocity = liftVel.coerceIn(0f, 8f))
                 onUnlocked()
             }
         }
@@ -190,6 +193,13 @@ fun UnlockCurtain(
         if (heightPx > 0f && !unlocking) {
             val target = (lift.value - delta / heightPx).coerceIn(0f, 1f)
             scope.launch(start = CoroutineStart.UNDISPATCHED) { lift.snapTo(target) }
+            if (!reduceMotion) {
+                val kick = (abs(delta) / (heightPx * 0.012f)).coerceIn(0f, 1f)
+                scope.launch {
+                    energy.animateTo(kick, tween(90, easing = LinearEasing))
+                    energy.animateTo(0f, tween(650, easing = FastOutSlowInEasing))
+                }
+            }
         }
     }
 
@@ -207,16 +217,19 @@ fun UnlockCurtain(
                 orientation = Orientation.Vertical,
                 enabled = !unlocking,
                 onDragStopped = { velocity ->
+                    // Kecepatan jari (px/s) → kecepatan "lift" (fraksi layar/s), positif = ke atas.
+                    val liftVel = -velocity / heightPx.coerceAtLeast(1f)
                     if (lift.value > 0.3f || velocity < -1100f) {
-                        unlock(velocity)
+                        unlock(liftVel)
                     } else {
                         scope.launch {
                             lift.animateTo(
                                 targetValue = 0f,
                                 animationSpec = spring(
-                                    dampingRatio = 0.8f,
-                                    stiffness = 220f,
+                                    dampingRatio = 0.82f,
+                                    stiffness = Spring.StiffnessMediumLow,
                                 ),
+                                initialVelocity = liftVel.coerceIn(-8f, 8f),
                             )
                         }
                     }
@@ -234,9 +247,10 @@ fun UnlockCurtain(
                     )
                     layout(constraints.maxWidth, h) { placeable.place(0, 0) }
                 }
-                // coerceAtLeast(0): saat spring kembali sedikit melewati 0, layer tidak turun
-                // dan tidak membuka celah di atas.
-                .graphicsLayer { translationY = -lift.value.coerceAtLeast(0f) * size.height }
+                // Terangkat sejauh layar + bleed → fringe tidak tersisa di tepi atas layar.
+                .graphicsLayer {
+                    translationY = -lift.value.coerceAtLeast(0f) * (size.height + bleedPx)
+                }
                 .then(chroma),
         ) {
             Box(
@@ -246,45 +260,45 @@ fun UnlockCurtain(
                     .graphicsLayer {
                         // Sudut bawah membulat begitu layer mulai terangkat; saat menutup
                         // penuh tetap persegi supaya tidak ada celah di sudut layar.
-                        val r = (lift.value * 14f).coerceIn(0f, 1f) * 36.dp.toPx()
+                        val r = (lift.value * 14f).coerceIn(0f, 1f) * 40.dp.toPx()
                         shape = RoundedCornerShape(bottomStart = r, bottomEnd = r)
                         clip = true
                     }
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                palette.bg.copy(alpha = 0.80f),
-                                lerp(palette.bg, palette.accent, 0.16f).copy(alpha = 0.78f),
-                                palette.bg.copy(alpha = 0.88f),
+                                palette.bg.copy(alpha = 0.78f),
+                                lerp(palette.bg, accent, 0.20f).copy(alpha = 0.76f),
+                                lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.82f),
+                                palette.bg.copy(alpha = 0.90f),
                             ),
                         ),
                     )
                     .drawBehind {
-                        // Dua cahaya aksen yang melayang pelan + mengembang saat masuk.
-                        val e = enter.value
-                        val ph = drift.value * 2f * PI.toFloat()
-                        val r1 = size.width * (0.45f + 0.40f * e)
+                        // Dua blob cahaya yang melayang pelan — hidup tapi tidak mengganggu.
+                        val ang = ambientT.value * 2f * PI.toFloat()
+                        val r1 = size.width * 0.95f
                         val c1 = Offset(
-                            size.width * (0.5f + 0.10f * sin(ph)),
-                            size.height * (0.34f + 0.025f * cos(ph)),
+                            size.width * (0.5f + 0.18f * cos(ang)),
+                            size.height * (0.34f + 0.05f * sin(ang)),
                         )
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(palette.accent.copy(alpha = 0.26f * e), Color.Transparent),
+                                colors = listOf(accent.copy(alpha = 0.26f), Color.Transparent),
                                 center = c1,
                                 radius = r1,
                             ),
                             radius = r1,
                             center = c1,
                         )
-                        val r2 = size.width * 0.7f
+                        val r2 = size.width * 0.8f
                         val c2 = Offset(
-                            size.width * (0.5f - 0.28f * cos(ph)),
-                            size.height * (0.80f + 0.03f * sin(ph)),
+                            size.width * (0.5f - 0.28f * cos(ang)),
+                            size.height * (0.74f + 0.04f * sin(2f * ang)),
                         )
                         drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(palette.accent.copy(alpha = 0.13f * e), Color.Transparent),
+                                colors = listOf(accent2.copy(alpha = 0.18f), Color.Transparent),
                                 center = c2,
                                 radius = r2,
                             ),
@@ -295,38 +309,20 @@ fun UnlockCurtain(
             ) {
                 CurtainContent(
                     lift = lift,
-                    enter = { enter.value },
                     isEnglish = isEnglish,
-                    reduceMotion = reduceMotion,
+                    accent = accent,
+                    accent2 = accent2,
+                    ripple = rippleT,
                     onHintClick = { unlock(0f) },
                 )
-                // Cahaya tipis naik dari tepi bawah supaya batas layer terasa seperti kaca.
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(34.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, palette.accent.copy(alpha = 0.16f)),
-                            ),
-                        ),
-                )
-                // Garis tepi bawah — di sinilah efek lensa paling terlihat saat ditarik.
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    palette.accent.copy(alpha = 0.95f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
+                // Tepi bawah berupa "bibir kaca": fringe RGB + kilau yang bergeser mengikuti lift.
+                LensRim(
+                    lift = lift,
+                    energy = energy,
+                    pulse = pulse,
+                    accent = accent,
+                    reduceMotion = reduceMotion,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }
@@ -334,88 +330,153 @@ fun UnlockCurtain(
 }
 
 /**
- * Masuk bertahap: [progress] 0..1 dipetakan ke jendela [start]..[end]; hasilnya fade, naik
- * [rise], dan zoom 96% → 100% dengan easing keluar kubik. Dibaca di fase layer (tanpa recompose).
+ * Tepi bawah layer ala lensa kaca. Digambar manual (di luar shader chromatic aberration)
+ * supaya bisa dikontrol penuh:
+ *  - lip: pendar kaca tipis di atas tepi,
+ *  - glint: kilau cahaya yang bergeser kiri→kanan seiring layer terangkat,
+ *  - fringe: tiga pita merah/hijau/biru yang saling menjauh (dispersi), digabung additive
+ *    sehingga inti tepi tampak putih dan pinggirnya berwarna — seperti prisma sungguhan.
  */
-private fun Modifier.staggerIn(
-    progress: () -> Float,
-    start: Float,
-    end: Float,
-    rise: Dp = 24.dp,
-): Modifier = graphicsLayer {
-    val t = ((progress() - start) / (end - start)).coerceIn(0f, 1f)
-    val e = 1f - (1f - t) * (1f - t) * (1f - t)
-    alpha = e
-    translationY = (1f - e) * rise.toPx()
-    val s = 0.96f + 0.04f * e
-    scaleX = s
-    scaleY = s
+@Composable
+private fun LensRim(
+    lift: Animatable<Float, AnimationVector1D>,
+    energy: Animatable<Float, AnimationVector1D>,
+    pulse: Animatable<Float, AnimationVector1D>,
+    accent: Color,
+    reduceMotion: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.drawBehind {
+            val p = lift.value.coerceIn(0f, 1f)
+            val eased = p * (2f - p)
+            val strength = if (reduceMotion) {
+                0.3f
+            } else {
+                (0.28f + 0.55f * eased + 0.5f * energy.value + 0.6f * pulse.value).coerceIn(0f, 1.5f)
+            }
+            val w = size.width
+            val h = size.height
+            val band = 1.4.dp.toPx() * (1f + 0.6f * strength)
+            val spread = 1.2.dp.toPx() * (0.6f + 3.2f * strength)
+            val lipH = 30.dp.toPx() * (0.8f + strength)
+            val s1 = strength.coerceAtMost(1f)
+
+            // Lip kaca.
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        accent.copy(alpha = 0.10f * strength),
+                        Color.White.copy(alpha = 0.14f * strength),
+                    ),
+                    startY = h - lipH,
+                    endY = h,
+                ),
+                topLeft = Offset(0f, h - lipH),
+                size = Size(w, lipH),
+            )
+
+            // Kilau yang bergeser.
+            val cx = w * (0.12f + 0.76f * p)
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.45f * s1), Color.Transparent),
+                    center = Offset(cx, h),
+                    radius = w * 0.34f,
+                ),
+                topLeft = Offset(0f, h - lipH),
+                size = Size(w, lipH),
+            )
+
+            // Fringe dispersi: merah paling bawah, biru paling atas, hijau di tengah.
+            fun fringe(color: Color, y: Float) {
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            color.copy(alpha = 0.60f * s1),
+                            Color.Transparent,
+                        ),
+                    ),
+                    topLeft = Offset(0f, y),
+                    size = Size(w, band),
+                    blendMode = BlendMode.Plus,
+                )
+            }
+            fringe(Color(0xFFFF2D55), h - band)
+            fringe(Color(0xFF30FF9A), h - band - spread)
+            fringe(Color(0xFF2E7BFF), h - band - 2f * spread)
+
+            // Garis tipis paling bawah sebagai "mata pisau" kaca.
+            drawRect(
+                color = Color.White.copy(alpha = 0.32f * s1),
+                topLeft = Offset(0f, h - 1.dp.toPx()),
+                size = Size(w, 1.dp.toPx()),
+            )
+        },
+    )
 }
 
 @Composable
 private fun CurtainContent(
     lift: Animatable<Float, AnimationVector1D>,
-    enter: () -> Float,
     isEnglish: Boolean,
-    reduceMotion: Boolean,
+    accent: Color,
+    accent2: Color,
+    ripple: State<Float>,
     onHintClick: () -> Unit,
 ) {
     val palette = LocalAetherPalette.current
     val colors = MaterialTheme.colorScheme
-    val context = LocalContext.current
+    val reduceMotion = LocalReduceMotionEnabled.current
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
 
-    val locale = remember(isEnglish) {
-        if (isEnglish) AppLanguage.ENGLISH.locale else AppLanguage.INDONESIAN.locale
+    // Masuk berurutan (stagger): pil → orb → judul → subjudul → petunjuk.
+    val entrance = remember { Animatable(if (reduceMotion) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (reduceMotion) return@LaunchedEffect
+        delay(140)
+        entrance.animateTo(1f, tween(durationMillis = 1500, easing = LinearEasing))
     }
-    val is24h = remember(context) { DateFormat.is24HourFormat(context) }
-    // Diperbarui tepat di pergantian menit — bukan tiap detik.
-    val now by produceState(initialValue = System.currentTimeMillis()) {
-        while (true) {
-            value = System.currentTimeMillis()
-            delay(60_000L - (value % 60_000L) + 50L)
-        }
+    fun stage(i: Int): Float {
+        val raw = ((entrance.value - i * 0.1f) / 0.55f).coerceIn(0f, 1f)
+        val inv = 1f - raw
+        return 1f - inv * inv * inv // easeOutCubic
     }
-    val timeText = remember(now, is24h, locale) {
-        SimpleDateFormat(if (is24h) "HH:mm" else "h:mm", locale).format(Date(now))
-    }
-    val ampmText = remember(now, is24h, locale) {
-        if (is24h) null else SimpleDateFormat("a", locale).format(Date(now)).uppercase(locale)
-    }
-    val dateText = remember(now, locale) {
-        SimpleDateFormat("EEEE, d MMMM", locale).format(Date(now))
+    fun Modifier.enter(i: Int): Modifier = graphicsLayer {
+        val s = stage(i)
+        alpha = s
+        translationY = (1f - s) * 26.dp.toPx()
     }
 
-    val bob = rememberInfiniteTransition(label = "curtain-hint").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "curtain-hint-bob",
-    )
-    val colon = rememberInfiniteTransition(label = "curtain-colon").animateFloat(
-        initialValue = 1f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "curtain-colon-alpha",
-    )
+    val bobInfinite = rememberInfiniteTransition(label = "curtain-hint")
+    val bob: State<Float> = if (reduceMotion) {
+        remember { mutableFloatStateOf(0.5f) }
+    } else {
+        bobInfinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1300, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "curtain-hint-bob",
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer {
-                // Parallax: isi bergerak lebih lambat daripada layer, mengecil & memudar halus.
+                // Parallax kedalaman: isi memudar, mengecil sedikit, dan melaju lebih cepat
+                // dari layer sehingga terasa berlapis.
                 val p = lift.value.coerceIn(0f, 1f)
-                translationY = p * size.height * 0.16f
-                val s = 1f - 0.05f * p
+                alpha = (1f - p * 2.2f).coerceIn(0f, 1f)
+                translationY = -p * size.height * 0.2f
+                val s = 1f - 0.07f * p
                 scaleX = s
                 scaleY = s
-                alpha = (1f - p * 2.2f).coerceIn(0f, 1f)
             }
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -426,9 +487,10 @@ private fun CurtainContent(
         // Pil status teratas.
         Row(
             modifier = Modifier
-                .staggerIn(enter, 0.00f, 0.45f, rise = 14.dp)
+                .enter(0)
                 .clip(RoundedCornerShape(50))
-                .background(palette.accent.copy(alpha = 0.13f))
+                .background(accent.copy(alpha = 0.13f))
+                .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(50))
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -436,7 +498,7 @@ private fun CurtainContent(
             Icon(
                 imageVector = Icons.Outlined.Bolt,
                 contentDescription = null,
-                tint = palette.accent,
+                tint = accent,
                 modifier = Modifier.size(16.dp),
             )
             Text(
@@ -465,107 +527,29 @@ private fun CurtainContent(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // ── Jam: tiap digit berganti dengan geser vertikal ──
-        Row(
-            modifier = Modifier.staggerIn(enter, 0.10f, 0.65f, rise = 34.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            val clockStyle = TextStyle(
-                fontSize = 86.sp,
-                fontWeight = FontWeight.Light,
-                letterSpacing = (-2).sp,
-                color = colors.onSurface,
-                fontFeatureSettings = "tnum",
-            )
-            timeText.forEachIndexed { index, ch ->
-                // Kunci dihitung dari belakang supaya digit menit tidak ikut "loncat" saat
-                // panjang teks berubah (mis. 9:59 → 10:00).
-                key(timeText.length - index) {
-                    if (ch == ':') {
-                        Text(
-                            text = ":",
-                            style = clockStyle,
-                            modifier = Modifier
-                                .padding(bottom = 6.dp)
-                                .graphicsLayer { alpha = if (reduceMotion) 1f else colon.value },
-                        )
-                    } else {
-                        AnimatedContent(
-                            targetState = ch,
-                            transitionSpec = {
-                                if (reduceMotion) {
-                                    EnterTransition.None togetherWith ExitTransition.None
-                                } else {
-                                    (
-                                        slideInVertically(
-                                            animationSpec = tween(560, easing = SoftOut),
-                                            initialOffsetY = { it / 2 },
-                                        ) + fadeIn(tween(420))
-                                        ) togetherWith (
-                                        slideOutVertically(
-                                            animationSpec = tween(420, easing = FastOutSlowInEasing),
-                                            targetOffsetY = { -it / 2 },
-                                        ) + fadeOut(tween(240))
-                                        )
-                                }
-                            },
-                            label = "clock-digit",
-                        ) { c ->
-                            Text(text = c.toString(), style = clockStyle)
-                        }
-                    }
-                }
-            }
-            if (ampmText != null) {
-                Text(
-                    text = ampmText,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 6.dp, bottom = 16.dp),
-                )
-            }
+        Box(modifier = Modifier.enter(1)) {
+            AetherOrb(accent = accent, accent2 = accent2, ripple = ripple)
         }
-
-        // ── Tanggal: berganti dengan crossfade lembut saat lewat tengah malam ──
-        AnimatedContent(
-            targetState = dateText,
-            transitionSpec = {
-                if (reduceMotion) {
-                    EnterTransition.None togetherWith ExitTransition.None
-                } else {
-                    fadeIn(tween(500)) togetherWith fadeOut(tween(300))
-                }
-            },
-            modifier = Modifier.staggerIn(enter, 0.20f, 0.75f, rise = 22.dp),
-            label = "clock-date",
-        ) { text ->
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = colors.onSurfaceVariant,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(26.dp))
+        Spacer(modifier = Modifier.height(30.dp))
         Text(
+            modifier = Modifier.enter(2),
             text = if (isEnglish) "Welcome to AetherX" else "Selamat datang di AetherX",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
             color = colors.onSurface,
-            modifier = Modifier.staggerIn(enter, 0.32f, 0.85f),
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
+            modifier = Modifier.enter(3),
             text = if (isEnglish) {
                 "Everything is set. Your dashboard is ready."
             } else {
                 "Semua pengaturan selesai. Dashboard kamu sudah siap."
             },
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
             color = colors.onSurfaceVariant,
-            modifier = Modifier.staggerIn(enter, 0.40f, 0.92f),
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -574,7 +558,7 @@ private fun CurtainContent(
         val hintLabel = if (isEnglish) "Swipe up to open" else "Geser ke atas untuk membuka"
         Column(
             modifier = Modifier
-                .staggerIn(enter, 0.55f, 1.00f, rise = 18.dp)
+                .enter(4)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -584,17 +568,33 @@ private fun CurtainContent(
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.KeyboardArrowUp,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier
-                    .size(30.dp)
-                    .graphicsLayer {
-                        translationY = -8.dp.toPx() * bob.value
-                        alpha = 0.55f + 0.45f * bob.value
-                    },
-            )
+            // Dua chevron yang bergantian menyala (efek "mengalir ke atas").
+            Box(modifier = Modifier.size(width = 30.dp, height = 42.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.KeyboardArrowUp,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .align(Alignment.TopCenter)
+                        .graphicsLayer {
+                            alpha = 0.25f + 0.75f * bob.value
+                            translationY = -5.dp.toPx() * bob.value
+                        },
+                )
+                Icon(
+                    imageVector = Icons.Outlined.KeyboardArrowUp,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .align(Alignment.BottomCenter)
+                        .graphicsLayer {
+                            alpha = 0.25f + 0.75f * (1f - bob.value)
+                            translationY = -5.dp.toPx() * (1f - bob.value)
+                        },
+                )
+            }
             Text(
                 text = hintLabel,
                 style = MaterialTheme.typography.labelLarge,
@@ -604,15 +604,105 @@ private fun CurtainContent(
             )
         }
         Spacer(modifier = Modifier.height(14.dp))
-        // Grabber ala home indicator iOS.
+        // Grabber ala home indicator iOS — melebar sedikit saat layer ditarik.
         Box(
             modifier = Modifier
-                .staggerIn(enter, 0.60f, 1.00f, rise = 10.dp)
                 .width(134.dp)
                 .height(5.dp)
+                .graphicsLayer { scaleX = 1f + 0.3f * lift.value.coerceIn(0f, 1f) }
                 .clip(CircleShape)
                 .background(colors.onSurface.copy(alpha = 0.55f)),
         )
         Spacer(modifier = Modifier.height(8.dp))
     }
+}
+
+/**
+ * Orb logo di tengah: inti gradien aksen + riak yang memancar keluar. Tiap riak punya
+ * pecahan warna merah/biru tipis (RGB-split) yang menyatu dengan tema lensa.
+ */
+@Composable
+private fun AetherOrb(
+    accent: Color,
+    accent2: Color,
+    ripple: State<Float>,
+) {
+    val orbSize = 96.dp
+    Box(
+        modifier = Modifier
+            .size(196.dp)
+            .graphicsLayer {
+                val breathe = 1f + 0.025f * sin(ripple.value * 2f * PI.toFloat())
+                scaleX = breathe
+                scaleY = breathe
+            }
+            .drawBehind {
+                val c = center
+                val orbR = orbSize.toPx() / 2f
+                val maxR = size.minDimension / 2f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(accent.copy(alpha = 0.38f), Color.Transparent),
+                        center = c,
+                        radius = maxR,
+                    ),
+                    radius = maxR,
+                    center = c,
+                )
+                val sw = 1.5.dp.toPx()
+                for (k in 0 until 3) {
+                    val ph = (ripple.value + k / 3f) % 1f
+                    val inv = 1f - ph
+                    val e = 1f - inv * inv * inv
+                    val r = orbR + (maxR - orbR) * e
+                    val a = inv * inv * 0.55f
+                    val split = 1.4.dp.toPx() * e
+                    drawCircle(
+                        color = Color(0xFFFF3B5C).copy(alpha = a * 0.55f),
+                        radius = r + split,
+                        center = c,
+                        style = Stroke(sw),
+                    )
+                    drawCircle(
+                        color = Color(0xFF2EA8FF).copy(alpha = a * 0.55f),
+                        radius = (r - split).coerceAtLeast(0f),
+                        center = c,
+                        style = Stroke(sw),
+                    )
+                    drawCircle(
+                        color = accent.copy(alpha = a),
+                        radius = r,
+                        center = c,
+                        style = Stroke(sw),
+                    )
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(orbSize)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(colors = listOf(accent, accent2)))
+                .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Bolt,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(44.dp),
+            )
+        }
+    }
+}
+
+/** Menggeser hue warna (derajat) — dipakai untuk warna sekunder gradien dari warna aksen tema. */
+private fun Color.shiftHue(degrees: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(this.toArgb(), hsv)
+    hsv[0] = (hsv[0] + degrees + 360f) % 360f
+    hsv[1] = hsv[1].coerceAtLeast(0.35f)
+    hsv[2] = hsv[2].coerceAtLeast(0.7f)
+    return Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = this.alpha)
 }
