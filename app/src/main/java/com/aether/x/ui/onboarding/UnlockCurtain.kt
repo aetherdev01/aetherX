@@ -3,11 +3,9 @@ package com.aether.x.ui.onboarding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -26,6 +24,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -54,8 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -72,15 +69,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.LocalHapticEnabled
 import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.components.performIfEnabled
-import com.aether.x.ui.components.rememberChromaticAberration
 import com.aether.x.ui.theme.LocalAetherPalette
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.CoroutineStart
@@ -91,8 +92,8 @@ import kotlinx.coroutines.launch
  * Halaman ke-2 onboarding: "layer" bergaya lockscreen / panel notifikasi iPhone.
  *
  * Layer menutupi Dashboard (yang sudah tampil hidup di belakangnya). User menggesernya
- * ke atas — layer mengikuti jari, tepinya berpendar RGB-split ala lensa kaca
- * (chromatic aberration) yang makin kuat saat ditarik DAN saat ditarik cepat, lalu
+ * ke atas — layer mengikuti jari, sementara bibir bawah memakai lens/chromatic aberration
+ * LiquidBottomTabs agar refraksi tetap lokal dan isi layar tidak terpecah warna, lalu
  * terlepas dan menyingkap Dashboard. Lepas sebelum batas → layer kembali halus (spring).
  *
  * Transisi memakai kecepatan jari (velocity hand-off) sehingga gerakan setelah dilepas
@@ -104,6 +105,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun UnlockCurtain(
     lift: Animatable<Float, AnimationVector1D>,
+    backdrop: Backdrop,
     isEnglish: Boolean,
     onUnlocked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -120,17 +122,6 @@ fun UnlockCurtain(
 
     val accent = palette.accent
     val accent2 = remember(accent) { accent.shiftHue(42f) }
-
-    // Denyut aberrasi sesaat saat layer pertama kali muncul (lensa "fokus").
-    val pulse = remember { Animatable(0f) }
-    // Energi gerak: naik saat jari bergerak cepat, meluruh halus saat melambat / berhenti.
-    val energy = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        if (reduceMotion) return@LaunchedEffect
-        pulse.snapTo(1f)
-        delay(200)
-        pulse.animateTo(0f, tween(durationMillis = 1500, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)))
-    }
 
     // Jam animasi ambient (blob cahaya) & riak orb. Mode kurangi gerakan → posisi diam.
     val infinite = rememberInfiniteTransition(label = "curtain-ambient")
@@ -155,35 +146,19 @@ fun UnlockCurtain(
         )
     }
 
-    val idlePx = with(density) { 1.2.dp.toPx() }
-    val dragPx = with(density) { 14.dp.toPx() }
-    val energyPx = with(density) { 8.dp.toPx() }
-    val pulsePx = with(density) { 9.dp.toPx() }
-    val chroma = rememberChromaticAberration {
-        if (reduceMotion) {
-            0f
-        } else {
-            val p = lift.value.coerceIn(0f, 1f)
-            idlePx + dragPx * (p * (2f - p)) + energyPx * energy.value + pulsePx * pulse.value
-        }
-    }
-
     val unlock: (Float) -> Unit = { liftVel ->
         if (!unlocking) {
             unlocking = true
             scope.launch {
                 haptic.performIfEnabled(hapticsEnabled, HapticFeedbackType.LongPress)
-                energy.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
-            }
-            scope.launch {
-                // Fling cepat → spring yang melanjutkan kecepatan jari. Ketukan → easing panjang
-                // yang lembut di ujung (easeOutQuint).
-                val spec: AnimationSpec<Float> = when {
-                    reduceMotion -> tween(120)
-                    liftVel > 0.8f -> spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 380f)
-                    else -> tween(640, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
+                // One continuous, gently damped spring: it inherits the swipe velocity instead
+                // of switching abruptly between a short fling and a separate fixed-duration tween.
+                val spec: AnimationSpec<Float> = if (reduceMotion) {
+                    tween(140)
+                } else {
+                    spring(dampingRatio = 0.94f, stiffness = 145f)
                 }
-                lift.animateTo(1f, spec, initialVelocity = liftVel.coerceIn(0f, 8f))
+                lift.animateTo(1f, spec, initialVelocity = liftVel.coerceIn(0f, 5.5f))
                 onUnlocked()
             }
         }
@@ -193,13 +168,6 @@ fun UnlockCurtain(
         if (heightPx > 0f && !unlocking) {
             val target = (lift.value - delta / heightPx).coerceIn(0f, 1f)
             scope.launch(start = CoroutineStart.UNDISPATCHED) { lift.snapTo(target) }
-            if (!reduceMotion) {
-                val kick = (abs(delta) / (heightPx * 0.012f)).coerceIn(0f, 1f)
-                scope.launch {
-                    energy.animateTo(kick, tween(90, easing = LinearEasing))
-                    energy.animateTo(0f, tween(650, easing = FastOutSlowInEasing))
-                }
-            }
         }
     }
 
@@ -226,18 +194,17 @@ fun UnlockCurtain(
                             lift.animateTo(
                                 targetValue = 0f,
                                 animationSpec = spring(
-                                    dampingRatio = 0.82f,
-                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = 0.86f,
+                                    stiffness = 185f,
                                 ),
-                                initialVelocity = liftVel.coerceIn(-8f, 8f),
+                                initialVelocity = liftVel.coerceIn(-5.5f, 5.5f),
                             )
                         }
                     }
                 },
             ),
     ) {
-        // Host layer: sedikit lebih tinggi dari layar (bleed) agar rumbai merah di luar
-        // tepi bawah punya ruang untuk digambar oleh efek aberrasi.
+        // Host layer sedikit lebih tinggi dari layar agar tepi kaca bisa keluar tanpa celah.
         Box(
             modifier = Modifier
                 .layout { measurable, constraints ->
@@ -247,11 +214,10 @@ fun UnlockCurtain(
                     )
                     layout(constraints.maxWidth, h) { placeable.place(0, 0) }
                 }
-                // Terangkat sejauh layar + bleed → fringe tidak tersisa di tepi atas layar.
+                // Terangkat sejauh layar + bleed agar layer benar-benar keluar dari layar.
                 .graphicsLayer {
                     translationY = -lift.value.coerceAtLeast(0f) * (size.height + bleedPx)
-                }
-                .then(chroma),
+                },
         ) {
             Box(
                 modifier = Modifier
@@ -315,107 +281,47 @@ fun UnlockCurtain(
                     ripple = rippleT,
                     onHintClick = { unlock(0f) },
                 )
-                // Tepi bawah berupa "bibir kaca": fringe RGB + kilau yang bergeser mengikuti lift.
-                LensRim(
-                    lift = lift,
-                    energy = energy,
-                    pulse = pulse,
-                    accent = accent,
-                    reduceMotion = reduceMotion,
-                    modifier = Modifier.fillMaxSize(),
+                // Lensa tepi memakai effects.lens() yang sama dengan LiquidBottomTabs.
+                // Aberrasi terbatas pada bibir bawah, bukan seluruh teks/isi curtain.
+                val edgeCorner = (40f * lift.value.coerceIn(0f, 1f)).dp
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { RoundedCornerShape(bottomStart = edgeCorner, bottomEnd = edgeCorner) },
+                            effects = {
+                                val dragProgress = if (reduceMotion) 0f else {
+                                    val p = lift.value.coerceIn(0f, 1f)
+                                    p * (2f - p)
+                                }
+                                val opticalProgress = lerp(0.28f, 1f, dragProgress)
+                                lens(
+                                    8.5f.dp.toPx() * opticalProgress,
+                                    17f.dp.toPx() * opticalProgress,
+                                    chromaticAberration = true,
+                                )
+                            },
+                            highlight = { Highlight.Default.copy(alpha = 0f) },
+                            shadow = { Shadow(alpha = 0.035f + 0.045f * lift.value.coerceIn(0f, 1f)) },
+                            onDrawSurface = {
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            accent.copy(alpha = 0.035f),
+                                            accent2.copy(alpha = 0.045f),
+                                        ),
+                                    ),
+                                )
+                            },
+                        )
+                        .height(30.dp)
+                        .fillMaxWidth(),
                 )
             }
         }
     }
-}
-
-/**
- * Tepi bawah layer ala lensa kaca. Digambar manual (di luar shader chromatic aberration)
- * supaya bisa dikontrol penuh:
- *  - lip: pendar kaca tipis di atas tepi,
- *  - glint: kilau cahaya yang bergeser kiri→kanan seiring layer terangkat,
- *  - fringe: tiga pita merah/hijau/biru yang saling menjauh (dispersi), digabung additive
- *    sehingga inti tepi tampak putih dan pinggirnya berwarna — seperti prisma sungguhan.
- */
-@Composable
-private fun LensRim(
-    lift: Animatable<Float, AnimationVector1D>,
-    energy: Animatable<Float, AnimationVector1D>,
-    pulse: Animatable<Float, AnimationVector1D>,
-    accent: Color,
-    reduceMotion: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.drawBehind {
-            val p = lift.value.coerceIn(0f, 1f)
-            val eased = p * (2f - p)
-            val strength = if (reduceMotion) {
-                0.3f
-            } else {
-                (0.28f + 0.55f * eased + 0.5f * energy.value + 0.6f * pulse.value).coerceIn(0f, 1.5f)
-            }
-            val w = size.width
-            val h = size.height
-            val band = 1.4.dp.toPx() * (1f + 0.6f * strength)
-            val spread = 1.2.dp.toPx() * (0.6f + 3.2f * strength)
-            val lipH = 30.dp.toPx() * (0.8f + strength)
-            val s1 = strength.coerceAtMost(1f)
-
-            // Lip kaca.
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        accent.copy(alpha = 0.10f * strength),
-                        Color.White.copy(alpha = 0.14f * strength),
-                    ),
-                    startY = h - lipH,
-                    endY = h,
-                ),
-                topLeft = Offset(0f, h - lipH),
-                size = Size(w, lipH),
-            )
-
-            // Kilau yang bergeser.
-            val cx = w * (0.12f + 0.76f * p)
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.45f * s1), Color.Transparent),
-                    center = Offset(cx, h),
-                    radius = w * 0.34f,
-                ),
-                topLeft = Offset(0f, h - lipH),
-                size = Size(w, lipH),
-            )
-
-            // Fringe dispersi: merah paling bawah, biru paling atas, hijau di tengah.
-            fun fringe(color: Color, y: Float) {
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            color.copy(alpha = 0.60f * s1),
-                            Color.Transparent,
-                        ),
-                    ),
-                    topLeft = Offset(0f, y),
-                    size = Size(w, band),
-                    blendMode = BlendMode.Plus,
-                )
-            }
-            fringe(Color(0xFFFF2D55), h - band)
-            fringe(Color(0xFF30FF9A), h - band - spread)
-            fringe(Color(0xFF2E7BFF), h - band - 2f * spread)
-
-            // Garis tipis paling bawah sebagai "mata pisau" kaca.
-            drawRect(
-                color = Color.White.copy(alpha = 0.32f * s1),
-                topLeft = Offset(0f, h - 1.dp.toPx()),
-                size = Size(w, 1.dp.toPx()),
-            )
-        },
-    )
 }
 
 @Composable

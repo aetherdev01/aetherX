@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import com.aether.x.core.locale.AppLanguage
 import com.aether.x.core.locale.LocaleManager
 import com.aether.x.ui.components.LocalReduceMotionEnabled
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.launch
 
 private const val STAGE_SETUP = 0     // halaman 1: pengaturan izin
@@ -57,6 +59,9 @@ fun OnboardingFlow(
     val isEnglish = remember(context) { LocaleManager.current(context) == AppLanguage.ENGLISH }
     val reduceMotion = LocalReduceMotionEnabled.current
     val scope = rememberCoroutineScope()
+    // Shared capture of the live dashboard; the curtain's lower lens refracts this layer,
+    // using the same Backdrop pipeline as the liquid navbar capsule.
+    val curtainBackdrop = rememberLayerBackdrop()
 
     var stage by rememberSaveable { mutableIntStateOf(STAGE_SETUP) }
     // 0 = layer menutup penuh, 1 = layer sudah keluar layar.
@@ -80,6 +85,7 @@ fun OnboardingFlow(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .layerBackdrop(curtainBackdrop)
                     .graphicsLayer {
                         if (!reduceMotion) {
                             // smoothstep: blur & zoom Dashboard berubah mulus di awal dan akhir tarikan.
@@ -102,6 +108,7 @@ fun OnboardingFlow(
         if (stage == STAGE_CURTAIN) {
             UnlockCurtain(
                 lift = lift,
+                backdrop = curtainBackdrop,
                 isEnglish = isEnglish,
                 onUnlocked = { stage = STAGE_REVEALED },
             )
