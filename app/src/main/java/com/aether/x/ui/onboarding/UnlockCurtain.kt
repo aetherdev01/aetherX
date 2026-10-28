@@ -3,7 +3,6 @@ package com.aether.x.ui.onboarding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -44,9 +43,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,10 +78,8 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.abs
-import kotlin.math.exp
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 // ── Lensa: refraksi tepi dari library Kyant (sama seperti navbar), tanpa dispersi warna ──
@@ -92,24 +87,33 @@ import kotlinx.coroutines.launch
 private const val LENS_HEIGHT_DP = 36f
 /** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
 private const val LENS_AMOUNT_DP = 84f
-/** Kekuatan lensa saat diam (navbar: 0.28). Lensa menguat saat ditarik. */
-private const val LENS_IDLE = 0.65f
+/**
+ * Kekuatan lensa TETAP (tidak berubah saat ditarik, tidak bergantung kecepatan jari). Sebelumnya
+ * kekuatan lensa ikut kecepatan jari + posisi tarikan → tepi bergetar seperti jelly.
+ */
+private const val LENS_STRENGTH = 0.85f
 
 // ── Geometri host layer ──
-/** Host dibuat lebih besar dari layar di atas & samping supaya HANYA tepi bawah yang terkena lensa. */
-private const val BLEED_TOP_DP = 56f
-private const val BLEED_SIDE_DP = 0f
+/**
+ * Host dibuat lebih besar dari layar di atas & samping supaya lensa HANYA terlihat di tepi bawah
+ * dan lengkungnya. Bleed harus >= tebal pita lensa maksimum (LENS_HEIGHT_DP * LENS_STRENGTH ≈ 31dp
+ * + margin) agar tepi atas/samping yang ikut membiaskan jatuh di luar layar.
+ */
+private const val BLEED_TOP_DP = 64f
+private const val BLEED_SIDE_DP = 64f
 /** Jarak ekstra saat terangkat penuh supaya bayangan tepi bawah ikut keluar layar. */
 private const val EXIT_EXTRA_DP = 32f
-/** Radius sudut bawah: saat diam (sudah sedikit melengkung) dan saat ditarik. */
-private const val CORNER_REST_DP = 26f
-private const val CORNER_DP = 44f
+/**
+ * Radius sudut bawah, TETAP. Karena radius > bleed samping, busur sudut mulai terlihat di dalam
+ * layar: tepi bawah naik ~32dp di kiri/kanan layar, dan lensa mengikuti lengkung itu.
+ */
+private const val CORNER_DP = 160f
 /** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
 private const val RUBBER_BAND = 0.04f
 
 /** Rubber band ala iOS: makin jauh ditarik makin berat, dan berhenti di [limit]. */
 private fun rubberBand(x: Float, limit: Float): Float =
-    (1f - 1f / (x * 0.55f / limit + 1f)) * limit
+    if (limit <= 0f || x <= 0f) 0f else (1f - 1f / (x * 0.55f / limit + 1f)) * limit
 
 /**
  * Halaman ke-2 onboarding: layer bergaya lockscreen iPhone di atas Dashboard.
@@ -153,44 +157,6 @@ fun UnlockCurtain(
     val glassTint = (liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f)) * 0.62f).coerceIn(0.06f, 0.94f)
     val accent2 = remember(accent) { accent.shiftHue(42f) }
 
-    // Denyut lensa sesaat saat layer pertama muncul ("fokus").
-    val pulse = remember { Animatable(0f) }
-    // Energi gerak: naik saat jari cepat, meluruh halus saat melambat.
-    var energy by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
-        // Satu loop peluruhan per-frame (hanya aktif saat energi > 0) menggantikan dua coroutine
-        // animateTo per event sentuh — jauh lebih ringan di layar 120Hz.
-        snapshotFlow { energy > 0.002f }.collectLatest { active ->
-            if (!active) return@collectLatest
-            var last = withFrameNanos { it }
-            while (energy > 0.002f) {
-                val now = withFrameNanos { it }
-                val dt = (now - last) / 1_000_000_000f
-                last = now
-                energy *= exp(-dt / 0.22f)
-            }
-            energy = 0f
-        }
-    }
-    LaunchedEffect(Unit) {
-        if (reduceMotion) return@LaunchedEffect
-        pulse.snapTo(1f)
-        delay(560)
-        pulse.animateTo(0f, tween(durationMillis = 1500, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)))
-    }
-
-    // Kekuatan lensa 0..1.4 — dibaca di dalam `effects` (fase draw), jadi tidak memicu recomposition.
-    val lensStrength: () -> Float = {
-        if (reduceMotion) {
-            LENS_IDLE
-        } else {
-            val p = abs(lift.value).coerceIn(0f, 1f)
-            val eased = p * (2f - p)
-            (LENS_IDLE + (1f - LENS_IDLE) * eased + 0.5f * energy + 0.6f * pulse.value)
-                .coerceIn(0f, 1.5f)
-        }
-    }
-
     val unlock: (Float) -> Unit = { liftVel ->
         if (!unlocking) {
             unlocking = true
@@ -213,10 +179,6 @@ fun UnlockCurtain(
             rawLift = (rawLift - delta / heightPx).coerceIn(-1f, 1f)
             val target = if (rawLift >= 0f) rawLift else -rubberBand(-rawLift, RUBBER_BAND)
             scope.launch(start = CoroutineStart.UNDISPATCHED) { lift.snapTo(target) }
-            if (!reduceMotion) {
-                val kick = (abs(delta) / (heightPx * 0.012f)).coerceIn(0f, 1f)
-                if (kick > energy) energy = kick
-            }
         }
     }
 
@@ -224,7 +186,6 @@ fun UnlockCurtain(
     val bleedSidePx = with(density) { BLEED_SIDE_DP.dp.roundToPx() }
     val exitExtraPx = with(density) { EXIT_EXTRA_DP.dp.toPx() }
     val cornerPx = with(density) { CORNER_DP.dp.toPx() }
-    val restCornerPx = with(density) { CORNER_REST_DP.dp.toPx() }
 
     // Box luar TIDAK bergerak: ia yang menerima drag dan memblokir sentuhan ke Dashboard.
     Box(
@@ -248,7 +209,7 @@ fun UnlockCurtain(
                         scope.launch {
                             lift.animateTo(
                                 targetValue = 0f,
-                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
+                                animationSpec = spring(dampingRatio = 1f, stiffness = 380f),
                                 initialVelocity = liftVel.coerceIn(-10f, 10f),
                             )
                         }
@@ -271,17 +232,14 @@ fun UnlockCurtain(
                 .drawBackdrop(
                     backdrop = backdrop,
                     shape = {
-                        // Sudut bawah selalu sedikit melengkung, makin bulat saat ditarik.
-                        val r = restCornerPx +
-                            (cornerPx - restCornerPx) * (abs(lift.value) * 14f).coerceIn(0f, 1f)
-                        RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = r, bottomStart = r)
+                        // Bentuk TETAP (tidak dibaca dari lift) → shader lensa tidak berubah tiap frame.
+                        RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = cornerPx, bottomStart = cornerPx)
                     },
                     effects = {
-                        val k = lensStrength()
-                        // Lensa murni (refraksi tepi) — tanpa dispersi warna / efek pelangi.
+                        // Lensa murni (refraksi tepi) dengan kekuatan tetap — tanpa dispersi warna.
                         lens(
-                            LENS_HEIGHT_DP.dp.toPx() * k,
-                            LENS_AMOUNT_DP.dp.toPx() * k,
+                            LENS_HEIGHT_DP.dp.toPx() * LENS_STRENGTH,
+                            LENS_AMOUNT_DP.dp.toPx() * LENS_STRENGTH,
                         )
                     },
                     highlight = {
