@@ -49,7 +49,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,15 +85,19 @@ import com.aether.x.ui.components.performIfEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 // ── Lensa: SAMA dengan kapsul navbar (LiquidBottomTabs) — lens(..., chromaticAberration = true) ──
@@ -99,6 +105,8 @@ import kotlinx.coroutines.launch
 private const val LENS_HEIGHT_DP = 26f
 /** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
 private const val LENS_AMOUNT_DP = 64f
+/** Blur kaca ala app drawer (di dalam layer). Lensa bekerja SETELAH blur, jadi jangan terlalu besar. */
+private const val GLASS_BLUR_DP = 18f
 /** Kekuatan lensa saat diam (navbar: 0.28). Lensa menguat saat ditarik. */
 private const val LENS_IDLE = 0.45f
 
@@ -140,6 +148,8 @@ fun UnlockCurtain(
     isEnglish: Boolean,
     onUnlocked: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 0 → 1 saat layer "maju dari depan" (transisi dari halaman setup). Dibaca di fase draw. */
+    enterProgress: () -> Float = { 1f },
 ) {
     val palette = LocalAetherPalette.current
     val density = LocalDensity.current
@@ -159,7 +169,22 @@ fun UnlockCurtain(
     // Denyut lensa sesaat saat layer pertama muncul ("fokus").
     val pulse = remember { Animatable(0f) }
     // Energi gerak: naik saat jari cepat, meluruh halus saat melambat.
-    val energy = remember { Animatable(0f) }
+    var energy by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        // Satu loop peluruhan per-frame (hanya aktif saat energi > 0) menggantikan dua coroutine
+        // animateTo per event sentuh — jauh lebih ringan di layar 120Hz.
+        snapshotFlow { energy > 0.002f }.collectLatest { active ->
+            if (!active) return@collectLatest
+            var last = withFrameNanos { it }
+            while (energy > 0.002f) {
+                val now = withFrameNanos { it }
+                val dt = (now - last) / 1_000_000_000f
+                last = now
+                energy *= exp(-dt / 0.22f)
+            }
+            energy = 0f
+        }
+    }
     LaunchedEffect(Unit) {
         if (reduceMotion) return@LaunchedEffect
         pulse.snapTo(1f)
@@ -196,7 +221,7 @@ fun UnlockCurtain(
         } else {
             val p = abs(lift.value).coerceIn(0f, 1f)
             val eased = p * (2f - p)
-            (LENS_IDLE + (1f - LENS_IDLE) * eased + 0.5f * energy.value + 0.6f * pulse.value)
+            (LENS_IDLE + (1f - LENS_IDLE) * eased + 0.5f * energy + 0.6f * pulse.value)
                 .coerceIn(0f, 1.6f)
         }
     }
@@ -206,13 +231,12 @@ fun UnlockCurtain(
             unlocking = true
             scope.launch {
                 haptic.performIfEnabled(hapticsEnabled, HapticFeedbackType.LongPress)
-                energy.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
             }
             scope.launch {
                 // Spring teredam kritis: mulai dari kecepatan jari, melambat halus di ujung, tanpa
                 // memantul. Ketukan (v = 0) mulai pelan lalu mempercepat — terasa seperti easing.
                 val spec: AnimationSpec<Float> =
-                    if (reduceMotion) tween(120) else spring(dampingRatio = 1f, stiffness = 260f)
+                    if (reduceMotion) tween(120) else spring(dampingRatio = 1f, stiffness = 210f)
                 lift.animateTo(1f, spec, initialVelocity = liftVel.coerceIn(0f, 10f))
                 onUnlocked()
             }
@@ -226,10 +250,7 @@ fun UnlockCurtain(
             scope.launch(start = CoroutineStart.UNDISPATCHED) { lift.snapTo(target) }
             if (!reduceMotion) {
                 val kick = (abs(delta) / (heightPx * 0.012f)).coerceIn(0f, 1f)
-                scope.launch {
-                    energy.animateTo(kick, tween(90, easing = LinearEasing))
-                    energy.animateTo(0f, tween(650, easing = FastOutSlowInEasing))
-                }
+                if (kick > energy) energy = kick
             }
         }
     }
@@ -293,6 +314,9 @@ fun UnlockCurtain(
                     },
                     effects = {
                         val k = lensStrength()
+                        // Kaca frosted ala app drawer: saturasi naik + blur, lalu lensa di tepi.
+                        vibrancy()
+                        blur(GLASS_BLUR_DP.dp.toPx())
                         // Persis seperti kapsul navbar: refraksi + dispersi warna (chromatic aberration).
                         lens(
                             LENS_HEIGHT_DP.dp.toPx() * k,
@@ -307,6 +331,12 @@ fun UnlockCurtain(
                         Shadow(alpha = 0.30f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
                     },
                     layerBlock = {
+                        val e = enterProgress()
+                        // Pop-up ala iOS: datang dari depan (lebih besar) → mengecil ke ukuran normal.
+                        val enterScale = 1.10f - 0.10f * e
+                        scaleX = enterScale
+                        scaleY = enterScale
+                        alpha = ((e - 0.05f) / 0.5f).coerceIn(0f, 1f)
                         val l = lift.value
                         val screenH = size.height - bleedTopPx
                         translationY = if (l >= 0f) {
@@ -321,12 +351,12 @@ fun UnlockCurtain(
                         // dibiaskan lensa + fringe-nya benar-benar terlihat.
                         val h = size.height
                         val lipStart = ((h - lipPx) / h).coerceIn(0.7f, 0.99f)
-                        val tail = palette.bg.copy(alpha = 0.90f)
+                        val tail = palette.bg.copy(alpha = 0.60f)
                         drawRect(
                             Brush.verticalGradient(
-                                0f to palette.bg.copy(alpha = 0.78f),
-                                0.33f to lerp(palette.bg, accent, 0.20f).copy(alpha = 0.76f),
-                                0.66f to lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.82f),
+                                0f to palette.bg.copy(alpha = 0.52f),
+                                0.33f to lerp(palette.bg, accent, 0.20f).copy(alpha = 0.54f),
+                                0.66f to lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.58f),
                                 lipStart to tail,
                                 1f to tail.copy(alpha = 0.08f),
                             ),
