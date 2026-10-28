@@ -100,14 +100,14 @@ private const val LENS_STRENGTH = 0.85f
  * + margin) agar tepi atas/samping yang ikut membiaskan jatuh di luar layar.
  */
 private const val BLEED_TOP_DP = 64f
-private const val BLEED_SIDE_DP = 64f
+private const val BLEED_SIDE_DP = 0f
 /** Jarak ekstra saat terangkat penuh supaya bayangan tepi bawah ikut keluar layar. */
 private const val EXIT_EXTRA_DP = 32f
 /**
  * Radius sudut bawah, TETAP. Karena radius > bleed samping, busur sudut mulai terlihat di dalam
  * layar: tepi bawah naik ~32dp di kiri/kanan layar, dan lensa mengikuti lengkung itu.
  */
-private const val CORNER_DP = 160f
+private const val CORNER_DP = 40f
 /** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
 private const val RUBBER_BAND = 0.04f
 
