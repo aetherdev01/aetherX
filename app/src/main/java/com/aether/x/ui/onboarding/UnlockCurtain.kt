@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -56,7 +57,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -81,13 +84,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.ui.components.LocalHapticEnabled
 import com.aether.x.ui.components.LocalReduceMotionEnabled
+import com.aether.x.ui.components.liquidGlassTintAlpha
 import com.aether.x.ui.components.performIfEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
+import com.aether.x.ui.theme.LocalAetherStyle
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.PI
@@ -102,11 +106,9 @@ import kotlinx.coroutines.launch
 
 // ── Lensa: SAMA dengan kapsul navbar (LiquidBottomTabs) — lens(..., chromaticAberration = true) ──
 /** Tebal pita refraksi dari tepi bawah layer. Navbar: 8.5dp (kapsul kecil), layer besar butuh lebih tebal. */
-private const val LENS_HEIGHT_DP = 26f
+private const val LENS_HEIGHT_DP = 22f
 /** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
-private const val LENS_AMOUNT_DP = 64f
-/** Blur kaca ala app drawer (di dalam layer). Lensa bekerja SETELAH blur, jadi jangan terlalu besar. */
-private const val GLASS_BLUR_DP = 18f
+private const val LENS_AMOUNT_DP = 46f
 /** Kekuatan lensa saat diam (navbar: 0.28). Lensa menguat saat ditarik. */
 private const val LENS_IDLE = 0.45f
 
@@ -119,8 +121,6 @@ private const val EXIT_EXTRA_DP = 32f
 /** Radius sudut bawah: saat diam (sudah sedikit melengkung) dan saat ditarik. */
 private const val CORNER_REST_DP = 26f
 private const val CORNER_DP = 44f
-/** Tinggi zona bening di tepi bawah — tanpa ini tint layer (alpha ~0.8) menutupi fringe lensa. */
-private const val LIP_DP = 64f
 /** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
 private const val RUBBER_BAND = 0.04f
 
@@ -164,6 +164,11 @@ fun UnlockCurtain(
     var rawLift by remember { mutableFloatStateOf(0f) }
 
     val accent = palette.accent
+    // Kaca = resep drawer Tweak: blur dari slider Blur Intensity (default tipis), tint dari
+    // Liquid Glass Level (bening, isi di belakang tetap terlihat), highlight tepi 0.5.
+    val style = LocalAetherStyle.current
+    val glassBlurPx = with(density) { (style.blur.coerceIn(0f, 1f) * 30f).dp.toPx() }
+    val glassTint = (liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f)) * 0.62f).coerceIn(0.06f, 0.94f)
     val accent2 = remember(accent) { accent.shiftHue(42f) }
 
     // Denyut lensa sesaat saat layer pertama muncul ("fokus").
@@ -260,7 +265,6 @@ fun UnlockCurtain(
     val exitExtraPx = with(density) { EXIT_EXTRA_DP.dp.toPx() }
     val cornerPx = with(density) { CORNER_DP.dp.toPx() }
     val restCornerPx = with(density) { CORNER_REST_DP.dp.toPx() }
-    val lipPx = with(density) { LIP_DP.dp.toPx() }
 
     // Box luar TIDAK bergerak: ia yang menerima drag dan memblokir sentuhan ke Dashboard.
     Box(
@@ -314,9 +318,8 @@ fun UnlockCurtain(
                     },
                     effects = {
                         val k = lensStrength()
-                        // Kaca frosted ala app drawer: saturasi naik + blur, lalu lensa di tepi.
-                        vibrancy()
-                        blur(GLASS_BLUR_DP.dp.toPx())
+                        // Sama seperti drawer: blur hanya bila slider > 0, lalu lensa + dispersi di tepi.
+                        if (glassBlurPx > 0f) blur(glassBlurPx)
                         // Persis seperti kapsul navbar: refraksi + dispersi warna (chromatic aberration).
                         lens(
                             LENS_HEIGHT_DP.dp.toPx() * k,
@@ -325,18 +328,17 @@ fun UnlockCurtain(
                         )
                     },
                     highlight = {
-                        Highlight.Default.copy(alpha = 0.28f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
+                        Highlight.Default.copy(alpha = 0.5f)
                     },
                     shadow = {
                         Shadow(alpha = 0.30f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
                     },
                     layerBlock = {
                         val e = enterProgress()
-                        // Pop-up ala iOS: datang dari depan (lebih besar) → mengecil ke ukuran normal.
-                        val enterScale = 1.10f - 0.10f * e
+                        // Layer di bawah halaman setup: membesar halus ke ukuran penuh saat halaman terangkat.
+                        val enterScale = 0.94f + 0.06f * e.coerceIn(0f, 1f)
                         scaleX = enterScale
                         scaleY = enterScale
-                        alpha = ((e - 0.05f) / 0.5f).coerceIn(0f, 1f)
                         val l = lift.value
                         val screenH = size.height - bleedTopPx
                         translationY = if (l >= 0f) {
@@ -347,18 +349,13 @@ fun UnlockCurtain(
                         }
                     },
                     onDrawSurface = {
-                        // Tint layer. Dekat tepi bawah dibuat bening (LIP_DP) agar Dashboard yang
-                        // dibiaskan lensa + fringe-nya benar-benar terlihat.
-                        val h = size.height
-                        val lipStart = ((h - lipPx) / h).coerceIn(0.7f, 0.99f)
-                        val tail = palette.bg.copy(alpha = 0.60f)
+                        // Tint tipis seperti drawer: Dashboard di belakang tetap terbaca.
                         drawRect(
                             Brush.verticalGradient(
-                                0f to palette.bg.copy(alpha = 0.52f),
-                                0.33f to lerp(palette.bg, accent, 0.20f).copy(alpha = 0.54f),
-                                0.66f to lerp(palette.bg, accent2, 0.12f).copy(alpha = 0.58f),
-                                lipStart to tail,
-                                1f to tail.copy(alpha = 0.08f),
+                                listOf(
+                                    lerp(palette.surface, accent, 0.10f).copy(alpha = glassTint),
+                                    palette.surface.copy(alpha = glassTint * 0.82f),
+                                ),
                             ),
                         )
                     },
@@ -386,6 +383,17 @@ fun UnlockCurtain(
                             ),
                             radius = r1,
                             center = c1,
+                        )
+                        val sc = Offset(size.width / 2f, bleedTopPx + screenH * 0.5f)
+                        val sr = size.width * 0.95f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(palette.bg.copy(alpha = 0.42f), Color.Transparent),
+                                center = sc,
+                                radius = sr,
+                            ),
+                            radius = sr,
+                            center = sc,
                         )
                         val r2 = size.width * 0.8f
                         val c2 = Offset(
@@ -436,11 +444,11 @@ private fun CurtainContent(
     val reduceMotion = LocalReduceMotionEnabled.current
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
 
-    // Masuk berurutan (stagger): pil → orb → judul → subjudul → petunjuk.
+    // Masuk berurutan (stagger) setelah halaman setup terangkat: pil → logo → judul → petunjuk.
     val entrance = remember { Animatable(if (reduceMotion) 1f else 0f) }
     LaunchedEffect(Unit) {
         if (reduceMotion) return@LaunchedEffect
-        delay(140)
+        delay(320)
         entrance.animateTo(1f, tween(durationMillis = 1500, easing = LinearEasing))
     }
     fun stage(i: Int): Float {
@@ -484,26 +492,27 @@ private fun CurtainContent(
             }
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.height(18.dp))
-        // Pil status teratas.
+
+        // ── Pil status ──
         Row(
             modifier = Modifier
                 .enter(0)
-                .clip(RoundedCornerShape(50))
-                .background(accent.copy(alpha = 0.13f))
-                .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(50))
+                .clip(CircleShape)
+                .background(accent.copy(alpha = 0.14f))
+                .border(1.dp, accent.copy(alpha = 0.30f), CircleShape)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Bolt,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(16.dp),
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(if (status.rootGranted) palette.success else colors.onSurfaceVariant),
             )
             Text(
                 text = "AETHERX",
@@ -511,12 +520,6 @@ private fun CurtainContent(
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.3.sp,
                 color = colors.onSurface,
-            )
-            Box(
-                modifier = Modifier
-                    .size(5.dp)
-                    .clip(CircleShape)
-                    .background(if (status.rootGranted) palette.success else colors.onSurfaceVariant),
             )
             Text(
                 text = when {
@@ -531,10 +534,11 @@ private fun CurtainContent(
 
         Spacer(modifier = Modifier.weight(1f))
 
+        // ── Logo + sambutan ──
         Box(modifier = Modifier.enter(1)) {
             AetherOrb(accent = accent, accent2 = accent2, ripple = ripple)
         }
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(26.dp))
         Text(
             modifier = Modifier.enter(2),
             text = if (isEnglish) "Welcome to AetherX" else "Selamat datang di AetherX",
@@ -545,7 +549,7 @@ private fun CurtainContent(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            modifier = Modifier.enter(3),
+            modifier = Modifier.enter(2),
             text = if (isEnglish) {
                 "Everything is set. Your dashboard is ready."
             } else {
@@ -558,56 +562,66 @@ private fun CurtainContent(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Petunjuk geser. Bisa juga diketuk (aksesibilitas / TalkBack).
+        // ── Kapsul "geser ke atas" (bisa diketuk untuk aksesibilitas / TalkBack) ──
         val hintLabel = if (isEnglish) "Swipe up to open" else "Geser ke atas untuk membuka"
-        Column(
+        Row(
             modifier = Modifier
-                .enter(4)
+                .enter(3)
+                .fillMaxWidth()
+                .height(60.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(accent.copy(alpha = 0.20f), Color.White.copy(alpha = 0.06f)),
+                    ),
+                )
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.08f)),
+                    ),
+                    CircleShape,
+                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClickLabel = hintLabel,
                     onClick = onHintClick,
                 )
-                .padding(horizontal = 24.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .padding(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Dua chevron yang bergantian menyala (efek "mengalir ke atas").
-            Box(modifier = Modifier.size(width = 30.dp, height = 42.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(accent, accent2))),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(
                     imageVector = Icons.Outlined.KeyboardArrowUp,
                     contentDescription = null,
-                    tint = colors.onSurfaceVariant,
+                    tint = Color.White,
                     modifier = Modifier
                         .size(28.dp)
-                        .align(Alignment.TopCenter)
-                        .graphicsLayer {
-                            alpha = 0.25f + 0.75f * bob.value
-                            translationY = -5.dp.toPx() * bob.value
-                        },
-                )
-                Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowUp,
-                    contentDescription = null,
-                    tint = colors.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .align(Alignment.BottomCenter)
-                        .graphicsLayer {
-                            alpha = 0.25f + 0.75f * (1f - bob.value)
-                            translationY = -5.dp.toPx() * (1f - bob.value)
-                        },
+                        .graphicsLayer { translationY = -3.dp.toPx() * bob.value },
                 )
             }
             Text(
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer { alpha = 0.55f + 0.45f * bob.value },
                 text = hintLabel,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.4.sp,
-                color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                color = colors.onSurface,
             )
+            // Penyeimbang lebar knob supaya teks tepat di tengah.
+            Spacer(modifier = Modifier.width(48.dp))
         }
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         // Grabber ala home indicator iOS — melebar sedikit saat layer ditarik.
         Box(
             modifier = Modifier
@@ -622,8 +636,9 @@ private fun CurtainContent(
 }
 
 /**
- * Orb logo di tengah: inti gradien aksen + riak yang memancar keluar. Tiap riak punya
- * pecahan warna merah/biru tipis (RGB-split) yang menyatu dengan tema lensa.
+ * Logo app di tengah: kotak squircle berisi ikon launcher, dikelilingi riak persegi-membulat
+ * yang memancar keluar. Tiap riak punya pecahan warna merah/biru tipis (RGB-split) yang
+ * menyatu dengan tema lensa.
  */
 @Composable
 private fun AetherOrb(
@@ -631,10 +646,11 @@ private fun AetherOrb(
     accent2: Color,
     ripple: State<Float>,
 ) {
-    val orbSize = 96.dp
+    val tileSize = 92.dp
+    val tileCorner = 26.dp
     Box(
         modifier = Modifier
-            .size(196.dp)
+            .size(200.dp)
             .graphicsLayer {
                 val breathe = 1f + 0.025f * sin(ripple.value * 2f * PI.toFloat())
                 scaleX = breathe
@@ -642,15 +658,15 @@ private fun AetherOrb(
             }
             .drawBehind {
                 val c = center
-                val orbR = orbSize.toPx() / 2f
-                val maxR = size.minDimension / 2f
+                val tileHalf = tileSize.toPx() / 2f
+                val maxExpand = size.minDimension / 2f - tileHalf
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(accent.copy(alpha = 0.38f), Color.Transparent),
+                        colors = listOf(accent.copy(alpha = 0.34f), Color.Transparent),
                         center = c,
-                        radius = maxR,
+                        radius = size.minDimension / 2f,
                     ),
-                    radius = maxR,
+                    radius = size.minDimension / 2f,
                     center = c,
                 )
                 val sw = 1.5.dp.toPx()
@@ -658,27 +674,22 @@ private fun AetherOrb(
                     val ph = (ripple.value + k / 3f) % 1f
                     val inv = 1f - ph
                     val e = 1f - inv * inv * inv
-                    val r = orbR + (maxR - orbR) * e
+                    val expand = maxExpand * e
                     val a = inv * inv * 0.55f
                     val split = 1.4.dp.toPx() * e
-                    drawCircle(
-                        color = Color(0xFFFF3B5C).copy(alpha = a * 0.55f),
-                        radius = r + split,
-                        center = c,
-                        style = Stroke(sw),
-                    )
-                    drawCircle(
-                        color = Color(0xFF2EA8FF).copy(alpha = a * 0.55f),
-                        radius = (r - split).coerceAtLeast(0f),
-                        center = c,
-                        style = Stroke(sw),
-                    )
-                    drawCircle(
-                        color = accent.copy(alpha = a),
-                        radius = r,
-                        center = c,
-                        style = Stroke(sw),
-                    )
+                    fun ring(color: Color, extra: Float) {
+                        val half = (tileHalf + expand + extra).coerceAtLeast(1f)
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(c.x - half, c.y - half),
+                            size = Size(half * 2f, half * 2f),
+                            cornerRadius = CornerRadius(tileCorner.toPx() + expand + extra),
+                            style = Stroke(sw),
+                        )
+                    }
+                    ring(Color(0xFFFF3B5C).copy(alpha = a * 0.55f), split)
+                    ring(Color(0xFF2EA8FF).copy(alpha = a * 0.55f), -split)
+                    ring(accent.copy(alpha = a), 0f)
                 }
             },
         contentAlignment = Alignment.Center,
@@ -695,10 +706,10 @@ private fun AetherOrb(
         }
         Box(
             modifier = Modifier
-                .size(orbSize)
-                .clip(CircleShape)
+                .size(tileSize)
+                .clip(RoundedCornerShape(tileCorner))
                 .background(Brush.linearGradient(colors = listOf(accent, accent2)))
-                .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
+                .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(tileCorner)),
             contentAlignment = Alignment.Center,
         ) {
             if (logo != null) {
@@ -706,7 +717,7 @@ private fun AetherOrb(
                     bitmap = logo,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    // Adaptive icon: konten ada di zona aman tengah (72/108), perbesar agar mengisi lingkaran.
+                    // Adaptive icon: konten ada di zona aman tengah (72/108), perbesar agar mengisi kotak.
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {

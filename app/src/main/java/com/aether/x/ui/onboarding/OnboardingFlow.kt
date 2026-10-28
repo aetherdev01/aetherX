@@ -1,11 +1,11 @@
 package com.aether.x.ui.onboarding
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,15 +15,34 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.aether.x.core.locale.AppLanguage
 import com.aether.x.core.locale.LocaleManager
 import com.aether.x.ui.components.LocalReduceMotionEnabled
+import com.aether.x.ui.theme.LocalAetherPalette
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.launch
+import kotlin.math.cos
+
+/**
+ * Arah buka "buku": -1 = sisi bawah halaman terangkat ke ARAH PENONTON lalu naik,
+ * +1 = sebaliknya. Kalau di device halaman terlihat terbuka ke arah yang salah, balik tanda ini.
+ */
+private const val BOOK_FLIP_DIRECTION = -1f
+/** Lama halaman terbuka. Kurva iOS (cepat di awal, mendarat lembut). */
+private const val BOOK_FLIP_MS = 950
+private val BookEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
 
 private const val STAGE_SETUP = 0     // halaman 1: pengaturan izin
 private const val STAGE_CURTAIN = 1   // halaman 2: layer geser-ke-atas, Dashboard di belakangnya
@@ -75,13 +94,12 @@ fun OnboardingFlow(
             scope.launch {
                 onSetupDone()
                 stage = STAGE_CURTAIN
-                // Transisi ala iOS: setup mundur (mengecil, redup) sambil layer maju dari depan.
-                // Spring sedikit memantul di ujung supaya terasa hidup, bukan easing kaku.
-                if (reduceMotion) {
-                    reveal.animateTo(1f, tween(150))
-                } else {
-                    reveal.animateTo(1f, spring(dampingRatio = 0.9f, stiffness = 180f))
-                }
+                // Halaman setup terbuka seperti sampul buku: engsel di sisi ATAS, sisi bawah
+                // terangkat dari bawah ke atas hingga sejajar pandangan (tegak lurus), lalu hilang.
+                reveal.animateTo(
+                    1f,
+                    if (reduceMotion) tween(150) else tween(BOOK_FLIP_MS, easing = BookEasing),
+                )
                 setupVisible = false
             }
         }
@@ -98,12 +116,11 @@ fun OnboardingFlow(
                     .layerBackdrop(dashboardBackdrop)
                     .graphicsLayer {
                         if (!reduceMotion) {
-                            // Dashboard tetap tajam: yang memburamkan adalah kaca layer (frosted,
-                            // seperti app drawer) — jadi hanya area di bawah layer yang buram.
+                            // Dashboard tetap tajam & terlihat menembus kaca layer (seperti drawer Tweak).
                             // smoothstep: zoom berubah mulus di awal dan akhir tarikan.
                             val raw = lift.value.coerceIn(0f, 1f)
                             val p = raw * raw * (3f - 2f * raw)
-                            val s = 0.93f + 0.07f * p
+                            val s = 0.95f + 0.05f * p
                             scaleX = s
                             scaleY = s
                         }
@@ -124,8 +141,33 @@ fun OnboardingFlow(
             )
         }
 
-        // ── Lapis atas: halaman Setup — kartu yang mundur ke belakang saat pindah ke halaman 2 ──
+        // ── Bayangan yang jatuh ke layer di bawah, mengikuti tepi bawah halaman yang terangkat ──
+        if (setupVisible && !reduceMotion) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        val e = reveal.value.coerceIn(0f, 1f)
+                        if (e <= 0.001f) return@drawBehind
+                        val edge = size.height * cos(Math.toRadians(90.0 * e)).toFloat()
+                        val reach = 120.dp.toPx()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.50f * (1f - e)), Color.Transparent),
+                                startY = edge,
+                                endY = edge + reach,
+                            ),
+                            topLeft = Offset(0f, edge),
+                            size = Size(size.width, reach),
+                        )
+                    },
+            )
+        }
+
+        // ── Lapis atas: halaman Setup — terbuka seperti buku dari bawah ke atas ──
         if (setupVisible) {
+            val density = LocalDensity.current.density
+            val pageColor = LocalAetherPalette.current.bg
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -134,15 +176,21 @@ fun OnboardingFlow(
                         if (reduceMotion) {
                             alpha = 1f - e
                         } else {
-                            val sc = 1f - 0.10f * e
-                            scaleX = sc
-                            scaleY = sc
-                            // Naik sedikit + sudut membulat: kartu "terangkat" lalu masuk ke kedalaman.
-                            translationY = -24.dp.toPx() * e
-                            shape = RoundedCornerShape(36.dp * e)
-                            clip = e > 0.001f
-                            // Tetap opak di awal supaya tidak terlihat tembus, lalu memudar.
-                            alpha = 1f - ((e - 0.15f) / 0.6f).coerceIn(0f, 1f)
+                            transformOrigin = TransformOrigin(0.5f, 0f) // engsel di tepi atas
+                            cameraDistance = 14f * density
+                            rotationX = BOOK_FLIP_DIRECTION * 90f * e
+                            // Di 90° halaman tinggal garis tipis; sembunyikan sisa-sisanya.
+                            alpha = if (e >= 0.995f) 0f else 1f
+                        }
+                    }
+                    // Halaman harus opak supaya terlihat seperti kertas, bukan kaca.
+                    .background(pageColor)
+                    .drawWithContent {
+                        drawContent()
+                        // Makin miring makin gelap (cahaya jatuh miring ke permukaan halaman).
+                        val e = reveal.value.coerceIn(0f, 1f)
+                        if (!reduceMotion && e > 0f) {
+                            drawRect(Color.Black.copy(alpha = 0.55f * e * e))
                         }
                     },
             ) {
