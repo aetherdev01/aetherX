@@ -62,8 +62,8 @@ private const val STAGE_REVEALED = 2  // layer sudah terbuka, Dashboard aktif pe
  * Alur onboarding 2 halaman:
  *  1. [PermissionSetupScreen] — begitu semua pemeriksaan selesai, otomatis pindah ke halaman 2
  *     (tombol bawah juga membawa ke halaman 2 untuk mode terbatas).
- *  2. [UnlockCurtain] — layer bergaya panel/lockscreen iPhone dengan efek lensa chromatic
- *     aberration. Dashboard sudah tampil (blur) di belakangnya; geser layer ke atas untuk
+ *  2. [UnlockCurtain] — layer bergaya panel/lockscreen iPhone dengan efek lensa
+ *     kaca. Dashboard sudah tampil (tajam) di belakangnya; geser layer ke atas untuk
  *     menyingkapnya.
  *
  * Dashboard dikomposisi satu kali dan tidak dibuat ulang saat layer terbuka, jadi tidak ada

@@ -87,13 +87,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-// ── Lensa: SAMA dengan kapsul navbar (LiquidBottomTabs) — lens(..., chromaticAberration = true) ──
+// ── Lensa: refraksi tepi dari library Kyant (sama seperti navbar), tanpa dispersi warna ──
 /** Tebal pita refraksi dari tepi bawah layer. Navbar: 8.5dp (kapsul kecil), layer besar butuh lebih tebal. */
-private const val LENS_HEIGHT_DP = 22f
+private const val LENS_HEIGHT_DP = 36f
 /** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
-private const val LENS_AMOUNT_DP = 46f
+private const val LENS_AMOUNT_DP = 84f
 /** Kekuatan lensa saat diam (navbar: 0.28). Lensa menguat saat ditarik. */
-private const val LENS_IDLE = 0.45f
+private const val LENS_IDLE = 0.65f
 
 // ── Geometri host layer ──
 /** Host dibuat lebih besar dari layar di atas & samping supaya HANYA tepi bawah yang terkena lensa. */
@@ -115,8 +115,8 @@ private fun rubberBand(x: Float, limit: Float): Float =
  * Halaman ke-2 onboarding: layer bergaya lockscreen iPhone di atas Dashboard.
  *
  * - Layer = kaca: [drawBackdrop] mengambil Dashboard di belakangnya ([backdrop]) lalu menerapkan
- *   `lens(chromaticAberration = true)` — efek yang sama persis dengan kapsul LiquidBottomTabs —
- *   sehingga tepi bawah membiaskan Dashboard dengan fringe pelangi, bukan bayangan ganda.
+ *   `lens(...)` — refraksi tepi seperti kapsul LiquidBottomTabs, tanpa dispersi warna —
+ *   sehingga tepi bawah membiaskan Dashboard dengan jernih, bukan bayangan ganda.
  * - Ikut jari 1:1, ditarik ke bawah melewati posisi awal terasa karet (rubber band).
  * - Dilepas: keputusan memakai proyeksi kecepatan (bukan cuma jarak), lalu spring yang
  *   MELANJUTKAN kecepatan jari — tidak ada patahan antara drag dan animasi.
@@ -147,7 +147,7 @@ fun UnlockCurtain(
     var rawLift by remember { mutableFloatStateOf(0f) }
 
     val accent = palette.accent
-    // Kaca TANPA blur: hanya lens + chromatic aberration di tepi. Tint tipis dari Liquid Glass
+    // Kaca TANPA blur & tanpa dispersi warna: hanya lensa (refraksi) di tepi. Tint tipis dari Liquid Glass
     // Level (seperti drawer) agar Dashboard di belakang tetap terlihat jelas.
     val style = LocalAetherStyle.current
     val glassTint = (liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f)) * 0.62f).coerceIn(0.06f, 0.94f)
@@ -187,7 +187,7 @@ fun UnlockCurtain(
             val p = abs(lift.value).coerceIn(0f, 1f)
             val eased = p * (2f - p)
             (LENS_IDLE + (1f - LENS_IDLE) * eased + 0.5f * energy + 0.6f * pulse.value)
-                .coerceIn(0f, 1.6f)
+                .coerceIn(0f, 1.5f)
         }
     }
 
@@ -278,18 +278,17 @@ fun UnlockCurtain(
                     },
                     effects = {
                         val k = lensStrength()
-                        // Persis seperti kapsul navbar: refraksi + dispersi warna (chromatic aberration).
+                        // Lensa murni (refraksi tepi) — tanpa dispersi warna / efek pelangi.
                         lens(
                             LENS_HEIGHT_DP.dp.toPx() * k,
                             LENS_AMOUNT_DP.dp.toPx() * k,
-                            chromaticAberration = true,
                         )
                     },
                     highlight = {
-                        Highlight.Default.copy(alpha = 0.5f)
+                        Highlight.Default.copy(width = 1.2.dp, alpha = 0.75f)
                     },
                     shadow = {
-                        Shadow(alpha = 0.30f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
+                        Shadow(alpha = 0.34f * (abs(lift.value) * 6f).coerceIn(0f, 1f))
                     },
                     layerBlock = {
                         val e = enterProgress()
@@ -315,6 +314,18 @@ fun UnlockCurtain(
                                     palette.surface.copy(alpha = glassTint * 0.82f),
                                 ),
                             ),
+                        )
+                        // Bibir kaca: cahaya tipis menumpuk di ~56dp terakhir tepi bawah, sehingga
+                        // pita refraksi terlihat seperti ketebalan kaca, bukan sekadar distorsi.
+                        val lip = 56.dp.toPx()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.12f)),
+                                startY = size.height - lip,
+                                endY = size.height,
+                            ),
+                            topLeft = Offset(0f, size.height - lip),
+                            size = androidx.compose.ui.geometry.Size(size.width, lip),
                         )
                     },
                 ),
