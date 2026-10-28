@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -43,6 +44,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +54,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -79,7 +82,7 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 // ── Lensa: refraksi tepi dari library Kyant (sama seperti navbar), tanpa dispersi warna ──
@@ -100,14 +103,14 @@ private const val LENS_STRENGTH = 0.85f
  * + margin) agar tepi atas/samping yang ikut membiaskan jatuh di luar layar.
  */
 private const val BLEED_TOP_DP = 64f
-private const val BLEED_SIDE_DP = 0f
+private const val BLEED_SIDE_DP = 28f
 /** Jarak ekstra saat terangkat penuh supaya bayangan tepi bawah ikut keluar layar. */
 private const val EXIT_EXTRA_DP = 32f
 /**
  * Radius sudut bawah, TETAP. Karena radius > bleed samping, busur sudut mulai terlihat di dalam
  * layar: tepi bawah naik ~32dp di kiri/kanan layar, dan lensa mengikuti lengkung itu.
  */
-private const val CORNER_DP = 40f
+private const val CORNER_DP = 72f
 /** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
 private const val RUBBER_BAND = 0.04f
 
@@ -347,6 +350,7 @@ fun UnlockCurtain(
                     lift = lift,
                     isEnglish = isEnglish,
                     accent = accent,
+                    enterProgress = enterProgress,
                     onHintClick = { unlock(0f) },
                 )
             }
@@ -359,6 +363,7 @@ private fun CurtainContent(
     lift: Animatable<Float, AnimationVector1D>,
     isEnglish: Boolean,
     accent: Color,
+    enterProgress: () -> Float,
     onHintClick: () -> Unit,
 ) {
     val palette = LocalAetherPalette.current
@@ -366,22 +371,16 @@ private fun CurtainContent(
     val reduceMotion = LocalReduceMotionEnabled.current
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
 
-    // Masuk berurutan (stagger) setelah halaman setup terangkat: pil → judul → petunjuk.
-    val entrance = remember { Animatable(if (reduceMotion) 1f else 0f) }
+    // Pop-up sambutan muncul LANGSUNG begitu halaman setup mulai terangkat (bagian bawah layar
+    // tersingkap lebih dulu), dengan spring sedikit memantul ala notifikasi iOS.
+    val pop = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        if (reduceMotion) return@LaunchedEffect
-        delay(320)
-        entrance.animateTo(1f, tween(durationMillis = 1500, easing = LinearEasing))
-    }
-    fun stage(i: Int): Float {
-        val raw = ((entrance.value - i * 0.1f) / 0.55f).coerceIn(0f, 1f)
-        val inv = 1f - raw
-        return 1f - inv * inv * inv // easeOutCubic
-    }
-    fun Modifier.enter(i: Int): Modifier = graphicsLayer {
-        val s = stage(i)
-        alpha = s
-        translationY = (1f - s) * 26.dp.toPx()
+        if (reduceMotion) {
+            pop.snapTo(1f)
+            return@LaunchedEffect
+        }
+        snapshotFlow { enterProgress() >= 0.2f }.first { it }
+        pop.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 380f))
     }
 
     val bobInfinite = rememberInfiniteTransition(label = "curtain-hint")
@@ -422,7 +421,6 @@ private fun CurtainContent(
         // ── Pil status ──
         Row(
             modifier = Modifier
-                .enter(0)
                 .clip(CircleShape)
                 .background(accent.copy(alpha = 0.14f))
                 .border(1.dp, accent.copy(alpha = 0.30f), CircleShape)
@@ -454,37 +452,62 @@ private fun CurtainContent(
             )
         }
 
+        // Area tengah dibiarkan kosong: Dashboard di belakang kaca tetap terlihat.
         Spacer(modifier = Modifier.weight(1f))
 
-        // ── Sambutan ──
-        Text(
-            modifier = Modifier.enter(2),
-            text = if (isEnglish) "Welcome to AetherX" else "Selamat datang di AetherX",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center,
-            color = colors.onSurface,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            modifier = Modifier.enter(2),
-            text = if (isEnglish) {
-                "Everything is set. Your dashboard is ready."
-            } else {
-                "Semua pengaturan selesai. Dashboard kamu sudah siap."
-            },
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            color = colors.onSurfaceVariant,
-        )
+        // ── Pop-up sambutan: kartu di BAWAH (bukan di tengah), di atas petunjuk geser ──
+        val cardShape = RoundedCornerShape(28.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    val p = pop.value
+                    alpha = p.coerceIn(0f, 1f)
+                    val sc = 0.86f + 0.14f * p
+                    scaleX = sc
+                    scaleY = sc
+                    translationY = (1f - p) * 36.dp.toPx()
+                    transformOrigin = TransformOrigin(0.5f, 1f)
+                }
+                .clip(cardShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.06f)),
+                    ),
+                )
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.08f)),
+                    ),
+                    cardShape,
+                )
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+        ) {
+            Text(
+                text = if (isEnglish) "Welcome to AetherX" else "Selamat datang di AetherX",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = colors.onSurface,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = if (isEnglish) {
+                    "Everything is set. Your dashboard is ready."
+                } else {
+                    "Semua pengaturan selesai. Dashboard kamu sudah siap."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+            )
+        }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // ── Petunjuk geser: teks saja (bisa diketuk untuk aksesibilitas / TalkBack) ──
         val hintLabel = if (isEnglish) "Swipe up to open" else "Geser ke atas untuk membuka"
         Text(
             modifier = Modifier
-                .enter(2)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
