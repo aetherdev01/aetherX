@@ -12,15 +12,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -32,6 +34,7 @@ import com.aether.x.ui.components.LocalReduceMotionEnabled
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 
@@ -43,6 +46,13 @@ private const val BOOK_FLIP_DIRECTION = -1f
 /** Lama halaman terbuka. Kurva iOS (cepat di awal, mendarat lembut). */
 private const val BOOK_FLIP_MS = 950
 private val BookEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+
+/** Transformasi buku yang SAMA untuk halaman dan lapisan bayangannya (supaya selalu sejajar). */
+private fun GraphicsLayerScope.bookFlip(e: Float, density: Float) {
+    transformOrigin = TransformOrigin(0.5f, 0f) // engsel di tepi atas
+    cameraDistance = 14f * density
+    rotationX = BOOK_FLIP_DIRECTION * 90f * e
+}
 
 private const val STAGE_SETUP = 0     // halaman 1: pengaturan izin
 private const val STAGE_CURTAIN = 1   // halaman 2: layer geser-ke-atas, Dashboard di belakangnya
@@ -94,6 +104,13 @@ fun OnboardingFlow(
             scope.launch {
                 onSetupDone()
                 stage = STAGE_CURTAIN
+                // Dashboard + curtain (backdrop, shader lensa) baru disusun & digambar pertama kali
+                // di sini — pekerjaan berat di main thread. Kalau animasi dimulai bersamaan, frame
+                // awalnya terlewat dan terasa ngelag. Biarkan beberapa frame lewat dulu, baru buka.
+                if (!reduceMotion) {
+                    repeat(3) { withFrameNanos { } }
+                    delay(90)
+                }
                 // Halaman setup terbuka seperti sampul buku: engsel di sisi ATAS, sisi bawah
                 // terangkat dari bawah ke atas hingga sejajar pandangan (tegak lurus), lalu hilang.
                 reveal.animateTo(
@@ -176,28 +193,35 @@ fun OnboardingFlow(
                         if (reduceMotion) {
                             alpha = 1f - e
                         } else {
-                            transformOrigin = TransformOrigin(0.5f, 0f) // engsel di tepi atas
-                            cameraDistance = 14f * density
-                            rotationX = BOOK_FLIP_DIRECTION * 90f * e
+                            bookFlip(e, density)
+                            // Halaman dirender SEKALI ke tekstur lalu hanya diputar GPU. Tanpa ini
+                            // kartu blur/haze di halaman setup digambar ulang tiap frame saat diputar.
+                            compositingStrategy = CompositingStrategy.Offscreen
                             // Di 90° halaman tinggal garis tipis; sembunyikan sisa-sisanya.
                             alpha = if (e >= 0.995f) 0f else 1f
                         }
                     }
                     // Halaman harus opak supaya terlihat seperti kertas, bukan kaca.
-                    .background(pageColor)
-                    .drawWithContent {
-                        drawContent()
-                        // Makin miring makin gelap (cahaya jatuh miring ke permukaan halaman).
-                        val e = reveal.value.coerceIn(0f, 1f)
-                        if (!reduceMotion && e > 0f) {
-                            drawRect(Color.Black.copy(alpha = 0.55f * e * e))
-                        }
-                    },
+                    .background(pageColor),
             ) {
                 PermissionSetupScreen(
                     onContinue = goToCurtain,
                     requireAccessToContinue = true,
                     onAllComplete = goToCurtain,
+                )
+            }
+            if (!reduceMotion) {
+                // Peredupan halaman di lapisan TERPISAH (hitam statis, hanya alpha yang berubah),
+                // supaya tekstur halaman di atas tidak perlu dirender ulang tiap frame.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val e = reveal.value.coerceIn(0f, 1f)
+                            bookFlip(e, density)
+                            alpha = if (e >= 0.995f) 0f else 0.55f * e * e
+                        }
+                        .background(Color.Black),
                 )
             }
         }
