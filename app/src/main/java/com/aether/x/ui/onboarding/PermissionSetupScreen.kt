@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +73,9 @@ import com.aether.x.core.permission.RequestFailureReason
 import com.aether.x.core.permission.RequestFeedback
 import com.aether.x.ui.components.AetherBackground
 import com.aether.x.ui.components.aetherCardSurface
+import com.aether.x.data.AetherXPreferences
+import com.aether.x.ui.components.LiquidToggle
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
 /**
@@ -93,6 +98,9 @@ fun PermissionSetupScreen(
     val status by PrivilegeManager.status.collectAsStateWithLifecycle()
     val isEnglish = remember(context) { LocaleManager.current(context) == AppLanguage.ENGLISH }
     val snackbarHostState = remember { SnackbarHostState() }
+    val appPreferences = remember(context.applicationContext) { AetherXPreferences(context.applicationContext) }
+    val savedPrefs by appPreferences.preferences.collectAsStateWithLifecycle(initialValue = com.aether.x.data.AppPreferences())
+    val setupScope = rememberCoroutineScope()
 
     var ignoringBatteryOptimizations by remember {
         mutableStateOf(PrivilegeManager.isIgnoringBatteryOptimizations(context))
@@ -187,6 +195,24 @@ fun PermissionSetupScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     SetupIntro(isEnglish = isEnglish, rootGranted = status.rootGranted)
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth().aetherCardSurface(shape = RoundedCornerShape(24.dp)).padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Outlined.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(if (isEnglish) "Low-end phone mode" else "Mode ponsel low-end", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(if (isEnglish) "Use lighter glass, less blur and reduced motion to help keep the UI responsive." else "Gunakan glass lebih ringan, blur rendah, dan animasi minimal agar UI lebih responsif.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            LiquidToggle(
+                                checked = savedPrefs.lowEndMode,
+                                onCheckedChange = { enabled -> setupScope.launch { appPreferences.setLowEndMode(enabled) } },
+                            )
+                        }
+                        Text(if (isEnglish) "You can change this later in Settings → Liquid Glass & Performance." else "Bisa diubah lagi di Pengaturan → Liquid Glass & Performa.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
 
                     SetupProgressCard(
                         isEnglish = isEnglish,

@@ -83,6 +83,9 @@ data class AppPreferences(
     val liquidGlassLevel: Int = 0,
     val hapticsEnabled: Boolean = true,
     val reduceMotionEnabled: Boolean = false,
+    val glassLensEnabled: Boolean = true,
+    val glassLensStrength: Int = 60,
+    val lowEndMode: Boolean = false,
 
 
     val dpiValue: Int = -1,
@@ -154,6 +157,9 @@ class AetherXPreferences(private val context: Context) {
         val LIQUID_GLASS_LEVEL = intPreferencesKey("liquid_glass_level")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val REDUCE_MOTION_ENABLED = booleanPreferencesKey("reduce_motion_enabled")
+        val GLASS_LENS_ENABLED = booleanPreferencesKey("glass_lens_enabled")
+        val GLASS_LENS_STRENGTH = intPreferencesKey("glass_lens_strength")
+        val LOW_END_MODE = booleanPreferencesKey("low_end_mode")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
         val POINTER_SPEED = intPreferencesKey("pointer_speed")
@@ -237,6 +243,9 @@ class AetherXPreferences(private val context: Context) {
             liquidGlassLevel = (prefs[Keys.LIQUID_GLASS_LEVEL] ?: 0).coerceIn(0, 100),
             hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
             reduceMotionEnabled = prefs[Keys.REDUCE_MOTION_ENABLED] ?: false,
+            glassLensEnabled = prefs[Keys.GLASS_LENS_ENABLED] ?: true,
+            glassLensStrength = (prefs[Keys.GLASS_LENS_STRENGTH] ?: 60).coerceIn(0, 100),
+            lowEndMode = prefs[Keys.LOW_END_MODE] ?: false,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
             pointerSpeed = prefs[Keys.POINTER_SPEED] ?: 0,
@@ -346,6 +355,33 @@ class AetherXPreferences(private val context: Context) {
 
     suspend fun setReduceMotionEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.REDUCE_MOTION_ENABLED] = enabled }
+    }
+
+    suspend fun setGlassLensEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.GLASS_LENS_ENABLED] = enabled }
+    }
+
+    suspend fun setGlassLensStrength(value: Int) {
+        context.dataStore.edit { it[Keys.GLASS_LENS_STRENGTH] = value.coerceIn(0, 100) }
+    }
+
+    suspend fun setLowEndMode(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LOW_END_MODE] = enabled
+            if (enabled) {
+                prefs[Keys.BLUR_STRENGTH] = 8
+                prefs[Keys.LIQUID_GLASS_LEVEL] = 15
+                prefs[Keys.REDUCE_MOTION_ENABLED] = true
+                prefs[Keys.GLASS_LENS_ENABLED] = false
+                prefs[Keys.GLASS_LENS_STRENGTH] = 15
+            } else {
+                prefs[Keys.BLUR_STRENGTH] = 25
+                prefs[Keys.LIQUID_GLASS_LEVEL] = 0
+                prefs[Keys.REDUCE_MOTION_ENABLED] = false
+                prefs[Keys.GLASS_LENS_ENABLED] = true
+                prefs[Keys.GLASS_LENS_STRENGTH] = 60
+            }
+        }
     }
 
     suspend fun saveTweakState(

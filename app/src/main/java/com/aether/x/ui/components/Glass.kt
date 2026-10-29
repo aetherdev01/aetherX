@@ -97,6 +97,7 @@ fun Modifier.aetherCardSurface(
     val style = LocalAetherStyle.current
     val blurStrength = style.blur.coerceIn(0f, 1f)
     val glass = style.glassLevel.coerceIn(0f, 1f)
+    val lensEnabled = style.lensEnabled && style.lensStrength > 0.01f
     val blurOn = blurStrength > 0.01f
     val glassAlpha = liquidGlassTintAlpha(glass)
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -107,8 +108,8 @@ fun Modifier.aetherCardSurface(
         sourceBackdrop
     }
     val blurRadiusPx = with(density) { cardBlurRadiusFor(blurStrength).dp.toPx() }
-    val lensHeightPx = with(density) { GLASS_LENS_HEIGHT_DP.dp.toPx() }
-    val lensAmountPx = with(density) { GLASS_LENS_AMOUNT_DP.dp.toPx() }
+    val lensHeightPx = with(density) { (GLASS_LENS_HEIGHT_DP * style.lensStrength).dp.toPx() }
+    val lensAmountPx = with(density) { (GLASS_LENS_AMOUNT_DP * style.lensStrength).dp.toPx() }
 
     val rim = Brush.verticalGradient(
         listOf(
@@ -137,7 +138,7 @@ fun Modifier.aetherCardSurface(
             effects = {
                 if (blurOn) blur(blurRadiusPx)
                 // Pure refraction like UnlockCurtain: no RGB/chromatic splitting.
-                lens(lensHeightPx, lensAmountPx)
+                if (lensEnabled) lens(lensHeightPx, lensAmountPx)
             },
             highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.24f) },
             onDrawSurface = {
@@ -207,6 +208,7 @@ fun Modifier.glassPanel(
     val style = LocalAetherStyle.current
     val blurStrength = style.blur.coerceIn(0f, 1f)
     val glass = style.glassLevel.coerceIn(0f, 1f)
+    val lensEnabled = style.lensEnabled && style.lensStrength > 0.01f
     val blurOn = blurStrength > 0.01f
     val density = androidx.compose.ui.platform.LocalDensity.current
     val sourceBackdrop = LocalAetherLiquidBackdrop.current
@@ -218,8 +220,8 @@ fun Modifier.glassPanel(
     val blurRadiusPx = with(density) {
         (blurRadiusFor(blurStrength) * blurBoost).coerceAtMost(38f).dp.toPx()
     }
-    val lensHeightPx = with(density) { GLASS_LENS_HEIGHT_DP.dp.toPx() }
-    val lensAmountPx = with(density) { GLASS_LENS_AMOUNT_DP.dp.toPx() }
+    val lensHeightPx = with(density) { (GLASS_LENS_HEIGHT_DP * style.lensStrength).dp.toPx() }
+    val lensAmountPx = with(density) { (GLASS_LENS_AMOUNT_DP * style.lensStrength).dp.toPx() }
 
     val levelAlpha = liquidGlassTintAlpha(glass)
     val floor = minAlpha.coerceIn(0.02f, 0.12f)
@@ -250,7 +252,7 @@ fun Modifier.glassPanel(
             effects = {
                 if (blurOn) blur(blurRadiusPx)
                 // Same clean edge refraction used by UnlockCurtain, without chromatic aberration.
-                lens(lensHeightPx, lensAmountPx)
+                if (lensEnabled) lens(lensHeightPx, lensAmountPx)
             },
             highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.28f) },
             onDrawSurface = { drawRect(brush = tint) },

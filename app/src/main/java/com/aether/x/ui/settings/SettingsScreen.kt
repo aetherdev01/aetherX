@@ -4,7 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.Slider
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -45,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aether.x.R
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.components.cardEnterAnimation
 import com.aether.x.core.locale.str
 
@@ -141,6 +146,49 @@ fun SettingsScreen(
             onNudgePosition = viewModel::nudgeCrosshairPosition,
             modifier = Modifier.cardEnterAnimation(index = 1),
         )
+
+        SettingsGroupLabel("Liquid Glass & Performa")
+        SectionCard(
+            title = "Lens Effect Control",
+            watermarkIcon = Icons.Outlined.AutoAwesome,
+            modifier = Modifier.cardEnterAnimation(index = 2),
+        ) {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Efek lensa", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Refraksi kaca seperti UnlockCurtain pada card dan panel.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                LiquidToggle(checked = prefs.glassLensEnabled, onCheckedChange = { enabled -> scope.launch { preferences.setGlassLensEnabled(enabled) } })
+            }
+            Text("Kekuatan lensa · ${prefs.glassLensStrength}%", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Slider(
+                value = prefs.glassLensStrength.toFloat(),
+                onValueChange = { value -> scope.launch { preferences.setGlassLensStrength(value.toInt()) } },
+                valueRange = 0f..100f,
+                enabled = prefs.glassLensEnabled,
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Adaptive Glass Performance", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Kurangi beban visual untuk ponsel low-end: blur rendah, animasi dikurangi, lensa dimatikan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                LiquidToggle(checked = prefs.lowEndMode, onCheckedChange = { enabled -> scope.launch { preferences.setLowEndMode(enabled) } })
+            }
+            Text("Live Appearance Preview", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Column(
+                modifier = Modifier.fillMaxWidth().aetherCardSurface(shape = RoundedCornerShape(20.dp)).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text("AetherX Glass", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    if (prefs.glassLensEnabled) "Lens aktif · ${prefs.glassLensStrength}%" else "Lens nonaktif · mode ringan",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text("Preview mengikuti pengaturan blur, glass, dan lensa saat ini.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
 
         SettingsGroupLabel(str(R.string.settings_group_interaction))
         SectionCard(

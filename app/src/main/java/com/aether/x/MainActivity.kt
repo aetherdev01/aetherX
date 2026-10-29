@@ -105,6 +105,8 @@ class MainActivity : ComponentActivity() {
                     liquidGlassLevel = prefsValue.liquidGlassLevel,
                     hapticsEnabled = prefsValue.hapticsEnabled,
                     reduceMotionEnabled = prefsValue.reduceMotionEnabled,
+                    glassLensEnabled = prefsValue.glassLensEnabled,
+                    glassLensStrength = prefsValue.glassLensStrength,
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,
