@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="buildprop_subtitle_updated">Edit properti build.prop dengan backup otomatis. Pada partisi yang hanya-baca, perubahan disimpan sebagai override systemless dan mungkin memerlukan reboot.</string>
-    <string name="buildprop_backup_systemless">Systemless override (seluruh override AetherX)</string>
-    <string name="buildprop_backup_file">File build.prop</string>
-    <string name="buildprop_confirm_restore_systemless_warning">Semua override system.prop yang dikelola AetherX akan dikembalikan ke kondisi saat backup dibuat, bukan hanya partisi yang dipilih. Reboot diperlukan untuk memulihkan seluruh efek runtime.</string>
-    <string name="buildprop_success_systemless_live">%1$s tersimpan sebagai override systemless dan diterapkan ke sesi aktif.</string>
-    <string name="buildprop_success_systemless_reboot">%1$s tersimpan sebagai override systemless. Reboot untuk memuatnya saat startup.</string>
-    <string name="buildprop_success_restored_systemless">Backup %1$s dipulihkan. Reboot untuk menghapus efek override dari sesi aktif.</string>
-    <string name="buildprop_error_backup_failed_detail">Gagal membuat backup %1$s: %2$s</string>
-    <string name="buildprop_error_apply_failed_detail">Gagal menerapkan %1$s: %2$s</string>
-    <string name="buildprop_error_restore_failed_detail">Gagal memulihkan %1$s: %2$s</string>
-    <string name="buildprop_no_partitions">File build.prop tidak terbaca. Pastikan akses Root aktif dan coba muat ulang.</string>
+    <string name="buildprop_subtitle_updated">Edit build.prop properties with automatic backup. On read-only partitions, changes are saved as a systemless override and may require a reboot.</string>
+    <string name="buildprop_backup_systemless">Systemless override (all AetherX overrides)</string>
+    <string name="buildprop_backup_file">build.prop file</string>
+    <string name="buildprop_confirm_restore_systemless_warning">All system.prop overrides managed by AetherX will be restored to the state when the backup was made, not just the selected partition. A reboot is required to fully restore the runtime effects.</string>
+    <string name="buildprop_success_systemless_live">%1$s saved as a systemless override and applied to the active session.</string>
+    <string name="buildprop_success_systemless_reboot">%1$s saved as a systemless override. Reboot to load it at startup.</string>
+    <string name="buildprop_success_restored_systemless">Backup %1$s restored. Reboot to remove the override\'s effect from the active session.</string>
+    <string name="buildprop_error_backup_failed_detail">Failed to create backup of %1$s: %2$s</string>
+    <string name="buildprop_error_apply_failed_detail">Failed to apply %1$s: %2$s</string>
+    <string name="buildprop_error_restore_failed_detail">Failed to restore %1$s: %2$s</string>
+    <string name="buildprop_no_partitions">build.prop file can\'t be read. Make sure Root access is active and try reloading.</string>
 </resources>

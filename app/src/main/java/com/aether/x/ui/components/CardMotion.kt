@@ -50,7 +50,10 @@ fun Modifier.pressScale(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = tween(durationMillis = 150, easing = EaseOutCubic),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
         label = "pressScale",
     )
     return this.scale(scale)

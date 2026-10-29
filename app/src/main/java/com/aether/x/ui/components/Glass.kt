@@ -2,6 +2,8 @@ package com.aether.x.ui.components
 
 import android.app.ActivityManager
 import android.content.Context
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.view.WindowManager
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -132,6 +134,10 @@ fun Modifier.aetherCardSurface(
     val accentSheen = accent.copy(alpha = 0.018f + 0.012f * glass)
 
     return this
+        // Clip BEFORE rendering the backdrop/lens so the lens sampler cannot leak
+        // texture through rounded corners. This fixes the noisy/rectangular edge
+        // artifacts visible on cards at the four corners.
+        .clip(shape)
         .drawBackdrop(
             backdrop = backdrop,
             shape = { shape },
@@ -147,7 +153,6 @@ fun Modifier.aetherCardSurface(
                 drawRect(accentSheen)
             },
         )
-        .clip(shape)
         .drawWithContent {
             drawContent()
             val inset = 18.dp.toPx()
@@ -246,6 +251,9 @@ fun Modifier.glassPanel(
     )
 
     return this
+        // Clip before backdrop rendering to prevent lens/blur texture from bleeding
+        // into the rounded corners of dialogs and nested glass panels.
+        .clip(shape)
         .drawBackdrop(
             backdrop = backdrop,
             shape = { shape },
@@ -257,7 +265,6 @@ fun Modifier.glassPanel(
             highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.28f) },
             onDrawSurface = { drawRect(brush = tint) },
         )
-        .clip(shape)
         .border(1.dp, rim, shape)
 }
 
@@ -504,10 +511,10 @@ fun AetherBackground(
 }
 
 /**
- * Redup (dim) di belakang jendela Dialog. Blur-nya sendiri sekarang dikerjakan
- * Haze pada panel dialog ([glassPanel]) — blur lintas-jendela bawaan platform
- * (FLAG_BLUR_BEHIND) dihapus karena sering dimatikan ROM/penghemat baterai
- * sehingga yang tampil cuma transparan. Dipanggil DI DALAM content Dialog.
+ * Redup (dim) di belakang jendela Dialog. Karena Dialog memakai window terpisah,
+ * panel tidak bisa mengambil backdrop Compose dari window utama. Karena itu dialog
+ * memakai cross-window blur platform sebagai fallback, sementara isi panel tetap
+ * menggunakan Liquid Glass/lens. Dipanggil DI DALAM content Dialog.
  */
 @Composable
 fun DialogWindowDim() {
@@ -515,7 +522,20 @@ fun DialogWindowDim() {
     val window = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect {
         if (window == null) return@SideEffect
-        window.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+
+        // Dialogs live in their own window, so the in-app Backdrop source cannot
+        // sample the screen behind them. Use the platform cross-window blur as a
+        // fallback for dialogs (Accent Color, confirmation popups, pickers, etc.).
         window.setDimAmount(0.28f - 0.10f * blur)
+        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            window.attributes = window.attributes.apply {
+                blurBehindRadius = (18f + 42f * blur).toInt().coerceIn(18, 60)
+            }
+        } else {
+            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        }
     }
 }
