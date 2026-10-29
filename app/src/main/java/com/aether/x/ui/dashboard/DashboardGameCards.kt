@@ -2,7 +2,6 @@ package com.aether.x.ui.dashboard
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aether.x.core.apps.InstalledGameEntry
 import com.aether.x.core.monitor.GameSessionRepository
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.ui.theme.Spacing
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -122,8 +122,7 @@ fun RecentlyPlayedGamesSection(
                         modifier = Modifier
                             .width(156.dp)
                             .height(178.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f))
+                            .aetherCardSurface(shape = RoundedCornerShape(18.dp))
                             .clickable { onGameClick(game.packageName) }
                             .padding(horizontal = 12.dp, vertical = 12.dp),
                         horizontalAlignment = Alignment.Start,
@@ -334,8 +333,7 @@ fun DashboardGameMonitorSection(
 private fun MonitorSummary(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f))
+            .aetherCardSurface(shape = RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -354,8 +352,7 @@ private fun MiniFpsGraph(values: List<Float>, lineColor: Color, modifier: Modifi
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
     Canvas(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f))
+            .aetherCardSurface(shape = RoundedCornerShape(14.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp),
     ) {
         val grid = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))

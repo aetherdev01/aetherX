@@ -1,7 +1,6 @@
 package com.aether.x.ui.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import com.aether.x.core.locale.str
 import com.aether.x.R
 
@@ -91,13 +91,7 @@ private fun DashboardActionTile(
     Row(
         modifier = modifier
             .heightIn(min = 68.dp)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.42f else 0.22f))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (enabled) 0.58f else 0.24f),
-                shape = shape,
-            )
+            .aetherCardSurface(shape = shape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(7.dp),

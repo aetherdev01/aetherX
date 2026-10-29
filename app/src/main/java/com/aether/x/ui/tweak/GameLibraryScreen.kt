@@ -56,6 +56,7 @@ import com.aether.x.core.monitor.GameSessionRepository
 import com.aether.x.data.AppPreferences
 import com.aether.x.data.AetherXPreferences
 import com.aether.x.ui.components.SectionCard
+import com.aether.x.ui.components.aetherCardSurface
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import java.util.Locale
@@ -218,13 +219,10 @@ fun GameLibraryScreen(
                     val recent = game.packageName in recentRank
                     val session: GameSession? = latestSessions[game.packageName]
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().aetherCardSurface(shape = RoundedCornerShape(18.dp)),
                         shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.23f),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-                        ),
+                        color = androidx.compose.ui.graphics.Color.Transparent,
+                        tonalElevation = 0.dp,
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(10.dp),

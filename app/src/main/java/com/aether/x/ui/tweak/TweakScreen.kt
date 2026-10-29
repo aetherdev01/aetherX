@@ -794,7 +794,6 @@ private fun Modifier.drawerLensPanel(
             lens(
                 16f.dp.toPx(),
                 26f.dp.toPx(),
-                chromaticAberration = true,
             )
         },
         highlight = { Highlight.Default.copy(alpha = 0.5f) },

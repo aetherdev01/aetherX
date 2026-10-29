@@ -51,17 +51,26 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.aether.x.ui.theme.LocalAetherPalette
 import com.aether.x.ui.theme.LocalAetherStyle
 import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
+// Refraction for shared glass surfaces. Keep this gentler than the full-screen
+// UnlockCurtain lens so compact cards remain visually calm and readable.
+private const val GLASS_LENS_HEIGHT_DP = 16f
+private const val GLASS_LENS_AMOUNT_DP = 26f
+
 /**
- * HazeState latar ([AetherBackground]) untuk card. Sumbernya adalah lapisan
- * latar grid ambient yang menjadi SIBLING konten, jadi card boleh mem-blur-nya.
+ * Legacy HazeState background for screens that still use Haze-specific effects.
+ * Shared cards/panels now use the Kyant Backdrop pipeline so blur and lens refract
+ * the same recorded Liquid Glass background.
  */
 val LocalCardHaze = staticCompositionLocalOf<HazeState?> { null }
 
@@ -77,7 +86,7 @@ val LocalBackdropHaze = staticCompositionLocalOf<HazeState?> { null }
  * Shared Liquid Glass surface for cards and nested panels. The old persisted
  * card-style preference is intentionally ignored so no screen falls back to a
  * solid/soft card while the app is using the Liquid Glass visual system.
- * Blur Intensity controls the Haze radius; Liquid Glass Level controls the surface tint and opacity.
+ * Blur Intensity controls backdrop blur; Liquid Glass Level controls tint and opacity.
  */
 @Composable
 fun Modifier.aetherCardSurface(
@@ -85,26 +94,22 @@ fun Modifier.aetherCardSurface(
     accent: Color = LocalAetherPalette.current.accent,
 ): Modifier {
     val p = LocalAetherPalette.current
-    val s = LocalAetherStyle.current
-    val b = s.blur
-    val glass = s.glassLevel
+    val style = LocalAetherStyle.current
+    val blurStrength = style.blur.coerceIn(0f, 1f)
+    val glass = style.glassLevel.coerceIn(0f, 1f)
+    val blurOn = blurStrength > 0.01f
     val glassAlpha = liquidGlassTintAlpha(glass)
-    val haze = LocalCardHaze.current
-    val blurOn = haze != null && b > 0.01f
-    val radius = cardBlurRadiusFor(b).dp
-
-    val frost = if (blurOn) {
-        Modifier.hazeEffect(state = haze!!) {
-            blurRadius = radius
-            noiseFactor = 0.04f
-            // Keep Haze's own base tint almost neutral. The dedicated overlay
-            // below is the actual Liquid Glass Level control, so blur no longer
-            // hides the difference between Clear, Thin, Balanced, Dense and Solid.
-            backgroundColor = p.surface.copy(alpha = 0.035f)
-        }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val sourceBackdrop = LocalAetherLiquidBackdrop.current
+    val backdrop = if (sourceBackdrop == null || LocalView.current.parent is DialogWindowProvider) {
+        rememberAetherLiquidBackdrop()
     } else {
-        Modifier
+        sourceBackdrop
     }
+    val blurRadiusPx = with(density) { cardBlurRadiusFor(blurStrength).dp.toPx() }
+    val lensHeightPx = with(density) { GLASS_LENS_HEIGHT_DP.dp.toPx() }
+    val lensAmountPx = with(density) { GLASS_LENS_AMOUNT_DP.dp.toPx() }
+
     val rim = Brush.verticalGradient(
         listOf(
             Color.White.copy(alpha = if (p.isDark) 0.16f else 0.90f),
@@ -123,14 +128,25 @@ fun Modifier.aetherCardSurface(
             p.surface.copy(alpha = (glassAlpha * 0.76f).coerceIn(0f, 0.82f)),
         ),
     )
+    val accentSheen = accent.copy(alpha = 0.018f + 0.012f * glass)
 
-    // Semua kartu tetap memakai Liquid Glass. Saat blur aktif, tint level sengaja
-    // digambar SETELAH Haze agar hasil blur tidak menutupi perubahan opacity.
     return this
+        .drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = {
+                if (blurOn) blur(blurRadiusPx)
+                // Pure refraction like UnlockCurtain: no RGB/chromatic splitting.
+                lens(lensHeightPx, lensAmountPx)
+            },
+            highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.24f) },
+            onDrawSurface = {
+                drawRect(brush = baseSurface)
+                if (blurOn) drawRect(brush = levelTint)
+                drawRect(accentSheen)
+            },
+        )
         .clip(shape)
-        .background(baseSurface)
-        .then(frost)
-        .then(if (blurOn) Modifier.background(levelTint) else Modifier)
         .drawWithContent {
             drawContent()
             val inset = 18.dp.toPx()
@@ -152,11 +168,7 @@ fun Modifier.aetherCardSurface(
         .border(1.dp, rim, shape)
 }
 
-/**
- * HazeState "root" milik seluruh UI app (dipasang di MainActivity). Dialog
- * (jendela terpisah) memakainya untuk mem-blur isi layar di belakangnya.
- * null = blur tidak tersedia (mis. preview) -> panel jatuh ke tint pekat.
- */
+/** Legacy root HazeState retained for source compatibility with older panel callers. */
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 /**
@@ -174,14 +186,11 @@ fun blurRadiusFor(blur: Float): Float = 6f + 30f * blur
 fun cardBlurRadiusFor(blur: Float): Float = 6f + 22f * blur
 
 /**
- * Panel blur serbaguna (dialog, drawer). Isi di belakang panel di-BLUR
- * sungguhan lewat Haze (`hazeEffect`), lalu diberi tint yang dikendalikan oleh
- * Liquid Glass Level. Slider Blur Intensity menentukan radius blur secara terpisah;
- * bila blur tidak tersedia, permukaan tetap memakai tint sebagai fallback.
- *
- * [hazeState] harus berupa state yang sumbernya (`hazeSource`) adalah
- * SIBLING panel ini, bukan induknya. Dialog memakai state root.
+ * Shared glass panel surface (dialogs, drawers and nested panels). The Kyant
+ * Backdrop pipeline applies blur and pure lens refraction; Haze parameters remain
+ * in the signature so existing call sites stay source-compatible.
  */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun Modifier.glassPanel(
     shape: Shape,
@@ -191,57 +200,63 @@ fun Modifier.glassPanel(
     blurBoost: Float = 1f,
     /** Pengali kepekatan tint (< 1 = lebih bening, blur lebih terlihat). */
     tintScale: Float = 1f,
-    /**
-     * true = tint digambar SETELAH blur sehingga level opacity tetap terlihat.
-     * false = tint di bawah blur untuk kasus khusus yang memerlukan perilaku lama.
-     */
+    /** Dipertahankan agar pemanggil lama tetap kompatibel. */
     tintAfterBlur: Boolean = true,
 ): Modifier {
     val p = LocalAetherPalette.current
     val style = LocalAetherStyle.current
-    val b = style.blur
-    val glass = style.glassLevel
-    val blurOn = hazeState != null && b > 0.01f
-    val radius = (blurRadiusFor(b) * blurBoost).coerceAtMost(38f).dp
-    // Liquid Glass Level controls the post-blur tint over a broad opacity range.
-    // Previously minAlpha=0.30f flattened the first two stops into almost the same
-    // value, so users could not see any meaningful change at low levels.
+    val blurStrength = style.blur.coerceIn(0f, 1f)
+    val glass = style.glassLevel.coerceIn(0f, 1f)
+    val blurOn = blurStrength > 0.01f
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val sourceBackdrop = LocalAetherLiquidBackdrop.current
+    val backdrop = if (sourceBackdrop == null || LocalView.current.parent is DialogWindowProvider) {
+        rememberAetherLiquidBackdrop()
+    } else {
+        sourceBackdrop
+    }
+    val blurRadiusPx = with(density) {
+        (blurRadiusFor(blurStrength) * blurBoost).coerceAtMost(38f).dp.toPx()
+    }
+    val lensHeightPx = with(density) { GLASS_LENS_HEIGHT_DP.dp.toPx() }
+    val lensAmountPx = with(density) { GLASS_LENS_AMOUNT_DP.dp.toPx() }
+
     val levelAlpha = liquidGlassTintAlpha(glass)
     val floor = minAlpha.coerceIn(0.02f, 0.12f)
-    val top = if (blurOn) (levelAlpha * tintScale).coerceAtLeast(floor).coerceAtMost(0.94f) else (0.30f + 0.67f * glass)
-    val bottom = if (blurOn) (levelAlpha * 0.82f * tintScale).coerceAtLeast(floor * 0.82f).coerceAtMost(0.90f) else (0.25f + 0.70f * glass)
+    val top = if (blurOn) {
+        (levelAlpha * tintScale).coerceAtLeast(floor).coerceAtMost(0.94f)
+    } else {
+        0.30f + 0.67f * glass
+    }
+    val bottom = if (blurOn) {
+        (levelAlpha * 0.82f * tintScale).coerceAtLeast(floor * 0.82f).coerceAtMost(0.90f)
+    } else {
+        0.25f + 0.70f * glass
+    }
     val tint = Brush.verticalGradient(
         listOf(p.surface.copy(alpha = top), p.surface.copy(alpha = bottom)),
     )
+    val rim = Brush.verticalGradient(
+        listOf(
+            Color.White.copy(alpha = if (p.isDark) 0.18f else 0.90f),
+            p.stroke.copy(alpha = 0.60f),
+        ),
+    )
+
     return this
-        .clip(shape)
-        // Default tint berada di atas hasil Haze supaya perubahan Liquid Glass
-        // Level tetap terlihat. Kasus khusus boleh memilih tint sebelum Haze.
-        .then(if (tintAfterBlur) Modifier else Modifier.background(tint))
-        .then(
-            if (blurOn) {
-                Modifier.hazeEffect(state = hazeState) {
-                    blurRadius = radius
-                    noiseFactor = 0.03f
-                    // Keep Haze's baseline tint low. Level-specific tint is painted
-                    // as a separate background after the effect to remain visible.
-                    backgroundColor = p.surface.copy(alpha = 0.035f)
-                }
-            } else {
-                Modifier
+        .drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = {
+                if (blurOn) blur(blurRadiusPx)
+                // Same clean edge refraction used by UnlockCurtain, without chromatic aberration.
+                lens(lensHeightPx, lensAmountPx)
             },
+            highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.28f) },
+            onDrawSurface = { drawRect(brush = tint) },
         )
-        .then(if (tintAfterBlur) Modifier.background(tint) else Modifier)
-        .border(
-            width = 1.dp,
-            brush = Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = if (p.isDark) 0.18f else 0.90f),
-                    p.stroke.copy(alpha = 0.60f),
-                ),
-            ),
-            shape = shape,
-        )
+        .clip(shape)
+        .border(1.dp, rim, shape)
 }
 
 /**

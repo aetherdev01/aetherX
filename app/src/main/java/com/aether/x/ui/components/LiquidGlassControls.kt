@@ -117,8 +117,6 @@ fun rememberAetherLiquidBackdrop(): Backdrop {
     return if (isSeparateWindow) fallback else (shared ?: fallback)
 }
 
-private fun effectStrength(glassLevel: Float): Float = glassLevel.coerceIn(0f, 1f)
-
 /**
  * Liquid Toggle following the repository's spring-driven track/thumb implementation.
  * Width, height, drag rubberiness, highlight and lens all use the upstream component pattern.
@@ -251,8 +249,10 @@ private fun ToggleFromBackdrop(
                         if (style.blur > 0.01f) {
                             blur((2f + 15f * style.blur.coerceIn(0f, 1f)).dp.toPx() * (1f - progress))
                         }
-                        val lensScale = effectStrength(glass)
-                        lens(5f.dp.toPx() * progress * lensScale, 10f.dp.toPx() * progress * lensScale, chromaticAberration = true)
+                        // Always keep a small clean refraction at rest; press progress only
+                        // strengthens the optical edge, independent of Liquid Glass tint level.
+                        val lensScale = 0.72f + 0.28f * progress
+                        lens(5f.dp.toPx() * lensScale, 10f.dp.toPx() * lensScale)
                     },
                     highlight = {
                         val progress = dampedDragAnimation.pressProgress
@@ -276,7 +276,7 @@ private fun ToggleFromBackdrop(
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress
-                        drawRect(Color.White.copy(alpha = 1f - progress))
+                        drawRect(Color.White.copy(alpha = 0.78f * (1f - progress)))
                     },
                 )
                 .size(40.dp, 24.dp),
@@ -374,8 +374,8 @@ private fun LiquidActionButton(
                     if (style.blur > 0.01f) {
                         blur((0.5f + 2.5f * style.blur.coerceIn(0f, 1f)).dp.toPx())
                     }
-                    val lensScale = effectStrength(glass)
-                    lens(12f.dp.toPx() * lensScale, 24f.dp.toPx() * lensScale)
+                    // Lens remains active even when the glass tint is set to Clear.
+                    lens(12f.dp.toPx(), 24f.dp.toPx())
                 },
                 layerBlock = if (isInteractive) {
                     {
@@ -568,7 +568,6 @@ fun LiquidSlider(
         )
 
         // Slider lens is intentionally independent from app-wide Liquid Glass intensity.
-        val glassScale = 1f
         Box(
             Modifier
                 .graphicsLayer {
@@ -589,13 +588,12 @@ fun LiquidSlider(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
-                        // Match Kyant0's LiquidSlider: the thumb is opaque white at rest,
-                        // then reveals the captured backdrop with lens dispersion while pressed.
+                        // Keep clean edge refraction visible at rest and strengthen it while dragged.
                         blur(8f.dp.toPx() * (1f - progress))
+                        val opticalProgress = 0.42f + 0.58f * progress
                         lens(
-                            10f.dp.toPx() * progress,
-                            14f.dp.toPx() * progress,
-                            chromaticAberration = true,
+                            10f.dp.toPx() * opticalProgress,
+                            14f.dp.toPx() * opticalProgress,
                         )
                     },
                     highlight = {
@@ -614,7 +612,10 @@ fun LiquidSlider(
                         scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
-                    onDrawSurface = { drawRect(Color.White.copy(alpha = 1f - dampedDragAnimation.pressProgress)) },
+                    onDrawSurface = {
+                        val progress = dampedDragAnimation.pressProgress
+                        drawRect(Color.White.copy(alpha = 0.78f * (1f - progress)))
+                    },
                 )
                 .size(40.dp, 24.dp),
         )
