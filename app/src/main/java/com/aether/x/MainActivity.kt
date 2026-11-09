@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import com.aether.x.ui.components.LocalHazeState
+import com.aether.x.ui.components.InternetRequiredGate
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.Modifier
@@ -105,8 +106,6 @@ class MainActivity : ComponentActivity() {
                     liquidGlassLevel = prefsValue.liquidGlassLevel,
                     hapticsEnabled = prefsValue.hapticsEnabled,
                     reduceMotionEnabled = prefsValue.reduceMotionEnabled,
-                    glassLensEnabled = prefsValue.glassLensEnabled,
-                    glassLensStrength = prefsValue.glassLensStrength,
                 ) {
                     AetherXRoot(
                         onboardingCompleted = prefsValue.onboardingCompleted,
@@ -213,5 +212,6 @@ private fun AetherXRoot(
     MaintenanceGate()
 
     UpdateGate()
+    InternetRequiredGate()
     }
 }

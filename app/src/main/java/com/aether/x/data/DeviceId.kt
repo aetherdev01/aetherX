@@ -11,7 +11,9 @@ object DeviceId {
 
     fun read(context: Context): String =
         DeviceFingerprint.compute(context) ?: run {
-            Log.w(TAG, "Device fingerprint native gagal — fallback ke ANDROID_ID mentah")
+            // Preserve the previously registered fallback ID so existing device bindings
+            // remain stable on devices where the native library cannot be loaded.
+            Log.w(TAG, "Fingerprint native gagal — memakai fallback ANDROID_ID")
             "fallback:${readRawAndroidId(context)}"
         }
 

@@ -164,8 +164,8 @@ fun WelcomeSheet(
                     backdrop = backdrop,
                     shape = { RoundedCornerShape(cornerPx) },
                     effects = {
-                        // Lensa murni di seluruh tepi kartu — tanpa blur, tanpa dispersi warna.
-                        lens(LENS_HEIGHT_DP.dp.toPx(), LENS_AMOUNT_DP.dp.toPx())
+                        // Refraksi tepi dengan chromatic aberration ringan — tanpa blur berat.
+                        lens(LENS_HEIGHT_DP.dp.toPx(), LENS_AMOUNT_DP.dp.toPx(), chromaticAberration = true)
                     },
                     highlight = { Highlight.Default.copy(width = 1.2.dp, alpha = 0.7f) },
                     shadow = { Shadow(alpha = 0.35f) },

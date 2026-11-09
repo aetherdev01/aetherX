@@ -26,10 +26,8 @@ import com.aether.x.ui.components.LocalReduceMotionEnabled
 @Immutable
 data class AetherStyle(
     val cardStyle: CardStyle = CardStyle.GLASS,
-    val blur: Float = 0.22f,
+    val blur: Float = 0.18f,
     val glassLevel: Float = 0.40f,
-    val lensEnabled: Boolean = true,
-    val lensStrength: Float = 0.60f,
 )
 
 val LocalAetherStyle = staticCompositionLocalOf { AetherStyle() }
@@ -88,24 +86,20 @@ fun AetherXTheme(
     customAccentArgb: Long? = 0xFFB4DE9FL,
     font: AppFont = AppFont.SYSTEM,
     cardStyle: CardStyle = CardStyle.GLASS,
-    blurStrength: Int = 25,
+    blurStrength: Int = 18,
     liquidGlassLevel: Int = 0,
     hapticsEnabled: Boolean = true,
     reduceMotionEnabled: Boolean = false,
-    glassLensEnabled: Boolean = true,
-    glassLensStrength: Int = 60,
     content: @Composable () -> Unit,
 ) {
     val palette = remember(darkTheme, accent, customAccentArgb) { aetherPalette(darkTheme, accent, customAccentArgb) }
     val colorScheme = remember(palette) { palette.toColorScheme() }
     val typography = remember { aetherTypography() }
-    val style = remember(cardStyle, blurStrength, liquidGlassLevel, glassLensEnabled, glassLensStrength) {
+    val style = remember(cardStyle, blurStrength, liquidGlassLevel) {
         AetherStyle(
             cardStyle = cardStyle,
             blur = (blurStrength / 100f).coerceIn(0f, 1f),
             glassLevel = (liquidGlassLevel / 100f).coerceIn(0f, 1f),
-            lensEnabled = glassLensEnabled,
-            lensStrength = (glassLensStrength / 100f).coerceIn(0f, 1f),
         )
     }
 

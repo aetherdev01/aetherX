@@ -66,8 +66,8 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 // Refraction for shared glass surfaces. Keep this gentler than the full-screen
 // UnlockCurtain lens so compact cards remain visually calm and readable.
-private const val GLASS_LENS_HEIGHT_DP = 16f
-private const val GLASS_LENS_AMOUNT_DP = 26f
+private const val GLASS_LENS_HEIGHT_DP = 7f
+private const val GLASS_LENS_AMOUNT_DP = 8f
 
 /**
  * Legacy HazeState background for screens that still use Haze-specific effects.
@@ -99,7 +99,6 @@ fun Modifier.aetherCardSurface(
     val style = LocalAetherStyle.current
     val blurStrength = style.blur.coerceIn(0f, 1f)
     val glass = style.glassLevel.coerceIn(0f, 1f)
-    val lensEnabled = style.lensEnabled && style.lensStrength > 0.01f
     val blurOn = blurStrength > 0.01f
     val glassAlpha = liquidGlassTintAlpha(glass)
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -110,8 +109,8 @@ fun Modifier.aetherCardSurface(
         sourceBackdrop
     }
     val blurRadiusPx = with(density) { cardBlurRadiusFor(blurStrength).dp.toPx() }
-    val lensHeightPx = with(density) { (GLASS_LENS_HEIGHT_DP * style.lensStrength).dp.toPx() }
-    val lensAmountPx = with(density) { (GLASS_LENS_AMOUNT_DP * style.lensStrength).dp.toPx() }
+    val lensHeightPx = with(density) { GLASS_LENS_HEIGHT_DP.dp.toPx() }
+    val lensAmountPx = with(density) { GLASS_LENS_AMOUNT_DP.dp.toPx() }
 
     val rim = Brush.verticalGradient(
         listOf(
@@ -143,8 +142,7 @@ fun Modifier.aetherCardSurface(
             shape = { shape },
             effects = {
                 if (blurOn) blur(blurRadiusPx)
-                // Pure refraction like UnlockCurtain: no RGB/chromatic splitting.
-                if (lensEnabled) lens(lensHeightPx, lensAmountPx)
+                lens(lensHeightPx, lensAmountPx, chromaticAberration = true)
             },
             highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.24f) },
             onDrawSurface = {
@@ -186,10 +184,10 @@ fun liquidGlassTintAlpha(level: Float): Float =
     0.04f + 0.80f * level.coerceIn(0f, 1f)
 
 /** Radius blur (dp) dialog/navbar dari slider 0f..1f. 0 berarti blur dimatikan. */
-fun blurRadiusFor(blur: Float): Float = 6f + 30f * blur
+fun blurRadiusFor(blur: Float): Float = 5f + 20f * blur
 
 /** Radius card lebih kecil agar Liquid Glass tetap berwarna tanpa memaksa blur radius besar. */
-fun cardBlurRadiusFor(blur: Float): Float = 6f + 22f * blur
+fun cardBlurRadiusFor(blur: Float): Float = 4f + 16f * blur
 
 /**
  * Shared glass panel surface (dialogs, drawers and nested panels). The Kyant
@@ -213,7 +211,6 @@ fun Modifier.glassPanel(
     val style = LocalAetherStyle.current
     val blurStrength = style.blur.coerceIn(0f, 1f)
     val glass = style.glassLevel.coerceIn(0f, 1f)
-    val lensEnabled = style.lensEnabled && style.lensStrength > 0.01f
     val blurOn = blurStrength > 0.01f
     val density = androidx.compose.ui.platform.LocalDensity.current
     val sourceBackdrop = LocalAetherLiquidBackdrop.current
@@ -225,8 +222,8 @@ fun Modifier.glassPanel(
     val blurRadiusPx = with(density) {
         (blurRadiusFor(blurStrength) * blurBoost).coerceAtMost(38f).dp.toPx()
     }
-    val lensHeightPx = with(density) { (GLASS_LENS_HEIGHT_DP * style.lensStrength).dp.toPx() }
-    val lensAmountPx = with(density) { (GLASS_LENS_AMOUNT_DP * style.lensStrength).dp.toPx() }
+    val lensHeightPx = with(density) { GLASS_LENS_HEIGHT_DP.dp.toPx() }
+    val lensAmountPx = with(density) { GLASS_LENS_AMOUNT_DP.dp.toPx() }
 
     val levelAlpha = liquidGlassTintAlpha(glass)
     val floor = minAlpha.coerceIn(0.02f, 0.12f)
@@ -259,8 +256,7 @@ fun Modifier.glassPanel(
             shape = { shape },
             effects = {
                 if (blurOn) blur(blurRadiusPx)
-                // Same clean edge refraction used by UnlockCurtain, without chromatic aberration.
-                if (lensEnabled) lens(lensHeightPx, lensAmountPx)
+                lens(lensHeightPx, lensAmountPx, chromaticAberration = true)
             },
             highlight = { Highlight.Default.copy(width = 1.dp, alpha = 0.28f) },
             onDrawSurface = { drawRect(brush = tint) },

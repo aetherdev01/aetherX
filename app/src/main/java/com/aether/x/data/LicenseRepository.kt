@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -173,7 +174,7 @@ class LicenseRepository(context: Context) {
         if (trimmedKey.isEmpty()) return LicenseResult.NotFound
 
         return runCatching {
-            val snapshot = firestore.collection(COLLECTION).document(trimmedKey).get().await()
+            val snapshot = firestore.collection(COLLECTION).document(trimmedKey).get(Source.SERVER).await()
             if (!snapshot.exists()) return@runCatching LicenseResult.NotFound
 
             val status = snapshot.getString(FIELD_STATUS)

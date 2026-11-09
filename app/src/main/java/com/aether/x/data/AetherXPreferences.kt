@@ -78,13 +78,11 @@ data class AppPreferences(
     val appFont: AppFont = AppFont.SYSTEM,
     val cardStyle: CardStyle = CardStyle.GLASS,
     /** 0..100 — kekuatan blur/kaca (navbar, dialog, transparansi card). */
-    val blurStrength: Int = 25,
+    val blurStrength: Int = 18,
     /** 0..100 — kekuatan tampilan kaca/tint, terpisah dari blur. */
     val liquidGlassLevel: Int = 0,
     val hapticsEnabled: Boolean = true,
     val reduceMotionEnabled: Boolean = false,
-    val glassLensEnabled: Boolean = true,
-    val glassLensStrength: Int = 60,
     val lowEndMode: Boolean = false,
 
 
@@ -157,8 +155,6 @@ class AetherXPreferences(private val context: Context) {
         val LIQUID_GLASS_LEVEL = intPreferencesKey("liquid_glass_level")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val REDUCE_MOTION_ENABLED = booleanPreferencesKey("reduce_motion_enabled")
-        val GLASS_LENS_ENABLED = booleanPreferencesKey("glass_lens_enabled")
-        val GLASS_LENS_STRENGTH = intPreferencesKey("glass_lens_strength")
         val LOW_END_MODE = booleanPreferencesKey("low_end_mode")
         val DPI_VALUE = intPreferencesKey("dpi_value")
         val WIDTH_VALUE = intPreferencesKey("width_value")
@@ -239,12 +235,10 @@ class AetherXPreferences(private val context: Context) {
                 .getOrDefault(AppFont.SYSTEM),
             cardStyle = runCatching { CardStyle.valueOf(prefs[Keys.CARD_STYLE] ?: "") }
                 .getOrDefault(CardStyle.GLASS),
-            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 25).coerceIn(0, 100),
+            blurStrength = (prefs[Keys.BLUR_STRENGTH] ?: 18).coerceIn(0, 100),
             liquidGlassLevel = (prefs[Keys.LIQUID_GLASS_LEVEL] ?: 0).coerceIn(0, 100),
             hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
             reduceMotionEnabled = prefs[Keys.REDUCE_MOTION_ENABLED] ?: false,
-            glassLensEnabled = prefs[Keys.GLASS_LENS_ENABLED] ?: true,
-            glassLensStrength = (prefs[Keys.GLASS_LENS_STRENGTH] ?: 60).coerceIn(0, 100),
             lowEndMode = prefs[Keys.LOW_END_MODE] ?: false,
             dpiValue = prefs[Keys.DPI_VALUE] ?: -1,
             widthValue = prefs[Keys.WIDTH_VALUE] ?: -1,
@@ -357,14 +351,6 @@ class AetherXPreferences(private val context: Context) {
         context.dataStore.edit { it[Keys.REDUCE_MOTION_ENABLED] = enabled }
     }
 
-    suspend fun setGlassLensEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.GLASS_LENS_ENABLED] = enabled }
-    }
-
-    suspend fun setGlassLensStrength(value: Int) {
-        context.dataStore.edit { it[Keys.GLASS_LENS_STRENGTH] = value.coerceIn(0, 100) }
-    }
-
     suspend fun setLowEndMode(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[Keys.LOW_END_MODE] = enabled
@@ -372,14 +358,10 @@ class AetherXPreferences(private val context: Context) {
                 prefs[Keys.BLUR_STRENGTH] = 8
                 prefs[Keys.LIQUID_GLASS_LEVEL] = 15
                 prefs[Keys.REDUCE_MOTION_ENABLED] = true
-                prefs[Keys.GLASS_LENS_ENABLED] = false
-                prefs[Keys.GLASS_LENS_STRENGTH] = 15
             } else {
-                prefs[Keys.BLUR_STRENGTH] = 25
+                prefs[Keys.BLUR_STRENGTH] = 18
                 prefs[Keys.LIQUID_GLASS_LEVEL] = 0
                 prefs[Keys.REDUCE_MOTION_ENABLED] = false
-                prefs[Keys.GLASS_LENS_ENABLED] = true
-                prefs[Keys.GLASS_LENS_STRENGTH] = 60
             }
         }
     }

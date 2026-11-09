@@ -35,7 +35,7 @@ import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import dev.chrisbanes.haze.HazeState
 
 /** Tinggi navbar. Kapsul = tinggi ini - 8dp (inset 4dp). */
-private val NavBarHeight: Dp = 56.dp
+private val NavBarHeight: Dp = 52.dp
 
 /** Navigation item model retained for all existing call sites. */
 data class AetherNavItem(

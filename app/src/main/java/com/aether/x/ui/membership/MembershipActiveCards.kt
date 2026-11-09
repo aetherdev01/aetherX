@@ -1,9 +1,5 @@
 package com.aether.x.ui.membership
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
@@ -14,7 +10,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -124,13 +119,9 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private const val SECOND_MS = 1_000L
 private const val MINUTE_MS = 60_000L
 private const val HOUR_MS = 3_600_000L
 private const val DAY_MS = 86_400_000L
-
-/** Siklus langganan bulanan; dipakai sebagai skala cincin "sisa waktu". */
-private const val PLAN_CYCLE_DAYS = 30f
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Util
@@ -150,13 +141,6 @@ private fun appLocale(isEnglish: Boolean): Locale =
 private fun fmt(pattern: String, millis: Long, locale: Locale): String =
     SimpleDateFormat(pattern, locale).format(Date(millis))
 
-private fun openPurchaseUrl(context: Context, url: String) {
-    try {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    } catch (e: ActivityNotFoundException) {
-        Toast.makeText(context, context.getString(R.string.membership_pro_open_failed), Toast.LENGTH_SHORT).show()
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // 1. Pass card (kartu member) — jelly, sheen, sparkle, confetti
@@ -656,297 +640,8 @@ private fun ConfettiBurst(trigger: Int, modifier: Modifier = Modifier) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
-// 2. Sisa waktu lisensi — cincin + hitung mundur detik demi detik
+// Compact detail rows shared by device information
 // ─────────────────────────────────────────────────────────────────────────────────────────────
-
-@Composable
-internal fun LicenseCountdownCard(
-    expiresAtMillis: Long?,
-    modifier: Modifier = Modifier,
-) {
-    val isEnglish = rememberIsEnglish()
-    val reduceMotion = LocalReduceMotionEnabled.current
-    val context = LocalContext.current
-    val locale = remember(isEnglish) { appLocale(isEnglish) }
-    val purchaseUrl = stringResource(R.string.membership_pro_purchase_url)
-
-    val now by produceState(initialValue = System.currentTimeMillis()) {
-        while (true) {
-            delay(SECOND_MS - (System.currentTimeMillis() % SECOND_MS) + 5L)
-            value = System.currentTimeMillis()
-        }
-    }
-
-    SectionCard(
-        title = tr(isEnglish, "License time remaining", "Sisa waktu lisensi"),
-        watermarkIcon = Icons.Outlined.Timer,
-        accent = AccentGreen,
-        modifier = modifier,
-    ) {
-        if (expiresAtMillis == null) {
-            Text(
-                text = tr(
-                    isEnglish,
-                    "The expiry date is not available yet. It will appear once the license is verified.",
-                    "Tanggal berakhir belum tersedia. Akan tampil setelah lisensi terverifikasi.",
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@SectionCard
-        }
-
-        val remaining = (expiresAtMillis - now).coerceAtLeast(0L)
-        val days = (remaining / DAY_MS).toInt()
-        val hours = (remaining % DAY_MS / HOUR_MS).toInt()
-        val minutes = (remaining % HOUR_MS / MINUTE_MS).toInt()
-        val seconds = (remaining % MINUTE_MS / SECOND_MS).toInt()
-
-        val tone = when {
-            remaining <= DAY_MS -> AccentRed
-            remaining <= 7 * DAY_MS -> AccentAmber
-            else -> AccentGreen
-        }
-        val toneLabel = when {
-            remaining <= 0L -> tr(isEnglish, "Re-checking…", "Memeriksa ulang…")
-            remaining <= DAY_MS -> tr(isEnglish, "Expires within 24 hours", "Berakhir dalam 24 jam")
-            remaining <= 7 * DAY_MS -> tr(isEnglish, "Expiring soon", "Segera berakhir")
-            else -> tr(isEnglish, "License in good standing", "Lisensi dalam kondisi baik")
-        }
-
-        var ringReady by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { ringReady = true }
-        val fraction = (remaining.toFloat() / (PLAN_CYCLE_DAYS * DAY_MS)).coerceIn(0f, 1f)
-        val animatedFraction by animateFloatAsState(
-            targetValue = if (ringReady) fraction else 0f,
-            animationSpec = tween(if (reduceMotion) 0 else 1200, easing = FastOutSlowInEasing),
-            label = "license-ring",
-        )
-
-        val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.16f)
-        val (bigNumber, bigUnit) = when {
-            days > 0 -> days to tr(isEnglish, "days", "hari")
-            hours > 0 -> hours to tr(isEnglish, "hrs", "jam")
-            else -> minutes to tr(isEnglish, "min", "mnt")
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Box(modifier = Modifier.size(104.dp), contentAlignment = Alignment.Center) {
-                Canvas(modifier = Modifier.size(104.dp)) {
-                    val stroke = 10.dp.toPx()
-                    val inset = stroke / 2f
-                    val arcSize = Size(size.width - stroke, size.height - stroke)
-                    drawArc(
-                        color = trackColor,
-                        startAngle = -90f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = Offset(inset, inset),
-                        size = arcSize,
-                        style = Stroke(width = stroke, cap = StrokeCap.Round),
-                    )
-                    drawArc(
-                        color = tone,
-                        startAngle = -90f,
-                        sweepAngle = 360f * animatedFraction,
-                        useCenter = false,
-                        topLeft = Offset(inset, inset),
-                        size = arcSize,
-                        style = Stroke(width = stroke, cap = StrokeCap.Round),
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = bigNumber.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = tone,
-                    )
-                    Text(
-                        text = bigUnit,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(tone.copy(alpha = 0.13f))
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(tone))
-                    Text(
-                        text = toneLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = tone,
-                    )
-                }
-                Text(
-                    text = tr(isEnglish, "Expires on", "Berakhir pada"),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = fmt("EEEE, d MMMM yyyy", expiresAtMillis, locale),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = tr(isEnglish, "at ", "pukul ") + fmt("HH:mm", expiresAtMillis, locale),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TimeCell(days, tr(isEnglish, "Days", "Hari"), tone, Modifier.weight(1f))
-            TimeCell(hours, tr(isEnglish, "Hours", "Jam"), tone, Modifier.weight(1f))
-            TimeCell(minutes, tr(isEnglish, "Min", "Menit"), tone, Modifier.weight(1f))
-            TimeCell(seconds, tr(isEnglish, "Sec", "Detik"), tone, Modifier.weight(1f))
-        }
-
-        Text(
-            text = tr(
-                isEnglish,
-                "The ring shows the remaining share of a 30-day cycle.",
-                "Cincin menunjukkan sisa porsi dari siklus 30 hari.",
-            ),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        if (remaining <= 7 * DAY_MS) {
-            LiquidButton(
-                onClick = { openPurchaseUrl(context, purchaseUrl) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = tone,
-                    contentColor = Color.White,
-                ),
-            ) {
-                Text(
-                    text = tr(isEnglish, "Renew membership", "Perpanjang membership"),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimeCell(value: Int, label: String, tone: Color, modifier: Modifier = Modifier) {
-    val reduceMotion = LocalReduceMotionEnabled.current
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(tone.copy(alpha = 0.10f))
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        AnimatedContent(
-            targetState = value,
-            transitionSpec = {
-                if (reduceMotion) {
-                    fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                } else {
-                    (slideInVertically(tween(260)) { -it / 2 } + fadeIn(tween(260))) togetherWith
-                        (slideOutVertically(tween(260)) { it / 2 } + fadeOut(tween(160)))
-                }
-            },
-            label = "time-cell-$label",
-        ) { v ->
-            Text(
-                text = v.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                color = tone,
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// 3. Detail lisensi
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-
-@Composable
-internal fun LicenseDetailsCard(
-    expiresAtMillis: Long?,
-    maskedKey: String?,
-    isOfflineCache: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val isEnglish = rememberIsEnglish()
-    val locale = remember(isEnglish) { appLocale(isEnglish) }
-
-    SectionCard(
-        title = tr(isEnglish, "License details", "Detail lisensi"),
-        watermarkIcon = Icons.Outlined.VpnKey,
-        modifier = modifier,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            DetailRow(
-                icon = Icons.Outlined.CheckCircle,
-                label = tr(isEnglish, "Status", "Status"),
-                value = tr(isEnglish, "Active \u2022 Pro", "Aktif \u2022 Pro"),
-                valueColor = AccentGreen,
-            )
-            DetailDivider()
-            DetailRow(
-                icon = Icons.Outlined.VpnKey,
-                label = tr(isEnglish, "License key", "Kunci lisensi"),
-                value = maskedKey ?: "\u2022\u2022\u2022\u2022",
-                mono = true,
-            )
-            DetailDivider()
-            DetailRow(
-                icon = Icons.Outlined.Event,
-                label = tr(isEnglish, "Valid until", "Berlaku hingga"),
-                value = expiresAtMillis?.let { fmt("d MMMM yyyy, HH:mm", it, locale) }
-                    ?: tr(isEnglish, "Not available", "Belum tersedia"),
-            )
-            DetailDivider()
-            DetailRow(
-                icon = if (isOfflineCache) Icons.Outlined.CloudOff else Icons.Outlined.Sync,
-                label = tr(isEnglish, "Verification", "Verifikasi"),
-                value = if (isOfflineCache) {
-                    tr(isEnglish, "Offline cache \u2022 will re-check when online", "Cache offline \u2022 dicek ulang saat online")
-                } else {
-                    tr(isEnglish, "Live sync with server (about every minute)", "Sinkron langsung dengan server (\u00B11 menit)")
-                },
-                valueColor = if (isOfflineCache) AccentAmber else MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}
 
 @Composable
 private fun DetailRow(
@@ -1028,6 +723,11 @@ internal fun DeviceFingerprintCard(
     }
     val deviceName = remember {
         Build.MANUFACTURER.replaceFirstChar { it.uppercase() } + " " + Build.MODEL
+    }
+    val buildLabel = remember {
+        Build.FINGERPRINT.orEmpty().let { value ->
+            if (value.length > 44) value.take(44) + "…" else value
+        }
     }
 
     SectionCard(
@@ -1150,6 +850,13 @@ internal fun DeviceFingerprintCard(
                     tr(isEnglish, "Native engine (device ID + build + model)", "Mesin native (ID perangkat + build + model)")
                 },
                 valueColor = if (isFallback) AccentAmber else MaterialTheme.colorScheme.onSurface,
+            )
+            DetailDivider()
+            DetailRow(
+                icon = Icons.Outlined.Memory,
+                label = "Build",
+                value = buildLabel,
+                mono = true,
             )
             DetailDivider()
             DetailRow(

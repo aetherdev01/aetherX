@@ -252,7 +252,7 @@ private fun ToggleFromBackdrop(
                         // Always keep a small clean refraction at rest; press progress only
                         // strengthens the optical edge, independent of Liquid Glass tint level.
                         val lensScale = 0.72f + 0.28f * progress
-                        lens(5f.dp.toPx() * lensScale, 10f.dp.toPx() * lensScale)
+                        lens(5f.dp.toPx() * lensScale, 8f.dp.toPx() * lensScale, chromaticAberration = true)
                     },
                     highlight = {
                         val progress = dampedDragAnimation.pressProgress
@@ -375,7 +375,7 @@ private fun LiquidActionButton(
                         blur((0.5f + 2.5f * style.blur.coerceIn(0f, 1f)).dp.toPx())
                     }
                     // Lens remains active even when the glass tint is set to Clear.
-                    lens(12f.dp.toPx(), 24f.dp.toPx())
+                    lens(8f.dp.toPx(), 12f.dp.toPx(), chromaticAberration = true)
                 },
                 layerBlock = if (isInteractive) {
                     {
@@ -593,7 +593,8 @@ fun LiquidSlider(
                         val opticalProgress = 0.42f + 0.58f * progress
                         lens(
                             10f.dp.toPx() * opticalProgress,
-                            14f.dp.toPx() * opticalProgress,
+                            12f.dp.toPx() * opticalProgress,
+                            chromaticAberration = true,
                         )
                     },
                     highlight = {

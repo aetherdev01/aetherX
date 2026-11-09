@@ -80,7 +80,7 @@ import kotlin.math.tanh
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
 /** Blur minimum kaca navbar (dp). Elemen di belakang navbar selalu ter-blur, tidak pernah tajam. */
-internal const val NAV_MIN_BLUR_DP = 18f
+internal const val NAV_MIN_BLUR_DP = 12f
 
 /** Continuous selection progress driven by the moving capsule, avoiding stale tab colors. */
 internal val LocalLiquidBottomTabSelectionProgress =
@@ -97,7 +97,7 @@ private const val NAV_TAB_CONTENT_SCALE = 1.16f
 private const val CAPSULE_MAGNIFY = 1.2f
 
 /** Skala kapsul saat ditahan (78dp / 56dp). */
-private const val CAPSULE_PRESSED_SCALE = 78f / 56f
+private const val CAPSULE_PRESSED_SCALE = 68f / 52f
 
 /**
  * Lensa kapsul: amount lebih besar menghasilkan fringe merah/biru yang lebih jelas. Tinggi tetap
@@ -117,10 +117,10 @@ private const val CAPSULE_LENS_IDLE_PROGRESS = 0.28f
  * mencapai ~76% maksimum (makin kecil = makin cepat melar). [CAPSULE_JELLY_ANISOTROPY] = seberapa
  * besar goyangan skala X/Y yang berbeda (0 = sebangun seperti dulu, 1 = penuh).
  */
-private const val CAPSULE_STRETCH_MAX = 0.22f
-private const val CAPSULE_SQUASH_RATIO = 0.75f
-private const val CAPSULE_STRETCH_SPEED_REF = 9f
-private const val CAPSULE_JELLY_ANISOTROPY = 0.7f
+private const val CAPSULE_STRETCH_MAX = 0.26f
+private const val CAPSULE_SQUASH_RATIO = 0.82f
+private const val CAPSULE_STRETCH_SPEED_REF = 8.5f
+private const val CAPSULE_JELLY_ANISOTROPY = 0.76f
 
 /**
  * Zona mati kecepatan (tab/detik). Di bawah ini kapsul dianggap diam, jadi sisa noise kecepatan
@@ -411,8 +411,9 @@ fun LiquidBottomTabs(
                             blur(navBlurDp.dp.toPx())
                             if (progress > 0.001f) {
                                 lens(
-                                    14f.dp.toPx() * progress * sizeFactor,
-                                    14f.dp.toPx() * progress * sizeFactor,
+                                    10f.dp.toPx() * progress * sizeFactor,
+                                    12f.dp.toPx() * progress * sizeFactor,
+                                    chromaticAberration = true,
                                 )
                             }
                         },

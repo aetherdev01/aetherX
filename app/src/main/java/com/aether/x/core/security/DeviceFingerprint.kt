@@ -14,14 +14,17 @@ object DeviceFingerprint {
 
     private const val SEPARATOR = "\u0001"
 
-    init {
-
+    private val nativeAvailable: Boolean = runCatching {
         System.loadLibrary("aetherX")
-    }
+        true
+    }.onFailure { error ->
+        Log.w(TAG, "Library native tidak tersedia; beralih ke fallback ID perangkat", error)
+    }.getOrDefault(false)
 
     private external fun nativeDeriveFingerprint(rawInput: ByteArray): ByteArray?
 
     fun compute(context: Context): String? {
+        if (!nativeAvailable) return null
         val rawInput = buildRawInput(context)
         val digest = runCatching { nativeDeriveFingerprint(rawInput.toByteArray(Charsets.UTF_8)) }
             .onFailure { e -> Log.w(TAG, "Gagal menghitung device fingerprint (native)", e) }

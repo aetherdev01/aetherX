@@ -85,16 +85,16 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-// ── Lensa: refraksi tepi dari library Kyant (sama seperti navbar), tanpa dispersi warna ──
+// ── Lensa: refraksi tepi dari library Kyant (sama seperti navbar), dengan chromatic aberration yang halus ──
 /** Tebal pita refraksi dari tepi bawah layer. Navbar: 8.5dp (kapsul kecil), layer besar butuh lebih tebal. */
-private const val LENS_HEIGHT_DP = 36f
+private const val LENS_HEIGHT_DP = 26f
 /** Pergeseran maksimum di tepi. Rasio tinggi:amount tetap 1:2 seperti navbar (8.5 : 17). */
-private const val LENS_AMOUNT_DP = 84f
+private const val LENS_AMOUNT_DP = 42f
 /**
  * Kekuatan lensa TETAP (tidak berubah saat ditarik, tidak bergantung kecepatan jari). Sebelumnya
  * kekuatan lensa ikut kecepatan jari + posisi tarikan → tepi bergetar seperti jelly.
  */
-private const val LENS_STRENGTH = 0.85f
+private const val LENS_STRENGTH = 0.72f
 
 // ── Geometri host layer ──
 /**
@@ -110,7 +110,7 @@ private const val EXIT_EXTRA_DP = 32f
  * Radius sudut bawah, TETAP. Karena radius > bleed samping, busur sudut mulai terlihat di dalam
  * layar: tepi bawah naik ~32dp di kiri/kanan layar, dan lensa mengikuti lengkung itu.
  */
-private const val CORNER_DP = 72f
+private const val CORNER_DP = 44f
 /** Batas tarik ke bawah (rubber band), fraksi tinggi layar. */
 private const val RUBBER_BAND = 0.04f
 
@@ -122,7 +122,7 @@ private fun rubberBand(x: Float, limit: Float): Float =
  * Halaman ke-2 onboarding: layer bergaya lockscreen iPhone di atas Dashboard.
  *
  * - Layer = kaca: [drawBackdrop] mengambil Dashboard di belakangnya ([backdrop]) lalu menerapkan
- *   `lens(...)` — refraksi tepi seperti kapsul LiquidBottomTabs, tanpa dispersi warna —
+ *   `lens(...)` — refraksi tepi seperti kapsul LiquidBottomTabs, dengan chromatic aberration yang halus —
  *   sehingga tepi bawah membiaskan Dashboard dengan jernih, bukan bayangan ganda.
  * - Ikut jari 1:1, ditarik ke bawah melewati posisi awal terasa karet (rubber band).
  * - Dilepas: keputusan memakai proyeksi kecepatan (bukan cuma jarak), lalu spring yang
@@ -154,7 +154,7 @@ fun UnlockCurtain(
     var rawLift by remember { mutableFloatStateOf(0f) }
 
     val accent = palette.accent
-    // Kaca TANPA blur & tanpa dispersi warna: hanya lensa (refraksi) di tepi. Tint tipis dari Liquid Glass
+    // Kaca tanpa blur berat: refraksi berwarna tipis di tepi. Tint tipis dari Liquid Glass
     // Level (seperti drawer) agar Dashboard di belakang tetap terlihat jelas.
     val style = LocalAetherStyle.current
     val glassTint = (liquidGlassTintAlpha(style.glassLevel.coerceIn(0f, 1f)) * 0.62f).coerceIn(0.06f, 0.94f)
@@ -239,10 +239,11 @@ fun UnlockCurtain(
                         RoundedCornerShape(topStart = 0f, topEnd = 0f, bottomEnd = cornerPx, bottomStart = cornerPx)
                     },
                     effects = {
-                        // Lensa murni (refraksi tepi) dengan kekuatan tetap — tanpa dispersi warna.
+                        // Refraksi tepi tipis dengan chromatic split ringan.
                         lens(
                             LENS_HEIGHT_DP.dp.toPx() * LENS_STRENGTH,
                             LENS_AMOUNT_DP.dp.toPx() * LENS_STRENGTH,
+                            chromaticAberration = true,
                         )
                     },
                     highlight = {

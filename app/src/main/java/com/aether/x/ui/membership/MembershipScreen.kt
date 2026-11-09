@@ -100,7 +100,6 @@ fun MembershipScreen(
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
     val activationStage by viewModel.activationStage.collectAsStateWithLifecycle()
     val maskedKey by viewModel.maskedKey.collectAsStateWithLifecycle()
-    val isOfflineCache by viewModel.isOfflineCache.collectAsStateWithLifecycle()
 
     // Tahan status ACTIVE selama pengecekan ulang singkat (ACTIVE -> CHECKING -> ACTIVE) supaya
     // kartu & animasinya tidak hilang-muncul. Confetti hanya saat INACTIVE/EXPIRED -> ACTIVE.
@@ -127,10 +126,10 @@ fun MembershipScreen(
             .padding(
                 start = Spacing.screen,
                 end = Spacing.screen,
-                top = Spacing.lg,
+                top = Spacing.md,
                 bottom = Spacing.lg + contentPadding.calculateBottomPadding(),
             ),
-        verticalArrangement = Arrangement.spacedBy(Spacing.section),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Column {
             Text(
@@ -158,20 +157,10 @@ fun MembershipScreen(
         )
 
         if (shown == MembershipUiStatus.ACTIVE) {
-            LicenseCountdownCard(
-                expiresAtMillis = expiresAtMillis,
-                modifier = Modifier.cardEnterAnimation(index = 1),
-            )
-            LicenseDetailsCard(
-                expiresAtMillis = expiresAtMillis,
-                maskedKey = maskedKey,
-                isOfflineCache = isOfflineCache,
-                modifier = Modifier.cardEnterAnimation(index = 2),
-            )
             DeviceFingerprintCard(
                 deviceId = viewModel.deviceId,
                 onLogout = viewModel::logout,
-                modifier = Modifier.cardEnterAnimation(index = 3),
+                modifier = Modifier.cardEnterAnimation(index = 1),
             )
         }
 

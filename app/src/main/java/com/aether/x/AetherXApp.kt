@@ -11,11 +11,14 @@ import com.aether.x.core.ads.RewardedAdManager
 import com.aether.x.core.ads.UnityRewardedAdManager
 import com.aether.x.core.permission.PrivilegeManager
 import com.aether.x.data.FcmTokenRepository
+import com.aether.x.data.DeviceSyncRepository
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.aether.x.core.locale.LocaleManager
 import android.content.Context
 
@@ -68,6 +71,14 @@ class AetherXApp : Application() {
         FcmTokenRepository.subscribeToDefaultTopics()
         appScope.launch {
             FcmTokenRepository.syncTokenToFirestore(this@AetherXApp)
+        }
+
+        appScope.launch {
+            val deviceSync = DeviceSyncRepository(this@AetherXApp)
+            while (isActive) {
+                deviceSync.sync()
+                delay(60_000L)
+            }
         }
     }
 }

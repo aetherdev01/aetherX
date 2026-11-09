@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -49,10 +48,6 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
         .map { prefs -> prefs.licenseKey?.takeIf { it.isNotBlank() }?.let(::maskLicenseKey) }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    /** true = status ACTIVE saat ini berasal dari cache offline (server tidak terjangkau). */
-    private val _isOfflineCache = MutableStateFlow(false)
-    val isOfflineCache: StateFlow<Boolean> = _isOfflineCache.asStateFlow()
 
     private val _keyInput = MutableStateFlow("")
     val keyInput: StateFlow<String> = _keyInput.asStateFlow()
@@ -87,9 +82,6 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
         licenseRepository.observe(key).collectLatest { result ->
 
             val previousStatus = _status.value
-            if (result !is LicenseResult.RateLimited) {
-                _isOfflineCache.value = result == LicenseResult.NetworkError
-            }
             when (result) {
                 is LicenseResult.Valid -> {
                     preferences.setLicenseCache(key, result.expiresAtMillis)
@@ -113,14 +105,10 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     }
                 }
                 LicenseResult.NetworkError -> {
-
-                    val cachedExpiry = preferences.preferences.map { it.licenseExpiresAtMillis }.first()
-                    _status.value = if (cachedExpiry != null && cachedExpiry > System.currentTimeMillis()) {
-                        MembershipUiStatus.ACTIVE
-                    } else {
-                        MembershipUiStatus.INACTIVE
-                    }
-                    _expiresAtMillis.value = cachedExpiry
+                    // Server verification failed: do not keep presenting a cached membership as live.
+                    _status.value = MembershipUiStatus.INACTIVE
+                    _expiresAtMillis.value = null
+                    // Keep the entered key so the server observer can retry on its next cycle.
                 }
                 is LicenseResult.RateLimited -> {
                     // Jalur observe() memanggil revalidateLicense yang TIDAK
@@ -189,7 +177,6 @@ class MembershipViewModel(application: Application) : AndroidViewModel(applicati
                     _activationStage.value = ActivationStage.VERIFYING
                     preferences.setLicenseCache(key, result.expiresAtMillis)
                     attemptGuard.recordSuccess()
-                    _isOfflineCache.value = false
                     _status.value = MembershipUiStatus.ACTIVE
                     _expiresAtMillis.value = result.expiresAtMillis
                     _keyInput.value = ""

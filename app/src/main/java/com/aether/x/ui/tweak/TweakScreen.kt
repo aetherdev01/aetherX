@@ -792,8 +792,9 @@ private fun Modifier.drawerLensPanel(
         effects = {
             if (blurRadiusPx > 0f) blur(blurRadiusPx)
             lens(
-                16f.dp.toPx(),
-                26f.dp.toPx(),
+                9f.dp.toPx(),
+                12f.dp.toPx(),
+                chromaticAberration = true,
             )
         },
         highlight = { Highlight.Default.copy(alpha = 0.5f) },
